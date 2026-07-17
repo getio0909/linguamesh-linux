@@ -11,6 +11,7 @@ default = []
 demo-provider = [
     "dep:linguamesh-application",
     "dep:linguamesh-engine",
+    "dep:linguamesh-storage",
     "dep:linguamesh-testkit",
     "dep:tokio",
     "dep:tokio-util",
@@ -24,6 +25,7 @@ linguamesh-application = { version = "=0.1.0-alpha.2", path = "../linguamesh-cor
 linguamesh-domain = { version = "=0.1.0-alpha.2", path = "../linguamesh-core/crates/linguamesh-domain" }
 linguamesh-engine = { version = "=0.1.0-alpha.2", path = "../linguamesh-core/crates/linguamesh-engine", optional = true }
 linguamesh-protocol = { version = "=0.1.0-alpha.2", path = "../linguamesh-core/crates/linguamesh-protocol" }
+linguamesh-storage = { version = "=0.1.0-alpha.2", path = "../linguamesh-core/crates/linguamesh-storage", optional = true }
 linguamesh-testkit = { version = "=0.1.0-alpha.2", path = "../linguamesh-core/crates/linguamesh-testkit", optional = true }
 tokio = { version = "1.46.1", features = ["rt-multi-thread", "sync", "time"], optional = true }
 tokio-util = { version = "0.7.15", features = ["rt"], optional = true }

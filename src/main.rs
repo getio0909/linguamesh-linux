@@ -15,7 +15,7 @@ use std::time::Duration;
 const SOURCE_LOCALES: [Option<&str>; 3] = [None, Some("en"), Some("zh-CN")];
 const TARGET_LOCALES: [&str; 3] = ["zh-CN", "en", "ja"];
 const MAX_EVENTS_PER_TICK: usize = 64;
-const SESSION_PROVIDER_ID: &str = "session-local-provider";
+const CUSTOM_PROVIDER_ID: &str = "session-local-provider";
 const CUSTOM_PROVIDER_PRESET_ID: &str = "custom-openai-compatible";
 const OPENAI_ADAPTER_TYPE: &str = "openai_chat_completions";
 const DEFAULT_PROVIDER_NAME: &str = "Local OpenAI-compatible provider";
@@ -26,6 +26,7 @@ struct UiBindings {
     provider_name: gtk::Entry,
     provider_endpoint: gtk::Entry,
     provider_credential: gtk::PasswordEntry,
+    remember_profile: gtk::CheckButton,
     connect: gtk::Button,
     active_provider: gtk::Label,
     model: gtk::DropDown,
@@ -56,7 +57,10 @@ fn build_ui(application: &adw::Application) {
         return;
     }
     let state = Rc::new(RefCell::new(AppState::default()));
-    let worker = Rc::new(CoreWorker::spawn());
+    let database_path = glib::user_data_dir()
+        .join("dev.linguamesh.LinguaMesh")
+        .join("linguamesh.sqlite3");
+    let worker = Rc::new(CoreWorker::spawn_with_database(database_path));
     let (window, bindings, theme, locale) = create_window(application);
     connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
     connect_action_handlers(&bindings, &state, &worker);
@@ -94,6 +98,7 @@ fn create_window(
         provider_name,
         provider_endpoint,
         provider_credential,
+        remember_profile,
         connect,
         active_provider,
     ) = create_provider_session();
@@ -147,6 +152,7 @@ fn create_window(
             provider_name,
             provider_endpoint,
             provider_credential,
+            remember_profile,
             connect,
             active_provider,
             model,
@@ -210,17 +216,18 @@ fn create_provider_session() -> (
     gtk::Entry,
     gtk::Entry,
     gtk::PasswordEntry,
+    gtk::CheckButton,
     gtk::Button,
     gtk::Label,
 ) {
     let section = gtk::Box::new(gtk::Orientation::Vertical, 6);
-    let title = gtk::Label::new(Some("Local provider session"));
+    let title = gtk::Label::new(Some("Local provider"));
     title.set_xalign(0.0);
     title.add_css_class("heading");
     section.append(&title);
 
     let note = gtk::Label::new(Some(
-        "Secure credential storage is unavailable in this build. Credentials are used only for the current in-memory session, cleared from this form immediately, and never saved.",
+        "Names, endpoints, and model preferences can be remembered. Credentials remain session-only, are cleared from this form immediately, and must be entered again after restart. Secret Service storage is not available yet.",
     ));
     note.set_xalign(0.0);
     note.set_wrap(true);
@@ -247,9 +254,13 @@ fn create_provider_session() -> (
     provider_credential.set_tooltip_text(Some(
         "Optional session credential; it is never written to local storage",
     ));
+    let remember_profile = gtk::CheckButton::with_label("Remember non-secret profile and model");
+    remember_profile.set_tooltip_text(Some(
+        "Save only the provider name, endpoint, and model preference",
+    ));
     let connect = gtk::Button::with_mnemonic("_Connect");
     fields.append(&labeled_control(
-        "Provider name (session only)",
+        "Provider name",
         provider_name.upcast_ref::<gtk::Widget>(),
     ));
     fields.append(&labeled_control(
@@ -262,6 +273,7 @@ fn create_provider_session() -> (
     ));
     fields.append(&connect);
     section.append(&fields);
+    section.append(&remember_profile);
 
     let active_provider = gtk::Label::new(None);
     active_provider.set_xalign(0.0);
@@ -272,6 +284,7 @@ fn create_provider_session() -> (
         provider_name,
         provider_endpoint,
         provider_credential,
+        remember_profile,
         connect,
         active_provider,
     )
@@ -314,30 +327,38 @@ fn labeled_control(label: &str, control: &gtk::Widget) -> gtk::Box {
     container
 }
 
-fn session_provider_profile(
-    display_name: String,
-    endpoint: String,
-    has_credential: bool,
-) -> Result<ProviderProfile, TranslationError> {
-    let profile_id = ProviderProfileId::parse(SESSION_PROVIDER_ID).map_err(|error| {
+fn default_custom_provider_id() -> Result<ProviderProfileId, TranslationError> {
+    ProviderProfileId::parse(CUSTOM_PROVIDER_ID).map_err(|error| {
         TranslationError::new(
             ErrorKind::InvalidConfiguration,
-            format!("The session provider ID is invalid: {error}"),
+            format!("The custom provider ID is invalid: {error}"),
         )
-    })?;
+    })
+}
+
+fn custom_provider_profile(
+    profile_id: ProviderProfileId,
+    display_name: String,
+    preset_id: String,
+    adapter_type: String,
+    endpoint: String,
+    has_credential: bool,
+    selected_model: Option<String>,
+) -> Result<ProviderProfile, TranslationError> {
     let secret_ref = has_credential.then(|| SecretRef::new(SecretRefNamespace::Session));
     ProviderProfile::new(
         profile_id,
         display_name,
-        CUSTOM_PROVIDER_PRESET_ID,
-        OPENAI_ADAPTER_TYPE,
+        preset_id,
+        adapter_type,
         endpoint,
         secret_ref,
     )
+    .and_then(|profile| profile.with_selected_model(selected_model))
     .map_err(|error| {
         TranslationError::new(
             ErrorKind::InvalidConfiguration,
-            format!("The session provider profile is invalid: {error}"),
+            format!("The provider profile is invalid: {error}"),
         )
     })
 }
@@ -358,6 +379,19 @@ fn editor_panel(label: &str, editor: &gtk::TextView) -> gtk::Box {
     container
 }
 
+fn confirmed_model_index(state: &AppState) -> u32 {
+    state
+        .selected_model()
+        .and_then(|confirmed| {
+            state
+                .models()
+                .iter()
+                .position(|model| model.id == confirmed)
+        })
+        .and_then(|index| u32::try_from(index + 1).ok())
+        .unwrap_or(0)
+}
+
 fn connect_selection_handlers(
     bindings: &UiBindings,
     theme: &gtk::DropDown,
@@ -371,18 +405,9 @@ fn connect_selection_handlers(
     bindings.model.connect_selected_notify(move |drop_down| {
         let selected = drop_down.selected() as usize;
         if selected == 0 {
-            let confirmed = {
-                let state = model_state.borrow();
-                state.selected_model().and_then(|confirmed| {
-                    state
-                        .models()
-                        .iter()
-                        .position(|model| model.id == confirmed)
-                        .map(|index| index + 1)
-                })
-            };
-            if let Some(confirmed) = confirmed {
-                drop_down.set_selected(u32::try_from(confirmed).unwrap_or(0));
+            let confirmed = confirmed_model_index(&model_state.borrow());
+            if confirmed != 0 {
+                drop_down.set_selected(confirmed);
             }
             return;
         }
@@ -392,6 +417,7 @@ fn connect_selection_handlers(
             .get(selected - 1)
             .map(|model| model.id.clone());
         if let Some(model_id) = model_id {
+            let profile_id = model_state.borrow().provider_id().cloned();
             {
                 let state = model_state.borrow();
                 if state.selected_model() == Some(model_id.as_str())
@@ -401,22 +427,40 @@ fn connect_selection_handlers(
                 }
             }
             let selection_result = model_state.borrow_mut().begin_model_selection(&model_id);
-            if let Err(error) = selection_result {
+            let restore_selection = if let Err(error) = selection_result {
                 model_state
                     .borrow_mut()
                     .record_client_error(error.to_string());
-            } else if let Err(error) =
-                model_worker.try_send(WorkerCommand::SelectModel(model_id.clone()))
-            {
-                let worker_error = TranslationError::new(ErrorKind::Internal, error.to_string());
-                if let Err(state_error) = model_state
-                    .borrow_mut()
-                    .model_selection_failed(&model_id, worker_error)
+                true
+            } else {
+                let worker_error = match profile_id {
+                    Some(profile_id) => model_worker
+                        .try_send(WorkerCommand::SelectModel {
+                            profile_id,
+                            model_id: model_id.clone(),
+                        })
+                        .err()
+                        .map(|error| TranslationError::new(ErrorKind::Internal, error.to_string())),
+                    None => Some(TranslationError::new(
+                        ErrorKind::Internal,
+                        "The active provider ID is unavailable.",
+                    )),
+                };
+                let restore_selection = worker_error.is_some();
+                if let Some(worker_error) = worker_error
+                    && let Err(state_error) = model_state
+                        .borrow_mut()
+                        .model_selection_failed(&model_id, worker_error)
                 {
                     model_state
                         .borrow_mut()
                         .record_client_error(state_error.to_string());
                 }
+                restore_selection
+            };
+            if restore_selection {
+                let confirmed = confirmed_model_index(&model_state.borrow());
+                drop_down.set_selected(confirmed);
             }
             refresh_ui(&model_bindings, &model_state.borrow());
         }
@@ -462,8 +506,12 @@ fn connect_action_handlers(
     let connect_state = Rc::clone(state);
     let connect_worker = Rc::clone(worker);
     bindings.connect.connect_clicked(move |_| {
+        if !connect_state.borrow().worker_ready() {
+            return;
+        }
         let display_name = connect_bindings.provider_name.text().trim().to_owned();
         let endpoint = connect_bindings.provider_endpoint.text().trim().to_owned();
+        let remember_profile = connect_bindings.remember_profile.is_active();
         let credential_text = connect_bindings.provider_credential.text();
         let has_credential = !credential_text.is_empty();
         let session_secret = has_credential.then(|| SecretValue::new(credential_text.as_str()));
@@ -473,7 +521,7 @@ fn connect_action_handlers(
         if display_name.is_empty() {
             state.provider_failed(TranslationError::new(
                 ErrorKind::InvalidEndpoint,
-                "Enter a provider name for this session.",
+                "Enter a provider name.",
             ));
             refresh_ui(&connect_bindings, &state);
             return;
@@ -481,12 +529,42 @@ fn connect_action_handlers(
         if endpoint.is_empty() {
             state.provider_failed(TranslationError::new(
                 ErrorKind::InvalidEndpoint,
-                "Enter a loopback provider endpoint.",
+                "Enter a provider endpoint.",
             ));
             refresh_ui(&connect_bindings, &state);
             return;
         }
-        let profile = match session_provider_profile(display_name, endpoint, has_credential) {
+        let (profile_id, preset_id, adapter_type, selected_model) = match state.saved_profile() {
+            Some(saved) => (
+                Ok(saved.id().clone()),
+                saved.preset_id().to_owned(),
+                saved.adapter_type().to_owned(),
+                saved.selected_model().map(str::to_owned),
+            ),
+            None => (
+                default_custom_provider_id(),
+                CUSTOM_PROVIDER_PRESET_ID.to_owned(),
+                OPENAI_ADAPTER_TYPE.to_owned(),
+                None,
+            ),
+        };
+        let profile_id = match profile_id {
+            Ok(profile_id) => profile_id,
+            Err(error) => {
+                state.provider_failed(error);
+                refresh_ui(&connect_bindings, &state);
+                return;
+            }
+        };
+        let profile = match custom_provider_profile(
+            profile_id,
+            display_name,
+            preset_id,
+            adapter_type,
+            endpoint,
+            has_credential,
+            selected_model,
+        ) {
             Ok(profile) => profile,
             Err(error) => {
                 state.provider_failed(error);
@@ -494,12 +572,16 @@ fn connect_action_handlers(
                 return;
             }
         };
-        match state.begin_provider_connection(profile.clone()) {
+        match state.begin_provider_connection_with_persistence(profile.clone(), remember_profile) {
             Ok(()) => {
                 if let Err(error) = connect_worker.try_send(WorkerCommand::Connect {
                     profile,
                     secret: session_secret,
-                    persistence: PersistenceIntent::SessionOnly,
+                    persistence: if remember_profile {
+                        PersistenceIntent::Persistent
+                    } else {
+                        PersistenceIntent::SessionOnly
+                    },
                 }) {
                     state.provider_failed(TranslationError::new(
                         ErrorKind::Internal,
@@ -515,7 +597,10 @@ fn connect_action_handlers(
                 ));
                 refresh_ui(&connect_bindings, &state);
             }
-            Err(_) => {}
+            Err(error) => {
+                state.record_client_error(error.to_string());
+                refresh_ui(&connect_bindings, &state);
+            }
         }
     });
 
@@ -599,6 +684,8 @@ fn start_event_pump(bindings: &UiBindings, state: &Rc<RefCell<AppState>>, worker
     });
 }
 
+// 所有工作线程事件在单一入口按精确关联键提交或忽略陈旧结果。
+#[allow(clippy::too_many_lines)]
 fn apply_worker_event(
     bindings: &UiBindings,
     state: &Rc<RefCell<AppState>>,
@@ -606,22 +693,53 @@ fn apply_worker_event(
     event: WorkerEvent,
 ) {
     match event {
+        WorkerEvent::ProfileRestored { profile } => {
+            let restore_result = state.borrow_mut().restore_saved_profile(profile.clone());
+            match restore_result {
+                Ok(()) => {
+                    bindings.provider_name.set_text(profile.display_name());
+                    bindings.provider_endpoint.set_text(profile.base_endpoint());
+                    bindings.remember_profile.set_active(true);
+                }
+                Err(error) => state.borrow_mut().record_client_error(error.to_string()),
+            }
+        }
+        WorkerEvent::ProfileStorageUnavailable(error) => {
+            state.borrow_mut().provider_failed(error);
+        }
         WorkerEvent::DemoProviderReady { endpoint } => {
-            let should_use_demo = state.borrow().active_provider().is_none()
-                && state.borrow().pending_provider().is_none()
-                && bindings.provider_endpoint.text() == DEFAULT_PROVIDER_ENDPOINT;
+            let should_use_demo = {
+                let state = state.borrow();
+                state.active_provider().is_none()
+                    && state.pending_provider().is_none()
+                    && state.saved_profile().is_none()
+                    && bindings.provider_endpoint.text() == DEFAULT_PROVIDER_ENDPOINT
+            };
             if should_use_demo {
                 bindings.provider_endpoint.set_text(&endpoint);
             }
+            state.borrow_mut().mark_worker_ready();
         }
-        WorkerEvent::Connected { profile, models } => {
+        WorkerEvent::Connected {
+            profile,
+            models,
+            saved_profile,
+        } => {
             let mut labels = vec!["Select a model...".to_owned()];
             labels.extend(models.iter().map(|model| model.display_name.clone()));
             let label_refs = labels.iter().map(String::as_str).collect::<Vec<_>>();
             let selected = {
                 let mut state = state.borrow_mut();
-                if state.provider_connected(profile, models).is_err() {
-                    return;
+                match state.provider_connected_with_saved_profile(profile, models, saved_profile) {
+                    Ok(()) => {}
+                    Err(StateError::UnexpectedProviderConnection) => return,
+                    Err(error) => {
+                        state.provider_failed(TranslationError::new(
+                            ErrorKind::Internal,
+                            error.to_string(),
+                        ));
+                        return;
+                    }
                 }
                 state
                     .selected_model()
@@ -639,10 +757,48 @@ fn apply_worker_event(
         WorkerEvent::ModelSelected {
             profile_id,
             model_id,
+            saved_profile,
         } => {
-            let mut state = state.borrow_mut();
-            if state.provider_id() == Some(&profile_id) {
-                let _ = state.confirm_model_selection(&model_id);
+            let restore_selection = {
+                let mut state = state.borrow_mut();
+                if state.provider_id() == Some(&profile_id) {
+                    let result = state.confirm_model_selection_with_saved_profile(
+                        &profile_id,
+                        &model_id,
+                        saved_profile,
+                    );
+                    if let Err(error) = result {
+                        let _ = state.model_selection_failed(
+                            &model_id,
+                            TranslationError::new(ErrorKind::Internal, error.to_string()),
+                        );
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            };
+            if restore_selection {
+                let confirmed = confirmed_model_index(&state.borrow());
+                bindings.model.set_selected(confirmed);
+            }
+        }
+        WorkerEvent::ModelSelectionRejected {
+            profile_id,
+            model_id,
+            error,
+        } => {
+            let is_current = {
+                let state = state.borrow();
+                state.provider_id() == Some(&profile_id)
+                    && state.pending_model_selection() == Some(model_id.as_str())
+            };
+            if is_current {
+                let _ = state.borrow_mut().model_selection_failed(&model_id, error);
+                let confirmed = confirmed_model_index(&state.borrow());
+                bindings.model.set_selected(confirmed);
             }
         }
         WorkerEvent::Translation(event) => {
@@ -657,15 +813,12 @@ fn apply_worker_event(
         WorkerEvent::OperationFailed(error) | WorkerEvent::TranslationRejected(error) => {
             state.borrow_mut().record_operation_failure(error);
         }
-        WorkerEvent::ProviderRejected { profile_id, error } => {
+        WorkerEvent::ProviderRejected { profile, error } => {
             let mut state = state.borrow_mut();
-            let _ = state.provider_connection_failed(&profile_id, error);
+            let _ = state.provider_connection_failed(&profile, error);
         }
         WorkerEvent::Rejected(error) => {
-            let pending_model = state.borrow().pending_model_selection().map(str::to_owned);
-            if let Some(model_id) = pending_model {
-                let _ = state.borrow_mut().model_selection_failed(&model_id, error);
-            } else if !matches!(
+            if !matches!(
                 state.borrow().status(),
                 AppStatus::Translating | AppStatus::Cancelling
             ) {
@@ -691,7 +844,9 @@ const fn operation_is_terminal(status: AppStatus) -> bool {
 
 fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     bindings.output.set_text(state.output());
-    let status_label = if state.pending_model_selection().is_some() {
+    let status_label = if !state.worker_ready() {
+        "Starting"
+    } else if state.pending_model_selection().is_some() {
         "Selecting model"
     } else {
         state.status().label()
@@ -720,28 +875,51 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             state.status(),
             AppStatus::Connecting | AppStatus::Translating | AppStatus::Cancelling
         );
+    let provider_controls_enabled = state.worker_ready() && !blocked;
+    let active_mode = if state.active_provider_is_saved() {
+        "saved"
+    } else {
+        "session only"
+    };
+    let pending_mode = if state.pending_provider_will_be_saved() {
+        "will be saved without credentials"
+    } else {
+        "session only"
+    };
     match (state.active_provider(), state.pending_provider()) {
         (Some(active), Some(pending)) => bindings.active_provider.set_label(&format!(
-            "Active provider remains {} (session only); connecting {}.",
+            "Active provider remains {} ({active_mode}); connecting {} ({pending_mode}).",
             active.display_name(),
             pending.display_name()
         )),
         (None, Some(pending)) => bindings.active_provider.set_label(&format!(
-            "Connecting {} with a session-only configuration.",
-            pending.display_name()
+            "Connecting {} ({pending_mode}).",
+            pending.display_name(),
         )),
         (Some(active), None) => bindings.active_provider.set_label(&format!(
-            "Active provider: {} (session only)",
-            active.display_name()
+            "Active provider: {} ({active_mode})",
+            active.display_name(),
         )),
-        (None, None) => bindings
-            .active_provider
-            .set_label("No provider connected. Session credentials are not saved."),
+        (None, None) if state.saved_profile().is_some() => bindings.active_provider.set_label(
+            "A saved non-secret profile was restored. Enter its credential if required, then connect.",
+        ),
+        (None, None) => bindings.active_provider.set_label(
+            "No provider connected. Credentials are always session-only and are never saved.",
+        ),
     }
-    bindings.provider_name.set_sensitive(!blocked);
-    bindings.provider_endpoint.set_sensitive(!blocked);
-    bindings.provider_credential.set_sensitive(!blocked);
-    bindings.connect.set_sensitive(!blocked);
+    bindings
+        .provider_name
+        .set_sensitive(provider_controls_enabled);
+    bindings
+        .provider_endpoint
+        .set_sensitive(provider_controls_enabled);
+    bindings
+        .provider_credential
+        .set_sensitive(provider_controls_enabled);
+    bindings
+        .remember_profile
+        .set_sensitive(provider_controls_enabled);
+    bindings.connect.set_sensitive(provider_controls_enabled);
     bindings
         .translate
         .set_sensitive(!blocked && state.selected_model().is_some());
@@ -759,9 +937,10 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
 #[cfg(test)]
 mod tests {
     use super::{
-        AppState, AppStatus, CoreWorker, DEFAULT_PROVIDER_ENDPOINT, WorkerCommand,
-        connect_action_handlers, connect_selection_handlers, create_window, refresh_ui,
-        start_event_pump,
+        AppState, AppStatus, CUSTOM_PROVIDER_PRESET_ID, CoreWorker, DEFAULT_PROVIDER_ENDPOINT,
+        ErrorKind, OPENAI_ADAPTER_TYPE, TranslationError, WorkerCommand, WorkerEvent,
+        apply_worker_event, connect_action_handlers, connect_selection_handlers, create_window,
+        custom_provider_profile, default_custom_provider_id, refresh_ui, start_event_pump,
     };
     use adw::prelude::*;
     use gtk::glib;
@@ -787,6 +966,8 @@ mod tests {
         panic!("Timed out while waiting for the GTK state transition.");
     }
 
+    // 单个原生流程覆盖真实控件生命周期和恢复表单，避免拆分后并行初始化 GTK。
+    #[allow(clippy::too_many_lines)]
     #[test]
     fn gtk_buttons_explicitly_connect_select_and_translate_with_session_credential() {
         adw::init().expect("initialize GTK and libadwaita");
@@ -807,12 +988,27 @@ mod tests {
         refresh_ui(&bindings, &state.borrow());
         window.present();
 
+        assert!(!state.borrow().worker_ready());
+        assert_eq!(bindings.status.label(), "Status: Starting");
+        assert!(!bindings.provider_name.is_sensitive());
+        assert!(!bindings.provider_endpoint.is_sensitive());
+        assert!(!bindings.provider_credential.is_sensitive());
+        assert!(!bindings.remember_profile.is_sensitive());
+        assert!(!bindings.connect.is_sensitive());
+
         let context = glib::MainContext::default();
         spin_main_context_until(&context, Duration::from_secs(5), || {
-            bindings.provider_endpoint.text() != DEFAULT_PROVIDER_ENDPOINT
+            state.borrow().worker_ready()
+                && bindings.provider_endpoint.text() != DEFAULT_PROVIDER_ENDPOINT
         });
         assert_eq!(state.borrow().status(), AppStatus::Disconnected);
         assert!(state.borrow().active_provider().is_none());
+        assert!(!bindings.remember_profile.is_active());
+        assert!(bindings.provider_name.is_sensitive());
+        assert!(bindings.provider_endpoint.is_sensitive());
+        assert!(bindings.provider_credential.is_sensitive());
+        assert!(bindings.remember_profile.is_sensitive());
+        assert!(bindings.connect.is_sensitive());
         let demo_endpoint = bindings.provider_endpoint.text().to_string();
 
         bindings.provider_name.set_text("Unavailable provider");
@@ -848,6 +1044,7 @@ mod tests {
                 .label()
                 .contains("GTK fake provider")
         );
+        assert!(bindings.active_provider.label().contains("session only"));
 
         bindings.model.set_selected(1);
         assert_eq!(
@@ -864,6 +1061,34 @@ mod tests {
         assert_eq!(bindings.model.selected(), 1);
         assert_eq!(state.borrow().selected_model(), Some("fake-translator"));
         assert!(bindings.translate.is_sensitive());
+
+        let rejected_model = state.borrow().models()[1].id.clone();
+        state
+            .borrow_mut()
+            .begin_model_selection(&rejected_model)
+            .expect("begin rejected model selection");
+        bindings.model.set_selected(2);
+        let profile_id = state
+            .borrow()
+            .provider_id()
+            .cloned()
+            .expect("active provider ID");
+        apply_worker_event(
+            &bindings,
+            &state,
+            &worker,
+            WorkerEvent::ModelSelectionRejected {
+                profile_id,
+                model_id: rejected_model,
+                error: TranslationError::new(
+                    ErrorKind::Persistence,
+                    "The saved model could not be updated.",
+                ),
+            },
+        );
+        assert_eq!(bindings.model.selected(), 1);
+        assert_eq!(state.borrow().selected_model(), Some("fake-translator"));
+        assert!(state.borrow().pending_model_selection().is_none());
 
         bindings.provider_name.set_text("Unavailable provider");
         bindings.provider_endpoint.set_text("not a valid endpoint");
@@ -893,6 +1118,49 @@ mod tests {
         assert_eq!(state.borrow().output(), "你好，LinguaMesh！");
         assert!(!state.borrow().has_partial_output());
         assert_eq!(bindings.status.label(), "Status: Completed");
+
+        let restored_state = Rc::new(RefCell::new(AppState::default()));
+        let (restored_window, restored_bindings, _, _) = create_window(&application);
+        let restored_profile = custom_provider_profile(
+            default_custom_provider_id().expect("custom provider ID"),
+            "Restored provider".to_owned(),
+            CUSTOM_PROVIDER_PRESET_ID.to_owned(),
+            OPENAI_ADAPTER_TYPE.to_owned(),
+            "http://127.0.0.1:4242/v1/".to_owned(),
+            false,
+            Some("fake-translator".to_owned()),
+        )
+        .expect("restored profile");
+        apply_worker_event(
+            &restored_bindings,
+            &restored_state,
+            &worker,
+            WorkerEvent::ProfileRestored {
+                profile: restored_profile,
+            },
+        );
+        assert_eq!(restored_state.borrow().status(), AppStatus::Disconnected);
+        assert!(restored_state.borrow().active_provider().is_none());
+        assert_eq!(restored_bindings.provider_name.text(), "Restored provider");
+        assert_eq!(
+            restored_bindings.provider_endpoint.text(),
+            "http://127.0.0.1:4242/v1/"
+        );
+        assert!(restored_bindings.remember_profile.is_active());
+        assert_eq!(restored_bindings.model.selected(), 0);
+        apply_worker_event(
+            &restored_bindings,
+            &restored_state,
+            &worker,
+            WorkerEvent::DemoProviderReady {
+                endpoint: "http://127.0.0.1:4343/v1/".to_owned(),
+            },
+        );
+        assert_eq!(
+            restored_bindings.provider_endpoint.text(),
+            "http://127.0.0.1:4242/v1/"
+        );
+        restored_window.close();
 
         let _ = worker.try_send(WorkerCommand::Shutdown);
         window.close();

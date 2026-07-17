@@ -2,9 +2,11 @@
 
 LinguaMesh for Linux is the native Rust, GTK 4, and libadwaita client for the LinguaMesh
 translation suite. The current Core `0.1.0-alpha.2` vertical slice starts disconnected, connects
-only after an explicit user action, requires an explicit model selection, streams translated text,
-and supports cancellation with partial-output retention. It also displays typed errors, switches
-appearance, records locale preference, and exposes redacted diagnostics.
+only after an explicit user action, requires a deliberate model choice for a new profile, streams
+translated text, and supports cancellation with partial-output retention. It can explicitly
+remember a non-secret provider profile and revalidate its model preference after reconnect while
+keeping credentials session-only. It also displays typed errors, switches appearance, records
+locale preference, and exposes redacted diagnostics.
 
 ## Project authority
 
@@ -14,7 +16,8 @@ appearance, records locale preference, and exposes redacted diagnostics.
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `c9a96da52e10554c8458f4d49600ec9336ea651b`.
+reviewed Core functional revision `fbf3e9b5927049dccaa19f8c36013495ffebba12`, which adds
+`SQLITE_OPEN_NOFOLLOW` to file-backed storage.
 
 ## Native stack
 
@@ -40,10 +43,22 @@ OpenAI-compatible base endpoint such as `http://127.0.0.1:11434/v1/` follows the
 The credential field is optional and session-only. Its value is copied into Core's secret-aware
 `SecretValue`, the widget is cleared immediately, the temporary GTK string is dropped, and a
 `session:` `SecretRef` lets the bounded typed host-secret broker provide it once during connection.
-Neither the credential nor the profile is persisted. Secret Service and persistent provider
-profiles are not implemented; persistent intent or a persistent secret reference fails closed with
-a typed error instead of falling back to plaintext. Connection and translation can both be
-cancelled. A failed provider switch preserves the previously confirmed provider and model.
+Select **Remember non-secret profile and model** before connecting to save only the provider name,
+endpoint, and validated model preference. The worker stores that credential-free copy in Core's
+SQLite database at
+`$XDG_DATA_HOME/dev.linguamesh.LinguaMesh/linguamesh.sqlite3` (normally under
+`~/.local/share`) with a `0700` application directory and `0600` database file. Core opens SQLite
+with no-follow protection on Linux's default Unix VFS, rejecting any symbolic-link component; the
+Linux layer additionally rejects hard links and non-private storage paths.
+
+Startup restores the saved fields into the GTK form but remains disconnected and performs no
+provider request. Provider controls remain disabled until startup finishes. Enter the credential
+again when required, then click **Connect**. Credential
+values and secret references are never written to the database. Secret Service is not implemented,
+so a persistent `SecretRef` still fails closed with a typed error instead of falling back to
+plaintext. Session-only connection remains available when remembering is disabled or profile
+storage is unavailable. Connection and translation can both be cancelled, and a failed provider
+switch preserves the previously confirmed provider and model.
 
 The tested external-provider path uses the LinguaMesh fake provider on loopback. It is not evidence
 of interoperability with Ollama or any other third-party server. Full validation commands, the

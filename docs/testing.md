@@ -5,13 +5,16 @@
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`c9a96da52e10554c8458f4d49600ec9336ea651b`. A clean documentation-only descendant is acceptable
+`fbf3e9b5927049dccaa19f8c36013495ffebba12`. This revision changes file-backed Core storage to add
+SQLite's `SQLITE_OPEN_NOFOLLOW` flag and includes its Unix symlink-rejection regression test. On
+Linux's default Unix VFS, any symbolic-link path component is rejected. A clean documentation-only
+descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e c9a96da52e10554c8458f4d49600ec9336ea651b^{commit}
+git -C ../linguamesh-core cat-file -e fbf3e9b5927049dccaa19f8c36013495ffebba12^{commit}
 git -C ../linguamesh-core diff --quiet \
-  c9a96da52e10554c8458f4d49600ec9336ea651b..HEAD -- \
+  fbf3e9b5927049dccaa19f8c36013495ffebba12..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -39,19 +42,27 @@ cargo test --features demo-provider --locked
 cargo build --features demo-provider --locked
 ```
 
-The no-default suite contains 23 reducer tests. It covers the disconnected initial state, pending
-and active canonical profiles, stale-result rejection, atomic rollback, deliberate model selection,
-saved-model restoration only when available, ordered events, partial output, all Core alpha.2 error
-categories, and diagnostics that omit content, endpoints, model IDs, and secret references.
+The no-default suite contains 29 reducer tests. It covers the disconnected initial state, restoring
+a saved profile without activating it, rejecting a saved session reference, pending and active
+canonical profiles, exact stale-result rejection, atomic rollback, deliberate model selection,
+credential-free saved-profile commits, session switches that preserve restart state, saved-model
+restoration only when available, ordered events, partial output, all Core alpha.2 error categories,
+and diagnostics that omit content, endpoints, model IDs, and secret references.
 
-The `demo-provider` suite contains 35 tests in total. Its worker tests validate the exact Core
+The `demo-provider` suite contains 50 tests in total. Its worker tests validate the exact Core
 compatibility contract, prove that fake-service readiness does not auto-connect, require explicit
 Connect and model selection, exercise real loopback HTTP/SSE streaming, consume an authenticated
 session secret through the bounded typed host-secret broker, and fail closed for unavailable
-session or persistent secrets. It also covers immediate connection cancellation, translation
-cancellation with partial output, active, queued, and full-command-queue shutdown, translation
-terminal delivery during shutdown, saved-model behavior, and failed-switch rollback to the
-previous Core `ProviderManager` and model.
+session or persistent secrets. Persistence coverage saves and restores a non-secret profile and
+model across worker restarts, proves restart performs no provider request, reconnects after explicit
+credential re-entry, scans the SQLite side files for credential and `session:` canaries, verifies
+exact `0700`/`0600` permissions, rejects a permissive parent, symbolic ancestor, and hard-linked
+database without following static unsafe paths, preserves restart state across session switches,
+failed persistent changes, and public connection cancellation, and keeps session mode usable after
+storage initialization fails. The suite also
+covers immediate connection cancellation, translation cancellation with partial output, active,
+queued, and full-command-queue shutdown, translation terminal delivery during shutdown,
+saved-model behavior, and failed-switch rollback to the previous Core `ProviderManager` and model.
 
 The GTK Rust source can be checked without native linking as a limited diagnostic:
 
@@ -97,14 +108,18 @@ cargo run --features gui
 The all-feature binary test creates real GTK/libadwaita widgets, verifies the initial disconnected
 state, waits for fake-endpoint readiness without auto-connect, clears a session credential from the
 form immediately after Connect, explicitly selects a discovered model, preserves the active
-provider/model after a failed switch, and completes a streamed translation. A private D-Bus
-session and Xvfb provide the runtime environment; tests are serialized because GTK owns
-process-global state. This is not comprehensive UI automation, accessibility, or Wayland coverage.
+provider/model after a failed switch, and completes a streamed translation. It also injects a
+restored profile event and verifies the GTK form prefills its name and endpoint, enables the
+remember checkbox, remains disconnected, leaves the model list unselected, and is not overwritten
+by fake-provider readiness. A private D-Bus session and Xvfb provide the runtime environment; tests
+are serialized because GTK owns process-global state. This is not comprehensive UI automation,
+accessibility, or Wayland coverage.
 
 The GitHub Actions native workflow pins Core revision
-`c9a96da52e10554c8458f4d49600ec9336ea651b`, installs the headers plus D-Bus/Xvfb support, and runs
-the complete gate. The alpha.2 revision has no remote result yet. A local host without `gtk4.pc` or
-`libadwaita-1.pc` must not claim that the GUI build, launch, or GTK button test passed.
+`fbf3e9b5927049dccaa19f8c36013495ffebba12`, installs the headers plus D-Bus/Xvfb support, and runs
+the complete gate. Native CI for the current non-secret persistence and restart revision is pending.
+A local host without `gtk4.pc` or `libadwaita-1.pc` must not claim that the GUI build, launch, or GTK
+button test passed.
 
 ## Repository foundation check
 
@@ -129,6 +144,7 @@ git diff --check
 ## Unimplemented validation
 
 Broader GTK component/UI automation, accessibility inspection, Wayland/X11 smoke tests, a native
-Secret Service backend and its persistence tests, portal tests, third-party local-server
-interoperability, Flatpak smoke tests, runtime localization behavior, dependency/license
-automation, and release builds remain required before a supported release.
+Secret Service backend and secure-credential persistence tests, broader XDG and portal tests,
+third-party local-server interoperability, Flatpak smoke tests, runtime localization behavior,
+runtime database I/O fault injection after successful startup, dependency/license automation, and
+release builds remain required before a supported release.

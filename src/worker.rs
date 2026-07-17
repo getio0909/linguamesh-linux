@@ -5,9 +5,13 @@ use linguamesh_domain::{
     TranslationError, TranslationEvent, TranslationRequest,
 };
 use linguamesh_engine::{CancellationHandle, TranslationOperation, core_compatibility};
+use linguamesh_storage::Storage;
 use linguamesh_testkit::FakeProviderServer;
 use std::error::Error;
 use std::fmt;
+use std::fs::{self, DirBuilder, OpenOptions};
+use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt, PermissionsExt};
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver, SyncSender, TryRecvError};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
@@ -36,7 +40,7 @@ const REQUIRED_CORE_FEATURES: [&str; 6] = [
 pub enum PersistenceIntent {
     /// 配置和秘密仅在当前进程内存中存活。
     SessionOnly,
-    /// 配置和秘密应使用平台安全存储保留。
+    /// 仅跨进程保留非秘密配置和模型；会话秘密仍不落盘。
     Persistent,
 }
 
@@ -52,7 +56,12 @@ pub enum WorkerCommand {
         persistence: PersistenceIntent,
     },
     /// 明确选择当前提供商已经发现的模型。
-    SelectModel(String),
+    SelectModel {
+        /// 发起选择时的活动提供商配置标识。
+        profile_id: ProviderProfileId,
+        /// 用户明确选择的模型标识。
+        model_id: String,
+    },
     /// 开始翻译请求。
     Translate(TranslationRequest),
     /// 取消当前连接或翻译。
@@ -68,12 +77,21 @@ pub enum WorkerEvent {
         /// 当前进程专用的回环基础端点。
         endpoint: String,
     },
+    /// 已恢复一个非秘密配置，但尚未建立网络连接。
+    ProfileRestored {
+        /// 上次明确激活的持久化配置及模型偏好。
+        profile: ProviderProfile,
+    },
+    /// 配置数据库不可用，但会话模式仍可继续使用。
+    ProfileStorageUnavailable(TranslationError),
     /// 提供商已连接并返回模型。
     Connected {
         /// 已由核心成功连接的规范配置。
         profile: ProviderProfile,
         /// 核心发现的模型。
         models: Vec<ModelDescriptor>,
+        /// 本次原子保存成功的非秘密配置。
+        saved_profile: Option<ProviderProfile>,
     },
     /// 工作线程已确认用户选择的模型。
     ModelSelected {
@@ -81,6 +99,17 @@ pub enum WorkerEvent {
         profile_id: ProviderProfileId,
         /// 已确认的模型标识。
         model_id: String,
+        /// 模型偏好更新后的非秘密持久化配置。
+        saved_profile: Option<ProviderProfile>,
+    },
+    /// 模型选择被精确拒绝且活动选择保持不变。
+    ModelSelectionRejected {
+        /// 发起选择时的活动提供商配置标识。
+        profile_id: ProviderProfileId,
+        /// 被拒绝的模型标识。
+        model_id: String,
+        /// 不包含内容或秘密的类型化错误。
+        error: TranslationError,
     },
     /// 共享核心产生翻译事件。
     Translation(TranslationEvent),
@@ -90,8 +119,8 @@ pub enum WorkerEvent {
     TranslationRejected(TranslationError),
     /// 候选提供商连接被拒绝且现有会话不受影响。
     ProviderRejected {
-        /// 被拒绝的候选配置标识。
-        profile_id: ProviderProfileId,
+        /// 被拒绝的完整非秘密候选配置。
+        profile: ProviderProfile,
         /// 不包含秘密的类型化错误。
         error: TranslationError,
     },
@@ -120,7 +149,10 @@ enum QueuedCommand {
         persistence: PersistenceIntent,
         cancellation: CancellationToken,
     },
-    SelectModel(String),
+    SelectModel {
+        profile_id: ProviderProfileId,
+        model_id: String,
+    },
     Translate(TranslationRequest),
     Cancel,
     Shutdown,
@@ -153,6 +185,16 @@ impl CoreWorker {
     /// 启动独立运行时和仅供显式连接的回环假提供商。
     #[must_use]
     pub fn spawn() -> Self {
+        Self::spawn_inner(None)
+    }
+
+    /// 启动使用指定本地配置数据库的独立运行时。
+    #[must_use]
+    pub fn spawn_with_database(path: impl Into<PathBuf>) -> Self {
+        Self::spawn_inner(Some(path.into()))
+    }
+
+    fn spawn_inner(database_path: Option<PathBuf>) -> Self {
         let (commands, command_receiver) = tokio::sync::mpsc::channel(COMMAND_CAPACITY);
         let (event_sender, events) = mpsc::sync_channel(EVENT_CAPACITY);
         let startup_events = event_sender.clone();
@@ -171,6 +213,7 @@ impl CoreWorker {
                     event_sender,
                     worker_cancellation,
                     worker_shutdown,
+                    database_path,
                 )),
                 Err(error) => {
                     let _ = startup_events.send(WorkerEvent::Rejected(TranslationError::new(
@@ -225,9 +268,15 @@ impl CoreWorker {
                 }
                 result.map_err(|_| WorkerSendError)
             }
-            WorkerCommand::SelectModel(model_id) => self
+            WorkerCommand::SelectModel {
+                profile_id,
+                model_id,
+            } => self
                 .commands
-                .try_send(QueuedCommand::SelectModel(model_id))
+                .try_send(QueuedCommand::SelectModel {
+                    profile_id,
+                    model_id,
+                })
                 .map_err(|_| WorkerSendError),
             WorkerCommand::Translate(request) => self
                 .commands
@@ -267,6 +316,13 @@ enum ActiveStep {
     Event(Option<TranslationEvent>),
 }
 
+struct ConnectedCandidate {
+    runtime_profile: ProviderProfile,
+    saved_profile: Option<ProviderProfile>,
+    models: Vec<ModelDescriptor>,
+    selected_model: Option<String>,
+}
+
 // 集中保留命令与事件优先级，避免拆分后破坏单一活动操作约束。
 #[allow(clippy::too_many_lines)]
 async fn run_worker(
@@ -274,6 +330,7 @@ async fn run_worker(
     events: SyncSender<WorkerEvent>,
     active_cancellation: Arc<Mutex<Option<ActiveCancellation>>>,
     shutdown_cancellation: CancellationToken,
+    database_path: Option<PathBuf>,
 ) {
     if let Err(error) = validate_current_core_contract() {
         let _ = events.send(WorkerEvent::Rejected(error));
@@ -287,6 +344,30 @@ async fn run_worker(
             let _ = events.send(WorkerEvent::Stopped);
             return;
         }
+    };
+    let mut storage = match database_path {
+        Some(path) => match open_profile_storage(&path) {
+            Ok((storage, restored_profile)) => {
+                if let Some(profile) = restored_profile
+                    && events
+                        .send(WorkerEvent::ProfileRestored { profile })
+                        .is_err()
+                {
+                    return;
+                }
+                Some(storage)
+            }
+            Err(error) => {
+                if events
+                    .send(WorkerEvent::ProfileStorageUnavailable(error))
+                    .is_err()
+                {
+                    return;
+                }
+                None
+            }
+        },
+        None => None,
     };
     let server = match FakeProviderServer::start().await {
         Ok(server) => server,
@@ -310,6 +391,8 @@ async fn run_worker(
     }
 
     let mut manager = ProviderManager::new(secret_broker.clone());
+    let mut active_profile: Option<ProviderProfile> = None;
+    let mut active_saved_profile: Option<ProviderProfile> = None;
     let mut selected_model: Option<String> = None;
     let mut active: Option<TranslationOperation> = None;
     let mut shutting_down = false;
@@ -326,18 +409,25 @@ async fn run_worker(
                 ActiveStep::Command(Some(QueuedCommand::Cancel)) => operation.cancel(),
                 ActiveStep::Command(Some(QueuedCommand::Connect { profile, .. })) => {
                     let _ = events.send(WorkerEvent::ProviderRejected {
-                        profile_id: profile.id().clone(),
+                        profile,
                         error: TranslationError::new(
                             ErrorKind::InvalidConfiguration,
                             "A provider cannot be changed while a translation is running.",
                         ),
                     });
                 }
-                ActiveStep::Command(Some(QueuedCommand::SelectModel(_))) => {
-                    let _ = events.send(WorkerEvent::Rejected(TranslationError::new(
-                        ErrorKind::InvalidConfiguration,
-                        "A model cannot be changed while a translation is running.",
-                    )));
+                ActiveStep::Command(Some(QueuedCommand::SelectModel {
+                    profile_id,
+                    model_id,
+                })) => {
+                    let _ = events.send(WorkerEvent::ModelSelectionRejected {
+                        profile_id,
+                        model_id,
+                        error: TranslationError::new(
+                            ErrorKind::InvalidConfiguration,
+                            "A model cannot be changed while a translation is running.",
+                        ),
+                    });
                 }
                 ActiveStep::Command(Some(QueuedCommand::Translate(_))) => {
                     let _ = events.send(WorkerEvent::Rejected(TranslationError::new(
@@ -394,51 +484,40 @@ async fn run_worker(
                     &active_cancellation,
                     ActiveCancellation::Connection(cancellation.clone()),
                 );
-                let profile_id = profile.id().clone();
                 let mut candidate = ProviderManager::new(secret_broker.clone());
-                let result = connect_candidate(
-                    &mut candidate,
-                    &profile,
-                    secret,
-                    persistence,
-                    &cancellation,
-                    &mut secret_requests,
-                )
-                .await;
+                let result =
+                    match validate_persistence_request(&profile, persistence, storage.is_some()) {
+                        Ok(()) => connect_candidate(
+                            &mut candidate,
+                            &profile,
+                            secret,
+                            &cancellation,
+                            &mut secret_requests,
+                        )
+                        .await
+                        .and_then(|models| {
+                            finish_candidate_connection(
+                                &profile,
+                                models,
+                                persistence,
+                                storage.as_mut(),
+                                &cancellation,
+                            )
+                        }),
+                        Err(error) => Err(error),
+                    };
                 clear_active_cancellation(&active_cancellation);
                 match result {
-                    Ok(models) => {
-                        selected_model = profile
-                            .selected_model()
-                            .filter(|selected| models.iter().any(|model| model.id == *selected))
-                            .map(str::to_owned);
+                    Ok(connected) => {
+                        selected_model.clone_from(&connected.selected_model);
+                        active_profile = Some(connected.runtime_profile.clone());
+                        active_saved_profile.clone_from(&connected.saved_profile);
                         manager = candidate;
                         if events
-                            .send(WorkerEvent::Connected { profile, models })
-                            .is_err()
-                        {
-                            shutting_down = true;
-                        }
-                    }
-                    Err(error) => {
-                        if events
-                            .send(WorkerEvent::ProviderRejected { profile_id, error })
-                            .is_err()
-                        {
-                            shutting_down = true;
-                        }
-                    }
-                }
-            }
-            Some(QueuedCommand::SelectModel(model_id)) => {
-                let result = select_model(&manager, &model_id);
-                match result {
-                    Ok(profile_id) => {
-                        selected_model = Some(model_id.clone());
-                        if events
-                            .send(WorkerEvent::ModelSelected {
-                                profile_id,
-                                model_id,
+                            .send(WorkerEvent::Connected {
+                                profile: connected.runtime_profile,
+                                models: connected.models,
+                                saved_profile: connected.saved_profile,
                             })
                             .is_err()
                         {
@@ -446,7 +525,52 @@ async fn run_worker(
                         }
                     }
                     Err(error) => {
-                        if events.send(WorkerEvent::Rejected(error)).is_err() {
+                        if events
+                            .send(WorkerEvent::ProviderRejected { profile, error })
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
+            Some(QueuedCommand::SelectModel {
+                profile_id,
+                model_id,
+            }) => {
+                let result = prepare_model_selection(
+                    &manager,
+                    active_profile.as_ref(),
+                    active_saved_profile.as_ref(),
+                    storage.as_mut(),
+                    &profile_id,
+                    &model_id,
+                );
+                match result {
+                    Ok((updated_profile, updated_saved_profile)) => {
+                        selected_model = Some(model_id.clone());
+                        active_profile = Some(updated_profile);
+                        active_saved_profile.clone_from(&updated_saved_profile);
+                        if events
+                            .send(WorkerEvent::ModelSelected {
+                                profile_id,
+                                model_id,
+                                saved_profile: updated_saved_profile,
+                            })
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::ModelSelectionRejected {
+                                profile_id,
+                                model_id,
+                                error,
+                            })
+                            .is_err()
+                        {
                             shutting_down = true;
                         }
                     }
@@ -483,6 +607,7 @@ async fn run_worker(
     clear_active_cancellation(&active_cancellation);
     manager.disconnect();
     server.shutdown().await;
+    drop(storage);
     let _ = events.send(WorkerEvent::Stopped);
 }
 
@@ -493,12 +618,17 @@ fn reject_queued_commands_for_shutdown(
     while let Ok(command) = commands.try_recv() {
         let result = match command {
             QueuedCommand::Connect { profile, .. } => events.send(WorkerEvent::ProviderRejected {
-                profile_id: profile.id().clone(),
+                profile,
                 error: TranslationError::cancelled(),
             }),
-            QueuedCommand::SelectModel(_) => {
-                events.send(WorkerEvent::Rejected(TranslationError::cancelled()))
-            }
+            QueuedCommand::SelectModel {
+                profile_id,
+                model_id,
+            } => events.send(WorkerEvent::ModelSelectionRejected {
+                profile_id,
+                model_id,
+                error: TranslationError::cancelled(),
+            }),
             QueuedCommand::Translate(_) => events.send(WorkerEvent::TranslationRejected(
                 TranslationError::cancelled(),
             )),
@@ -508,6 +638,269 @@ fn reject_queued_commands_for_shutdown(
             break;
         }
     }
+}
+
+fn open_profile_storage(
+    path: &Path,
+) -> Result<(Storage, Option<ProviderProfile>), TranslationError> {
+    prepare_database_file(path)?;
+    let storage = Storage::open(path)?;
+    let restored_profile = storage.active_provider_profile()?;
+    Ok((storage, restored_profile))
+}
+
+fn prepare_database_file(path: &Path) -> Result<(), TranslationError> {
+    if !path.is_absolute() {
+        return Err(TranslationError::new(
+            ErrorKind::Persistence,
+            "The profile database path must be absolute.",
+        ));
+    }
+    let parent = path.parent().ok_or_else(|| {
+        TranslationError::new(
+            ErrorKind::Persistence,
+            "The profile database directory is invalid.",
+        )
+    })?;
+    ensure_no_symbolic_path_components(parent)?;
+    let mut directory = DirBuilder::new();
+    directory.recursive(true).mode(0o700);
+    directory.create(parent).map_err(|_| {
+        TranslationError::new(
+            ErrorKind::Persistence,
+            "The profile database directory could not be created.",
+        )
+    })?;
+    let parent_metadata = fs::symlink_metadata(parent).map_err(|_| {
+        TranslationError::new(
+            ErrorKind::Persistence,
+            "The profile database directory could not be inspected.",
+        )
+    })?;
+    if !parent_metadata.is_dir()
+        || parent_metadata.file_type().is_symlink()
+        || parent_metadata.permissions().mode() & 0o077 != 0
+    {
+        return Err(TranslationError::new(
+            ErrorKind::Persistence,
+            "The profile database directory permissions are not private.",
+        ));
+    }
+    ensure_no_symbolic_path_components(parent)?;
+    ensure_no_symbolic_path_components(path)?;
+    match fs::symlink_metadata(path) {
+        Ok(metadata) if !metadata.is_file() || metadata.nlink() != 1 => {
+            return Err(TranslationError::new(
+                ErrorKind::Persistence,
+                "The profile database must be a private regular file.",
+            ));
+        }
+        Ok(_) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(_) => {
+            return Err(TranslationError::new(
+                ErrorKind::Persistence,
+                "The profile database path could not be inspected.",
+            ));
+        }
+    }
+    let file = OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .read(true)
+        .write(true)
+        .mode(0o600)
+        .open(path)
+        .map_err(|_| {
+            TranslationError::new(
+                ErrorKind::Persistence,
+                "The profile database file could not be opened.",
+            )
+        })?;
+    let opened_metadata = file.metadata().map_err(|_| {
+        TranslationError::new(
+            ErrorKind::Persistence,
+            "The profile database file could not be inspected.",
+        )
+    })?;
+    let path_metadata = fs::symlink_metadata(path).map_err(|_| {
+        TranslationError::new(
+            ErrorKind::Persistence,
+            "The profile database path could not be inspected.",
+        )
+    })?;
+    if !opened_metadata.is_file()
+        || opened_metadata.nlink() != 1
+        || path_metadata.file_type().is_symlink()
+        || !path_metadata.is_file()
+        || path_metadata.nlink() != 1
+        || opened_metadata.dev() != path_metadata.dev()
+        || opened_metadata.ino() != path_metadata.ino()
+    {
+        return Err(TranslationError::new(
+            ErrorKind::Persistence,
+            "The profile database must be a private regular file.",
+        ));
+    }
+    file.set_permissions(fs::Permissions::from_mode(0o600))
+        .map_err(|_| {
+            TranslationError::new(
+                ErrorKind::Persistence,
+                "The profile database file permissions could not be restricted.",
+            )
+        })
+}
+
+fn ensure_no_symbolic_path_components(path: &Path) -> Result<(), TranslationError> {
+    let mut current = PathBuf::new();
+    for component in path.components() {
+        current.push(component.as_os_str());
+        match fs::symlink_metadata(&current) {
+            Ok(metadata) if metadata.file_type().is_symlink() => {
+                return Err(TranslationError::new(
+                    ErrorKind::Persistence,
+                    "The profile database path cannot contain symbolic links.",
+                ));
+            }
+            Ok(_) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+            Err(_) => {
+                return Err(TranslationError::new(
+                    ErrorKind::Persistence,
+                    "The profile database path components could not be inspected.",
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_persistence_request(
+    profile: &ProviderProfile,
+    persistence: PersistenceIntent,
+    storage_available: bool,
+) -> Result<(), TranslationError> {
+    if profile
+        .secret_ref()
+        .is_some_and(linguamesh_domain::SecretRef::is_persistent)
+    {
+        return Err(TranslationError::new(
+            ErrorKind::SecureStorageUnavailable,
+            "Secure credential storage is unavailable.",
+        ));
+    }
+    if persistence == PersistenceIntent::Persistent && !storage_available {
+        return Err(TranslationError::new(
+            ErrorKind::Persistence,
+            "Profile storage is unavailable; use session-only mode.",
+        ));
+    }
+    Ok(())
+}
+
+fn finish_candidate_connection(
+    profile: &ProviderProfile,
+    models: Vec<ModelDescriptor>,
+    persistence: PersistenceIntent,
+    storage: Option<&mut Storage>,
+    cancellation: &CancellationToken,
+) -> Result<ConnectedCandidate, TranslationError> {
+    if cancellation.is_cancelled() {
+        return Err(TranslationError::cancelled());
+    }
+    let selected_model = profile
+        .selected_model()
+        .filter(|selected| models.iter().any(|model| model.id == *selected))
+        .map(str::to_owned);
+    let runtime_profile = profile
+        .clone()
+        .with_selected_model(selected_model.clone())
+        .map_err(|error| map_profile_error(&error))?;
+    let saved_profile = if persistence == PersistenceIntent::Persistent {
+        let saved_profile = profile_without_secret(&runtime_profile)?;
+        if cancellation.is_cancelled() {
+            return Err(TranslationError::cancelled());
+        }
+        storage
+            .ok_or_else(|| {
+                TranslationError::new(
+                    ErrorKind::Persistence,
+                    "Profile storage became unavailable.",
+                )
+            })?
+            .save_and_activate_provider(&saved_profile)?;
+        Some(saved_profile)
+    } else {
+        None
+    };
+    Ok(ConnectedCandidate {
+        runtime_profile,
+        saved_profile,
+        models,
+        selected_model,
+    })
+}
+
+fn profile_without_secret(profile: &ProviderProfile) -> Result<ProviderProfile, TranslationError> {
+    ProviderProfile::new(
+        profile.id().clone(),
+        profile.display_name(),
+        profile.preset_id(),
+        profile.adapter_type(),
+        profile.base_endpoint(),
+        None,
+    )
+    .map(|saved| saved.with_enabled(profile.enabled()))
+    .and_then(|saved| saved.with_selected_model(profile.selected_model().map(str::to_owned)))
+    .map_err(|error| map_profile_error(&error))
+}
+
+fn prepare_model_selection(
+    manager: &ProviderManager,
+    active_profile: Option<&ProviderProfile>,
+    active_saved_profile: Option<&ProviderProfile>,
+    storage: Option<&mut Storage>,
+    profile_id: &ProviderProfileId,
+    model_id: &str,
+) -> Result<(ProviderProfile, Option<ProviderProfile>), TranslationError> {
+    select_model(manager, profile_id, model_id)?;
+    let updated_profile = active_profile
+        .filter(|profile| profile.id() == profile_id)
+        .ok_or_else(|| {
+            TranslationError::new(
+                ErrorKind::InvalidConfiguration,
+                "The model selection belongs to a stale provider.",
+            )
+        })?
+        .clone()
+        .with_selected_model(Some(model_id.to_owned()))
+        .map_err(|error| map_profile_error(&error))?;
+    let updated_saved_profile = match active_saved_profile {
+        Some(saved_profile) => {
+            let updated = saved_profile
+                .clone()
+                .with_selected_model(Some(model_id.to_owned()))
+                .map_err(|error| map_profile_error(&error))?;
+            storage
+                .ok_or_else(|| {
+                    TranslationError::new(
+                        ErrorKind::Persistence,
+                        "Profile storage became unavailable.",
+                    )
+                })?
+                .save_and_activate_provider(&updated)?;
+            Some(updated)
+        }
+        None => None,
+    };
+    Ok((updated_profile, updated_saved_profile))
+}
+
+fn map_profile_error(error: &linguamesh_domain::ProfileValidationError) -> TranslationError {
+    TranslationError::new(
+        ErrorKind::InvalidConfiguration,
+        format!("The provider profile is invalid: {error}"),
+    )
 }
 
 fn validate_current_core_contract() -> Result<(), TranslationError> {
@@ -543,25 +936,9 @@ async fn connect_candidate(
     manager: &mut ProviderManager,
     profile: &ProviderProfile,
     mut session_secret: Option<SecretValue>,
-    persistence: PersistenceIntent,
     cancellation: &CancellationToken,
     requests: &mut HostSecretRequests,
 ) -> Result<Vec<ModelDescriptor>, TranslationError> {
-    if profile
-        .secret_ref()
-        .is_some_and(linguamesh_domain::SecretRef::is_persistent)
-    {
-        return Err(TranslationError::new(
-            ErrorKind::SecureStorageUnavailable,
-            "Secure credential storage is unavailable.",
-        ));
-    }
-    if persistence == PersistenceIntent::Persistent {
-        return Err(TranslationError::new(
-            ErrorKind::Persistence,
-            "Persistent Linux provider profiles are not available in this checkpoint.",
-        ));
-    }
     if session_secret.is_some() && profile.secret_ref().is_none() {
         return Err(TranslationError::new(
             ErrorKind::InvalidConfiguration,
@@ -610,21 +987,28 @@ async fn connect_candidate(
 
 fn select_model(
     manager: &ProviderManager,
+    requested_profile_id: &ProviderProfileId,
     model_id: &str,
-) -> Result<ProviderProfileId, TranslationError> {
+) -> Result<(), TranslationError> {
     let profile_id = manager.active_profile_id().ok_or_else(|| {
         TranslationError::new(
             ErrorKind::InvalidConfiguration,
             "Connect a provider before selecting a model.",
         )
     })?;
+    if profile_id != requested_profile_id {
+        return Err(TranslationError::new(
+            ErrorKind::InvalidConfiguration,
+            "The model selection belongs to a stale provider.",
+        ));
+    }
     if !manager.models().iter().any(|model| model.id == model_id) {
         return Err(TranslationError::new(
             ErrorKind::ModelUnavailable,
             "The selected model is not available from the active provider.",
         ));
     }
-    Ok(profile_id.clone())
+    Ok(())
 }
 
 fn begin_translation(
@@ -703,6 +1087,9 @@ mod tests {
     };
     use linguamesh_engine::core_compatibility;
     use linguamesh_testkit::FakeProviderServer;
+    use std::fs;
+    use std::os::unix::fs::{PermissionsExt, symlink};
+    use std::path::{Path, PathBuf};
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::mpsc;
@@ -710,11 +1097,80 @@ mod tests {
     use std::time::{Duration, Instant};
     use tokio::runtime::Builder;
     use tokio::sync::oneshot;
+    use tokio_util::sync::CancellationToken;
 
     enum FakeMode {
         Standard,
-        Authenticated,
+        Authenticated(&'static str),
         Delayed(Duration),
+    }
+
+    static TEST_DATABASE_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+    struct TestDatabase {
+        directory: PathBuf,
+        path: PathBuf,
+    }
+
+    impl TestDatabase {
+        fn new() -> Self {
+            let sequence = TEST_DATABASE_COUNTER.fetch_add(1, Ordering::Relaxed);
+            let directory = std::env::temp_dir().join(format!(
+                "linguamesh-linux-test-{}-{sequence}",
+                std::process::id()
+            ));
+            assert!(
+                !directory.exists(),
+                "test database directory must be unique"
+            );
+            let path = directory.join("state.sqlite3");
+            Self { directory, path }
+        }
+
+        fn path(&self) -> &Path {
+            &self.path
+        }
+
+        fn assert_private_permissions(&self) {
+            let directory_mode = fs::metadata(&self.directory)
+                .expect("database directory metadata")
+                .permissions()
+                .mode()
+                & 0o777;
+            let database_mode = fs::metadata(&self.path)
+                .expect("database file metadata")
+                .permissions()
+                .mode()
+                & 0o777;
+            assert_eq!(directory_mode, 0o700);
+            assert_eq!(database_mode, 0o600);
+        }
+
+        fn assert_absent_from_files(&self, forbidden: &[&str]) {
+            for entry in fs::read_dir(&self.directory).expect("database directory") {
+                let path = entry.expect("database directory entry").path();
+                if !path.is_file() {
+                    continue;
+                }
+                let bytes = fs::read(path).expect("database artifact");
+                for value in forbidden {
+                    assert!(
+                        !bytes
+                            .windows(value.len())
+                            .any(|candidate| candidate == value.as_bytes()),
+                        "forbidden value must not be persisted"
+                    );
+                }
+            }
+        }
+    }
+
+    impl Drop for TestDatabase {
+        fn drop(&mut self) {
+            if self.directory.exists() {
+                let _ = fs::remove_dir_all(&self.directory);
+            }
+        }
     }
 
     struct ExternalFakeProvider {
@@ -737,9 +1193,9 @@ mod tests {
                 runtime.block_on(async move {
                     let server = match mode {
                         FakeMode::Standard => FakeProviderServer::start().await,
-                        FakeMode::Authenticated => {
+                        FakeMode::Authenticated(required_secret) => {
                             FakeProviderServer::start_requiring_bearer_token(SecretValue::new(
-                                "fake-session-secret",
+                                required_secret,
                             ))
                             .await
                         }
@@ -809,12 +1265,74 @@ mod tests {
         (worker, endpoint)
     }
 
-    fn connect(
+    fn started_worker_with_database(path: &Path) -> (CoreWorker, Option<ProviderProfile>, String) {
+        let worker = CoreWorker::spawn_with_database(path);
+        let mut restored_profile = None;
+        loop {
+            match worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("worker startup event")
+            {
+                WorkerEvent::ProfileRestored { profile } => {
+                    assert!(restored_profile.replace(profile).is_none());
+                }
+                WorkerEvent::DemoProviderReady { endpoint } => {
+                    return (worker, restored_profile, endpoint);
+                }
+                WorkerEvent::ProfileStorageUnavailable(error) => {
+                    panic!("profile storage unavailable: {error}");
+                }
+                _ => panic!("unexpected worker startup event"),
+            }
+        }
+    }
+
+    fn shutdown(worker: &CoreWorker) {
+        worker
+            .try_send(WorkerCommand::Shutdown)
+            .expect("shutdown command");
+        loop {
+            match worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("worker shutdown event")
+            {
+                WorkerEvent::Stopped => return,
+                WorkerEvent::Translation(event) if event.is_terminal() => {}
+                _ => panic!("unexpected worker shutdown event"),
+            }
+        }
+    }
+
+    fn runtime_profile_with_session_secret(saved: &ProviderProfile) -> ProviderProfile {
+        ProviderProfile::new(
+            saved.id().clone(),
+            saved.display_name(),
+            saved.preset_id(),
+            saved.adapter_type(),
+            saved.base_endpoint(),
+            Some(SecretRef::new(SecretRefNamespace::Session)),
+        )
+        .expect("runtime profile")
+        .with_enabled(saved.enabled())
+        .with_selected_model(saved.selected_model().map(str::to_owned))
+        .expect("runtime selected model")
+    }
+
+    fn connect_event(
         worker: &CoreWorker,
         profile: ProviderProfile,
         secret: Option<SecretValue>,
         persistence: PersistenceIntent,
-    ) -> Result<Vec<linguamesh_domain::ModelDescriptor>, TranslationError> {
+    ) -> Result<
+        (
+            ProviderProfile,
+            Vec<linguamesh_domain::ModelDescriptor>,
+            Option<ProviderProfile>,
+        ),
+        TranslationError,
+    > {
         worker
             .try_send(WorkerCommand::Connect {
                 profile,
@@ -827,24 +1345,53 @@ mod tests {
             .recv_timeout(Duration::from_secs(5))
             .expect("connection result")
         {
-            WorkerEvent::Connected { models, .. } => Ok(models),
+            WorkerEvent::Connected {
+                profile,
+                models,
+                saved_profile,
+            } => Ok((profile, models, saved_profile)),
             WorkerEvent::ProviderRejected { error, .. } => Err(error),
             _ => panic!("unexpected connection event"),
         }
     }
 
-    fn select(worker: &CoreWorker, model_id: &str) {
+    fn connect(
+        worker: &CoreWorker,
+        profile: ProviderProfile,
+        secret: Option<SecretValue>,
+        persistence: PersistenceIntent,
+    ) -> Result<Vec<linguamesh_domain::ModelDescriptor>, TranslationError> {
+        connect_event(worker, profile, secret, persistence).map(|(_, models, _)| models)
+    }
+
+    fn select_event(
+        worker: &CoreWorker,
+        profile_id: &str,
+        model_id: &str,
+    ) -> Result<Option<ProviderProfile>, TranslationError> {
         worker
-            .try_send(WorkerCommand::SelectModel(model_id.to_owned()))
+            .try_send(WorkerCommand::SelectModel {
+                profile_id: ProviderProfileId::parse(profile_id).expect("profile ID"),
+                model_id: model_id.to_owned(),
+            })
             .expect("model command");
-        let event = worker
+        match worker
             .events
             .recv_timeout(Duration::from_secs(5))
-            .expect("model event");
-        assert!(matches!(
-            event,
-            WorkerEvent::ModelSelected { model_id: selected, .. } if selected == model_id
-        ));
+            .expect("model event")
+        {
+            WorkerEvent::ModelSelected {
+                model_id: selected,
+                saved_profile,
+                ..
+            } if selected == model_id => Ok(saved_profile),
+            WorkerEvent::ModelSelectionRejected { error, .. } => Err(error),
+            _ => panic!("unexpected model event"),
+        }
+    }
+
+    fn select(worker: &CoreWorker, profile_id: &str, model_id: &str) {
+        select_event(worker, profile_id, model_id).expect("model selection");
     }
 
     fn translate(worker: &CoreWorker, model_id: &str) -> (String, TranslationEvent) {
@@ -927,7 +1474,7 @@ mod tests {
             WorkerEvent::TranslationRejected(error) if error.kind == ErrorKind::ModelUnavailable
         ));
 
-        select(&worker, "fake-translator");
+        select(&worker, "explicit-provider", "fake-translator");
         let (output, terminal) = translate(&worker, "fake-translator");
         assert_eq!(output, "你好，LinguaMesh！");
         assert!(matches!(terminal, TranslationEvent::Completed { .. }));
@@ -935,7 +1482,7 @@ mod tests {
 
     #[test]
     fn authenticated_session_secret_is_consumed_once_and_old_session_survives_failure() {
-        let external = ExternalFakeProvider::start(FakeMode::Authenticated);
+        let external = ExternalFakeProvider::start(FakeMode::Authenticated("fake-session-secret"));
         let (worker, _) = started_worker();
         let secret_ref = SecretRef::new(SecretRefNamespace::Session);
         let authenticated = profile(
@@ -961,7 +1508,7 @@ mod tests {
             PersistenceIntent::SessionOnly,
         )
         .expect("authenticated connection");
-        select(&worker, "fake-translator");
+        select(&worker, "authenticated-provider", "fake-translator");
 
         let error = connect(&worker, authenticated, None, PersistenceIntent::SessionOnly)
             .expect_err("missing one-shot secret");
@@ -1019,6 +1566,371 @@ mod tests {
         )
         .expect_err("profile persistence unavailable");
         assert_eq!(error.kind, ErrorKind::Persistence);
+    }
+
+    #[test]
+    fn remembered_session_profile_and_model_restore_without_secret() {
+        const SECRET_CANARY: &str = "PERSISTENCE_SECRET_CANARY";
+        let external = ExternalFakeProvider::start(FakeMode::Authenticated(SECRET_CANARY));
+        let database = TestDatabase::new();
+        let (worker, restored, _) = started_worker_with_database(database.path());
+        assert!(restored.is_none());
+
+        let session_ref = SecretRef::new(SecretRefNamespace::Session);
+        let session_ref_canary = session_ref.as_str().to_owned();
+        let runtime = profile(
+            "restart-provider",
+            &external.endpoint,
+            Some(session_ref),
+            None,
+        );
+        let (connected, models, saved_profile) = connect_event(
+            &worker,
+            runtime,
+            Some(SecretValue::new(SECRET_CANARY)),
+            PersistenceIntent::Persistent,
+        )
+        .expect("persistent connection");
+        assert_eq!(
+            connected.secret_ref().map(SecretRef::namespace),
+            Some("session")
+        );
+        assert!(models.iter().any(|model| model.id == "fake-translator"));
+        let saved_profile = saved_profile.expect("saved non-secret profile");
+        assert!(saved_profile.secret_ref().is_none());
+        let saved_profile = select_event(&worker, "restart-provider", "fake-translator")
+            .expect("saved model selection")
+            .expect("updated saved profile");
+        assert_eq!(saved_profile.selected_model(), Some("fake-translator"));
+        assert!(saved_profile.secret_ref().is_none());
+        database.assert_absent_from_files(&[
+            SECRET_CANARY,
+            "session:",
+            session_ref_canary.as_str(),
+        ]);
+        shutdown(&worker);
+
+        database.assert_private_permissions();
+        database.assert_absent_from_files(&[
+            SECRET_CANARY,
+            "session:",
+            session_ref_canary.as_str(),
+        ]);
+
+        let requests_before_restart = external.model_requests.load(Ordering::SeqCst);
+        let (restarted, restored, _) = started_worker_with_database(database.path());
+        assert_eq!(
+            external.model_requests.load(Ordering::SeqCst),
+            requests_before_restart
+        );
+        let restored = restored.expect("restored profile");
+        assert_eq!(restored.id().as_str(), "restart-provider");
+        assert_eq!(restored.selected_model(), Some("fake-translator"));
+        assert!(restored.secret_ref().is_none());
+
+        let runtime = runtime_profile_with_session_secret(&restored);
+        let (connected, _, saved_profile) = connect_event(
+            &restarted,
+            runtime,
+            Some(SecretValue::new(SECRET_CANARY)),
+            PersistenceIntent::Persistent,
+        )
+        .expect("reconnected saved profile");
+        assert_eq!(connected.selected_model(), Some("fake-translator"));
+        assert!(saved_profile.is_some_and(|profile| profile.secret_ref().is_none()));
+        let (output, terminal) = translate(&restarted, "fake-translator");
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        shutdown(&restarted);
+
+        database.assert_absent_from_files(&[
+            SECRET_CANARY,
+            "session:",
+            session_ref_canary.as_str(),
+        ]);
+    }
+
+    #[test]
+    fn session_switch_does_not_replace_saved_restart_profile() {
+        let first = ExternalFakeProvider::start(FakeMode::Standard);
+        let second = ExternalFakeProvider::start(FakeMode::Standard);
+        let database = TestDatabase::new();
+        let (worker, restored, _) = started_worker_with_database(database.path());
+        assert!(restored.is_none());
+
+        connect(
+            &worker,
+            profile("switch-provider", &first.endpoint, None, None),
+            None,
+            PersistenceIntent::Persistent,
+        )
+        .expect("saved connection");
+        select_event(&worker, "switch-provider", "fake-translator")
+            .expect("saved model selection")
+            .expect("saved profile update");
+
+        connect(
+            &worker,
+            profile("switch-provider", &second.endpoint, None, None),
+            None,
+            PersistenceIntent::SessionOnly,
+        )
+        .expect("session switch");
+        shutdown(&worker);
+
+        let (restarted, restored, _) = started_worker_with_database(database.path());
+        let restored = restored.expect("saved restart profile");
+        assert_eq!(restored.base_endpoint(), first.endpoint);
+        assert_ne!(restored.base_endpoint(), second.endpoint);
+        assert_eq!(restored.selected_model(), Some("fake-translator"));
+        shutdown(&restarted);
+    }
+
+    #[test]
+    fn rejected_persistent_changes_preserve_saved_profile_and_model() {
+        let database = TestDatabase::new();
+        let (worker, restored, endpoint) = started_worker_with_database(database.path());
+        assert!(restored.is_none());
+        connect(
+            &worker,
+            profile("stable-provider", &endpoint, None, None),
+            None,
+            PersistenceIntent::Persistent,
+        )
+        .expect("saved connection");
+        select_event(&worker, "stable-provider", "fake-translator")
+            .expect("saved model selection")
+            .expect("saved profile update");
+
+        let error = select_event(&worker, "stale-provider", "fake-slow-translator")
+            .expect_err("stale model selection");
+        assert_eq!(error.kind, ErrorKind::InvalidConfiguration);
+        let error = connect(
+            &worker,
+            profile(
+                "unavailable-persistent-provider",
+                "http://127.0.0.1:1/v1/",
+                None,
+                None,
+            ),
+            None,
+            PersistenceIntent::Persistent,
+        )
+        .expect_err("failed persistent switch");
+        assert_eq!(error.kind, ErrorKind::Network);
+        let (output, terminal) = translate(&worker, "fake-translator");
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        shutdown(&worker);
+
+        let (restarted, restored, _) = started_worker_with_database(database.path());
+        let restored = restored.expect("stable saved profile");
+        assert_eq!(restored.id().as_str(), "stable-provider");
+        assert_eq!(restored.selected_model(), Some("fake-translator"));
+        shutdown(&restarted);
+    }
+
+    #[test]
+    fn public_cancel_preserves_the_confirmed_restart_profile() {
+        let baseline = ExternalFakeProvider::start(FakeMode::Standard);
+        let delayed = ExternalFakeProvider::start(FakeMode::Delayed(Duration::from_secs(2)));
+        let database = TestDatabase::new();
+        let (worker, restored, _) = started_worker_with_database(database.path());
+        assert!(restored.is_none());
+
+        connect(
+            &worker,
+            profile("baseline-provider", &baseline.endpoint, None, None),
+            None,
+            PersistenceIntent::Persistent,
+        )
+        .expect("baseline connection");
+        select_event(&worker, "baseline-provider", "fake-translator")
+            .expect("baseline model selection")
+            .expect("baseline saved profile");
+
+        worker
+            .try_send(WorkerCommand::Connect {
+                profile: profile("cancelled-provider", &delayed.endpoint, None, None),
+                secret: None,
+                persistence: PersistenceIntent::Persistent,
+            })
+            .expect("candidate connection");
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while delayed.model_requests.load(Ordering::SeqCst) == 0 && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        assert_eq!(delayed.model_requests.load(Ordering::SeqCst), 1);
+        worker.try_send(WorkerCommand::Cancel).expect("cancel");
+        assert!(matches!(
+            worker.events.recv_timeout(Duration::from_secs(1)),
+            Ok(WorkerEvent::ProviderRejected { error, .. })
+                if error.kind == ErrorKind::Cancelled
+        ));
+
+        let (output, terminal) = translate(&worker, "fake-translator");
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        shutdown(&worker);
+
+        let (restarted, restored, _) = started_worker_with_database(database.path());
+        let restored = restored.expect("confirmed restart profile");
+        assert_eq!(restored.id().as_str(), "baseline-provider");
+        assert_eq!(restored.base_endpoint(), baseline.endpoint);
+        assert_eq!(restored.selected_model(), Some("fake-translator"));
+        shutdown(&restarted);
+    }
+
+    #[test]
+    fn pre_cancelled_connection_is_never_persisted() {
+        let database = TestDatabase::new();
+        let (worker, restored, endpoint) = started_worker_with_database(database.path());
+        assert!(restored.is_none());
+        let cancellation = CancellationToken::new();
+        cancellation.cancel();
+        worker
+            .commands
+            .try_send(QueuedCommand::Connect {
+                profile: profile("cancelled-provider", &endpoint, None, None),
+                secret: None,
+                persistence: PersistenceIntent::Persistent,
+                cancellation,
+            })
+            .expect("pre-cancelled connection");
+        let event = worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("cancelled connection event");
+        assert!(matches!(
+            event,
+            WorkerEvent::ProviderRejected { error, .. }
+                if error.kind == ErrorKind::Cancelled
+        ));
+        shutdown(&worker);
+
+        let (restarted, restored, _) = started_worker_with_database(database.path());
+        assert!(restored.is_none());
+        shutdown(&restarted);
+    }
+
+    #[test]
+    fn unavailable_database_reports_error_but_session_mode_still_works() {
+        let worker = CoreWorker::spawn_with_database("relative.sqlite3");
+        let storage_event = worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("storage event");
+        assert!(matches!(
+            storage_event,
+            WorkerEvent::ProfileStorageUnavailable(error)
+                if error.kind == ErrorKind::Persistence
+        ));
+        let ready_event = worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("demo provider event");
+        let WorkerEvent::DemoProviderReady { endpoint } = ready_event else {
+            panic!("expected demo provider readiness");
+        };
+
+        connect(
+            &worker,
+            profile("fallback-provider", &endpoint, None, None),
+            None,
+            PersistenceIntent::SessionOnly,
+        )
+        .expect("session fallback connection");
+        select(&worker, "fallback-provider", "fake-translator");
+        let (output, terminal) = translate(&worker, "fake-translator");
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        shutdown(&worker);
+    }
+
+    #[test]
+    fn permissive_database_directory_is_rejected_before_file_creation() {
+        let database = TestDatabase::new();
+        fs::create_dir(&database.directory).expect("database directory");
+        fs::set_permissions(&database.directory, fs::Permissions::from_mode(0o755))
+            .expect("database directory permissions");
+
+        let worker = CoreWorker::spawn_with_database(database.path());
+        let storage_event = worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("storage event");
+        assert!(matches!(
+            storage_event,
+            WorkerEvent::ProfileStorageUnavailable(error)
+                if error.kind == ErrorKind::Persistence
+        ));
+        assert!(!database.path().exists());
+        assert!(matches!(
+            worker.events.recv_timeout(Duration::from_secs(5)),
+            Ok(WorkerEvent::DemoProviderReady { .. })
+        ));
+        shutdown(&worker);
+    }
+
+    #[test]
+    fn symbolic_ancestor_is_rejected_without_creating_the_database() {
+        let database = TestDatabase::new();
+        fs::create_dir(&database.directory).expect("database directory");
+        fs::set_permissions(&database.directory, fs::Permissions::from_mode(0o700))
+            .expect("database directory permissions");
+        let target = database.directory.join("target");
+        fs::create_dir(&target).expect("symbolic-link target");
+        fs::set_permissions(&target, fs::Permissions::from_mode(0o700))
+            .expect("symbolic-link target permissions");
+        let linked_parent = database.directory.join("linked-parent");
+        symlink(&target, &linked_parent).expect("symbolic parent");
+        let linked_database = linked_parent.join("state.sqlite3");
+
+        let worker = CoreWorker::spawn_with_database(&linked_database);
+        let storage_event = worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("storage event");
+        assert!(matches!(
+            storage_event,
+            WorkerEvent::ProfileStorageUnavailable(error)
+                if error.kind == ErrorKind::Persistence
+        ));
+        assert!(!target.join("state.sqlite3").exists());
+        assert!(matches!(
+            worker.events.recv_timeout(Duration::from_secs(5)),
+            Ok(WorkerEvent::DemoProviderReady { .. })
+        ));
+        shutdown(&worker);
+    }
+
+    #[test]
+    fn hard_link_database_is_rejected_without_modifying_its_target() {
+        let database = TestDatabase::new();
+        fs::create_dir(&database.directory).expect("database directory");
+        fs::set_permissions(&database.directory, fs::Permissions::from_mode(0o700))
+            .expect("database directory permissions");
+        let target = database.directory.join("target.sqlite3");
+        let original = b"NOT_A_DATABASE";
+        fs::write(&target, original).expect("database target");
+        fs::hard_link(&target, database.path()).expect("database hard link");
+
+        let worker = CoreWorker::spawn_with_database(database.path());
+        let storage_event = worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("storage event");
+        assert!(matches!(
+            storage_event,
+            WorkerEvent::ProfileStorageUnavailable(error)
+                if error.kind == ErrorKind::Persistence
+        ));
+        assert_eq!(fs::read(&target).expect("database target"), original);
+        assert!(matches!(
+            worker.events.recv_timeout(Duration::from_secs(5)),
+            Ok(WorkerEvent::DemoProviderReady { .. })
+        ));
+        shutdown(&worker);
     }
 
     #[test]
@@ -1143,7 +2055,11 @@ mod tests {
         for index in 0..COMMAND_CAPACITY {
             worker
                 .commands
-                .try_send(QueuedCommand::SelectModel(format!("queued-model-{index}")))
+                .try_send(QueuedCommand::SelectModel {
+                    profile_id: ProviderProfileId::parse("full-queue-provider")
+                        .expect("profile ID"),
+                    model_id: format!("queued-model-{index}"),
+                })
                 .expect("queued command");
         }
         let active = worker
@@ -1172,7 +2088,8 @@ mod tests {
                 .expect("queued command cancellation");
             assert!(matches!(
                 rejected,
-                WorkerEvent::Rejected(error) if error.kind == ErrorKind::Cancelled
+                WorkerEvent::ModelSelectionRejected { error, .. }
+                    if error.kind == ErrorKind::Cancelled
             ));
         }
         assert!(matches!(
@@ -1191,7 +2108,7 @@ mod tests {
             PersistenceIntent::SessionOnly,
         )
         .expect("working connection");
-        select(&worker, "fake-translator");
+        select(&worker, "working-provider", "fake-translator");
 
         let error = connect(
             &worker,
@@ -1264,7 +2181,7 @@ mod tests {
             PersistenceIntent::SessionOnly,
         )
         .expect("connection");
-        select(&worker, "fake-slow-translator");
+        select(&worker, "slow-provider", "fake-slow-translator");
         worker
             .try_send(WorkerCommand::Translate(TranslationRequest::new(
                 "Hello",
@@ -1303,7 +2220,11 @@ mod tests {
             PersistenceIntent::SessionOnly,
         )
         .expect("connection");
-        select(&worker, "fake-slow-translator");
+        select(
+            &worker,
+            "shutdown-translation-provider",
+            "fake-slow-translator",
+        );
         worker
             .try_send(WorkerCommand::Translate(TranslationRequest::new(
                 "Hello",

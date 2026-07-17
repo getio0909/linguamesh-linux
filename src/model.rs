@@ -128,6 +128,8 @@ pub enum StateError {
     Busy,
     /// 提供商连接尚未完成。
     Connecting,
+    /// 已保存配置与当前运行时配置或保存意图不一致。
+    InvalidSavedProfile,
     /// 首个核心事件不是开始事件。
     UnexpectedFirstEvent,
     /// 核心流在首个事件之后重复发出开始事件。
@@ -157,6 +159,9 @@ impl fmt::Display for StateError {
             }
             Self::Busy => formatter.write_str("A translation is already running."),
             Self::Connecting => formatter.write_str("A provider connection is still in progress."),
+            Self::InvalidSavedProfile => {
+                formatter.write_str("The saved provider profile does not match this operation.")
+            }
             Self::UnexpectedFirstEvent => {
                 formatter.write_str("The core stream did not begin with a started event.")
             }
@@ -175,11 +180,21 @@ impl fmt::Display for StateError {
 
 impl Error for StateError {}
 
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum WorkerStartup {
+    Pending,
+    Ready,
+}
+
 /// 保存与工具包无关的原生界面状态。
 #[derive(Clone)]
 pub struct AppState {
+    worker_startup: WorkerStartup,
     active_provider: Option<ProviderProfile>,
     pending_provider: Option<ProviderProfile>,
+    saved_profile: Option<ProviderProfile>,
+    pending_provider_will_be_saved: bool,
+    active_provider_is_saved: bool,
     models: Vec<ModelDescriptor>,
     selected_model: Option<String>,
     pending_model_selection: Option<String>,
@@ -198,8 +213,12 @@ pub struct AppState {
 impl Default for AppState {
     fn default() -> Self {
         Self {
+            worker_startup: WorkerStartup::Pending,
             active_provider: None,
             pending_provider: None,
+            saved_profile: None,
+            pending_provider_will_be_saved: false,
+            active_provider_is_saved: false,
             models: Vec::new(),
             selected_model: None,
             pending_model_selection: None,
@@ -218,6 +237,17 @@ impl Default for AppState {
 }
 
 impl AppState {
+    /// 指示工作线程已完成存储检查和本地服务启动。
+    #[must_use]
+    pub const fn worker_ready(&self) -> bool {
+        matches!(self.worker_startup, WorkerStartup::Ready)
+    }
+
+    /// 标记工作线程已准备接受用户命令。
+    pub const fn mark_worker_ready(&mut self) {
+        self.worker_startup = WorkerStartup::Ready;
+    }
+
     /// 返回当前状态。
     #[must_use]
     pub const fn status(&self) -> AppStatus {
@@ -240,6 +270,24 @@ impl AppState {
     #[must_use]
     pub const fn pending_provider(&self) -> Option<&ProviderProfile> {
         self.pending_provider.as_ref()
+    }
+
+    /// 返回最近从核心存储恢复或成功保存的配置。
+    #[must_use]
+    pub const fn saved_profile(&self) -> Option<&ProviderProfile> {
+        self.saved_profile.as_ref()
+    }
+
+    /// 指示当前待连接配置是否要求原子保存。
+    #[must_use]
+    pub const fn pending_provider_will_be_saved(&self) -> bool {
+        self.pending_provider_will_be_saved
+    }
+
+    /// 指示当前活动配置是否与已保存配置对应。
+    #[must_use]
+    pub const fn active_provider_is_saved(&self) -> bool {
+        self.active_provider_is_saved
     }
 
     /// 返回已发现模型。
@@ -296,10 +344,37 @@ impl AppState {
         self.locale
     }
 
+    /// 仅恢复非会话配置，不建立连接或选择模型。
+    pub fn restore_saved_profile(
+        &mut self,
+        saved_profile: ProviderProfile,
+    ) -> Result<(), StateError> {
+        if self.status != AppStatus::Disconnected
+            || self.active_provider.is_some()
+            || self.pending_provider.is_some()
+            || saved_profile
+                .secret_ref()
+                .is_some_and(|secret_ref| !secret_ref.is_persistent())
+        {
+            return Err(StateError::InvalidSavedProfile);
+        }
+        self.saved_profile = Some(saved_profile);
+        Ok(())
+    }
+
     /// 开始连接一个已验证的规范提供商配置。
     pub fn begin_provider_connection(
         &mut self,
         profile: ProviderProfile,
+    ) -> Result<(), StateError> {
+        self.begin_provider_connection_with_persistence(profile, false)
+    }
+
+    /// 开始连接并记录成功后是否应提交非秘密配置。
+    pub fn begin_provider_connection_with_persistence(
+        &mut self,
+        profile: ProviderProfile,
+        remember_profile: bool,
     ) -> Result<(), StateError> {
         if !profile.enabled() {
             return Err(StateError::InvalidProfile);
@@ -314,6 +389,7 @@ impl AppState {
             return Err(StateError::Connecting);
         }
         self.pending_provider = Some(profile);
+        self.pending_provider_will_be_saved = remember_profile;
         self.status = AppStatus::Connecting;
         self.error = None;
         Ok(())
@@ -325,17 +401,51 @@ impl AppState {
         profile: ProviderProfile,
         models: Vec<ModelDescriptor>,
     ) -> Result<(), StateError> {
-        if self.pending_provider.as_ref() != Some(&profile) {
+        self.provider_connected_with_saved_profile(profile, models, None)
+    }
+
+    /// 仅在连接结果与保存结果同时匹配时原子提交状态。
+    pub fn provider_connected_with_saved_profile(
+        &mut self,
+        profile: ProviderProfile,
+        models: Vec<ModelDescriptor>,
+        saved_profile: Option<ProviderProfile>,
+    ) -> Result<(), StateError> {
+        let Some(pending_profile) = self.pending_provider.as_ref() else {
+            return Err(StateError::UnexpectedProviderConnection);
+        };
+        let expected_profile = pending_profile
+            .clone()
+            .with_selected_model(
+                pending_profile
+                    .selected_model()
+                    .filter(|selected| models.iter().any(|model| model.id == *selected))
+                    .map(str::to_owned),
+            )
+            .map_err(|_| StateError::UnexpectedProviderConnection)?;
+        if profile != expected_profile {
             return Err(StateError::UnexpectedProviderConnection);
         }
+        if self.pending_provider_will_be_saved != saved_profile.is_some()
+            || saved_profile.as_ref().is_some_and(|saved| {
+                saved
+                    .secret_ref()
+                    .is_some_and(|secret_ref| !secret_ref.is_persistent())
+                    || !profiles_match_except_secret(&profile, saved)
+            })
+        {
+            return Err(StateError::InvalidSavedProfile);
+        }
 
-        let selected_model = profile
-            .selected_model()
-            .filter(|selected| models.iter().any(|model| model.id == *selected))
-            .map(str::to_owned);
+        let selected_model = profile.selected_model().map(str::to_owned);
 
         self.active_provider = Some(profile);
         self.pending_provider = None;
+        self.pending_provider_will_be_saved = false;
+        self.active_provider_is_saved = saved_profile.is_some();
+        if let Some(saved_profile) = saved_profile {
+            self.saved_profile = Some(saved_profile);
+        }
         self.models = models;
         self.selected_model = selected_model;
         self.pending_model_selection = None;
@@ -347,10 +457,10 @@ impl AppState {
     /// 仅当失败结果匹配当前待连接配置时才回滚连接。
     pub fn provider_connection_failed(
         &mut self,
-        profile_id: &ProviderProfileId,
+        profile: &ProviderProfile,
         error: TranslationError,
     ) -> Result<(), StateError> {
-        if self.pending_provider.as_ref().map(ProviderProfile::id) != Some(profile_id) {
+        if self.pending_provider.as_ref() != Some(profile) {
             return Err(StateError::UnexpectedProviderConnection);
         }
         self.provider_failed(error);
@@ -360,6 +470,7 @@ impl AppState {
     /// 记录连接失败并保留上一个可用配置。
     pub fn provider_failed(&mut self, error: TranslationError) {
         self.pending_provider = None;
+        self.pending_provider_will_be_saved = false;
         if !matches!(self.status, AppStatus::Translating | AppStatus::Cancelling) {
             self.status = if self.active_provider.is_some() {
                 AppStatus::Ready
@@ -391,10 +502,66 @@ impl AppState {
 
     /// 仅提交当前等待确认的模型选择。
     pub fn confirm_model_selection(&mut self, model_id: &str) -> Result<(), StateError> {
-        if self.pending_model_selection.as_deref() != Some(model_id) {
+        let profile_id = self
+            .active_provider
+            .as_ref()
+            .map(|profile| profile.id().clone())
+            .ok_or(StateError::MissingProvider)?;
+        let saved_profile = if self.active_provider_is_saved {
+            Some(
+                self.saved_profile
+                    .clone()
+                    .ok_or(StateError::InvalidSavedProfile)?
+                    .with_selected_model(Some(model_id.to_owned()))
+                    .map_err(|_| StateError::InvalidSavedProfile)?,
+            )
+        } else {
+            None
+        };
+        self.confirm_model_selection_with_saved_profile(&profile_id, model_id, saved_profile)
+    }
+
+    /// 仅提交与活动配置、待确认模型和保存结果完全匹配的选择。
+    pub fn confirm_model_selection_with_saved_profile(
+        &mut self,
+        profile_id: &ProviderProfileId,
+        model_id: &str,
+        saved_profile: Option<ProviderProfile>,
+    ) -> Result<(), StateError> {
+        let Some(active_provider) = self.active_provider.as_ref() else {
+            return Err(StateError::MissingProvider);
+        };
+        if active_provider.id() != profile_id
+            || self.pending_model_selection.as_deref() != Some(model_id)
+        {
             return Err(StateError::UnexpectedModelSelection);
         }
-        self.select_model(model_id)
+        if !self.models.iter().any(|model| model.id == model_id) {
+            return Err(StateError::UnknownModel(model_id.to_owned()));
+        }
+        if self.active_provider_is_saved != saved_profile.is_some() {
+            return Err(StateError::InvalidSavedProfile);
+        }
+        let updated_active = active_provider
+            .clone()
+            .with_selected_model(Some(model_id.to_owned()))
+            .map_err(|_| StateError::InvalidSavedProfile)?;
+        if saved_profile.as_ref().is_some_and(|saved| {
+            saved
+                .secret_ref()
+                .is_some_and(|secret_ref| !secret_ref.is_persistent())
+                || !profiles_match_except_secret(&updated_active, saved)
+        }) {
+            return Err(StateError::InvalidSavedProfile);
+        }
+
+        self.active_provider = Some(updated_active);
+        self.selected_model = Some(model_id.to_owned());
+        self.pending_model_selection = None;
+        if let Some(saved_profile) = saved_profile {
+            self.saved_profile = Some(saved_profile);
+        }
+        Ok(())
     }
 
     /// 回滚当前等待确认的模型选择并保留活动模型。
@@ -582,10 +749,15 @@ impl AppState {
     #[must_use]
     pub fn diagnostics_text(&self) -> String {
         format!(
-            "Core protocol: {PROTOCOL_VERSION}\nProvider: {}\nModel selected: {}\nModel selection pending: {}\nStatus: {}\nTheme: {}\nLocale: {}\nOutput bytes: {}",
-            self.active_provider
-                .as_ref()
-                .map_or("None", |profile| profile.id().as_str()),
+            "Core protocol: {PROTOCOL_VERSION}\nProvider: {}\nProvider saved: {}\nSaved profile: {}\nSaved model: {}\nModel selected: {}\nModel selection pending: {}\nStatus: {}\nTheme: {}\nLocale: {}\nOutput bytes: {}",
+            yes_no(self.active_provider.is_some()),
+            yes_no(self.active_provider_is_saved),
+            yes_no(self.saved_profile.is_some()),
+            yes_no(
+                self.saved_profile
+                    .as_ref()
+                    .is_some_and(|profile| profile.selected_model().is_some())
+            ),
             if self.selected_model.is_some() {
                 "Yes"
             } else {
@@ -602,6 +774,20 @@ impl AppState {
             self.output.len()
         )
     }
+}
+
+fn profiles_match_except_secret(runtime: &ProviderProfile, saved: &ProviderProfile) -> bool {
+    runtime.id() == saved.id()
+        && runtime.display_name() == saved.display_name()
+        && runtime.preset_id() == saved.preset_id()
+        && runtime.adapter_type() == saved.adapter_type()
+        && runtime.base_endpoint() == saved.base_endpoint()
+        && runtime.enabled() == saved.enabled()
+        && runtime.selected_model() == saved.selected_model()
+}
+
+const fn yes_no(value: bool) -> &'static str {
+    if value { "Yes" } else { "No" }
 }
 
 #[cfg(test)]
@@ -621,13 +807,23 @@ mod tests {
         endpoint: &str,
         selected_model: Option<&str>,
     ) -> ProviderProfile {
+        profile_with_secret(id, display_name, endpoint, selected_model, None)
+    }
+
+    fn profile_with_secret(
+        id: &str,
+        display_name: &str,
+        endpoint: &str,
+        selected_model: Option<&str>,
+        secret_ref: Option<SecretRef>,
+    ) -> ProviderProfile {
         ProviderProfile::new(
             ProviderProfileId::parse(id).expect("profile ID"),
             display_name,
             "openai-compatible",
             "openai_chat_completions",
             endpoint,
-            None,
+            secret_ref,
         )
         .expect("profile")
         .with_selected_model(selected_model.map(str::to_owned))
@@ -666,16 +862,66 @@ mod tests {
         let mut state = AppState::default();
 
         assert_eq!(state.status(), AppStatus::Disconnected);
+        assert!(!state.worker_ready());
         assert!(state.active_provider().is_none());
         assert!(state.provider_id().is_none());
         assert!(state.pending_provider().is_none());
+        assert!(state.saved_profile().is_none());
+        assert!(!state.pending_provider_will_be_saved());
+        assert!(!state.active_provider_is_saved());
         assert!(state.models().is_empty());
         assert_eq!(state.selected_model(), None);
         assert_eq!(state.pending_model_selection(), None);
-        assert!(state.diagnostics_text().contains("Provider: None"));
+        assert!(state.diagnostics_text().contains("Provider: No"));
+
+        state.mark_worker_ready();
+        assert!(state.worker_ready());
 
         state.set_source_text("Hello");
         assert_eq!(state.begin_translation(), Err(StateError::MissingProvider));
+    }
+
+    #[test]
+    fn restored_saved_profile_remains_disconnected() {
+        let mut state = AppState::default();
+        let saved = profile(
+            "saved-provider",
+            "Saved provider",
+            "http://127.0.0.1:11434/v1/",
+            Some("saved-model"),
+        );
+
+        state
+            .restore_saved_profile(saved.clone())
+            .expect("restore saved profile");
+
+        assert_eq!(state.status(), AppStatus::Disconnected);
+        assert_eq!(state.saved_profile(), Some(&saved));
+        assert!(state.active_provider().is_none());
+        assert!(state.pending_provider().is_none());
+        assert!(!state.pending_provider_will_be_saved());
+        assert!(!state.active_provider_is_saved());
+        assert!(state.models().is_empty());
+        assert_eq!(state.selected_model(), None);
+    }
+
+    #[test]
+    fn session_secret_reference_cannot_be_restored_as_saved_state() {
+        let mut state = AppState::default();
+        let invalid = profile_with_secret(
+            "session-provider",
+            "Session provider",
+            "http://127.0.0.1:11434/v1/",
+            None,
+            Some(SecretRef::new(SecretRefNamespace::Session)),
+        );
+
+        assert_eq!(
+            state.restore_saved_profile(invalid),
+            Err(StateError::InvalidSavedProfile)
+        );
+        assert_eq!(state.status(), AppStatus::Disconnected);
+        assert!(state.saved_profile().is_none());
     }
 
     #[test]
@@ -979,6 +1225,91 @@ mod tests {
     }
 
     #[test]
+    fn saved_connection_commits_runtime_and_non_secret_profiles_atomically() {
+        let mut state = AppState::default();
+        let runtime = profile_with_secret(
+            "remembered-provider",
+            "Remembered provider",
+            "http://127.0.0.1:11434/v1/",
+            Some("remembered-model"),
+            Some(SecretRef::new(SecretRefNamespace::Session)),
+        );
+        let saved = profile(
+            "remembered-provider",
+            "Remembered provider",
+            "http://127.0.0.1:11434/v1/",
+            Some("remembered-model"),
+        );
+
+        state
+            .begin_provider_connection_with_persistence(runtime.clone(), true)
+            .expect("begin saved connection");
+        assert!(state.pending_provider_will_be_saved());
+        assert_eq!(
+            state.provider_connected_with_saved_profile(
+                runtime.clone(),
+                vec![discovered_model("remembered-model")],
+                None,
+            ),
+            Err(StateError::InvalidSavedProfile)
+        );
+        assert_eq!(state.status(), AppStatus::Connecting);
+        assert_eq!(state.pending_provider(), Some(&runtime));
+        assert!(state.pending_provider_will_be_saved());
+
+        state
+            .provider_connected_with_saved_profile(
+                runtime.clone(),
+                vec![discovered_model("remembered-model")],
+                Some(saved.clone()),
+            )
+            .expect("commit saved connection");
+
+        assert_eq!(state.active_provider(), Some(&runtime));
+        assert_eq!(state.saved_profile(), Some(&saved));
+        assert!(state.active_provider_is_saved());
+        assert!(!state.pending_provider_will_be_saved());
+        assert_eq!(state.selected_model(), Some("remembered-model"));
+    }
+
+    #[test]
+    fn session_switch_preserves_the_restart_profile() {
+        let mut state = AppState::default();
+        let saved = profile(
+            "saved-provider",
+            "Saved provider",
+            "http://127.0.0.1:11434/v1/",
+            Some("saved-model"),
+        );
+        state
+            .restore_saved_profile(saved.clone())
+            .expect("restore saved profile");
+        let session = profile(
+            "session-provider",
+            "Session provider",
+            "http://127.0.0.1:11435/v1/",
+            Some("session-model"),
+        );
+
+        state
+            .begin_provider_connection(session.clone())
+            .expect("begin session switch");
+        state
+            .provider_connected(session.clone(), vec![discovered_model("session-model")])
+            .expect("commit session switch");
+
+        assert_eq!(state.active_provider(), Some(&session));
+        assert!(!state.active_provider_is_saved());
+        assert_eq!(state.saved_profile(), Some(&saved));
+        assert_eq!(
+            state
+                .saved_profile()
+                .and_then(ProviderProfile::selected_model),
+            Some("saved-model")
+        );
+    }
+
+    #[test]
     fn stale_connection_result_preserves_active_and_pending_state() {
         let mut state = connected_state();
         let pending = profile(
@@ -1024,11 +1355,16 @@ mod tests {
         state
             .begin_provider_connection(pending.clone())
             .expect("begin connection");
-        let stale_id = ProviderProfileId::parse("stale-provider").expect("stale profile ID");
+        let stale_profile = profile(
+            "stale-provider",
+            "Stale provider",
+            "http://127.0.0.1:11435/v1/",
+            None,
+        );
 
         assert_eq!(
             state.provider_connection_failed(
-                &stale_id,
+                &stale_profile,
                 TranslationError::new(ErrorKind::Network, "A stale connection failed."),
             ),
             Err(StateError::UnexpectedProviderConnection)
@@ -1046,6 +1382,115 @@ mod tests {
     }
 
     #[test]
+    fn same_id_different_endpoint_failure_is_stale_and_exact_failure_clears_save_intent() {
+        let mut state = connected_state();
+        let pending = profile(
+            "shared-provider-id",
+            "Pending provider",
+            "http://127.0.0.1:11434/v1/",
+            None,
+        );
+        state
+            .begin_provider_connection_with_persistence(pending.clone(), true)
+            .expect("begin saved connection");
+        let mismatched_profile = profile(
+            "shared-provider-id",
+            "Pending provider",
+            "http://127.0.0.1:11435/v1/",
+            None,
+        );
+
+        assert_eq!(
+            state.provider_connection_failed(
+                &mismatched_profile,
+                TranslationError::new(ErrorKind::Network, "A stale connection failed."),
+            ),
+            Err(StateError::UnexpectedProviderConnection)
+        );
+        assert_eq!(state.pending_provider(), Some(&pending));
+        assert!(state.pending_provider_will_be_saved());
+
+        state
+            .provider_connection_failed(
+                &pending,
+                TranslationError::new(ErrorKind::Network, "The connection failed."),
+            )
+            .expect("reject exact connection");
+        assert!(state.pending_provider().is_none());
+        assert!(!state.pending_provider_will_be_saved());
+        assert_eq!(state.status(), AppStatus::Ready);
+    }
+
+    #[test]
+    fn saved_model_confirmation_requires_an_exact_persisted_counterpart() {
+        let mut state = AppState::default();
+        let runtime = profile_with_secret(
+            "saved-provider",
+            "Saved provider",
+            "http://127.0.0.1:11434/v1/",
+            Some("first-model"),
+            Some(SecretRef::new(SecretRefNamespace::Session)),
+        );
+        let saved = profile(
+            "saved-provider",
+            "Saved provider",
+            "http://127.0.0.1:11434/v1/",
+            Some("first-model"),
+        );
+        state
+            .begin_provider_connection_with_persistence(runtime.clone(), true)
+            .expect("begin saved connection");
+        state
+            .provider_connected_with_saved_profile(
+                runtime,
+                vec![
+                    discovered_model("first-model"),
+                    discovered_model("second-model"),
+                ],
+                Some(saved.clone()),
+            )
+            .expect("commit saved connection");
+        state
+            .begin_model_selection("second-model")
+            .expect("begin model selection");
+
+        assert_eq!(
+            state.confirm_model_selection_with_saved_profile(
+                saved.id(),
+                "second-model",
+                Some(saved.clone()),
+            ),
+            Err(StateError::InvalidSavedProfile)
+        );
+        assert_eq!(state.selected_model(), Some("first-model"));
+        assert_eq!(state.pending_model_selection(), Some("second-model"));
+        assert_eq!(state.saved_profile(), Some(&saved));
+
+        let updated_saved = saved
+            .clone()
+            .with_selected_model(Some("second-model".to_owned()))
+            .expect("updated saved model");
+        state
+            .confirm_model_selection_with_saved_profile(
+                saved.id(),
+                "second-model",
+                Some(updated_saved.clone()),
+            )
+            .expect("confirm saved model");
+
+        assert_eq!(state.selected_model(), Some("second-model"));
+        assert_eq!(state.pending_model_selection(), None);
+        assert_eq!(state.saved_profile(), Some(&updated_saved));
+        assert_eq!(
+            state
+                .active_provider()
+                .and_then(ProviderProfile::selected_model),
+            Some("second-model")
+        );
+        assert!(state.active_provider_is_saved());
+    }
+
+    #[test]
     fn unavailable_saved_model_requires_a_new_deliberate_selection() {
         let mut state = AppState::default();
         let profile = profile(
@@ -1055,14 +1500,23 @@ mod tests {
             Some("removed-model"),
         );
         state
-            .begin_provider_connection(profile.clone())
+            .begin_provider_connection_with_persistence(profile.clone(), true)
             .expect("begin connection");
+        let connected = profile
+            .with_selected_model(None)
+            .expect("normalized provider profile");
         state
-            .provider_connected(profile, vec![discovered_model("new-model")])
+            .provider_connected_with_saved_profile(
+                connected.clone(),
+                vec![discovered_model("new-model")],
+                Some(connected.clone()),
+            )
             .expect("provider connected");
         state.set_source_text("Hello");
 
         assert_eq!(state.selected_model(), None);
+        assert_eq!(state.active_provider(), Some(&connected));
+        assert_eq!(state.saved_profile(), Some(&connected));
         assert_eq!(state.begin_translation(), Err(StateError::MissingModel));
         state.select_model("new-model").expect("select model");
         assert_eq!(
@@ -1086,7 +1540,7 @@ mod tests {
 
         state
             .provider_connection_failed(
-                unavailable.id(),
+                &unavailable,
                 TranslationError::new(ErrorKind::Network, "The provider could not be reached."),
             )
             .expect("provider failure");
@@ -1207,9 +1661,9 @@ mod tests {
     fn diagnostics_omit_endpoint_source_model_and_secret_reference() {
         let mut state = connected_state();
         state.set_source_text("SOURCE_SENTINEL");
-        let secret_ref = SecretRef::new(SecretRefNamespace::SecretService);
+        let secret_ref = SecretRef::new(SecretRefNamespace::Session);
         let secret_reference = secret_ref.as_str().to_owned();
-        let profile = ProviderProfile::new(
+        let runtime_profile = ProviderProfile::new(
             ProviderProfileId::parse("session-provider").expect("profile ID"),
             "Session provider",
             "openai-compatible",
@@ -1220,17 +1674,31 @@ mod tests {
         .expect("profile")
         .with_selected_model(Some("MODEL_SENTINEL".to_owned()))
         .expect("selected model");
+        let saved_profile = profile(
+            "session-provider",
+            "Session provider",
+            "http://127.0.0.1:11434/v1/ENDPOINT_SENTINEL/",
+            Some("MODEL_SENTINEL"),
+        );
         state
-            .begin_provider_connection(profile.clone())
+            .begin_provider_connection_with_persistence(runtime_profile.clone(), true)
             .expect("begin connection");
         state
-            .provider_connected(profile, vec![discovered_model("MODEL_SENTINEL")])
+            .provider_connected_with_saved_profile(
+                runtime_profile,
+                vec![discovered_model("MODEL_SENTINEL")],
+                Some(saved_profile),
+            )
             .expect("provider connected");
 
         let diagnostics = state.diagnostics_text();
 
-        assert!(diagnostics.contains("Provider: session-provider"));
+        assert!(diagnostics.contains("Provider: Yes"));
+        assert!(diagnostics.contains("Provider saved: Yes"));
+        assert!(diagnostics.contains("Saved profile: Yes"));
+        assert!(diagnostics.contains("Saved model: Yes"));
         assert!(diagnostics.contains("Model selected: Yes"));
+        assert!(!diagnostics.contains("session-provider"));
         assert!(!diagnostics.contains("127.0.0.1"));
         assert!(!diagnostics.contains("ENDPOINT_SENTINEL"));
         assert!(!diagnostics.contains("SOURCE_SENTINEL"));
