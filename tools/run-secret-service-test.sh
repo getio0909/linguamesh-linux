@@ -20,7 +20,6 @@ dbus-run-session -- bash -c '
   keyring_pid=$!
   trap "kill \"$keyring_pid\" 2>/dev/null || true" EXIT
   sleep 1
-  export LINGUAMESH_SECRET_SERVICE_DEBUG=1
   gdbus call --session \
     --dest org.freedesktop.secrets \
     --object-path /org/freedesktop/secrets \
