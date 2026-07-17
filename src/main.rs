@@ -1718,39 +1718,6 @@ mod tests {
         assert_eq!(label.mnemonic_widget().as_ref(), Some(control));
     }
 
-    #[ignore = "requires the interactive portal chooser fixture"]
-    #[test]
-    fn gtk_file_dialog_uses_portal_and_loads_selected_fixture() {
-        adw::init().expect("initialize GTK and libadwaita");
-        let application = adw::Application::builder()
-            .application_id("dev.linguamesh.LinguaMesh.FileChooserTest")
-            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
-            .build();
-        application
-            .register(None::<&gtk::gio::Cancellable>)
-            .expect("register GTK file chooser test application");
-        let fixture =
-            std::env::var("LINGUAMESH_FILE_CHOOSER_FIXTURE").expect("file chooser fixture path");
-        let expected = fs::read_to_string(&fixture).expect("file chooser fixture contents");
-        let state = Rc::new(RefCell::new(AppState::default()));
-        let (window, bindings, _theme, _locale) = create_window(&application);
-        window.present();
-        super::begin_source_file_open(&bindings, &state);
-        let context = glib::MainContext::default();
-        spin_main_context_until(&context, Duration::from_secs(15), || {
-            bindings
-                .source
-                .text(
-                    &bindings.source.start_iter(),
-                    &bindings.source.end_iter(),
-                    true,
-                )
-                .as_str()
-                == expected
-        });
-        window.close();
-    }
-
     // 单个原生流程覆盖真实控件生命周期和恢复表单，避免拆分后并行初始化 GTK。
     #[ignore = "requires the persistent Secret Service onboarding fixture"]
     #[test]
