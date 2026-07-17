@@ -25,8 +25,8 @@ doc_id = None
 
 try:
     doc_id = str(documents.Add(dbus.types.UnixFd(fd), False, False))
-    host_paths = documents.GetHostPaths([doc_id])
-    encoded_path = bytes(host_paths[doc_id]).rstrip(b"\0")
+    info = documents.Info(doc_id)
+    encoded_path = bytes(info[0]).rstrip(b"\0")
     if pathlib.Path(os.fsdecode(encoded_path)).resolve() != fixture_path:
         fail("Document portal returned an unexpected host path.")
 
@@ -40,8 +40,9 @@ try:
     if doc_id in revoked:
         fail("Document portal retained the application permission after revocation.")
 
+    documents.GrantPermissions(doc_id, app_id, ["read"])
     documents.Delete(doc_id)
-    if documents.GetHostPaths([doc_id]):
+    if doc_id in documents.List(app_id):
         fail("Document portal retained the lease after deletion.")
 finally:
     os.close(fd)
