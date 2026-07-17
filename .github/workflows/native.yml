@@ -54,6 +54,7 @@ jobs:
             libadwaita-1-dev \
             libgtk-4-dev \
             dbus-daemon \
+            dunst \
             gettext \
             gnome-keyring \
             mount \
@@ -107,6 +108,9 @@ jobs:
       - name: Run notification transport fixture
         working-directory: linguamesh-linux
         run: dbus-run-session -- bash tools/run-notification-test.sh
+      - name: Run notification daemon delivery fixture
+        working-directory: linguamesh-linux
+        run: dbus-run-session -- bash tools/run-notification-daemon-test.sh
       - name: Run XDG document portal lease fixture
         working-directory: linguamesh-linux
         run: bash tools/run-document-portal-test.sh
