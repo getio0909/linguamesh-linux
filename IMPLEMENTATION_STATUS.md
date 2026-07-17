@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Native text-translation development slice and compatibility pins implemented; native GUI validation pending
+Status: Native text-translation development slice and compatibility pins verified locally and in native CI
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -54,10 +54,15 @@ Validated on 2026-07-17 with Rust 1.93.0:
 - The checkout, Rust-toolchain, and Rust-cache action SHAs resolved through the GitHub commits API;
   their action metadata uses Node 24 or a composite action.
 
-## Not locally validated
+## Remote validation evidence
 
-No GitHub Actions run was triggered from this worktree, so the pinned native workflow is configured
-but has no claimed remote result.
+GitHub revision `10977931ceb11bc9d4b86ec49d7fd710e3c1a063` passed the repository-foundation
+workflow run `29557845248` and Native Linux run `29557845223`. Native job `87813768615` installed
+GTK 4 and libadwaita development headers on Ubuntu 24.04, validated the exact Core and localization
+pins, and passed formatting, strict all-feature Clippy, all-feature tests, and the full native
+application build.
+
+## Not locally validated
 
 This host has no `gtk4.pc`, `libadwaita-1.pc`, or `graphene-gobject-1.0.pc`. After clearing the
 source-only `graphene-sys` cache, a normal `cargo check --all-targets --all-features --locked`
