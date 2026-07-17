@@ -74,9 +74,12 @@ XDG_CACHE_HOME="$workspace/cache" \
     xdotool getmouselocation --shell
     xdotool mousedown 1
     sleep 0.5
-    xdotool mousemove --sync "$((source_abs_x + 24))" "$((source_abs_y + 24))"
-    sleep 0.5
-    xdotool mousemove --sync "$target_abs_x" "$target_abs_y"
+    for step in {1..12}; do
+      next_x=$((source_abs_x + (target_abs_x - source_abs_x) * step / 12))
+      next_y=$((source_abs_y + (target_abs_y - source_abs_y) * step / 12))
+      xdotool mousemove --sync "$next_x" "$next_y"
+      sleep 0.05
+    done
     sleep 1
     xdotool mouseup 1
     if ! wait "$app_pid"; then
