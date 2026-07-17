@@ -50,18 +50,18 @@ XDG_CACHE_HOME="$workspace/cache" \
       wait "$app_pid" >/dev/null 2>&1 || true
       exit 1
     fi
-    eval "$(xdotool getwindowgeometry --shell "$app_window")"
     read -r source_x source_y source_width source_height target_x target_y target_width target_height <"$LINGUAMESH_FILE_DROP_COORDINATES"
-    source_abs_x=$((X + source_x + source_width / 2))
-    source_abs_y=$((Y + source_y + source_height / 2))
-    target_abs_x=$((X + target_x + target_width / 2))
-    target_abs_y=$((Y + target_y + target_height / 2))
-    xdotool mousemove --sync "$source_abs_x" "$source_abs_y"
+    printf 'Widget coordinates: %s\n' "$(cat "$LINGUAMESH_FILE_DROP_COORDINATES")"
+    source_x=$((source_x + source_width / 2))
+    source_y=$((source_y + source_height / 2))
+    target_x=$((target_x + target_width / 2))
+    target_y=$((target_y + target_height / 2))
+    xdotool mousemove --window "$app_window" --sync "$source_x" "$source_y"
     xdotool mousedown 1
     sleep 0.3
-    xdotool mousemove --sync "$((source_abs_x + 24))" "$((source_abs_y + 24))"
+    xdotool mousemove --window "$app_window" --sync "$((source_x + 24))" "$((source_y + 24))"
     sleep 0.2
-    xdotool mousemove --sync "$target_abs_x" "$target_abs_y"
+    xdotool mousemove --window "$app_window" --sync "$target_x" "$target_y"
     sleep 0.6
     xdotool mouseup 1
     if ! wait "$app_pid"; then

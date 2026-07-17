@@ -175,6 +175,8 @@ fn start_file_drop_fixture(application: &adw::Application, bindings: UiBindings)
     let drag_source = gtk::DragSource::new();
     drag_source.set_actions(gtk::gdk::DragAction::COPY);
     drag_source.set_content(Some(&provider));
+    drag_source.connect_drag_begin(|_, _| println!("GTK drag-and-drop fixture drag began."));
+    drag_source.connect_drag_end(|_, _, _| println!("GTK drag-and-drop fixture drag ended."));
     drag_button.add_controller(drag_source);
     bindings.workspace.prepend(&drag_button);
 
