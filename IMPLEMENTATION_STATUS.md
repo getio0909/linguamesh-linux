@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Core alpha.2 session-secret slice verified locally; alpha.2 native CI pending
+Status: Core alpha.2 session-secret slice verified locally and in native Linux CI
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -77,8 +77,11 @@ Validated on 2026-07-17 with Rust 1.93.0:
 
 ## Remote validation evidence
 
-The alpha.2 revision and Core functional pin have not yet run in GitHub Actions. Remote alpha.2
-validation is pending.
+Functional alpha.2 revision `0455baf8f258c6280d66d1d568fd6a01fdad8486` passed repository-foundation
+run `29569227294` (job `87848829297`) and Native Linux run `29569227256` (job `87848829235`). The
+native Ubuntu 24.04 job installed GTK 4, libadwaita, D-Bus, and Xvfb support; validated the exact
+Core and localization pins; and passed formatting, strict all-feature Clippy, 35 library tests, the
+real GTK binary test, and the all-target all-feature native application build.
 
 Historical alpha.1 revision `c13394dd477fa6e919632c61c28ac0708f61b769` passed repository-foundation run
 `29559609346` (job `87819062507`) and Native Linux run `29559609298` (job `87819062331`). The
