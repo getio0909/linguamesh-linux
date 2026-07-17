@@ -59,7 +59,9 @@ XDG_CACHE_HOME="$workspace/cache" \
     xdotool mousemove --sync "$source_abs_x" "$source_abs_y"
     xdotool mousedown 1
     sleep 0.3
-    xdotool mousemove --sync --delay 50 "$target_abs_x" "$target_abs_y"
+    xdotool mousemove --sync "$((source_abs_x + 24))" "$((source_abs_y + 24))"
+    sleep 0.2
+    xdotool mousemove --sync "$target_abs_x" "$target_abs_y"
     sleep 0.6
     xdotool mouseup 1
     if ! wait "$app_pid"; then
