@@ -1618,16 +1618,22 @@ mod tests {
     use super::{
         AppState, AppStatus, CUSTOM_PROVIDER_PRESET_ID, CoreWorker, DEFAULT_PROVIDER_ENDPOINT,
         DEFAULT_PROVIDER_NAME, ErrorKind, OPENAI_ADAPTER_TYPE, OnboardingStage, ProviderProfileId,
-        SecretRef, SecretRefNamespace, TranslationError, UiLocale, WorkerCommand, WorkerEvent,
-        apply_worker_event, connect_action_handlers, connect_selection_handlers, create_window,
-        custom_provider_profile, generate_custom_provider_id, refresh_ui, start_event_pump,
+        SecretRef, SecretRefNamespace, SecretValue, TranslationError, UiLocale, WorkerCommand,
+        WorkerEvent, apply_worker_event, connect_action_handlers, connect_selection_handlers,
+        create_window, custom_provider_profile, generate_custom_provider_id, refresh_ui,
+        start_event_pump,
     };
     use adw::prelude::*;
     use gtk::glib;
+    use linguamesh_testkit::FakeProviderServer;
     use std::cell::RefCell;
     use std::fs;
     use std::rc::Rc;
+    use std::sync::mpsc;
+    use std::thread::JoinHandle;
     use std::time::{Duration, Instant};
+    use tokio::runtime::Builder;
+    use tokio::sync::oneshot;
 
     fn spin_main_context_until(
         context: &glib::MainContext,
@@ -1647,6 +1653,57 @@ mod tests {
         panic!("Timed out while waiting for the GTK state transition.");
     }
 
+    struct ExternalFakeProvider {
+        endpoint: String,
+        shutdown: Option<oneshot::Sender<()>>,
+        thread: Option<JoinHandle<()>>,
+    }
+
+    impl ExternalFakeProvider {
+        fn start(expected_secret: &'static str) -> Self {
+            let (ready_sender, ready_receiver) = mpsc::sync_channel(1);
+            let (shutdown, shutdown_receiver) = oneshot::channel();
+            let thread = std::thread::spawn(move || {
+                let runtime = Builder::new_multi_thread()
+                    .worker_threads(2)
+                    .enable_all()
+                    .build()
+                    .expect("external provider runtime");
+                runtime.block_on(async move {
+                    let server = FakeProviderServer::start_requiring_bearer_token(
+                        SecretValue::new(expected_secret),
+                    )
+                    .await
+                    .expect("external provider");
+                    ready_sender
+                        .send(server.base_url())
+                        .expect("provider endpoint");
+                    let _ = shutdown_receiver.await;
+                    server.shutdown().await;
+                });
+            });
+            let endpoint = ready_receiver
+                .recv_timeout(Duration::from_secs(5))
+                .expect("provider startup");
+            Self {
+                endpoint,
+                shutdown: Some(shutdown),
+                thread: Some(thread),
+            }
+        }
+    }
+
+    impl Drop for ExternalFakeProvider {
+        fn drop(&mut self) {
+            if let Some(shutdown) = self.shutdown.take() {
+                let _ = shutdown.send(());
+            }
+            if let Some(thread) = self.thread.take() {
+                thread.join().expect("provider shutdown");
+            }
+        }
+    }
+
     fn assert_labeled_control(control: &gtk::Widget) {
         assert!(gtk::test_accessible_has_relation(
             control,
@@ -1662,6 +1719,101 @@ mod tests {
     }
 
     // 单个原生流程覆盖真实控件生命周期和恢复表单，避免拆分后并行初始化 GTK。
+    #[ignore = "requires the persistent Secret Service onboarding fixture"]
+    #[test]
+    fn gtk_remembered_credential_uses_secret_service_and_clears_the_form() {
+        const SECRET_CANARY: &str = "GTK_PERSISTENT_ONBOARDING_SECRET_CANARY";
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.SecureOnboardingTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK test application");
+
+        let external = ExternalFakeProvider::start(SECRET_CANARY);
+        let database_directory = std::env::temp_dir().join(format!(
+            "linguamesh-linux-secure-onboarding-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&database_directory);
+        let database_path = database_directory.join("state.sqlite3");
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn_with_database(&database_path));
+        let (window, bindings, theme, locale) = create_window(&application);
+        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
+        connect_action_handlers(&bindings, &state, &worker);
+        start_event_pump(&bindings, &state, &worker);
+        let context = glib::MainContext::default();
+        window.present();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().worker_ready()
+                && bindings.provider_endpoint.text() != DEFAULT_PROVIDER_ENDPOINT
+        });
+
+        bindings
+            .provider_name
+            .set_text("Secure onboarding provider");
+        bindings.provider_endpoint.set_text(&external.endpoint);
+        bindings.provider_credential.set_text(SECRET_CANARY);
+        bindings.remember_profile.set_active(true);
+        bindings.connect.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        assert_eq!(state.borrow().status(), AppStatus::Connecting);
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Ready
+                && state.borrow().active_provider().is_some()
+        });
+        let saved_secret_ref = state
+            .borrow()
+            .saved_profiles()
+            .first()
+            .and_then(|profile| profile.secret_ref())
+            .cloned()
+            .expect("saved Secret Service reference");
+        assert!(saved_secret_ref.is_persistent());
+        assert!(
+            state
+                .borrow()
+                .active_provider()
+                .is_some_and(|profile| { profile.secret_ref() == Some(&saved_secret_ref) })
+        );
+        assert!(bindings.provider_credential.text().is_empty());
+        for entry in fs::read_dir(&database_directory).expect("database directory") {
+            let path = entry.expect("database entry").path();
+            if path.is_file() {
+                let bytes = fs::read(path).expect("database artifact");
+                assert!(
+                    !bytes
+                        .windows(SECRET_CANARY.len())
+                        .any(|candidate| candidate == SECRET_CANARY.as_bytes())
+                );
+            }
+        }
+
+        bindings.model.set_selected(1);
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().selected_model().is_some()
+        });
+        bindings.source.set_text("Hello");
+        bindings.translate.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Completed
+        });
+        assert_eq!(state.borrow().output(), "你好，LinguaMesh！");
+        super::secret_service::delete_secret(&saved_secret_ref)
+            .expect("delete onboarding credential");
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        drop(window);
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
+        let _ = fs::remove_dir_all(&database_directory);
+    }
+
     #[allow(clippy::too_many_lines)]
     #[test]
     fn gtk_buttons_explicitly_connect_select_and_translate_with_session_credential() {

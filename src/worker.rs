@@ -2062,6 +2062,57 @@ mod tests {
         shutdown(&worker);
     }
 
+    #[cfg(feature = "gui")]
+    #[ignore = "requires the persistent Secret Service onboarding fixture"]
+    #[test]
+    fn persistent_secret_onboarding_connects_without_credential_reentry() {
+        const SECRET_REF: &str = "secret-service:22222222-2222-4222-8222-222222222222";
+        const SECRET_CANARY: &str = "PERSISTENT_ONBOARDING_SECRET_CANARY";
+        let external = ExternalFakeProvider::start(FakeMode::Authenticated(SECRET_CANARY));
+        let secret_ref = SecretRef::parse(SECRET_REF).expect("persistent onboarding reference");
+        crate::secret_service::store_secret(&secret_ref, &SecretValue::new(SECRET_CANARY))
+            .expect("store onboarding credential");
+        let database = TestDatabase::new();
+        let (worker, restored, _) = started_worker_with_database(database.path());
+        assert!(restored.is_none());
+
+        let profile = profile(
+            "persistent-onboarding",
+            &external.endpoint,
+            Some(secret_ref.clone()),
+            None,
+        );
+        let (connected, models, saved_profile) =
+            connect_event(&worker, profile, None, PersistenceIntent::Persistent)
+                .expect("connect through Secret Service");
+        assert_eq!(connected.secret_ref(), Some(&secret_ref));
+        assert!(models.iter().any(|model| model.id == "fake-translator"));
+        assert!(saved_profile.is_some_and(|saved| { saved.secret_ref() == Some(&secret_ref) }));
+        select_event(&worker, "persistent-onboarding", "fake-translator")
+            .expect("select onboarding model");
+        let (output, terminal) = translate(&worker, "fake-translator");
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        database.assert_private_permissions();
+        database.assert_absent_from_files(&[SECRET_CANARY]);
+        shutdown(&worker);
+
+        let (restarted, restored, _) = started_worker_with_database(database.path());
+        let restored = restored.expect("restored persistent profile");
+        assert_eq!(restored.secret_ref(), Some(&secret_ref));
+        let (connected, models, _) =
+            connect_event(&restarted, restored, None, PersistenceIntent::Persistent)
+                .expect("reconnect through restored Secret Service reference");
+        assert_eq!(connected.secret_ref(), Some(&secret_ref));
+        assert!(models.iter().any(|model| model.id == "fake-translator"));
+        let (output, terminal) = translate(&restarted, "fake-translator");
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        crate::secret_service::delete_secret(&secret_ref).expect("delete onboarding credential");
+        shutdown(&restarted);
+        database.assert_absent_from_files(&[SECRET_CANARY]);
+    }
+
     #[test]
     fn profile_persistence_preserves_only_persistent_secret_references() {
         let persistent = profile(
