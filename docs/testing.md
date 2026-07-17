@@ -35,4 +35,3 @@ This validates required non-empty files, the pinned goal digest, trailing whites
 | Build | No product build command | Unavailable until a Cargo package exists |
 
 When implementation begins, replace unavailable entries with exact pinned toolchain and package commands. Product CI must eventually cover `cargo fmt`, strict Clippy, Rust tests, GTK component and accessibility tests, virtual-display UI tests, portal abstractions, Wayland/X11 smoke tests, release builds, Flatpak smoke tests, and dependency/license review. Do not record these future checks as passing before they run.
-

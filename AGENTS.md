@@ -28,4 +28,3 @@ The repository is documentation-only. It has no dependency setup, Rust toolchain
 ## Safety
 
 Never commit credentials, signing keys, translated user content, or sensitive diagnostics. Never silently fall back from Secret Service to plaintext storage. Do not weaken TLS, portal, sandbox, file-permission, or core compatibility protections to make a check pass. Never publish or label a release stable without compatible pinned core and localization versions plus reproducible evidence.
-

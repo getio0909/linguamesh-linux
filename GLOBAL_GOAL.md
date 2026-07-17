@@ -21,4 +21,3 @@ shasum -a 256 ../linguamesh-project/PROJECT_GOAL.md
 ```
 
 The emitted digest must match the value above. A digest change requires reviewing the complete new specification, updating compatibility records in the central repository, and deliberately updating this pin. This file is a revision reference, not a claim that the native client is implemented.
-

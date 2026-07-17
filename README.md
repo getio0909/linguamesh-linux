@@ -33,4 +33,3 @@ The complete documentation check is in [`docs/testing.md`](docs/testing.md) and 
 - [Releasing](docs/releasing.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
-

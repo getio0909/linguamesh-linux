@@ -19,4 +19,3 @@
 - Cross-repository compatibility and release-train authority; those belong in `linguamesh-project`.
 
 The client must reject incompatible shared contracts and must not fork shared core behavior merely because both layers use Rust.
-

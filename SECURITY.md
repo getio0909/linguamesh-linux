@@ -18,4 +18,3 @@ This repository has no released application version. The documentation-only foun
 - Never provide release credentials to untrusted pull-request workflows.
 
 Security-sensitive changes require focused tests, threat-model review, and explicit evidence in `IMPLEMENTATION_STATUS.md`.
-

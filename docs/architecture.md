@@ -17,4 +17,3 @@ The client owns native lifecycle, accessibility, appearance, keyboard behavior, 
 Secrets must use Secret Service. When no secure service exists, the UI may offer a clearly labeled session-only in-memory secret and must never fall back to plaintext. File and directory handling must follow XDG locations, restrictive permissions, portal leases, and cleanup rules. Wayland is required; X11 support is practical where dependencies and tests allow it.
 
 Changes affecting shared contracts, the security model, display support, GTK/libadwaita policy, or distribution packaging require central compatibility review. GTK and other LGPL dependencies require documented license compliance before distribution.
-

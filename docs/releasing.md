@@ -15,4 +15,3 @@ A Linux release may be prepared only after:
 5. protected release infrastructure produces reproducible artifacts without exposing credentials.
 
 Flatpak is the primary intended packaging format. Additional AppImage, DEB, or RPM artifacts require documented reproducibility and dependency handling. Never promote a prerelease to stable until the central release train records compatible tested versions. Do not imply distribution endorsement or platform support without executed evidence.
-

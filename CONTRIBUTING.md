@@ -18,4 +18,3 @@ Use short imperative commit subjects, optionally scoped, such as `docs: define F
 ## Validation
 
 Run the complete current foundation check in `docs/testing.md`. Product format, lint, test, and build commands do not exist yet and must not be reported as run. Once native targets are introduced, update `docs/testing.md` and CI in the same change.
-
