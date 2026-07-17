@@ -1,10 +1,11 @@
 # LinguaMesh for Linux
 
 LinguaMesh for Linux is the native Rust, GTK 4, and libadwaita client for the LinguaMesh
-translation suite. The current vertical slice connects to the shared core's loopback fake
-provider, discovers and selects a model, streams translated text, supports cancellation with
-partial-output retention, displays typed errors, switches appearance, records locale preference,
-and exposes redacted diagnostics.
+translation suite. The current vertical slice starts with the shared core's built-in loopback fake
+provider and can connect to a user-supplied, credential-free OpenAI-compatible endpoint for the
+current process. It discovers and selects models, streams translated text, supports cancellation
+with partial-output retention, displays typed errors, switches appearance, records locale
+preference, and exposes redacted diagnostics.
 
 ## Project authority
 
@@ -32,8 +33,15 @@ sudo apt-get install libgtk-4-dev libadwaita-1-dev gettext pkg-config
 cargo run --features gui
 ```
 
-The app starts a loopback-only fake provider and requires no commercial credential. Full validation
-commands and the header-free local test path are documented in
+The app starts a loopback-only fake provider and requires no commercial credential. To exercise a
+local OpenAI-compatible server, run the app and enter a session name plus a base endpoint such as
+`http://127.0.0.1:11434/v1/`. The form does not accept credentials, and its values are never
+persisted. Models and the active provider change only after discovery succeeds; a failed connection
+leaves the previous provider and model usable.
+
+The tested external-provider path uses the LinguaMesh fake provider on loopback. It is not evidence
+of interoperability with Ollama or any other third-party server. Full validation commands, the
+header-free local path, and the GTK/Xvfb CI gate are documented in
 [`docs/testing.md`](docs/testing.md). No release or packaging artifact is implemented yet.
 
 The native workflow checks out Core at the exact reviewed revision above. Development against an

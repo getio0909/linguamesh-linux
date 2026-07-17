@@ -34,9 +34,14 @@ cargo test --features demo-provider --locked
 cargo build --features demo-provider --locked
 ```
 
-The first test command covers the pure application state. The feature-enabled test command also
-starts the shared core fake provider, performs real loopback HTTP/SSE streaming, and verifies
-cancellation with partial-output retention.
+The first test command covers the pure application state, including atomic provider/model switching
+and failed-connection rollback. The feature-enabled test command also starts the shared core fake
+provider, performs real loopback HTTP/SSE streaming, verifies cancellation with partial-output
+retention, reconnects the built-in provider, connects and translates through a second loopback fake
+provider, and proves that a failed connection leaves the previous engine usable. A regression also
+verifies that an event stream ending without a terminal event becomes a failed operation while
+retaining partial output. The current counts are 16 no-default-feature tests and 23
+`demo-provider` tests.
 
 The GTK Rust source can be checked without native linking as a limited diagnostic:
 
@@ -49,13 +54,15 @@ These commands bypass sys-crate discovery and do not validate headers, ABI, link
 display behavior. Their cached sys-crate output can also make a later ordinary Cargo check look
 successful. The `pkg-config` commands below are therefore mandatory native-gate prerequisites;
 run `cargo clean -p graphene-sys` before rechecking native discovery after a source-only check.
+Do not extend this shortcut to `cargo test --no-run`: the GTK binary test still requires native
+linking.
 
 ## Native GUI validation
 
 On Debian or Ubuntu, install the native development headers:
 
 ```sh
-sudo apt-get install libgtk-4-dev libadwaita-1-dev gettext pkg-config
+sudo apt-get install libgtk-4-dev libadwaita-1-dev dbus-daemon gettext pkg-config xauth xvfb
 ```
 
 Then run the complete native gate:
@@ -65,7 +72,9 @@ pkg-config --modversion gtk4
 pkg-config --modversion libadwaita-1
 cargo fmt --all --check
 cargo clippy --all-targets --all-features --locked -- -D warnings
-cargo test --all-targets --all-features --locked
+GDK_BACKEND=x11 dbus-run-session -- xvfb-run --auto-servernum \
+  --server-args="-screen 0 1280x800x24" \
+  cargo test --all-targets --all-features --locked -- --test-threads=1
 cargo build --all-targets --all-features --locked
 ```
 
@@ -75,10 +84,17 @@ Run the development slice with:
 cargo run --features gui
 ```
 
+The all-feature binary test creates real GTK/libadwaita widgets, verifies that invalid connection
+attempts retain the active provider/model, clicks Connect using the built-in credential-free
+provider, clicks Translate, and waits for the streamed result. A private D-Bus session and Xvfb
+provide the runtime environment; tests are serialized because GTK owns process-global state. This
+is not comprehensive UI automation, accessibility, or Wayland coverage.
+
 The GitHub Actions native workflow pins Core revision
-`873b6da45447f73e4be4e2f1127c3c8d0f188cf2`, installs the headers, and runs the complete gate. A
-successful workflow run may provide native build evidence. A local host without `gtk4.pc` or
-`libadwaita-1.pc` must not claim that the GUI build or launch passed.
+`873b6da45447f73e4be4e2f1127c3c8d0f188cf2`, installs the headers plus D-Bus/Xvfb support, and runs
+the complete gate. A successful workflow run may provide native build evidence. The Xvfb change
+has no remote result yet. A local host without `gtk4.pc` or `libadwaita-1.pc` must not claim that
+the GUI build, launch, or GTK button test passed.
 
 ## Repository foundation check
 
@@ -102,6 +118,7 @@ git diff --check
 
 ## Unimplemented validation
 
-GTK component/UI automation, accessibility inspection, virtual-display execution, Wayland/X11
-smoke tests, Secret Service and portal tests, Flatpak smoke tests, runtime localization behavior,
-dependency/license automation, and release builds remain required before a supported release.
+Broader GTK component/UI automation, accessibility inspection, Wayland/X11 smoke tests, Secret
+Service and portal tests, third-party local-server interoperability, Flatpak smoke tests, runtime
+localization behavior, dependency/license automation, and release builds remain required before a
+supported release.

@@ -8,6 +8,61 @@ use std::fmt;
 /// 当前检查点提供的本地提供商标识。
 pub const LOCAL_FAKE_PROVIDER_ID: &str = "local-fake-provider";
 
+/// 当前检查点提供的内建提供商端点标识。
+pub const LOCAL_FAKE_PROVIDER_ENDPOINT: &str = "embedded://fake-provider";
+
+/// 描述不含凭据的会话内提供商配置。
+#[derive(Clone, Eq, PartialEq)]
+pub struct ProviderProfile {
+    id: String,
+    display_name: String,
+    endpoint: String,
+}
+
+impl ProviderProfile {
+    /// 创建不含凭据的提供商配置。
+    #[must_use]
+    pub fn new(
+        id: impl Into<String>,
+        display_name: impl Into<String>,
+        endpoint: impl Into<String>,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            display_name: display_name.into(),
+            endpoint: endpoint.into(),
+        }
+    }
+
+    /// 创建开发模式的内建假提供商配置。
+    #[must_use]
+    pub fn local_fake() -> Self {
+        Self::new(
+            LOCAL_FAKE_PROVIDER_ID,
+            "Local fake provider",
+            LOCAL_FAKE_PROVIDER_ENDPOINT,
+        )
+    }
+
+    /// 返回稳定提供商标识。
+    #[must_use]
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    /// 返回用户可见名称。
+    #[must_use]
+    pub fn display_name(&self) -> &str {
+        &self.display_name
+    }
+
+    /// 返回仅用于连接的端点。
+    #[must_use]
+    pub fn endpoint(&self) -> &str {
+        &self.endpoint
+    }
+}
+
 /// 描述原生客户端的可见操作状态。
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AppStatus {
@@ -110,8 +165,12 @@ pub enum StateError {
     MissingModel,
     /// 模型不在当前发现结果中。
     UnknownModel(String),
+    /// 提供商配置缺少必需字段。
+    InvalidProfile,
     /// 上一次翻译仍在运行。
     Busy,
+    /// 提供商连接尚未完成。
+    Connecting,
     /// 首个核心事件不是开始事件。
     UnexpectedFirstEvent,
     /// 核心流在首个事件之后重复发出开始事件。
@@ -128,7 +187,11 @@ impl fmt::Display for StateError {
             Self::MissingSource => formatter.write_str("Enter source text before translating."),
             Self::MissingModel => formatter.write_str("Select a model before translating."),
             Self::UnknownModel(model) => write!(formatter, "Model is not available: {model}"),
+            Self::InvalidProfile => {
+                formatter.write_str("Provider ID, display name, and endpoint must not be empty.")
+            }
             Self::Busy => formatter.write_str("A translation is already running."),
+            Self::Connecting => formatter.write_str("A provider connection is still in progress."),
             Self::UnexpectedFirstEvent => {
                 formatter.write_str("The core stream did not begin with a started event.")
             }
@@ -150,7 +213,8 @@ impl Error for StateError {}
 /// 保存与工具包无关的原生界面状态。
 #[derive(Clone)]
 pub struct AppState {
-    provider_id: String,
+    active_provider: ProviderProfile,
+    pending_provider: Option<ProviderProfile>,
     models: Vec<ModelDescriptor>,
     selected_model: Option<String>,
     source_text: String,
@@ -168,7 +232,8 @@ pub struct AppState {
 impl Default for AppState {
     fn default() -> Self {
         Self {
-            provider_id: LOCAL_FAKE_PROVIDER_ID.to_owned(),
+            active_provider: ProviderProfile::local_fake(),
+            pending_provider: None,
             models: Vec::new(),
             selected_model: None,
             source_text: String::new(),
@@ -195,7 +260,19 @@ impl AppState {
     /// 返回当前提供商标识。
     #[must_use]
     pub fn provider_id(&self) -> &str {
-        &self.provider_id
+        self.active_provider.id()
+    }
+
+    /// 返回当前活动提供商。
+    #[must_use]
+    pub const fn active_provider(&self) -> &ProviderProfile {
+        &self.active_provider
+    }
+
+    /// 返回正在连接且尚未提交的提供商。
+    #[must_use]
+    pub const fn pending_provider(&self) -> Option<&ProviderProfile> {
+        self.pending_provider.as_ref()
     }
 
     /// 返回已发现模型。
@@ -246,17 +323,50 @@ impl AppState {
         self.locale
     }
 
-    /// 使用核心发现结果更新模型选择。
+    /// 开始连接一个不含凭据的提供商。
+    pub fn begin_provider_connection(
+        &mut self,
+        profile: ProviderProfile,
+    ) -> Result<(), StateError> {
+        if profile.id().trim().is_empty()
+            || profile.display_name().trim().is_empty()
+            || profile.endpoint().trim().is_empty()
+        {
+            return Err(StateError::InvalidProfile);
+        }
+        if matches!(self.status, AppStatus::Translating | AppStatus::Cancelling) {
+            return Err(StateError::Busy);
+        }
+        if self.status == AppStatus::Connecting {
+            return Err(StateError::Connecting);
+        }
+        self.pending_provider = Some(profile);
+        self.status = AppStatus::Connecting;
+        self.error = None;
+        Ok(())
+    }
+
+    /// 仅在发现成功后原子提交提供商和模型。
     pub fn provider_connected(&mut self, models: Vec<ModelDescriptor>) {
+        if let Some(profile) = self.pending_provider.take() {
+            self.active_provider = profile;
+        }
         self.selected_model = models.first().map(|model| model.id.clone());
         self.models = models;
         self.status = AppStatus::Ready;
         self.error = None;
     }
 
-    /// 记录提供商连接失败。
+    /// 记录连接失败并保留上一个可用配置。
     pub fn provider_failed(&mut self, error: TranslationError) {
-        self.status = AppStatus::Failed;
+        self.pending_provider = None;
+        if !matches!(self.status, AppStatus::Translating | AppStatus::Cancelling) {
+            self.status = if self.models.is_empty() {
+                AppStatus::Failed
+            } else {
+                AppStatus::Ready
+            };
+        }
         self.error = Some(error);
     }
 
@@ -297,6 +407,9 @@ impl AppState {
 
     /// 创建共享核心请求并重置流式状态。
     pub fn begin_translation(&mut self) -> Result<TranslationRequest, StateError> {
+        if self.status == AppStatus::Connecting {
+            return Err(StateError::Connecting);
+        }
         if matches!(self.status, AppStatus::Translating | AppStatus::Cancelling) {
             return Err(StateError::Busy);
         }
@@ -386,6 +499,13 @@ impl AppState {
         self.error = Some(TranslationError::new(ErrorKind::Internal, message));
     }
 
+    /// 记录不再等待终止事件的操作失败。
+    pub fn record_operation_failure(&mut self, error: TranslationError) {
+        self.status = AppStatus::Failed;
+        self.partial_output = !self.output.is_empty();
+        self.error = Some(error);
+    }
+
     /// 返回安全的类型化错误文本。
     #[must_use]
     pub fn error_text(&self) -> Option<String> {
@@ -411,7 +531,7 @@ impl AppState {
     pub fn diagnostics_text(&self) -> String {
         format!(
             "Core protocol: {PROTOCOL_VERSION}\nProvider: {}\nModel: {}\nStatus: {}\nTheme: {}\nLocale: {}\nOutput bytes: {}",
-            self.provider_id,
+            self.active_provider.id(),
             self.selected_model.as_deref().unwrap_or("None"),
             self.status.label(),
             self.theme.label(),
@@ -423,7 +543,7 @@ impl AppState {
 
 #[cfg(test)]
 mod tests {
-    use super::{AppState, AppStatus, StateError, ThemePreference, UiLocale};
+    use super::{AppState, AppStatus, ProviderProfile, StateError, ThemePreference, UiLocale};
     use linguamesh_domain::{
         ErrorKind, ModelDescriptor, ModelSource, TranslationError, TranslationEvent,
     };
@@ -582,5 +702,177 @@ mod tests {
         assert!(diagnostics.contains("Theme: Dark"));
         assert!(diagnostics.contains("Locale: zh-CN"));
         assert!(!diagnostics.contains("Hello"));
+    }
+
+    #[test]
+    fn successful_connection_atomically_replaces_profile_and_models() {
+        let mut state = connected_state();
+        let previous_provider = state.provider_id().to_owned();
+        let next_profile = ProviderProfile::new(
+            "local-session",
+            "Local session provider",
+            "http://127.0.0.1:11434/v1/",
+        );
+
+        state
+            .begin_provider_connection(next_profile)
+            .expect("begin connection");
+
+        assert_eq!(state.status(), AppStatus::Connecting);
+        assert_eq!(state.provider_id(), previous_provider);
+        assert_eq!(state.models()[0].id, "fake-translator");
+        assert_eq!(
+            state.pending_provider().map(ProviderProfile::id),
+            Some("local-session")
+        );
+        assert_eq!(state.begin_translation(), Err(StateError::Connecting));
+
+        state.provider_connected(vec![ModelDescriptor {
+            id: "local-model".to_owned(),
+            display_name: "Local Model".to_owned(),
+            source: ModelSource::Discovered,
+        }]);
+
+        assert_eq!(state.status(), AppStatus::Ready);
+        assert_eq!(state.provider_id(), "local-session");
+        assert_eq!(state.selected_model(), Some("local-model"));
+        assert!(state.pending_provider().is_none());
+    }
+
+    #[test]
+    fn failed_connection_preserves_previous_profile_and_models() {
+        let mut state = connected_state();
+        state
+            .begin_provider_connection(ProviderProfile::new(
+                "unavailable",
+                "Unavailable provider",
+                "http://127.0.0.1:9/v1/",
+            ))
+            .expect("begin connection");
+
+        state.provider_failed(TranslationError::new(
+            ErrorKind::Network,
+            "The provider could not be reached.",
+        ));
+
+        assert_eq!(state.status(), AppStatus::Ready);
+        assert_eq!(state.provider_id(), "local-fake-provider");
+        assert_eq!(state.selected_model(), Some("fake-translator"));
+        assert_eq!(state.models().len(), 1);
+        assert!(state.pending_provider().is_none());
+        assert_eq!(
+            state.error_text().as_deref(),
+            Some("Network: The provider could not be reached.")
+        );
+        let request = state
+            .begin_translation()
+            .expect("previous provider request");
+        assert_eq!(request.model_id, "fake-translator");
+    }
+
+    #[test]
+    fn provider_change_is_rejected_while_translation_is_active() {
+        let mut state = connected_state();
+        state.begin_translation().expect("request");
+
+        let result = state.begin_provider_connection(ProviderProfile::new(
+            "local-session",
+            "Local session provider",
+            "http://127.0.0.1:11434/v1/",
+        ));
+
+        assert_eq!(result, Err(StateError::Busy));
+        assert_eq!(state.provider_id(), "local-fake-provider");
+        assert!(state.pending_provider().is_none());
+    }
+
+    #[test]
+    fn invalid_profile_is_rejected_before_connection() {
+        let mut state = connected_state();
+
+        let result = state.begin_provider_connection(ProviderProfile::new(
+            " ",
+            "Incomplete provider",
+            "http://127.0.0.1:11434/v1/",
+        ));
+
+        assert_eq!(result, Err(StateError::InvalidProfile));
+        assert_eq!(state.status(), AppStatus::Ready);
+        assert_eq!(state.provider_id(), "local-fake-provider");
+        assert!(state.pending_provider().is_none());
+    }
+
+    #[test]
+    fn rejected_connection_does_not_corrupt_active_translation() {
+        let mut state = connected_state();
+        state.begin_translation().expect("request");
+        state
+            .apply_translation_event(TranslationEvent::Started { sequence: 0 })
+            .expect("started");
+
+        state.provider_failed(TranslationError::new(
+            ErrorKind::Internal,
+            "A provider cannot be changed while a translation is running.",
+        ));
+
+        assert_eq!(state.status(), AppStatus::Translating);
+        assert_eq!(state.provider_id(), "local-fake-provider");
+        state
+            .apply_translation_event(TranslationEvent::Completed { sequence: 1 })
+            .expect("completed");
+        assert_eq!(state.status(), AppStatus::Completed);
+    }
+
+    #[test]
+    fn operation_failure_terminates_state_and_retains_partial_output() {
+        let mut state = connected_state();
+        state.begin_translation().expect("request");
+        state
+            .apply_translation_event(TranslationEvent::Started { sequence: 0 })
+            .expect("started");
+        state
+            .apply_translation_event(TranslationEvent::TextDelta {
+                sequence: 1,
+                text: "partial".to_owned(),
+            })
+            .expect("delta");
+
+        state.record_operation_failure(TranslationError::new(
+            ErrorKind::Internal,
+            "The core event stream ended without a terminal event.",
+        ));
+
+        assert_eq!(state.status(), AppStatus::Failed);
+        assert_eq!(state.output(), "partial");
+        assert!(state.has_partial_output());
+        assert_eq!(
+            state.error_text().as_deref(),
+            Some("Internal: The core event stream ended without a terminal event.")
+        );
+    }
+
+    #[test]
+    fn diagnostics_omit_endpoint_source_and_secret_sentinel() {
+        let mut state = connected_state();
+        state.set_source_text("SOURCE_SENTINEL");
+        state
+            .begin_provider_connection(ProviderProfile::new(
+                "session-provider",
+                "Session provider",
+                "http://127.0.0.1:11434/v1/SECRET_SENTINEL",
+            ))
+            .expect("begin connection");
+        state.provider_connected(vec![ModelDescriptor {
+            id: "session-model".to_owned(),
+            display_name: "Session Model".to_owned(),
+            source: ModelSource::Discovered,
+        }]);
+
+        let diagnostics = state.diagnostics_text();
+
+        assert!(diagnostics.contains("Provider: session-provider"));
+        assert!(!diagnostics.contains("127.0.0.1"));
+        assert!(!diagnostics.contains("SOURCE_SENTINEL"));
+        assert!(!diagnostics.contains("SECRET_SENTINEL"));
     }
 }
