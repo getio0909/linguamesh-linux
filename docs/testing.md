@@ -113,10 +113,16 @@ captures the real GTK translation test's `Notify` call on a private D-Bus sessio
 generic title and body text and absence of the source and translated strings. This proves the
 application-to-notification-service transport and privacy boundary, not desktop-shell rendering.
 
+The document portal runner starts the real XDG document portal services on a private D-Bus session,
+adds a temporary fixture through a file descriptor, verifies the returned host path, grants and
+revokes the application read permission, and deletes the lease. This proves the document-portal
+lease lifecycle without touching a developer file; interactive GTK file chooser and drag/drop
+gestures remain separate integration boundaries.
+
 The toolkit-independent suite also tests the text-import decoder for UTF-8 BOM removal, invalid
 UTF-8 rejection, and the 4 MiB bound. The native GTK flow verifies the **Open text file** control
 is focusable, is disabled after worker loss, and registers a single-file `DropTarget` on the source
-editor. Interactive file-dialog and drag/drop gestures remain manual/portal integration boundaries.
+editor. Interactive file-dialog and drag/drop gestures remain manual portal integration boundaries.
 
 The GTK Rust source can be checked without native linking as a limited diagnostic. The `v4_10`
 gtk-rs feature is enabled because the accessibility test helpers and semantic update APIs require
@@ -142,8 +148,8 @@ This check parses the manifest and Cargo source set, validates 40-character sour
 archives, and runs `desktop-file-validate` plus `appstreamcli`. The `Flatpak Linux` workflow runs
 the pinned manifest in the GNOME 49 SDK container, uploads a prerelease CI bundle, and runs
 `tools/run-flatpak-smoke.sh` under Xvfb with a private D-Bus session. That smoke only proves
-installation and bounded application startup; it does not publish a release or prove portal leases
-or desktop notification delivery. `flatpak-builder` is not installed on this host, so local SDK
+installation and bounded application startup; it does not publish a release or prove interactive
+file-chooser portal leases or desktop notification delivery. `flatpak-builder` is not installed on this host, so local SDK
 build and sandbox launch remain unavailable.
 
 These commands bypass sys-crate discovery and do not validate headers, ABI, linking, launch, or

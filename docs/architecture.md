@@ -179,7 +179,7 @@ release-manifest integration and broader product compatibility remain required b
 The client owns native lifecycle, accessibility, appearance, keyboard behavior, file dialogs,
 portals, drag-and-drop, clipboard, notifications, XDG paths, desktop metadata, display-server
 integration, and credential resolution. This slice includes the XDG profile-database path,
-runtime action-label catalogs, and a completion notification through `GApplication`; the
+runtime action-label catalogs, a real document-portal lease lifecycle fixture, and a completion notification through `GApplication`; the
 notification contains generic English text and never source or translated content. Physical
 desktop notification-server delivery remains a packaging/runtime validation boundary.
 

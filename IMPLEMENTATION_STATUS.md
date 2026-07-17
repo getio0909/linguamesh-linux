@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, a remotely built pinned Flatpak bundle with bounded sandbox startup, and private notification-service transport validation are implemented; prompted interactive flows, portal leases, desktop-shell notification delivery, and release artifacts remain open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, and a real XDG document-portal lease lifecycle fixture are implemented; prompted interactive flows, interactive file-chooser portal leases, desktop-shell notification delivery, and release artifacts remain open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -176,8 +176,9 @@ Validated on 2026-07-17 with Rust 1.93.0:
 - The native text import slice accepts only UTF-8 TXT/Markdown content up to 4 MiB, strips a UTF-8
   BOM, rejects invalid or oversized input, and reads through GIO's partial asynchronous API. The
   source editor also accepts a single GIO file through GTK drag-and-drop and reuses the same
-  validation path. Decoder tests and source-level checks passed locally; interactive portal/file-
-  lease coverage remains open.
+  validation path. Decoder tests and source-level checks passed locally. The real XDG document
+  portal fixture now verifies add, host-path mapping, application permission grant/revoke, and
+  lease deletion; interactive file-chooser and drag/drop portal gestures remain open.
 - `bash tools/validate-flatpak-metadata.sh` passed locally. It parsed the Flatpak manifest and
   Cargo source set, verified immutable Linux/Core source pins and archive hashes, and passed
   `desktop-file-validate` plus `appstreamcli`. The manifest uses the GNOME 49 SDK, installs the
@@ -185,7 +186,7 @@ Validated on 2026-07-17 with Rust 1.93.0:
   current Linux surface. The `Flatpak Linux` workflow runs this manifest in a GNOME 49 SDK
   container, uploads a prerelease CI bundle, and runs the bounded Xvfb/private-D-Bus sandbox smoke;
   local `flatpak-builder` is unavailable, so the SDK build and sandbox smoke remain remote-only.
-  Portal leases, desktop-shell notification delivery, and release-artifact reproducibility remain
+  Interactive file-chooser portal leases, desktop-shell notification delivery, and release-artifact reproducibility remain
   separate gates.
 - `bash tools/run-storage-fault-test.sh` passed its exact ignored test separately: 1 passed, 0
   failed, 0 ignored. A private 8 MiB tmpfs produced real kernel `ENOSPC` failures for persistent
@@ -249,6 +250,13 @@ title/body without source or translated content. Earlier fixture revisions `124a
 remain retained failures: the first listened on a bus without a private session and the second
 corrected that session but still had no notification service. Desktop-shell rendering, portal leases,
 and prompted interactive flows remain separate gates.
+
+Document portal lease revision `7fbd65f08ebffa55777e0d7804d270fe683ca6c6` passed
+repository-foundation run `29611395903` and Native Linux run `29611395919` (job `87986665827`).
+The Ubuntu 24.04 job installed the real XDG document portal services and verified add, host-path
+mapping, application read-permission grant/revoke, and lease deletion against a private temporary
+fixture. This proves the document-portal lease lifecycle, not interactive GTK file chooser or
+drag-and-drop gestures; those remain separate gates.
 
 Loopback provider revision `7d7eba9960b657f0460fb0daaaaebaaa609f39b1` passed repository-foundation
 run `29604269516` and Native Linux run `29604269568` (job `87963611054`). The Ubuntu 24.04 job
@@ -409,8 +417,8 @@ in the GitHub Actions evidence above, but those native checks remain unavailable
 - Complete canonical UI gettext coverage, plural/placeholder handling, and visual locale/RTL verification.
 - Runtime database faults beyond the verified private-tmpfs `ENOSPC` transaction boundary,
   including read-only media, corruption, power loss, and broader SQLite VFS failures.
-- XDG portals beyond the implemented user-data path, file workflows,
-  clipboard/drag-and-drop, desktop-shell notification rendering, AT-SPI/Orca and physical-keyboard accessibility coverage,
+- XDG portals beyond the implemented user-data path and document-portal lease lifecycle, interactive
+  file chooser/drag-and-drop gestures, desktop-shell notification rendering, AT-SPI/Orca and physical-keyboard accessibility coverage,
   physical-compositor/GPU Wayland coverage, broader X11/desktop coverage, Flatpak portal/notification
   delivery, and release artifacts.
 - Directory-descriptor or `openat2` hardening against a concurrent same-UID path replacement during

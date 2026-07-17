@@ -58,8 +58,9 @@ writes no completion flag. A user-supplied OpenAI-compatible base endpoint such 
 Use **Open text file** to load a UTF-8 TXT or Markdown file into the source editor. The native
 GTK file dialog and asynchronous GIO partial read enforce a 4 MiB limit, strip a UTF-8 BOM, reject
 invalid UTF-8, and never place the selected path or file contents in diagnostics. Dropping one GIO
-file onto the source editor reuses the same bounded import path; portal-specific file leases remain
-a separate follow-up work item.
+file onto the source editor reuses the same bounded import path. Native CI also verifies the real
+XDG document-portal lease lifecycle; interactive portal file chooser and drag/drop gestures remain
+separate follow-up work.
 
 The credential field is optional. Its value is copied into Core's secret-aware `SecretValue`, the
 widget is cleared immediately, and the temporary GTK string is dropped. Without Remember, a

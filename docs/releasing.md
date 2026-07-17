@@ -4,7 +4,8 @@
 
 An unreleased native application target and a pinned Flatpak packaging scaffold now exist. The
 GNOME 49 SDK workflow builds a prerelease CI bundle from pinned sources and runs the bounded
-Xvfb/private-D-Bus sandbox smoke. No portal/notification delivery test, signed artifact, or
+Xvfb/private-D-Bus sandbox smoke. The native gate verifies the real document-portal lease lifecycle,
+but no interactive file-chooser portal, desktop notification delivery, signed artifact, or
 distributable release has been verified. The
 vertical slice must not be tagged or published as a product release, and no packaging claim beyond
 the recorded CI build is valid. Its bundled fake provider is development-only behavior. The optional
@@ -50,7 +51,7 @@ A Linux release may be prepared only after:
 
 1. pinned Rust, GTK, GLib/GIO, and packaging toolchains build and test successfully on documented environments;
 2. LinguaMesh Core, protocol, provider catalog, persistence, and localization versions match the central release manifest;
-3. real desktop Secret Service CRUD/cleanup, the session-only fallback, complete SecretRef-backed profile lifecycle, multi-profile management, bounded native text import (including source-editor drag-and-drop), XDG paths, portals, accessibility, Wayland, practical X11 support, desktop notification delivery, migrations, and packaging smoke tests are verified;
+3. real desktop Secret Service CRUD/cleanup, the session-only fallback, complete SecretRef-backed profile lifecycle, multi-profile management, bounded native text import (including source-editor drag-and-drop), XDG paths, document-portal leases and interactive file workflows, accessibility, Wayland, practical X11 support, desktop notification delivery, migrations, and packaging smoke tests are verified;
 4. dependency and LGPL compliance review, third-party notices, privacy/security review, changelog, checksums, source archive, and rollback information are complete;
 5. protected release infrastructure produces reproducible artifacts without exposing credentials.
 
