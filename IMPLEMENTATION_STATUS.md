@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Core alpha.2 non-secret persistence/restart slice verified locally and in native Linux CI
+Status: Multiple non-secret provider profiles verified locally; native Linux CI pending
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -12,6 +12,10 @@ Assumption: the existing first-party `linguamesh-storage` crate and its already-
 SQLite dependency closure are the approved persistence contract for this Linux slice. No new
 third-party direct dependency or native Secret Service implementation is introduced.
 
+Assumption: the Linux GTK boundary may create `profile-<GLib UUID>` stable IDs and validate them
+through Core `ProviderProfileId`; this avoids an unnecessary Core revision while names and
+timestamps remain excluded from persistent identity.
+
 ## Implemented
 
 - Rust 1.93.0 Cargo package at `0.1.0-alpha.2`, with locked Core alpha.2 path dependencies and
@@ -21,9 +25,11 @@ third-party direct dependency or native Secret Service implementation is introdu
   catalog `0.1.0`, with the required cancellation, compatibility, typed Rust host-secret broker,
   model-discovery, streaming-text, and text-translation features.
 - Toolkit-independent state starts disconnected and uses canonical Core `ProviderProfile` and
-  `ProviderProfileId` values. Matching connection results atomically commit pending provider and
-  models; stale results and failed switches preserve the last active provider, models, and
-  selection.
+  `ProviderProfileId` values. It atomically restores a sorted multi-profile snapshot, keeps the
+  selected form row, persisted default, connected saved row, and pending deletion distinct, and
+  rejects duplicate IDs, missing defaults, session references, and stale results without partial
+  mutation. Matching connection results atomically commit pending provider and models; failed
+  switches preserve the last active provider, models, selection, and every saved row.
 - Model discovery does not auto-select its first result. A saved model is restored only while it is
   still available; otherwise translation remains disabled until deliberate model selection is
   confirmed by the worker. Provider controls remain disabled until startup completes, and a
@@ -34,12 +40,17 @@ third-party direct dependency or native Secret Service implementation is introdu
   continues in explicit session-only mode after a typed storage initialization failure. On Linux's
   default Unix VFS, Core's SQLite no-follow open rejects any symbolic-link component, while the
   Linux host also rejects hard-linked, non-regular, or inode-mismatched leaf files before use.
-- An explicit remember choice atomically saves only provider ID, display name, preset, adapter,
-  endpoint, enabled state, and the last confirmed model. Startup restores those fields into the
-  form but remains disconnected and performs no network request. A session switch, stale model
-  command, failed persistent switch, or connection cancelled before its persistence commit cannot
-  replace the last confirmed restart profile. Each database commit must succeed before its
+- An explicit remember choice atomically creates or updates only provider ID, display name, preset,
+  adapter, endpoint, enabled state, and the last confirmed model, then makes that row the restart
+  default. Startup restores every row and default without a network request. Form selection does
+  not activate or connect. Model changes update the connected ID even when another row is displayed.
+  A session switch, stale model command, failed persistent switch, or connection cancelled before
+  commit cannot replace any saved row or default. Each database commit must succeed before its
   corresponding runtime state and success event are committed.
+- Exact-ID deletion removes one saved row transactionally. Missing rows, storage failure, active
+  translation, shutdown, and stale results are typed rejections. Deleting the connected saved copy
+  intentionally preserves its validated engine/model as session-only, and later model selection
+  cannot silently recreate it.
 - The bounded worker uses `linguamesh_application::ProviderManager` and Core's bounded typed
   host-secret broker on a dedicated Tokio runtime. Fake-provider readiness only fills the default
   endpoint; it does not connect. Explicit Connect, SelectModel, and Translate commands drive real
@@ -53,12 +64,14 @@ third-party direct dependency or native Secret Service implementation is introdu
 - Connection cancellation uses a `CancellationToken`; translation cancellation uses Core's
   cross-thread handle. Both bypass command-queue backpressure. Partial output is retained, control
   commands receive priority, and a cancellation/terminal-event race remains idempotent.
-- GTK 4/libadwaita source provides provider name, endpoint, optional session credential, explicit
-  non-secret remember choice, connection and model selection, saved/session status, language
-  controls, source/output views, Translate/Stop, typed errors, partial-result display, appearance,
-  locale fallback notice, keyboard mnemonics, and redacted diagnostics. Provider controls are also
-  blocked until worker startup finishes; provider/model/language controls are blocked during
-  connection or translation, and event processing is capped per main-context tick.
+- GTK 4/libadwaita source provides a saved-profile dropdown, random stable IDs for new profiles,
+  provider name, endpoint, optional session credential, explicit non-secret remember/remove
+  choices, connection and model selection, saved/session status, language controls, source/output
+  views, Translate/Stop, typed errors, partial-result display, appearance, locale fallback notice,
+  keyboard mnemonics, and redacted diagnostics. Selecting a row only prefills non-secret fields.
+  Profile/remember/remove controls fail closed when storage is unavailable, all conflicting
+  controls are blocked during connection, model selection, translation, or deletion, and event
+  processing is capped per main-context tick.
 - Fourteen canonical official/pseudo PO catalogs pinned to l10n revision
   `52e73ea2a6cc7e6e7409b2b6eb0d02db35576a49`. Sync rejects a different revision, dirty generated
   source artifacts, stale copies, and unexpected catalog counts.
@@ -78,11 +91,13 @@ Validated on 2026-07-17 with Rust 1.93.0:
   HEAD was a documentation-only descendant whose scoped compiled-source diff from that revision
   was empty.
 - `cargo fmt --all --check`, the locked demo-provider check, strict Clippy, and build passed.
-- `cargo test --no-default-features --locked` passed: 29 tests, 0 failed.
-- `cargo test --features demo-provider --locked` passed: 50 tests, 0 failed. Coverage includes
+- `cargo test --no-default-features --locked` passed: 38 tests, 0 failed.
+- `cargo test --features demo-provider --locked` passed: 62 tests, 0 failed. Coverage includes
   explicit connection and model selection, exact compatibility rejection, authenticated one-shot
-  session secrets, fail-closed persistent references, non-secret save/restart/re-entry/translation,
-  no-auto-connect restore, live and closed SQLite artifact secret scans, exact private permissions,
+  session secrets, fail-closed persistent references, two-profile create/update/activate/restart,
+  independent last models, no-auto-connect full-snapshot restore, two-credential isolation and live
+  and closed SQLite artifact secret scans, inactive/missing/connected deletion, continued
+  session-only translation after deleting the connected copy, exact private permissions,
   permissive-directory, symbolic-ancestor, and hard-link rejection, session fallback after storage
   failure,
   stale/cancelled/failed persistence rollback through the public command path, cancellable
@@ -134,12 +149,15 @@ display-server, accessibility, or GTK button-test result is claimed. With the GT
 present, `DOCS_RS=1 cargo test --all-targets --all-features --locked --no-run` reaches native
 linking and failed on unavailable GTK symbols; it is not a valid header-free substitute.
 Runtime database I/O fault injection after successful startup is not covered locally or remotely.
+The changed GTK multi-profile flow has only passed header-free source checking locally; its real
+widget test, native linking, and build still require the pending GitHub Actions run.
 
 ## Remaining scope
 
-- A native Secret Service implementation, credential create/read/update/delete tests, onboarding,
-  deletion, and active switching among multiple saved profiles. The current credential path is
-  deliberately session-only and does not satisfy secure credential persistence.
+- A native Secret Service implementation, credential create/read/update/delete tests, and complete
+  onboarding. Non-secret multiple-profile create/update/switch/delete is implemented, but the
+  current credential path is deliberately session-only and does not satisfy secure credential
+  persistence.
 - Central release-manifest integration for this exact Linux/Core revision; broader product
   compatibility beyond the alpha.2 startup gate remains unclaimed.
 - Interoperability evidence for third-party local servers, including Ollama; automated endpoint

@@ -6,11 +6,14 @@ An unreleased native application target now exists, but no Flatpak manifest or d
 artifact exists. The vertical slice must not be tagged or published as a product release, and no
 packaging claim is valid. Its bundled fake provider is development-only behavior. The optional
 OpenAI-compatible endpoint form accepts a one-shot session credential, clears the field
-immediately, and never persists the credential or its reference. An explicit remember checkbox can
-store only the provider name, endpoint, and model preference in the XDG user data SQLite database;
-the private application directory is `0700`, the database is `0600`, and Core's no-follow SQLite
-open behavior on Linux's default Unix VFS remains required. Startup prefills that saved profile but
-never auto-connects, so a credential must be entered again when required. The external-provider
+immediately, and never persists the credential or its reference. A saved-profile dropdown and
+explicit remember checkbox can create, update, activate, switch, and remove multiple rows containing
+only provider names, endpoints, and model preferences in the XDG user data SQLite database. The
+private application directory is `0700` and the database is `0600`. Removing the connected row
+leaves its already validated runtime session active but no longer persistent. Core's no-follow
+SQLite open behavior on Linux's default Unix VFS remains required. Startup prefills the last
+persistently activated row but never auto-connects, so a credential must be entered again when
+required. The external-provider
 path is tested only with LinguaMesh's loopback fake provider. Persistent secret references fail
 closed because no native Secret Service backend exists. The native workflow pins reviewed Core
 functional revision

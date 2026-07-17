@@ -42,27 +42,31 @@ cargo test --features demo-provider --locked
 cargo build --features demo-provider --locked
 ```
 
-The no-default suite contains 29 reducer tests. It covers the disconnected initial state, restoring
-a saved profile without activating it, rejecting a saved session reference, pending and active
-canonical profiles, exact stale-result rejection, atomic rollback, deliberate model selection,
-credential-free saved-profile commits, session switches that preserve restart state, saved-model
-restoration only when available, ordered events, partial output, all Core alpha.2 error categories,
-and diagnostics that omit content, endpoints, model IDs, and secret references.
+The no-default suite contains 38 reducer tests. It covers the disconnected initial state, atomic
+sorted restoration of multiple profiles without activation, duplicate/missing/default/session-ref
+snapshot rejection, form-only selection, exact pending deletion, connected-row removal that keeps
+the runtime session, pending and active canonical profiles, exact stale-result rejection, atomic
+rollback, deliberate model selection, per-ID credential-free upserts, session switches that
+preserve every restart row/default, active-ID model updates while another row is displayed,
+saved-model restoration only when available, ordered events, partial output, all Core alpha.2 error
+categories, and diagnostics that omit content, endpoints, IDs, model IDs, and secret references.
 
-The `demo-provider` suite contains 50 tests in total. Its worker tests validate the exact Core
+The `demo-provider` suite contains 62 tests in total. Its worker tests validate the exact Core
 compatibility contract, prove that fake-service readiness does not auto-connect, require explicit
 Connect and model selection, exercise real loopback HTTP/SSE streaming, consume an authenticated
 session secret through the bounded typed host-secret broker, and fail closed for unavailable
-session or persistent secrets. Persistence coverage saves and restores a non-secret profile and
-model across worker restarts, proves restart performs no provider request, reconnects after explicit
-credential re-entry, scans the SQLite side files for credential and `session:` canaries, verifies
-exact `0700`/`0600` permissions, rejects a permissive parent, symbolic ancestor, and hard-linked
-database without following static unsafe paths, preserves restart state across session switches,
-failed persistent changes, and public connection cancellation, and keeps session mode usable after
-storage initialization fails. The suite also
+session or persistent secrets. Persistence coverage creates two profiles with independent models,
+restores the full list and active ID without provider requests, reconnects after explicit credential
+re-entry, proves two credential values remain isolated, scans SQLite side files for both credential
+and `session:` canaries, deletes inactive/missing/connected rows, keeps a deleted connected runtime
+usable without recreating it, verifies exact `0700`/`0600` permissions, rejects a permissive parent,
+symbolic ancestor, and hard-linked database without following static unsafe paths, preserves every
+restart row/default across session switches, failed persistent changes, and public connection
+cancellation, and keeps session mode usable after storage initialization fails. The suite also
 covers immediate connection cancellation, translation cancellation with partial output, active,
 queued, and full-command-queue shutdown, translation terminal delivery during shutdown,
-saved-model behavior, and failed-switch rollback to the previous Core `ProviderManager` and model.
+delete rejection during translation, saved-model behavior, and failed-switch rollback to the
+previous Core `ProviderManager` and model.
 
 The GTK Rust source can be checked without native linking as a limited diagnostic:
 
@@ -109,11 +113,13 @@ The all-feature binary test creates real GTK/libadwaita widgets, verifies the in
 state, waits for fake-endpoint readiness without auto-connect, clears a session credential from the
 form immediately after Connect, explicitly selects a discovered model, preserves the active
 provider/model after a failed switch, and completes a streamed translation. It also injects a
-restored profile event and verifies the GTK form prefills its name and endpoint, enables the
-remember checkbox, remains disconnected, leaves the model list unselected, and is not overwritten
-by fake-provider readiness. A private D-Bus session and Xvfb provide the runtime environment; tests
-are serialized because GTK owns process-global state. This is not comprehensive UI automation,
-accessibility, or Wayland coverage.
+two-profile startup snapshot, verifies persisted-active prefill without activation, browses another
+row without changing the runtime/default, preserves a persistent secret reference so the real
+Connect path fails closed, rejects a disabled saved row without re-enabling it, checks
+delete-pending control blocking, applies an exact deletion result, and verifies a fresh random
+draft ID. A private D-Bus session and Xvfb provide the runtime environment; tests are serialized
+because GTK owns process-global state. This is not comprehensive UI automation, accessibility, or
+Wayland coverage.
 
 The GitHub Actions native workflow pins Core revision
 `fbf3e9b5927049dccaa19f8c36013495ffebba12`, installs the headers plus D-Bus/Xvfb support, and runs

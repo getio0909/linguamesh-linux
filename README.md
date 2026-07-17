@@ -4,9 +4,11 @@ LinguaMesh for Linux is the native Rust, GTK 4, and libadwaita client for the Li
 translation suite. The current Core `0.1.0-alpha.2` vertical slice starts disconnected, connects
 only after an explicit user action, requires a deliberate model choice for a new profile, streams
 translated text, and supports cancellation with partial-output retention. It can explicitly
-remember a non-secret provider profile and revalidate its model preference after reconnect while
-keeping credentials session-only. It also displays typed errors, switches appearance, records
-locale preference, and exposes redacted diagnostics.
+remember multiple non-secret provider profiles, switch or update them through the same explicit
+connection action, and revalidate each model preference after reconnect while keeping credentials
+session-only. Saved copies can be removed without interrupting an already connected session. The
+client also displays typed errors, switches appearance, records locale preference, and exposes
+redacted diagnostics.
 
 ## Project authority
 
@@ -43,17 +45,21 @@ OpenAI-compatible base endpoint such as `http://127.0.0.1:11434/v1/` follows the
 The credential field is optional and session-only. Its value is copied into Core's secret-aware
 `SecretValue`, the widget is cleared immediately, the temporary GTK string is dropped, and a
 `session:` `SecretRef` lets the bounded typed host-secret broker provide it once during connection.
-Select **Remember non-secret profile and model** before connecting to save only the provider name,
-endpoint, and validated model preference. The worker stores that credential-free copy in Core's
-SQLite database at
+Choose **New profile...** or an existing saved profile, then select **Remember non-secret profile
+and model** before connecting to create, update, and activate only its provider name, endpoint, and
+validated model preference. New saved profiles receive a random stable ID independent of their
+display name. The worker stores each credential-free copy in Core's SQLite database at
 `$XDG_DATA_HOME/dev.linguamesh.LinguaMesh/linguamesh.sqlite3` (normally under
 `~/.local/share`) with a `0700` application directory and `0600` database file. Core opens SQLite
 with no-follow protection on Linux's default Unix VFS, rejecting any symbolic-link component; the
 Linux layer additionally rejects hard links and non-private storage paths.
 
-Startup restores the saved fields into the GTK form but remains disconnected and performs no
-provider request. Provider controls remain disabled until startup finishes. Enter the credential
-again when required, then click **Connect**. Credential
+Startup restores the complete saved-profile list and displays the last persistently activated row,
+but remains disconnected and performs no provider request. Selecting another row only prefills the
+form. Enter the credential again when required, then click **Connect** to validate and switch.
+**Remove saved profile** deletes only that stored row; if it is currently connected, the validated
+runtime session and model continue in visibly session-only mode. Provider controls remain disabled
+until startup finishes. Credential
 values and secret references are never written to the database. Secret Service is not implemented,
 so a persistent `SecretRef` still fails closed with a typed error instead of falling back to
 plaintext. Session-only connection remains available when remembering is disabled or profile

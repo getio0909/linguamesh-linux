@@ -7,7 +7,7 @@ use linguamesh_linux::model::{
     AppState, AppStatus, ProviderProfile, StateError, ThemePreference, UiLocale,
 };
 use linguamesh_linux::worker::{CoreWorker, PersistenceIntent, WorkerCommand, WorkerEvent};
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::mpsc::TryRecvError;
 use std::time::Duration;
@@ -15,7 +15,7 @@ use std::time::Duration;
 const SOURCE_LOCALES: [Option<&str>; 3] = [None, Some("en"), Some("zh-CN")];
 const TARGET_LOCALES: [&str; 3] = ["zh-CN", "en", "ja"];
 const MAX_EVENTS_PER_TICK: usize = 64;
-const CUSTOM_PROVIDER_ID: &str = "session-local-provider";
+const PROFILE_ID_GENERATION_ATTEMPTS: usize = 8;
 const CUSTOM_PROVIDER_PRESET_ID: &str = "custom-openai-compatible";
 const OPENAI_ADAPTER_TYPE: &str = "openai_chat_completions";
 const DEFAULT_PROVIDER_NAME: &str = "Local OpenAI-compatible provider";
@@ -23,10 +23,12 @@ const DEFAULT_PROVIDER_ENDPOINT: &str = "http://127.0.0.1:11434/v1/";
 
 #[derive(Clone)]
 struct UiBindings {
+    saved_profile: gtk::DropDown,
     provider_name: gtk::Entry,
     provider_endpoint: gtk::Entry,
     provider_credential: gtk::PasswordEntry,
     remember_profile: gtk::CheckButton,
+    remove_saved_profile: gtk::Button,
     connect: gtk::Button,
     active_provider: gtk::Label,
     model: gtk::DropDown,
@@ -41,6 +43,8 @@ struct UiBindings {
     error: gtk::Label,
     locale_note: gtk::Label,
     diagnostics: gtk::Label,
+    profile_selection_guard: Rc<Cell<bool>>,
+    draft_profile_id: Rc<RefCell<Option<ProviderProfileId>>>,
 }
 
 fn main() -> glib::ExitCode {
@@ -95,10 +99,12 @@ fn create_window(
     let root = create_root();
     let (
         provider_session,
+        saved_profile,
         provider_name,
         provider_endpoint,
         provider_credential,
         remember_profile,
+        remove_saved_profile,
         connect,
         active_provider,
     ) = create_provider_session();
@@ -149,10 +155,12 @@ fn create_window(
     (
         window,
         UiBindings {
+            saved_profile,
             provider_name,
             provider_endpoint,
             provider_credential,
             remember_profile,
+            remove_saved_profile,
             connect,
             active_provider,
             model,
@@ -167,6 +175,8 @@ fn create_window(
             error,
             locale_note,
             diagnostics,
+            profile_selection_guard: Rc::new(Cell::new(false)),
+            draft_profile_id: Rc::new(RefCell::new(None)),
         },
         theme,
         locale,
@@ -213,26 +223,46 @@ fn create_editors() -> (gtk::Paned, gtk::TextBuffer, gtk::TextBuffer) {
 
 fn create_provider_session() -> (
     gtk::Box,
+    gtk::DropDown,
     gtk::Entry,
     gtk::Entry,
     gtk::PasswordEntry,
     gtk::CheckButton,
     gtk::Button,
+    gtk::Button,
     gtk::Label,
 ) {
     let section = gtk::Box::new(gtk::Orientation::Vertical, 6);
-    let title = gtk::Label::new(Some("Local provider"));
+    let title = gtk::Label::new(Some("Provider profiles"));
     title.set_xalign(0.0);
     title.add_css_class("heading");
     section.append(&title);
 
     let note = gtk::Label::new(Some(
-        "Names, endpoints, and model preferences can be remembered. Credentials remain session-only, are cleared from this form immediately, and must be entered again after restart. Secret Service storage is not available yet.",
+        "Multiple names, endpoints, and model preferences can be remembered. Credentials remain session-only, are cleared from this form immediately, and must be entered again after restart. Removing a saved profile does not disconnect its current session. Secret Service storage is not available yet.",
     ));
     note.set_xalign(0.0);
     note.set_wrap(true);
     note.add_css_class("dim-label");
     section.append(&note);
+
+    let profile_actions = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+    let saved_profile = gtk::DropDown::from_strings(&["New profile..."]);
+    saved_profile.set_hexpand(true);
+    saved_profile.set_tooltip_text(Some(
+        "Choose a saved non-secret profile or create a new profile",
+    ));
+    let remove_saved_profile = gtk::Button::with_label("Remove saved profile");
+    remove_saved_profile.add_css_class("destructive-action");
+    remove_saved_profile.set_tooltip_text(Some(
+        "Remove the selected saved profile without disconnecting its current session",
+    ));
+    profile_actions.append(&labeled_control(
+        "Saved profile",
+        saved_profile.upcast_ref::<gtk::Widget>(),
+    ));
+    profile_actions.append(&remove_saved_profile);
+    section.append(&profile_actions);
 
     let fields = gtk::Box::new(gtk::Orientation::Horizontal, 12);
     let provider_name = gtk::Entry::builder()
@@ -281,10 +311,12 @@ fn create_provider_session() -> (
     section.append(&active_provider);
     (
         section,
+        saved_profile,
         provider_name,
         provider_endpoint,
         provider_credential,
         remember_profile,
+        remove_saved_profile,
         connect,
         active_provider,
     )
@@ -327,13 +359,88 @@ fn labeled_control(label: &str, control: &gtk::Widget) -> gtk::Box {
     container
 }
 
-fn default_custom_provider_id() -> Result<ProviderProfileId, TranslationError> {
-    ProviderProfileId::parse(CUSTOM_PROVIDER_ID).map_err(|error| {
-        TranslationError::new(
-            ErrorKind::InvalidConfiguration,
-            format!("The custom provider ID is invalid: {error}"),
-        )
-    })
+fn generate_custom_provider_id(
+    saved_profiles: &[ProviderProfile],
+) -> Result<ProviderProfileId, TranslationError> {
+    for _ in 0..PROFILE_ID_GENERATION_ATTEMPTS {
+        let candidate = format!("profile-{}", glib::uuid_string_random());
+        let profile_id = ProviderProfileId::parse(candidate).map_err(|error| {
+            TranslationError::new(
+                ErrorKind::InvalidConfiguration,
+                format!("The generated provider profile ID is invalid: {error}"),
+            )
+        })?;
+        if saved_profiles
+            .iter()
+            .all(|profile| profile.id() != &profile_id)
+        {
+            return Ok(profile_id);
+        }
+    }
+    Err(TranslationError::new(
+        ErrorKind::Internal,
+        "A unique provider profile ID could not be generated.",
+    ))
+}
+
+fn ensure_draft_profile_id(
+    bindings: &UiBindings,
+    state: &AppState,
+) -> Result<ProviderProfileId, TranslationError> {
+    if let Some(profile_id) = bindings.draft_profile_id.borrow().as_ref() {
+        return Ok(profile_id.clone());
+    }
+    let profile_id = generate_custom_provider_id(state.saved_profiles())?;
+    bindings.draft_profile_id.replace(Some(profile_id.clone()));
+    Ok(profile_id)
+}
+
+fn profile_dropdown_label(profile: &ProviderProfile) -> String {
+    format!("{} · {}", profile.display_name(), profile.id().as_str())
+}
+
+fn rebuild_saved_profile_dropdown(bindings: &UiBindings, state: &AppState) {
+    let mut labels = vec!["New profile...".to_owned()];
+    labels.extend(state.saved_profiles().iter().map(profile_dropdown_label));
+    let label_refs = labels.iter().map(String::as_str).collect::<Vec<_>>();
+    let selected = state
+        .selected_saved_profile_id()
+        .and_then(|selected_id| {
+            state
+                .saved_profiles()
+                .iter()
+                .position(|profile| profile.id() == selected_id)
+        })
+        .and_then(|index| u32::try_from(index + 1).ok())
+        .unwrap_or(0);
+    bindings.profile_selection_guard.set(true);
+    let profile_list = gtk::StringList::new(&label_refs);
+    bindings.saved_profile.set_model(Some(&profile_list));
+    bindings.saved_profile.set_selected(selected);
+    bindings.profile_selection_guard.set(false);
+}
+
+fn show_saved_profile_in_form(bindings: &UiBindings, profile: &ProviderProfile) {
+    bindings.provider_name.set_text(profile.display_name());
+    bindings.provider_endpoint.set_text(profile.base_endpoint());
+    bindings.provider_credential.set_text("");
+    bindings.remember_profile.set_active(true);
+    bindings.draft_profile_id.replace(None);
+}
+
+fn show_new_profile_in_form(
+    bindings: &UiBindings,
+    state: &AppState,
+) -> Result<(), TranslationError> {
+    let profile_id = generate_custom_provider_id(state.saved_profiles())?;
+    bindings.draft_profile_id.replace(Some(profile_id));
+    bindings.provider_name.set_text(DEFAULT_PROVIDER_NAME);
+    bindings
+        .provider_endpoint
+        .set_text(DEFAULT_PROVIDER_ENDPOINT);
+    bindings.provider_credential.set_text("");
+    bindings.remember_profile.set_active(false);
+    Ok(())
 }
 
 fn custom_provider_profile(
@@ -342,10 +449,9 @@ fn custom_provider_profile(
     preset_id: String,
     adapter_type: String,
     endpoint: String,
-    has_credential: bool,
+    secret_ref: Option<SecretRef>,
     selected_model: Option<String>,
 ) -> Result<ProviderProfile, TranslationError> {
-    let secret_ref = has_credential.then(|| SecretRef::new(SecretRefNamespace::Session));
     ProviderProfile::new(
         profile_id,
         display_name,
@@ -392,6 +498,62 @@ fn confirmed_model_index(state: &AppState) -> u32 {
         .unwrap_or(0)
 }
 
+fn connect_profile_selection_handler(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
+    let profile_bindings = bindings.clone();
+    let profile_state = Rc::clone(state);
+    bindings
+        .saved_profile
+        .connect_selected_notify(move |drop_down| {
+            if profile_bindings.profile_selection_guard.get() {
+                return;
+            }
+            let selected = drop_down.selected() as usize;
+            let profile_id = selected.checked_sub(1).and_then(|index| {
+                profile_state
+                    .borrow()
+                    .saved_profiles()
+                    .get(index)
+                    .map(|profile| profile.id().clone())
+            });
+            let selection_result = profile_state
+                .borrow_mut()
+                .select_saved_profile(profile_id.as_ref());
+            if let Err(error) = selection_result {
+                profile_state
+                    .borrow_mut()
+                    .record_client_error(error.to_string());
+                rebuild_saved_profile_dropdown(&profile_bindings, &profile_state.borrow());
+                refresh_ui(&profile_bindings, &profile_state.borrow());
+                return;
+            }
+            let form_result = match profile_id.as_ref() {
+                Some(profile_id) => {
+                    let profile = profile_state
+                        .borrow()
+                        .saved_profiles()
+                        .iter()
+                        .find(|profile| profile.id() == profile_id)
+                        .cloned();
+                    match profile {
+                        Some(profile) => {
+                            show_saved_profile_in_form(&profile_bindings, &profile);
+                            Ok(())
+                        }
+                        None => Err(TranslationError::new(
+                            ErrorKind::Internal,
+                            "The selected saved profile is unavailable.",
+                        )),
+                    }
+                }
+                None => show_new_profile_in_form(&profile_bindings, &profile_state.borrow()),
+            };
+            if let Err(error) = form_result {
+                profile_state.borrow_mut().provider_failed(error);
+            }
+            refresh_ui(&profile_bindings, &profile_state.borrow());
+        });
+}
+
 fn connect_selection_handlers(
     bindings: &UiBindings,
     theme: &gtk::DropDown,
@@ -399,6 +561,8 @@ fn connect_selection_handlers(
     state: &Rc<RefCell<AppState>>,
     worker: &Rc<CoreWorker>,
 ) {
+    connect_profile_selection_handler(bindings, state);
+
     let model_bindings = bindings.clone();
     let model_state = Rc::clone(state);
     let model_worker = Rc::clone(worker);
@@ -495,7 +659,7 @@ fn connect_selection_handlers(
     });
 }
 
-// 三个原生操作共享同一状态与工作线程绑定，集中注册可保持生命周期一致。
+// 四个原生操作共享同一状态与工作线程绑定，集中注册可保持生命周期一致。
 #[allow(clippy::too_many_lines)]
 fn connect_action_handlers(
     bindings: &UiBindings,
@@ -534,20 +698,25 @@ fn connect_action_handlers(
             refresh_ui(&connect_bindings, &state);
             return;
         }
-        let (profile_id, preset_id, adapter_type, selected_model) = match state.saved_profile() {
-            Some(saved) => (
-                Ok(saved.id().clone()),
-                saved.preset_id().to_owned(),
-                saved.adapter_type().to_owned(),
-                saved.selected_model().map(str::to_owned),
-            ),
-            None => (
-                default_custom_provider_id(),
-                CUSTOM_PROVIDER_PRESET_ID.to_owned(),
-                OPENAI_ADAPTER_TYPE.to_owned(),
-                None,
-            ),
-        };
+        let (profile_id, preset_id, adapter_type, saved_secret_ref, enabled, selected_model) =
+            match state.selected_saved_profile() {
+                Some(saved) => (
+                    Ok(saved.id().clone()),
+                    saved.preset_id().to_owned(),
+                    saved.adapter_type().to_owned(),
+                    saved.secret_ref().cloned(),
+                    saved.enabled(),
+                    saved.selected_model().map(str::to_owned),
+                ),
+                None => (
+                    ensure_draft_profile_id(&connect_bindings, &state),
+                    CUSTOM_PROVIDER_PRESET_ID.to_owned(),
+                    OPENAI_ADAPTER_TYPE.to_owned(),
+                    None,
+                    true,
+                    None,
+                ),
+            };
         let profile_id = match profile_id {
             Ok(profile_id) => profile_id,
             Err(error) => {
@@ -562,9 +731,15 @@ fn connect_action_handlers(
             preset_id,
             adapter_type,
             endpoint,
-            has_credential,
+            if has_credential {
+                Some(SecretRef::new(SecretRefNamespace::Session))
+            } else {
+                saved_secret_ref
+            },
             selected_model,
-        ) {
+        )
+        .map(|profile| profile.with_enabled(enabled))
+        {
             Ok(profile) => profile,
             Err(error) => {
                 state.provider_failed(error);
@@ -592,8 +767,8 @@ fn connect_action_handlers(
             }
             Err(StateError::InvalidProfile) => {
                 state.provider_failed(TranslationError::new(
-                    ErrorKind::InvalidEndpoint,
-                    "The provider profile is incomplete.",
+                    ErrorKind::InvalidConfiguration,
+                    "The selected provider profile is disabled.",
                 ));
                 refresh_ui(&connect_bindings, &state);
             }
@@ -602,6 +777,34 @@ fn connect_action_handlers(
                 refresh_ui(&connect_bindings, &state);
             }
         }
+    });
+
+    let remove_bindings = bindings.clone();
+    let remove_state = Rc::clone(state);
+    let remove_worker = Rc::clone(worker);
+    bindings.remove_saved_profile.connect_clicked(move |_| {
+        let profile_id = remove_state.borrow().selected_saved_profile_id().cloned();
+        let Some(profile_id) = profile_id else {
+            return;
+        };
+        let mut state = remove_state.borrow_mut();
+        match state.begin_profile_deletion(&profile_id) {
+            Ok(()) => {
+                if let Err(error) = remove_worker.try_send(WorkerCommand::DeleteSavedProfile {
+                    profile_id: profile_id.clone(),
+                }) {
+                    let rollback = state.profile_deletion_failed(
+                        &profile_id,
+                        TranslationError::new(ErrorKind::Internal, error.to_string()),
+                    );
+                    if let Err(error) = rollback {
+                        state.record_client_error(error.to_string());
+                    }
+                }
+            }
+            Err(error) => state.record_client_error(error.to_string()),
+        }
+        refresh_ui(&remove_bindings, &state);
     });
 
     let translate_bindings = bindings.clone();
@@ -693,26 +896,36 @@ fn apply_worker_event(
     event: WorkerEvent,
 ) {
     match event {
-        WorkerEvent::ProfileRestored { profile } => {
-            let restore_result = state.borrow_mut().restore_saved_profile(profile.clone());
-            match restore_result {
-                Ok(()) => {
-                    bindings.provider_name.set_text(profile.display_name());
-                    bindings.provider_endpoint.set_text(profile.base_endpoint());
-                    bindings.remember_profile.set_active(true);
+        WorkerEvent::ProfilesRestored {
+            profiles,
+            active_profile_id,
+        } => {
+            let selected_profile = {
+                let mut state = state.borrow_mut();
+                match state.restore_saved_profiles(profiles, active_profile_id) {
+                    Ok(()) => state.selected_saved_profile().cloned(),
+                    Err(error) => {
+                        state.record_client_error(error.to_string());
+                        None
+                    }
                 }
-                Err(error) => state.borrow_mut().record_client_error(error.to_string()),
+            };
+            rebuild_saved_profile_dropdown(bindings, &state.borrow());
+            if let Some(profile) = selected_profile {
+                show_saved_profile_in_form(bindings, &profile);
             }
         }
         WorkerEvent::ProfileStorageUnavailable(error) => {
-            state.borrow_mut().provider_failed(error);
+            state.borrow_mut().profile_storage_unavailable(error);
+            bindings.remember_profile.set_active(false);
+            rebuild_saved_profile_dropdown(bindings, &state.borrow());
         }
         WorkerEvent::DemoProviderReady { endpoint } => {
             let should_use_demo = {
                 let state = state.borrow();
                 state.active_provider().is_none()
                     && state.pending_provider().is_none()
-                    && state.saved_profile().is_none()
+                    && state.saved_profiles().is_empty()
                     && bindings.provider_endpoint.text() == DEFAULT_PROVIDER_ENDPOINT
             };
             if should_use_demo {
@@ -725,6 +938,7 @@ fn apply_worker_event(
             models,
             saved_profile,
         } => {
+            let profile_was_saved = saved_profile.is_some();
             let mut labels = vec!["Select a model...".to_owned()];
             labels.extend(models.iter().map(|model| model.display_name.clone()));
             let label_refs = labels.iter().map(String::as_str).collect::<Vec<_>>();
@@ -753,6 +967,10 @@ fn apply_worker_event(
             bindings
                 .model
                 .set_selected(u32::try_from(selected).unwrap_or(0));
+            if profile_was_saved {
+                bindings.draft_profile_id.replace(None);
+                rebuild_saved_profile_dropdown(bindings, &state.borrow());
+            }
         }
         WorkerEvent::ModelSelected {
             profile_id,
@@ -801,6 +1019,33 @@ fn apply_worker_event(
                 bindings.model.set_selected(confirmed);
             }
         }
+        WorkerEvent::ProfileDeleted { profile_id } => {
+            let was_selected = state.borrow().selected_saved_profile_id() == Some(&profile_id);
+            let result = state.borrow_mut().confirm_profile_deletion(&profile_id);
+            match result {
+                Ok(()) => {
+                    rebuild_saved_profile_dropdown(bindings, &state.borrow());
+                    let form_result = if was_selected {
+                        show_new_profile_in_form(bindings, &state.borrow())
+                    } else {
+                        Ok(())
+                    };
+                    if let Err(error) = form_result {
+                        state.borrow_mut().provider_failed(error);
+                    }
+                }
+                Err(StateError::UnexpectedProfileDeletion) => {}
+                Err(error) => state.borrow_mut().record_client_error(error.to_string()),
+            }
+        }
+        WorkerEvent::ProfileDeletionRejected { profile_id, error } => {
+            let is_current = state.borrow().pending_profile_deletion() == Some(&profile_id);
+            if is_current {
+                let _ = state
+                    .borrow_mut()
+                    .profile_deletion_failed(&profile_id, error);
+            }
+        }
         WorkerEvent::Translation(event) => {
             let result = state.borrow_mut().apply_translation_event(event);
             if let Err(error) = result {
@@ -842,40 +1087,7 @@ const fn operation_is_terminal(status: AppStatus) -> bool {
     )
 }
 
-fn refresh_ui(bindings: &UiBindings, state: &AppState) {
-    bindings.output.set_text(state.output());
-    let status_label = if !state.worker_ready() {
-        "Starting"
-    } else if state.pending_model_selection().is_some() {
-        "Selecting model"
-    } else {
-        state.status().label()
-    };
-    bindings
-        .status
-        .set_label(&format!("Status: {status_label}"));
-    bindings.partial.set_label(if state.has_partial_output() {
-        "Partial output"
-    } else {
-        ""
-    });
-    bindings
-        .error
-        .set_label(&state.error_text().unwrap_or_default());
-    bindings
-        .locale_note
-        .set_label(if state.locale() == UiLocale::SimplifiedChinese {
-            "Simplified Chinese resources are not wired into the runtime; English fallback remains active."
-        } else {
-            ""
-        });
-    bindings.diagnostics.set_label(&state.diagnostics_text());
-    let blocked = state.pending_model_selection().is_some()
-        || matches!(
-            state.status(),
-            AppStatus::Connecting | AppStatus::Translating | AppStatus::Cancelling
-        );
-    let provider_controls_enabled = state.worker_ready() && !blocked;
+fn refresh_active_provider_label(bindings: &UiBindings, state: &AppState) {
     let active_mode = if state.active_provider_is_saved() {
         "saved"
     } else {
@@ -900,13 +1112,55 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             "Active provider: {} ({active_mode})",
             active.display_name(),
         )),
-        (None, None) if state.saved_profile().is_some() => bindings.active_provider.set_label(
-            "A saved non-secret profile was restored. Enter its credential if required, then connect.",
-        ),
+        (None, None) if !state.saved_profiles().is_empty() => {
+            bindings.active_provider.set_label(
+                "Saved non-secret profiles were restored. Choose one, enter its credential if required, then connect.",
+            );
+        }
         (None, None) => bindings.active_provider.set_label(
             "No provider connected. Credentials are always session-only and are never saved.",
         ),
     }
+}
+
+fn refresh_ui(bindings: &UiBindings, state: &AppState) {
+    bindings.output.set_text(state.output());
+    let status_label = if !state.worker_ready() {
+        "Starting"
+    } else if state.pending_profile_deletion().is_some() {
+        "Removing saved profile"
+    } else if state.pending_model_selection().is_some() {
+        "Selecting model"
+    } else {
+        state.status().label()
+    };
+    bindings
+        .status
+        .set_label(&format!("Status: {status_label}"));
+    bindings.partial.set_label(if state.has_partial_output() {
+        "Partial output"
+    } else {
+        ""
+    });
+    bindings
+        .error
+        .set_label(&state.error_text().unwrap_or_default());
+    bindings
+        .locale_note
+        .set_label(if state.locale() == UiLocale::SimplifiedChinese {
+            "Simplified Chinese resources are not wired into the runtime; English fallback remains active."
+        } else {
+            ""
+        });
+    bindings.diagnostics.set_label(&state.diagnostics_text());
+    let blocked = state.pending_profile_deletion().is_some()
+        || state.pending_model_selection().is_some()
+        || matches!(
+            state.status(),
+            AppStatus::Connecting | AppStatus::Translating | AppStatus::Cancelling
+        );
+    let provider_controls_enabled = state.worker_ready() && !blocked;
+    refresh_active_provider_label(bindings, state);
     bindings
         .provider_name
         .set_sensitive(provider_controls_enabled);
@@ -917,8 +1171,16 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         .provider_credential
         .set_sensitive(provider_controls_enabled);
     bindings
+        .saved_profile
+        .set_sensitive(provider_controls_enabled && state.profile_storage_available());
+    bindings
         .remember_profile
-        .set_sensitive(provider_controls_enabled);
+        .set_sensitive(provider_controls_enabled && state.profile_storage_available());
+    bindings.remove_saved_profile.set_sensitive(
+        provider_controls_enabled
+            && state.profile_storage_available()
+            && state.selected_saved_profile_id().is_some(),
+    );
     bindings.connect.set_sensitive(provider_controls_enabled);
     bindings
         .translate
@@ -938,9 +1200,10 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
 mod tests {
     use super::{
         AppState, AppStatus, CUSTOM_PROVIDER_PRESET_ID, CoreWorker, DEFAULT_PROVIDER_ENDPOINT,
-        ErrorKind, OPENAI_ADAPTER_TYPE, TranslationError, WorkerCommand, WorkerEvent,
-        apply_worker_event, connect_action_handlers, connect_selection_handlers, create_window,
-        custom_provider_profile, default_custom_provider_id, refresh_ui, start_event_pump,
+        DEFAULT_PROVIDER_NAME, ErrorKind, OPENAI_ADAPTER_TYPE, ProviderProfileId, SecretRef,
+        SecretRefNamespace, TranslationError, WorkerCommand, WorkerEvent, apply_worker_event,
+        connect_action_handlers, connect_selection_handlers, create_window,
+        custom_provider_profile, generate_custom_provider_id, refresh_ui, start_event_pump,
     };
     use adw::prelude::*;
     use gtk::glib;
@@ -985,6 +1248,15 @@ mod tests {
         connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
         connect_action_handlers(&bindings, &state, &worker);
         start_event_pump(&bindings, &state, &worker);
+        apply_worker_event(
+            &bindings,
+            &state,
+            &worker,
+            WorkerEvent::ProfilesRestored {
+                profiles: Vec::new(),
+                active_profile_id: None,
+            },
+        );
         refresh_ui(&bindings, &state.borrow());
         window.present();
 
@@ -993,7 +1265,9 @@ mod tests {
         assert!(!bindings.provider_name.is_sensitive());
         assert!(!bindings.provider_endpoint.is_sensitive());
         assert!(!bindings.provider_credential.is_sensitive());
+        assert!(!bindings.saved_profile.is_sensitive());
         assert!(!bindings.remember_profile.is_sensitive());
+        assert!(!bindings.remove_saved_profile.is_sensitive());
         assert!(!bindings.connect.is_sensitive());
 
         let context = glib::MainContext::default();
@@ -1007,7 +1281,9 @@ mod tests {
         assert!(bindings.provider_name.is_sensitive());
         assert!(bindings.provider_endpoint.is_sensitive());
         assert!(bindings.provider_credential.is_sensitive());
+        assert!(bindings.saved_profile.is_sensitive());
         assert!(bindings.remember_profile.is_sensitive());
+        assert!(!bindings.remove_saved_profile.is_sensitive());
         assert!(bindings.connect.is_sensitive());
         let demo_endpoint = bindings.provider_endpoint.text().to_string();
 
@@ -1120,46 +1396,183 @@ mod tests {
         assert_eq!(bindings.status.label(), "Status: Completed");
 
         let restored_state = Rc::new(RefCell::new(AppState::default()));
-        let (restored_window, restored_bindings, _, _) = create_window(&application);
-        let restored_profile = custom_provider_profile(
-            default_custom_provider_id().expect("custom provider ID"),
-            "Restored provider".to_owned(),
+        let restored_worker = Rc::new(CoreWorker::spawn());
+        let (restored_window, restored_bindings, restored_theme, restored_locale) =
+            create_window(&application);
+        connect_selection_handlers(
+            &restored_bindings,
+            &restored_theme,
+            &restored_locale,
+            &restored_state,
+            &restored_worker,
+        );
+        connect_action_handlers(&restored_bindings, &restored_state, &restored_worker);
+        start_event_pump(&restored_bindings, &restored_state, &restored_worker);
+        let restored_profile_a = custom_provider_profile(
+            ProviderProfileId::parse("profile-a").expect("first profile ID"),
+            "Restored provider A".to_owned(),
             CUSTOM_PROVIDER_PRESET_ID.to_owned(),
             OPENAI_ADAPTER_TYPE.to_owned(),
             "http://127.0.0.1:4242/v1/".to_owned(),
-            false,
+            None,
             Some("fake-translator".to_owned()),
         )
-        .expect("restored profile");
+        .map(|profile| profile.with_enabled(false))
+        .expect("first restored profile");
+        let restored_profile_b = custom_provider_profile(
+            ProviderProfileId::parse("profile-b").expect("second profile ID"),
+            "Restored provider B".to_owned(),
+            CUSTOM_PROVIDER_PRESET_ID.to_owned(),
+            OPENAI_ADAPTER_TYPE.to_owned(),
+            "http://127.0.0.1:4243/v1/".to_owned(),
+            Some(SecretRef::new(SecretRefNamespace::SecretService)),
+            Some("fake-slow-translator".to_owned()),
+        )
+        .expect("second restored profile");
         apply_worker_event(
             &restored_bindings,
             &restored_state,
-            &worker,
-            WorkerEvent::ProfileRestored {
-                profile: restored_profile,
+            &restored_worker,
+            WorkerEvent::ProfilesRestored {
+                profiles: vec![restored_profile_b.clone(), restored_profile_a.clone()],
+                active_profile_id: Some(restored_profile_b.id().clone()),
             },
         );
+        restored_window.present();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            restored_state.borrow().worker_ready()
+        });
         assert_eq!(restored_state.borrow().status(), AppStatus::Disconnected);
         assert!(restored_state.borrow().active_provider().is_none());
-        assert_eq!(restored_bindings.provider_name.text(), "Restored provider");
+        assert_eq!(restored_state.borrow().saved_profiles().len(), 2);
+        assert_eq!(
+            restored_state
+                .borrow()
+                .selected_saved_profile_id()
+                .map(ProviderProfileId::as_str),
+            Some("profile-b")
+        );
+        assert_eq!(restored_bindings.saved_profile.selected(), 2);
+        assert_eq!(
+            restored_bindings.provider_name.text(),
+            "Restored provider B"
+        );
         assert_eq!(
             restored_bindings.provider_endpoint.text(),
-            "http://127.0.0.1:4242/v1/"
+            "http://127.0.0.1:4243/v1/"
         );
         assert!(restored_bindings.remember_profile.is_active());
         assert_eq!(restored_bindings.model.selected(), 0);
         apply_worker_event(
             &restored_bindings,
             &restored_state,
-            &worker,
+            &restored_worker,
             WorkerEvent::DemoProviderReady {
                 endpoint: "http://127.0.0.1:4343/v1/".to_owned(),
             },
         );
         assert_eq!(
             restored_bindings.provider_endpoint.text(),
-            "http://127.0.0.1:4242/v1/"
+            "http://127.0.0.1:4243/v1/"
         );
+        assert!(restored_bindings.remove_saved_profile.is_sensitive());
+        let restored_snapshot = restored_state.borrow().saved_profiles().to_vec();
+        restored_bindings.connect.emit_clicked();
+        assert_eq!(restored_state.borrow().status(), AppStatus::Connecting);
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            restored_state.borrow().status() == AppStatus::Failed
+        });
+        assert!(
+            restored_state
+                .borrow()
+                .error_text()
+                .is_some_and(|error| error.starts_with("Secure storage unavailable:"))
+        );
+        assert!(restored_state.borrow().active_provider().is_none());
+        assert!(restored_state.borrow().pending_provider().is_none());
+        assert!(restored_state.borrow().models().is_empty());
+        assert_eq!(
+            restored_state.borrow().saved_profiles(),
+            restored_snapshot.as_slice()
+        );
+
+        restored_bindings.saved_profile.set_selected(1);
+        assert_eq!(
+            restored_state
+                .borrow()
+                .selected_saved_profile_id()
+                .map(ProviderProfileId::as_str),
+            Some("profile-a")
+        );
+        assert!(restored_state.borrow().active_provider().is_none());
+        assert_eq!(
+            restored_bindings.provider_name.text(),
+            "Restored provider A"
+        );
+        assert_eq!(
+            restored_state.borrow().persisted_active_profile_id(),
+            Some(restored_profile_b.id())
+        );
+        assert!(
+            !restored_state
+                .borrow()
+                .selected_saved_profile()
+                .unwrap()
+                .enabled()
+        );
+        restored_bindings.connect.emit_clicked();
+        assert_eq!(restored_state.borrow().status(), AppStatus::Failed);
+        assert!(restored_state.borrow().pending_provider().is_none());
+        assert_eq!(
+            restored_state.borrow().error_text().as_deref(),
+            Some("Invalid configuration: The selected provider profile is disabled.")
+        );
+        assert_eq!(
+            restored_state.borrow().saved_profiles(),
+            restored_snapshot.as_slice()
+        );
+
+        restored_state
+            .borrow_mut()
+            .begin_profile_deletion(restored_profile_a.id())
+            .expect("begin profile removal");
+        refresh_ui(&restored_bindings, &restored_state.borrow());
+        assert_eq!(
+            restored_bindings.status.label(),
+            "Status: Removing saved profile"
+        );
+        assert!(!restored_bindings.saved_profile.is_sensitive());
+        apply_worker_event(
+            &restored_bindings,
+            &restored_state,
+            &restored_worker,
+            WorkerEvent::ProfileDeleted {
+                profile_id: restored_profile_a.id().clone(),
+            },
+        );
+        refresh_ui(&restored_bindings, &restored_state.borrow());
+        assert_eq!(restored_state.borrow().saved_profiles().len(), 1);
+        assert!(restored_state.borrow().selected_saved_profile().is_none());
+        assert_eq!(restored_bindings.saved_profile.selected(), 0);
+        assert_eq!(
+            restored_bindings.provider_name.text(),
+            DEFAULT_PROVIDER_NAME
+        );
+        let draft_profile_id = restored_bindings
+            .draft_profile_id
+            .borrow()
+            .clone()
+            .expect("new draft profile ID");
+        assert!(draft_profile_id.as_str().starts_with("profile-"));
+        assert_ne!(&draft_profile_id, restored_profile_b.id());
+
+        let generated_a = generate_custom_provider_id(restored_state.borrow().saved_profiles())
+            .expect("first generated ID");
+        let generated_b = generate_custom_provider_id(restored_state.borrow().saved_profiles())
+            .expect("second generated ID");
+        assert_ne!(generated_a, generated_b);
+        assert!(generated_a.as_str().starts_with("profile-"));
+        let _ = restored_worker.try_send(WorkerCommand::Shutdown);
         restored_window.close();
 
         let _ = worker.try_send(WorkerCommand::Shutdown);

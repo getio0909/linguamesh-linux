@@ -3,6 +3,7 @@ use linguamesh_domain::{
 };
 pub use linguamesh_domain::{ProviderProfile, ProviderProfileId};
 use linguamesh_protocol::PROTOCOL_VERSION;
+use std::collections::HashSet;
 use std::error::Error;
 use std::fmt;
 
@@ -130,6 +131,12 @@ pub enum StateError {
     Connecting,
     /// 已保存配置与当前运行时配置或保存意图不一致。
     InvalidSavedProfile,
+    /// 本地配置存储当前不可用。
+    ProfileStorageUnavailable,
+    /// 另一个删除操作仍在等待工作线程确认。
+    ProfileDeletionPending,
+    /// 删除结果不属于当前等待确认的配置。
+    UnexpectedProfileDeletion,
     /// 首个核心事件不是开始事件。
     UnexpectedFirstEvent,
     /// 核心流在首个事件之后重复发出开始事件。
@@ -162,6 +169,15 @@ impl fmt::Display for StateError {
             Self::InvalidSavedProfile => {
                 formatter.write_str("The saved provider profile does not match this operation.")
             }
+            Self::ProfileStorageUnavailable => {
+                formatter.write_str("Saved profile storage is unavailable.")
+            }
+            Self::ProfileDeletionPending => {
+                formatter.write_str("A saved profile deletion is still being confirmed.")
+            }
+            Self::UnexpectedProfileDeletion => {
+                formatter.write_str("The saved profile deletion result is stale or unexpected.")
+            }
             Self::UnexpectedFirstEvent => {
                 formatter.write_str("The core stream did not begin with a started event.")
             }
@@ -186,15 +202,43 @@ enum WorkerStartup {
     Ready,
 }
 
+/// 描述本地配置存储的启动结果。
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum ProfileStorageStatus {
+    /// 工作线程尚未报告存储结果。
+    #[default]
+    Pending,
+    /// 本地配置存储已打开并可接受持久化操作。
+    Available,
+    /// 本地配置存储不可用，仅允许会话操作。
+    Unavailable,
+}
+
+impl ProfileStorageStatus {
+    /// 返回不包含配置内容的英文诊断标签。
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Pending => "Pending",
+            Self::Available => "Available",
+            Self::Unavailable => "Unavailable",
+        }
+    }
+}
+
 /// 保存与工具包无关的原生界面状态。
 #[derive(Clone)]
 pub struct AppState {
     worker_startup: WorkerStartup,
     active_provider: Option<ProviderProfile>,
     pending_provider: Option<ProviderProfile>,
-    saved_profile: Option<ProviderProfile>,
+    saved_profiles: Vec<ProviderProfile>,
+    selected_saved_profile_id: Option<ProviderProfileId>,
+    persisted_active_profile_id: Option<ProviderProfileId>,
+    active_saved_profile_id: Option<ProviderProfileId>,
+    profile_storage_status: ProfileStorageStatus,
+    pending_profile_deletion: Option<ProviderProfileId>,
     pending_provider_will_be_saved: bool,
-    active_provider_is_saved: bool,
     models: Vec<ModelDescriptor>,
     selected_model: Option<String>,
     pending_model_selection: Option<String>,
@@ -216,9 +260,13 @@ impl Default for AppState {
             worker_startup: WorkerStartup::Pending,
             active_provider: None,
             pending_provider: None,
-            saved_profile: None,
+            saved_profiles: Vec::new(),
+            selected_saved_profile_id: None,
+            persisted_active_profile_id: None,
+            active_saved_profile_id: None,
+            profile_storage_status: ProfileStorageStatus::Pending,
+            pending_profile_deletion: None,
             pending_provider_will_be_saved: false,
-            active_provider_is_saved: false,
             models: Vec::new(),
             selected_model: None,
             pending_model_selection: None,
@@ -272,10 +320,60 @@ impl AppState {
         self.pending_provider.as_ref()
     }
 
-    /// 返回最近从核心存储恢复或成功保存的配置。
+    /// 返回按显示名称和稳定标识排序的全部已保存配置。
     #[must_use]
-    pub const fn saved_profile(&self) -> Option<&ProviderProfile> {
-        self.saved_profile.as_ref()
+    pub fn saved_profiles(&self) -> &[ProviderProfile] {
+        &self.saved_profiles
+    }
+
+    /// 返回当前在配置表单中选择的已保存配置标识。
+    #[must_use]
+    pub const fn selected_saved_profile_id(&self) -> Option<&ProviderProfileId> {
+        self.selected_saved_profile_id.as_ref()
+    }
+
+    /// 返回当前在配置表单中选择的已保存配置。
+    #[must_use]
+    pub fn selected_saved_profile(&self) -> Option<&ProviderProfile> {
+        self.selected_saved_profile_id
+            .as_ref()
+            .and_then(|profile_id| saved_profile_by_id(&self.saved_profiles, profile_id))
+    }
+
+    /// 返回兼容单配置调用方的当前表单配置。
+    #[must_use]
+    pub fn saved_profile(&self) -> Option<&ProviderProfile> {
+        self.selected_saved_profile()
+    }
+
+    /// 返回下次启动默认显示的已保存配置标识。
+    #[must_use]
+    pub const fn persisted_active_profile_id(&self) -> Option<&ProviderProfileId> {
+        self.persisted_active_profile_id.as_ref()
+    }
+
+    /// 返回当前运行时连接对应的已保存配置标识。
+    #[must_use]
+    pub const fn active_saved_profile_id(&self) -> Option<&ProviderProfileId> {
+        self.active_saved_profile_id.as_ref()
+    }
+
+    /// 返回本地配置存储的启动结果。
+    #[must_use]
+    pub const fn profile_storage_status(&self) -> ProfileStorageStatus {
+        self.profile_storage_status
+    }
+
+    /// 指示本地配置存储是否可接受持久化操作。
+    #[must_use]
+    pub const fn profile_storage_available(&self) -> bool {
+        matches!(self.profile_storage_status, ProfileStorageStatus::Available)
+    }
+
+    /// 返回正在等待工作线程确认删除的配置标识。
+    #[must_use]
+    pub const fn pending_profile_deletion(&self) -> Option<&ProviderProfileId> {
+        self.pending_profile_deletion.as_ref()
     }
 
     /// 指示当前待连接配置是否要求原子保存。
@@ -287,7 +385,7 @@ impl AppState {
     /// 指示当前活动配置是否与已保存配置对应。
     #[must_use]
     pub const fn active_provider_is_saved(&self) -> bool {
-        self.active_provider_is_saved
+        self.active_saved_profile_id.is_some()
     }
 
     /// 返回已发现模型。
@@ -344,21 +442,95 @@ impl AppState {
         self.locale
     }
 
-    /// 仅恢复非会话配置，不建立连接或选择模型。
-    pub fn restore_saved_profile(
+    /// 原子恢复全部非会话配置和持久化活动选择，不建立网络连接。
+    pub fn restore_saved_profiles(
         &mut self,
-        saved_profile: ProviderProfile,
+        mut saved_profiles: Vec<ProviderProfile>,
+        persisted_active_profile_id: Option<ProviderProfileId>,
     ) -> Result<(), StateError> {
         if self.status != AppStatus::Disconnected
             || self.active_provider.is_some()
             || self.pending_provider.is_some()
-            || saved_profile
-                .secret_ref()
-                .is_some_and(|secret_ref| !secret_ref.is_persistent())
+            || self.pending_profile_deletion.is_some()
+            || saved_profiles.iter().any(|profile| {
+                profile
+                    .secret_ref()
+                    .is_some_and(|secret_ref| !secret_ref.is_persistent())
+            })
         {
             return Err(StateError::InvalidSavedProfile);
         }
-        self.saved_profile = Some(saved_profile);
+        sort_saved_profiles(&mut saved_profiles);
+        let mut profile_ids = HashSet::with_capacity(saved_profiles.len());
+        if saved_profiles
+            .iter()
+            .any(|profile| !profile_ids.insert(profile.id().as_str()))
+        {
+            return Err(StateError::InvalidSavedProfile);
+        }
+        if persisted_active_profile_id
+            .as_ref()
+            .is_some_and(|profile_id| {
+                saved_profile_by_id(&saved_profiles, profile_id)
+                    .is_none_or(|profile| !profile.enabled())
+            })
+        {
+            return Err(StateError::InvalidSavedProfile);
+        }
+
+        self.saved_profiles = saved_profiles;
+        self.selected_saved_profile_id
+            .clone_from(&persisted_active_profile_id);
+        self.persisted_active_profile_id = persisted_active_profile_id;
+        self.active_saved_profile_id = None;
+        self.profile_storage_status = ProfileStorageStatus::Available;
+        self.error = None;
+        Ok(())
+    }
+
+    /// 仅恢复一个非会话配置，不建立连接或选择模型。
+    pub fn restore_saved_profile(
+        &mut self,
+        saved_profile: ProviderProfile,
+    ) -> Result<(), StateError> {
+        let profile_id = saved_profile.id().clone();
+        self.restore_saved_profiles(vec![saved_profile], Some(profile_id))
+    }
+
+    /// 记录配置存储启动失败并保留已经建立的会话连接。
+    pub fn profile_storage_unavailable(&mut self, error: TranslationError) {
+        self.saved_profiles.clear();
+        self.selected_saved_profile_id = None;
+        self.persisted_active_profile_id = None;
+        self.active_saved_profile_id = None;
+        self.pending_profile_deletion = None;
+        self.profile_storage_status = ProfileStorageStatus::Unavailable;
+        self.provider_failed(error);
+    }
+
+    /// 仅更改配置表单选择，不连接或激活提供商。
+    pub fn select_saved_profile(
+        &mut self,
+        profile_id: Option<&ProviderProfileId>,
+    ) -> Result<(), StateError> {
+        if self.pending_profile_deletion.is_some() {
+            return Err(StateError::ProfileDeletionPending);
+        }
+        if self.pending_model_selection.is_some() {
+            return Err(StateError::ModelSelectionPending);
+        }
+        if self.status == AppStatus::Connecting {
+            return Err(StateError::Connecting);
+        }
+        if matches!(self.status, AppStatus::Translating | AppStatus::Cancelling) {
+            return Err(StateError::Busy);
+        }
+        if profile_id.is_some_and(|profile_id| {
+            saved_profile_by_id(&self.saved_profiles, profile_id).is_none()
+        }) {
+            return Err(StateError::InvalidSavedProfile);
+        }
+        self.selected_saved_profile_id = profile_id.cloned();
         Ok(())
     }
 
@@ -382,11 +554,17 @@ impl AppState {
         if matches!(self.status, AppStatus::Translating | AppStatus::Cancelling) {
             return Err(StateError::Busy);
         }
+        if self.pending_profile_deletion.is_some() {
+            return Err(StateError::ProfileDeletionPending);
+        }
         if self.pending_model_selection.is_some() {
             return Err(StateError::ModelSelectionPending);
         }
         if self.status == AppStatus::Connecting {
             return Err(StateError::Connecting);
+        }
+        if remember_profile && !self.profile_storage_available() {
+            return Err(StateError::ProfileStorageUnavailable);
         }
         self.pending_provider = Some(profile);
         self.pending_provider_will_be_saved = remember_profile;
@@ -438,13 +616,22 @@ impl AppState {
         }
 
         let selected_model = profile.selected_model().map(str::to_owned);
+        let saved_profile_id = saved_profile
+            .as_ref()
+            .map(|saved_profile| saved_profile.id().clone());
+        let mut saved_profiles = self.saved_profiles.clone();
+        if let Some(saved_profile) = saved_profile {
+            upsert_saved_profile(&mut saved_profiles, saved_profile);
+        }
 
         self.active_provider = Some(profile);
         self.pending_provider = None;
         self.pending_provider_will_be_saved = false;
-        self.active_provider_is_saved = saved_profile.is_some();
-        if let Some(saved_profile) = saved_profile {
-            self.saved_profile = Some(saved_profile);
+        self.active_saved_profile_id.clone_from(&saved_profile_id);
+        if let Some(saved_profile_id) = saved_profile_id {
+            self.saved_profiles = saved_profiles;
+            self.selected_saved_profile_id = Some(saved_profile_id.clone());
+            self.persisted_active_profile_id = Some(saved_profile_id);
         }
         self.models = models;
         self.selected_model = selected_model;
@@ -489,6 +676,9 @@ impl AppState {
         if matches!(self.status, AppStatus::Translating | AppStatus::Cancelling) {
             return Err(StateError::Busy);
         }
+        if self.pending_profile_deletion.is_some() {
+            return Err(StateError::ProfileDeletionPending);
+        }
         if self.active_provider.is_none() {
             return Err(StateError::MissingProvider);
         }
@@ -507,17 +697,20 @@ impl AppState {
             .as_ref()
             .map(|profile| profile.id().clone())
             .ok_or(StateError::MissingProvider)?;
-        let saved_profile = if self.active_provider_is_saved {
-            Some(
-                self.saved_profile
-                    .clone()
+        let saved_profile = self
+            .active_saved_profile_id
+            .as_ref()
+            .map(|saved_profile_id| {
+                if saved_profile_id != &profile_id {
+                    return Err(StateError::InvalidSavedProfile);
+                }
+                saved_profile_by_id(&self.saved_profiles, saved_profile_id)
+                    .cloned()
                     .ok_or(StateError::InvalidSavedProfile)?
                     .with_selected_model(Some(model_id.to_owned()))
-                    .map_err(|_| StateError::InvalidSavedProfile)?,
-            )
-        } else {
-            None
-        };
+                    .map_err(|_| StateError::InvalidSavedProfile)
+            })
+            .transpose()?;
         self.confirm_model_selection_with_saved_profile(&profile_id, model_id, saved_profile)
     }
 
@@ -539,7 +732,17 @@ impl AppState {
         if !self.models.iter().any(|model| model.id == model_id) {
             return Err(StateError::UnknownModel(model_id.to_owned()));
         }
-        if self.active_provider_is_saved != saved_profile.is_some() {
+        if self.active_saved_profile_id.is_some() != saved_profile.is_some() {
+            return Err(StateError::InvalidSavedProfile);
+        }
+        if self
+            .active_saved_profile_id
+            .as_ref()
+            .is_some_and(|saved_id| {
+                saved_id != profile_id
+                    || self.persisted_active_profile_id.as_ref() != Some(profile_id)
+            })
+        {
             return Err(StateError::InvalidSavedProfile);
         }
         let updated_active = active_provider
@@ -554,12 +757,20 @@ impl AppState {
         }) {
             return Err(StateError::InvalidSavedProfile);
         }
+        let saved_profile_present = saved_profile.is_some();
+        let mut saved_profiles = self.saved_profiles.clone();
+        if let Some(saved_profile) = saved_profile {
+            if saved_profile_by_id(&saved_profiles, profile_id).is_none() {
+                return Err(StateError::InvalidSavedProfile);
+            }
+            upsert_saved_profile(&mut saved_profiles, saved_profile);
+        }
 
         self.active_provider = Some(updated_active);
         self.selected_model = Some(model_id.to_owned());
         self.pending_model_selection = None;
-        if let Some(saved_profile) = saved_profile {
-            self.saved_profile = Some(saved_profile);
+        if saved_profile_present {
+            self.saved_profiles = saved_profiles;
         }
         Ok(())
     }
@@ -574,6 +785,80 @@ impl AppState {
             return Err(StateError::UnexpectedModelSelection);
         }
         self.pending_model_selection = None;
+        self.error = Some(error);
+        Ok(())
+    }
+
+    /// 开始等待工作线程确认删除一个已保存配置。
+    pub fn begin_profile_deletion(
+        &mut self,
+        profile_id: &ProviderProfileId,
+    ) -> Result<(), StateError> {
+        if !self.profile_storage_available() {
+            return Err(StateError::ProfileStorageUnavailable);
+        }
+        if self.pending_profile_deletion.is_some() {
+            return Err(StateError::ProfileDeletionPending);
+        }
+        if self.status == AppStatus::Connecting {
+            return Err(StateError::Connecting);
+        }
+        if matches!(self.status, AppStatus::Translating | AppStatus::Cancelling) {
+            return Err(StateError::Busy);
+        }
+        if self.pending_model_selection.is_some() {
+            return Err(StateError::ModelSelectionPending);
+        }
+        if saved_profile_by_id(&self.saved_profiles, profile_id).is_none() {
+            return Err(StateError::InvalidSavedProfile);
+        }
+
+        self.pending_profile_deletion = Some(profile_id.clone());
+        self.error = None;
+        Ok(())
+    }
+
+    /// 仅提交与当前待删除标识完全匹配的删除结果。
+    pub fn confirm_profile_deletion(
+        &mut self,
+        profile_id: &ProviderProfileId,
+    ) -> Result<(), StateError> {
+        if self.pending_profile_deletion.as_ref() != Some(profile_id) {
+            return Err(StateError::UnexpectedProfileDeletion);
+        }
+        let Some(index) = self
+            .saved_profiles
+            .iter()
+            .position(|profile| profile.id() == profile_id)
+        else {
+            return Err(StateError::UnexpectedProfileDeletion);
+        };
+
+        self.saved_profiles.remove(index);
+        if self.selected_saved_profile_id.as_ref() == Some(profile_id) {
+            self.selected_saved_profile_id = None;
+        }
+        if self.persisted_active_profile_id.as_ref() == Some(profile_id) {
+            self.persisted_active_profile_id = None;
+        }
+        if self.active_saved_profile_id.as_ref() == Some(profile_id) {
+            self.active_saved_profile_id = None;
+        }
+        self.pending_profile_deletion = None;
+        self.error = None;
+        Ok(())
+    }
+
+    /// 回滚精确匹配的配置删除并保留全部运行时和持久化镜像状态。
+    pub fn profile_deletion_failed(
+        &mut self,
+        profile_id: &ProviderProfileId,
+        error: TranslationError,
+    ) -> Result<(), StateError> {
+        if self.pending_profile_deletion.as_ref() != Some(profile_id) {
+            return Err(StateError::UnexpectedProfileDeletion);
+        }
+        self.pending_profile_deletion = None;
         self.error = Some(error);
         Ok(())
     }
@@ -624,6 +909,9 @@ impl AppState {
         }
         if self.pending_model_selection.is_some() {
             return Err(StateError::ModelSelectionPending);
+        }
+        if self.pending_profile_deletion.is_some() {
+            return Err(StateError::ProfileDeletionPending);
         }
         if self.active_provider.is_none() {
             return Err(StateError::MissingProvider);
@@ -749,13 +1037,15 @@ impl AppState {
     #[must_use]
     pub fn diagnostics_text(&self) -> String {
         format!(
-            "Core protocol: {PROTOCOL_VERSION}\nProvider: {}\nProvider saved: {}\nSaved profile: {}\nSaved model: {}\nModel selected: {}\nModel selection pending: {}\nStatus: {}\nTheme: {}\nLocale: {}\nOutput bytes: {}",
+            "Core protocol: {PROTOCOL_VERSION}\nProvider: {}\nProvider saved: {}\nProfile storage: {}\nSaved profiles: {}\nSaved profile: {}\nPersisted active profile: {}\nSaved model: {}\nModel selected: {}\nModel selection pending: {}\nProfile deletion pending: {}\nStatus: {}\nTheme: {}\nLocale: {}\nOutput bytes: {}",
             yes_no(self.active_provider.is_some()),
-            yes_no(self.active_provider_is_saved),
-            yes_no(self.saved_profile.is_some()),
+            yes_no(self.active_provider_is_saved()),
+            self.profile_storage_status.label(),
+            self.saved_profiles.len(),
+            yes_no(self.selected_saved_profile_id.is_some()),
+            yes_no(self.persisted_active_profile_id.is_some()),
             yes_no(
-                self.saved_profile
-                    .as_ref()
+                self.selected_saved_profile()
                     .is_some_and(|profile| profile.selected_model().is_some())
             ),
             if self.selected_model.is_some() {
@@ -768,12 +1058,41 @@ impl AppState {
             } else {
                 "No"
             },
+            yes_no(self.pending_profile_deletion.is_some()),
             self.status.label(),
             self.theme.label(),
             self.locale.language_tag(),
             self.output.len()
         )
     }
+}
+
+fn saved_profile_by_id<'a>(
+    saved_profiles: &'a [ProviderProfile],
+    profile_id: &ProviderProfileId,
+) -> Option<&'a ProviderProfile> {
+    saved_profiles
+        .iter()
+        .find(|profile| profile.id() == profile_id)
+}
+
+fn sort_saved_profiles(saved_profiles: &mut [ProviderProfile]) {
+    saved_profiles.sort_by(|left, right| {
+        left.display_name()
+            .cmp(right.display_name())
+            .then_with(|| left.id().as_str().cmp(right.id().as_str()))
+    });
+}
+
+fn upsert_saved_profile(saved_profiles: &mut Vec<ProviderProfile>, saved_profile: ProviderProfile) {
+    match saved_profiles
+        .iter()
+        .position(|profile| profile.id() == saved_profile.id())
+    {
+        Some(index) => saved_profiles[index] = saved_profile,
+        None => saved_profiles.push(saved_profile),
+    }
+    sort_saved_profiles(saved_profiles);
 }
 
 fn profiles_match_except_secret(runtime: &ProviderProfile, saved: &ProviderProfile) -> bool {
@@ -793,8 +1112,8 @@ const fn yes_no(value: bool) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::{
-        AppState, AppStatus, ProviderProfile, ProviderProfileId, StateError, ThemePreference,
-        UiLocale,
+        AppState, AppStatus, ProfileStorageStatus, ProviderProfile, ProviderProfileId, StateError,
+        ThemePreference, UiLocale,
     };
     use linguamesh_domain::{
         ErrorKind, ModelDescriptor, ModelSource, SecretRef, SecretRefNamespace, TranslationError,
@@ -839,7 +1158,7 @@ mod tests {
     }
 
     fn connected_state() -> AppState {
-        let mut state = AppState::default();
+        let mut state = state_with_profile_storage();
         let profile = profile(
             "local-fake-provider",
             "Local fake provider",
@@ -854,6 +1173,14 @@ mod tests {
             .expect("provider connected");
         state.select_model("fake-translator").expect("select model");
         state.set_source_text("Hello");
+        state
+    }
+
+    fn state_with_profile_storage() -> AppState {
+        let mut state = AppState::default();
+        state
+            .restore_saved_profiles(Vec::new(), None)
+            .expect("profile storage");
         state
     }
 
@@ -925,6 +1252,152 @@ mod tests {
     }
 
     #[test]
+    fn multiple_profiles_restore_atomically_sorted_and_disconnected() {
+        let mut state = AppState::default();
+        let alpha = profile(
+            "alpha-provider",
+            "Shared provider",
+            "http://127.0.0.1:11434/v1/",
+            Some("alpha-model"),
+        );
+        let beta = profile(
+            "beta-provider",
+            "Shared provider",
+            "http://127.0.0.1:11434/v1/",
+            Some("beta-model"),
+        );
+
+        state
+            .restore_saved_profiles(vec![beta.clone(), alpha.clone()], Some(beta.id().clone()))
+            .expect("restore profiles");
+
+        assert_eq!(
+            state.profile_storage_status(),
+            ProfileStorageStatus::Available
+        );
+        assert_eq!(state.saved_profiles(), &[alpha, beta.clone()]);
+        assert_eq!(state.selected_saved_profile(), Some(&beta));
+        assert_eq!(state.persisted_active_profile_id(), Some(beta.id()));
+        assert!(state.active_saved_profile_id().is_none());
+        assert_eq!(state.status(), AppStatus::Disconnected);
+        assert!(state.active_provider().is_none());
+        assert!(state.models().is_empty());
+        assert_eq!(state.selected_model(), None);
+    }
+
+    #[test]
+    fn invalid_profile_snapshots_preserve_the_previous_snapshot() {
+        let mut state = AppState::default();
+        let baseline = profile(
+            "baseline-provider",
+            "Baseline provider",
+            "http://127.0.0.1:11434/v1/",
+            Some("baseline-model"),
+        );
+        state
+            .restore_saved_profiles(vec![baseline.clone()], Some(baseline.id().clone()))
+            .expect("baseline snapshot");
+        let original_profiles = state.saved_profiles().to_vec();
+        let original_selected = state.selected_saved_profile_id().cloned();
+        let original_active = state.persisted_active_profile_id().cloned();
+
+        let duplicate_first = profile(
+            "duplicate-provider",
+            "Alpha duplicate",
+            "http://127.0.0.1:11435/v1/",
+            None,
+        );
+        let duplicate_second = profile(
+            "duplicate-provider",
+            "Zulu duplicate",
+            "http://127.0.0.1:11436/v1/",
+            None,
+        );
+        let middle = profile(
+            "middle-provider",
+            "Middle provider",
+            "http://127.0.0.1:11437/v1/",
+            None,
+        );
+        assert_eq!(
+            state.restore_saved_profiles(
+                vec![duplicate_second, middle, duplicate_first.clone()],
+                Some(duplicate_first.id().clone()),
+            ),
+            Err(StateError::InvalidSavedProfile)
+        );
+        let missing_id = ProviderProfileId::parse("missing-provider").expect("profile ID");
+        assert_eq!(
+            state.restore_saved_profiles(vec![duplicate_first], Some(missing_id)),
+            Err(StateError::InvalidSavedProfile)
+        );
+        let session = profile_with_secret(
+            "session-provider",
+            "Session provider",
+            "http://127.0.0.1:11438/v1/",
+            None,
+            Some(SecretRef::new(SecretRefNamespace::Session)),
+        );
+        assert_eq!(
+            state.restore_saved_profiles(vec![session], None),
+            Err(StateError::InvalidSavedProfile)
+        );
+
+        assert_eq!(state.saved_profiles(), original_profiles);
+        assert_eq!(
+            state.selected_saved_profile_id(),
+            original_selected.as_ref()
+        );
+        assert_eq!(
+            state.persisted_active_profile_id(),
+            original_active.as_ref()
+        );
+        assert_eq!(
+            state.profile_storage_status(),
+            ProfileStorageStatus::Available
+        );
+    }
+
+    #[test]
+    fn selecting_a_saved_profile_does_not_activate_or_connect_it() {
+        let mut state = AppState::default();
+        let alpha = profile(
+            "alpha-provider",
+            "Alpha provider",
+            "http://127.0.0.1:11434/v1/",
+            None,
+        );
+        let beta = profile(
+            "beta-provider",
+            "Beta provider",
+            "http://127.0.0.1:11435/v1/",
+            None,
+        );
+        state
+            .restore_saved_profiles(vec![alpha.clone(), beta.clone()], Some(alpha.id().clone()))
+            .expect("restore profiles");
+
+        state
+            .select_saved_profile(Some(beta.id()))
+            .expect("select beta");
+        assert_eq!(state.selected_saved_profile(), Some(&beta));
+        assert_eq!(state.persisted_active_profile_id(), Some(alpha.id()));
+        assert!(state.active_provider().is_none());
+        assert_eq!(state.status(), AppStatus::Disconnected);
+
+        state
+            .select_saved_profile(None)
+            .expect("select new profile");
+        let unknown = ProviderProfileId::parse("unknown-provider").expect("profile ID");
+        assert_eq!(
+            state.select_saved_profile(Some(&unknown)),
+            Err(StateError::InvalidSavedProfile)
+        );
+        assert!(state.selected_saved_profile().is_none());
+        assert_eq!(state.persisted_active_profile_id(), Some(alpha.id()));
+    }
+
+    #[test]
     fn deliberate_model_selection_is_required_and_request_uses_state() {
         let mut state = AppState::default();
         let profile = profile(
@@ -978,6 +1451,10 @@ mod tests {
                 "http://127.0.0.1:11434/v1/",
                 None,
             )),
+            Err(StateError::ModelSelectionPending)
+        );
+        assert_eq!(
+            state.select_saved_profile(None),
             Err(StateError::ModelSelectionPending)
         );
         assert_eq!(
@@ -1226,7 +1703,7 @@ mod tests {
 
     #[test]
     fn saved_connection_commits_runtime_and_non_secret_profiles_atomically() {
-        let mut state = AppState::default();
+        let mut state = state_with_profile_storage();
         let runtime = profile_with_secret(
             "remembered-provider",
             "Remembered provider",
@@ -1273,6 +1750,180 @@ mod tests {
     }
 
     #[test]
+    fn persistent_connections_create_update_sort_and_activate_only_the_matching_profile() {
+        let mut state = AppState::default();
+        let beta = profile(
+            "beta-provider",
+            "Beta provider",
+            "http://127.0.0.1:11435/v1/",
+            Some("beta-model"),
+        );
+        state
+            .restore_saved_profiles(vec![beta.clone()], Some(beta.id().clone()))
+            .expect("restore beta");
+        let alpha = profile(
+            "alpha-provider",
+            "Alpha provider",
+            "http://127.0.0.1:11434/v1/",
+            Some("alpha-model"),
+        );
+        state
+            .begin_provider_connection_with_persistence(alpha.clone(), true)
+            .expect("begin alpha connection");
+        state
+            .provider_connected_with_saved_profile(
+                alpha.clone(),
+                vec![discovered_model("alpha-model")],
+                Some(alpha.clone()),
+            )
+            .expect("create alpha");
+
+        assert_eq!(state.saved_profiles(), &[alpha.clone(), beta.clone()]);
+        assert_eq!(state.selected_saved_profile(), Some(&alpha));
+        assert_eq!(state.persisted_active_profile_id(), Some(alpha.id()));
+        assert_eq!(state.active_saved_profile_id(), Some(alpha.id()));
+
+        let updated_alpha = profile(
+            "alpha-provider",
+            "Zulu provider",
+            "http://127.0.0.1:11436/v1/",
+            Some("updated-model"),
+        );
+        state
+            .begin_provider_connection_with_persistence(updated_alpha.clone(), true)
+            .expect("begin alpha update");
+        state
+            .provider_connected_with_saved_profile(
+                updated_alpha.clone(),
+                vec![discovered_model("updated-model")],
+                Some(updated_alpha.clone()),
+            )
+            .expect("update alpha");
+
+        assert_eq!(
+            state.saved_profiles(),
+            &[beta.clone(), updated_alpha.clone()]
+        );
+        assert_eq!(state.selected_saved_profile(), Some(&updated_alpha));
+        assert_eq!(
+            state.persisted_active_profile_id(),
+            Some(updated_alpha.id())
+        );
+        assert_eq!(state.active_provider(), Some(&updated_alpha));
+    }
+
+    #[test]
+    fn session_connection_preserves_all_saved_profiles_and_persisted_default() {
+        let mut state = AppState::default();
+        let alpha = profile(
+            "alpha-provider",
+            "Alpha provider",
+            "http://127.0.0.1:11434/v1/",
+            Some("alpha-model"),
+        );
+        let beta = profile(
+            "beta-provider",
+            "Beta provider",
+            "http://127.0.0.1:11435/v1/",
+            Some("beta-model"),
+        );
+        state
+            .restore_saved_profiles(vec![alpha.clone(), beta.clone()], Some(alpha.id().clone()))
+            .expect("restore profiles");
+        state
+            .select_saved_profile(Some(beta.id()))
+            .expect("select beta");
+        let original_profiles = state.saved_profiles().to_vec();
+        let session = profile(
+            "session-provider",
+            "Session provider",
+            "http://127.0.0.1:11436/v1/",
+            Some("session-model"),
+        );
+
+        state
+            .begin_provider_connection(session.clone())
+            .expect("begin session connection");
+        state
+            .provider_connected(session.clone(), vec![discovered_model("session-model")])
+            .expect("connect session");
+
+        assert_eq!(state.saved_profiles(), original_profiles);
+        assert_eq!(state.selected_saved_profile(), Some(&beta));
+        assert_eq!(state.persisted_active_profile_id(), Some(alpha.id()));
+        assert!(state.active_saved_profile_id().is_none());
+        assert_eq!(state.active_provider(), Some(&session));
+    }
+
+    #[test]
+    fn saved_model_confirmation_updates_the_active_id_not_the_form_selection() {
+        let mut state = AppState::default();
+        let alpha = profile(
+            "alpha-provider",
+            "Alpha provider",
+            "http://127.0.0.1:11434/v1/",
+            Some("first-model"),
+        );
+        let beta = profile(
+            "beta-provider",
+            "Beta provider",
+            "http://127.0.0.1:11435/v1/",
+            Some("beta-model"),
+        );
+        state
+            .restore_saved_profiles(vec![alpha.clone(), beta.clone()], Some(alpha.id().clone()))
+            .expect("restore profiles");
+        state
+            .begin_provider_connection_with_persistence(alpha.clone(), true)
+            .expect("begin alpha connection");
+        state
+            .provider_connected_with_saved_profile(
+                alpha.clone(),
+                vec![
+                    discovered_model("first-model"),
+                    discovered_model("second-model"),
+                ],
+                Some(alpha.clone()),
+            )
+            .expect("connect alpha");
+        state
+            .select_saved_profile(Some(beta.id()))
+            .expect("display beta");
+        state
+            .begin_model_selection("second-model")
+            .expect("begin model selection");
+        let updated_alpha = alpha
+            .clone()
+            .with_selected_model(Some("second-model".to_owned()))
+            .expect("updated alpha");
+
+        state
+            .confirm_model_selection_with_saved_profile(
+                alpha.id(),
+                "second-model",
+                Some(updated_alpha.clone()),
+            )
+            .expect("confirm alpha model");
+
+        assert_eq!(state.selected_saved_profile(), Some(&beta));
+        assert_eq!(
+            state
+                .saved_profiles()
+                .iter()
+                .find(|profile| profile.id() == alpha.id()),
+            Some(&updated_alpha)
+        );
+        assert_eq!(
+            state
+                .saved_profiles()
+                .iter()
+                .find(|profile| profile.id() == beta.id()),
+            Some(&beta)
+        );
+        assert_eq!(state.selected_model(), Some("second-model"));
+    }
+
+    #[test]
     fn session_switch_preserves_the_restart_profile() {
         let mut state = AppState::default();
         let saved = profile(
@@ -1307,6 +1958,173 @@ mod tests {
                 .and_then(ProviderProfile::selected_model),
             Some("saved-model")
         );
+    }
+
+    #[test]
+    fn exact_delete_correlation_preserves_runtime_and_makes_deleted_connection_session_only() {
+        let mut state = AppState::default();
+        let beta = profile(
+            "beta-provider",
+            "Beta provider",
+            "http://127.0.0.1:11435/v1/",
+            Some("beta-model"),
+        );
+        state
+            .restore_saved_profiles(vec![beta.clone()], Some(beta.id().clone()))
+            .expect("restore beta");
+        let alpha = profile(
+            "alpha-provider",
+            "Alpha provider",
+            "http://127.0.0.1:11434/v1/",
+            Some("first-model"),
+        );
+        state
+            .begin_provider_connection_with_persistence(alpha.clone(), true)
+            .expect("begin alpha connection");
+        state
+            .provider_connected_with_saved_profile(
+                alpha.clone(),
+                vec![
+                    discovered_model("first-model"),
+                    discovered_model("second-model"),
+                ],
+                Some(alpha.clone()),
+            )
+            .expect("connect alpha");
+        state
+            .select_saved_profile(Some(beta.id()))
+            .expect("display beta");
+        state
+            .begin_profile_deletion(alpha.id())
+            .expect("begin alpha deletion");
+
+        assert_eq!(
+            state.confirm_profile_deletion(beta.id()),
+            Err(StateError::UnexpectedProfileDeletion)
+        );
+        assert_eq!(state.pending_profile_deletion(), Some(alpha.id()));
+        assert_eq!(state.saved_profiles().len(), 2);
+        assert_eq!(
+            state.profile_deletion_failed(
+                beta.id(),
+                TranslationError::new(ErrorKind::Persistence, "A stale deletion failed."),
+            ),
+            Err(StateError::UnexpectedProfileDeletion)
+        );
+        state
+            .profile_deletion_failed(
+                alpha.id(),
+                TranslationError::new(ErrorKind::Persistence, "The profile could not be deleted."),
+            )
+            .expect("reject alpha deletion");
+        assert_eq!(state.saved_profiles().len(), 2);
+        assert!(state.active_provider_is_saved());
+
+        state
+            .begin_profile_deletion(alpha.id())
+            .expect("retry alpha deletion");
+        state
+            .confirm_profile_deletion(alpha.id())
+            .expect("delete alpha");
+
+        assert_eq!(state.saved_profiles(), std::slice::from_ref(&beta));
+        assert_eq!(state.selected_saved_profile(), Some(&beta));
+        assert!(state.persisted_active_profile_id().is_none());
+        assert!(state.active_saved_profile_id().is_none());
+        assert!(!state.active_provider_is_saved());
+        assert_eq!(state.active_provider(), Some(&alpha));
+        assert_eq!(state.selected_model(), Some("first-model"));
+        assert_eq!(state.status(), AppStatus::Ready);
+
+        state
+            .begin_model_selection("second-model")
+            .expect("begin session model selection");
+        state
+            .confirm_model_selection("second-model")
+            .expect("confirm session model selection");
+        assert_eq!(state.saved_profiles(), &[beta]);
+        state.set_source_text("Hello");
+        assert_eq!(
+            state.begin_translation().expect("session request").model_id,
+            "second-model"
+        );
+    }
+
+    #[test]
+    fn unavailable_storage_rejects_persistence_but_allows_session_connection() {
+        let mut state = AppState::default();
+        let persistent = profile(
+            "persistent-provider",
+            "Persistent provider",
+            "http://127.0.0.1:11434/v1/",
+            None,
+        );
+
+        assert_eq!(
+            state.begin_provider_connection_with_persistence(persistent.clone(), true),
+            Err(StateError::ProfileStorageUnavailable)
+        );
+        state.profile_storage_unavailable(TranslationError::new(
+            ErrorKind::Persistence,
+            "Profile storage could not be opened.",
+        ));
+        assert_eq!(
+            state.profile_storage_status(),
+            ProfileStorageStatus::Unavailable
+        );
+        assert_eq!(state.status(), AppStatus::Failed);
+        assert_eq!(
+            state.begin_profile_deletion(persistent.id()),
+            Err(StateError::ProfileStorageUnavailable)
+        );
+
+        state
+            .begin_provider_connection(persistent.clone())
+            .expect("begin session connection");
+        state
+            .provider_connected(persistent.clone(), vec![discovered_model("session-model")])
+            .expect("connect session");
+        assert_eq!(state.active_provider(), Some(&persistent));
+        assert!(!state.active_provider_is_saved());
+        assert!(state.saved_profiles().is_empty());
+        assert!(state.persisted_active_profile_id().is_none());
+    }
+
+    #[test]
+    fn multi_profile_diagnostics_expose_only_counts_and_booleans() {
+        let mut state = AppState::default();
+        let alpha = profile(
+            "PRIVATE_ALPHA_ID",
+            "PRIVATE_ALPHA_NAME",
+            "http://127.0.0.1:11434/v1/PRIVATE_ALPHA_ENDPOINT/",
+            Some("PRIVATE_ALPHA_MODEL"),
+        );
+        let beta = profile(
+            "PRIVATE_BETA_ID",
+            "PRIVATE_BETA_NAME",
+            "http://127.0.0.1:11435/v1/PRIVATE_BETA_ENDPOINT/",
+            None,
+        );
+        state
+            .restore_saved_profiles(vec![alpha.clone(), beta], Some(alpha.id().clone()))
+            .expect("restore private profiles");
+
+        let diagnostics = state.diagnostics_text();
+
+        assert!(diagnostics.contains("Profile storage: Available"));
+        assert!(diagnostics.contains("Saved profiles: 2"));
+        assert!(diagnostics.contains("Persisted active profile: Yes"));
+        for private_value in [
+            "PRIVATE_ALPHA_ID",
+            "PRIVATE_ALPHA_NAME",
+            "PRIVATE_ALPHA_ENDPOINT",
+            "PRIVATE_ALPHA_MODEL",
+            "PRIVATE_BETA_ID",
+            "PRIVATE_BETA_NAME",
+            "PRIVATE_BETA_ENDPOINT",
+        ] {
+            assert!(!diagnostics.contains(private_value));
+        }
     }
 
     #[test]
@@ -1423,7 +2241,7 @@ mod tests {
 
     #[test]
     fn saved_model_confirmation_requires_an_exact_persisted_counterpart() {
-        let mut state = AppState::default();
+        let mut state = state_with_profile_storage();
         let runtime = profile_with_secret(
             "saved-provider",
             "Saved provider",
@@ -1492,7 +2310,7 @@ mod tests {
 
     #[test]
     fn unavailable_saved_model_requires_a_new_deliberate_selection() {
-        let mut state = AppState::default();
+        let mut state = state_with_profile_storage();
         let profile = profile(
             "saved-provider",
             "Saved provider",

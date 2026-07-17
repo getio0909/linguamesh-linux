@@ -62,6 +62,11 @@ pub enum WorkerCommand {
         /// 用户明确选择的模型标识。
         model_id: String,
     },
+    /// 删除一个已保存的非秘密配置，不中断当前运行时连接。
+    DeleteSavedProfile {
+        /// 要删除的稳定配置标识。
+        profile_id: ProviderProfileId,
+    },
     /// 开始翻译请求。
     Translate(TranslationRequest),
     /// 取消当前连接或翻译。
@@ -77,10 +82,12 @@ pub enum WorkerEvent {
         /// 当前进程专用的回环基础端点。
         endpoint: String,
     },
-    /// 已恢复一个非秘密配置，但尚未建立网络连接。
-    ProfileRestored {
-        /// 上次明确激活的持久化配置及模型偏好。
-        profile: ProviderProfile,
+    /// 已恢复全部非秘密配置，但尚未建立网络连接。
+    ProfilesRestored {
+        /// 按稳定顺序返回的全部持久化配置及模型偏好。
+        profiles: Vec<ProviderProfile>,
+        /// 上次明确激活的持久化配置标识。
+        active_profile_id: Option<ProviderProfileId>,
     },
     /// 配置数据库不可用，但会话模式仍可继续使用。
     ProfileStorageUnavailable(TranslationError),
@@ -108,6 +115,18 @@ pub enum WorkerEvent {
         profile_id: ProviderProfileId,
         /// 被拒绝的模型标识。
         model_id: String,
+        /// 不包含内容或秘密的类型化错误。
+        error: TranslationError,
+    },
+    /// 已删除一个持久化配置，现有运行时连接保持可用。
+    ProfileDeleted {
+        /// 已删除的稳定配置标识。
+        profile_id: ProviderProfileId,
+    },
+    /// 配置删除被精确拒绝且保存状态保持不变。
+    ProfileDeletionRejected {
+        /// 被拒绝删除的稳定配置标识。
+        profile_id: ProviderProfileId,
         /// 不包含内容或秘密的类型化错误。
         error: TranslationError,
     },
@@ -152,6 +171,9 @@ enum QueuedCommand {
     SelectModel {
         profile_id: ProviderProfileId,
         model_id: String,
+    },
+    DeleteSavedProfile {
+        profile_id: ProviderProfileId,
     },
     Translate(TranslationRequest),
     Cancel,
@@ -278,16 +300,19 @@ impl CoreWorker {
                     model_id,
                 })
                 .map_err(|_| WorkerSendError),
+            WorkerCommand::DeleteSavedProfile { profile_id } => self
+                .commands
+                .try_send(QueuedCommand::DeleteSavedProfile { profile_id })
+                .map_err(|_| WorkerSendError),
             WorkerCommand::Translate(request) => self
                 .commands
                 .try_send(QueuedCommand::Translate(request))
                 .map_err(|_| WorkerSendError),
             WorkerCommand::Shutdown => {
+                let result = self.commands.try_send(QueuedCommand::Shutdown);
                 self.shutdown_cancellation.cancel();
                 cancel_active(&self.active_cancellation);
-                self.commands
-                    .try_send(QueuedCommand::Shutdown)
-                    .map_err(|_| WorkerSendError)
+                result.map_err(|_| WorkerSendError)
             }
         }
     }
@@ -347,11 +372,13 @@ async fn run_worker(
     };
     let mut storage = match database_path {
         Some(path) => match open_profile_storage(&path) {
-            Ok((storage, restored_profile)) => {
-                if let Some(profile) = restored_profile
-                    && events
-                        .send(WorkerEvent::ProfileRestored { profile })
-                        .is_err()
+            Ok((storage, profiles, active_profile_id)) => {
+                if events
+                    .send(WorkerEvent::ProfilesRestored {
+                        profiles,
+                        active_profile_id,
+                    })
+                    .is_err()
                 {
                     return;
                 }
@@ -426,6 +453,15 @@ async fn run_worker(
                         error: TranslationError::new(
                             ErrorKind::InvalidConfiguration,
                             "A model cannot be changed while a translation is running.",
+                        ),
+                    });
+                }
+                ActiveStep::Command(Some(QueuedCommand::DeleteSavedProfile { profile_id })) => {
+                    let _ = events.send(WorkerEvent::ProfileDeletionRejected {
+                        profile_id,
+                        error: TranslationError::new(
+                            ErrorKind::InvalidConfiguration,
+                            "A saved profile cannot be removed while a translation is running.",
                         ),
                     });
                 }
@@ -576,6 +612,33 @@ async fn run_worker(
                     }
                 }
             }
+            Some(QueuedCommand::DeleteSavedProfile { profile_id }) => {
+                let result = delete_saved_profile(storage.as_mut(), &profile_id);
+                match result {
+                    Ok(()) => {
+                        if active_saved_profile
+                            .as_ref()
+                            .is_some_and(|profile| profile.id() == &profile_id)
+                        {
+                            active_saved_profile = None;
+                        }
+                        if events
+                            .send(WorkerEvent::ProfileDeleted { profile_id })
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::ProfileDeletionRejected { profile_id, error })
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
             Some(QueuedCommand::Translate(request)) => {
                 match begin_translation(&manager, selected_model.as_deref(), request) {
                     Ok(operation) => {
@@ -629,6 +692,12 @@ fn reject_queued_commands_for_shutdown(
                 model_id,
                 error: TranslationError::cancelled(),
             }),
+            QueuedCommand::DeleteSavedProfile { profile_id } => {
+                events.send(WorkerEvent::ProfileDeletionRejected {
+                    profile_id,
+                    error: TranslationError::cancelled(),
+                })
+            }
             QueuedCommand::Translate(_) => events.send(WorkerEvent::TranslationRejected(
                 TranslationError::cancelled(),
             )),
@@ -642,11 +711,14 @@ fn reject_queued_commands_for_shutdown(
 
 fn open_profile_storage(
     path: &Path,
-) -> Result<(Storage, Option<ProviderProfile>), TranslationError> {
+) -> Result<(Storage, Vec<ProviderProfile>, Option<ProviderProfileId>), TranslationError> {
     prepare_database_file(path)?;
     let storage = Storage::open(path)?;
-    let restored_profile = storage.active_provider_profile()?;
-    Ok((storage, restored_profile))
+    let profiles = storage.provider_profiles()?;
+    let active_profile_id = storage
+        .active_provider_profile()?
+        .map(|profile| profile.id().clone());
+    Ok((storage, profiles, active_profile_id))
 }
 
 fn prepare_database_file(path: &Path) -> Result<(), TranslationError> {
@@ -894,6 +966,26 @@ fn prepare_model_selection(
         None => None,
     };
     Ok((updated_profile, updated_saved_profile))
+}
+
+fn delete_saved_profile(
+    storage: Option<&mut Storage>,
+    profile_id: &ProviderProfileId,
+) -> Result<(), TranslationError> {
+    let storage = storage.ok_or_else(|| {
+        TranslationError::new(
+            ErrorKind::Persistence,
+            "Profile storage is unavailable; no saved profile was removed.",
+        )
+    })?;
+    if storage.delete_provider_profile(profile_id)? {
+        Ok(())
+    } else {
+        Err(TranslationError::new(
+            ErrorKind::InvalidConfiguration,
+            "The saved provider profile no longer exists.",
+        ))
+    }
 }
 
 fn map_profile_error(error: &linguamesh_domain::ProfileValidationError) -> TranslationError {
@@ -1267,18 +1359,72 @@ mod tests {
 
     fn started_worker_with_database(path: &Path) -> (CoreWorker, Option<ProviderProfile>, String) {
         let worker = CoreWorker::spawn_with_database(path);
-        let mut restored_profile = None;
+        let mut restored_snapshot = None;
         loop {
             match worker
                 .events
                 .recv_timeout(Duration::from_secs(5))
                 .expect("worker startup event")
             {
-                WorkerEvent::ProfileRestored { profile } => {
-                    assert!(restored_profile.replace(profile).is_none());
+                WorkerEvent::ProfilesRestored {
+                    profiles,
+                    active_profile_id,
+                } => {
+                    assert!(restored_snapshot.is_none());
+                    let restored_profile = active_profile_id.as_ref().map(|active_profile_id| {
+                        profiles
+                            .iter()
+                            .find(|profile| profile.id() == active_profile_id)
+                            .cloned()
+                            .expect("active profile belongs to startup snapshot")
+                    });
+                    restored_snapshot = Some(restored_profile);
                 }
                 WorkerEvent::DemoProviderReady { endpoint } => {
-                    return (worker, restored_profile, endpoint);
+                    return (
+                        worker,
+                        restored_snapshot.expect("profile storage snapshot"),
+                        endpoint,
+                    );
+                }
+                WorkerEvent::ProfileStorageUnavailable(error) => {
+                    panic!("profile storage unavailable: {error}");
+                }
+                _ => panic!("unexpected worker startup event"),
+            }
+        }
+    }
+
+    fn started_worker_with_database_snapshot(
+        path: &Path,
+    ) -> (
+        CoreWorker,
+        Vec<ProviderProfile>,
+        Option<ProviderProfileId>,
+        String,
+    ) {
+        let worker = CoreWorker::spawn_with_database(path);
+        let mut restored_snapshot = None;
+        loop {
+            match worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("worker startup event")
+            {
+                WorkerEvent::ProfilesRestored {
+                    profiles,
+                    active_profile_id,
+                } => {
+                    assert!(
+                        restored_snapshot
+                            .replace((profiles, active_profile_id))
+                            .is_none()
+                    );
+                }
+                WorkerEvent::DemoProviderReady { endpoint } => {
+                    let (profiles, active_profile_id) =
+                        restored_snapshot.expect("profile storage snapshot");
+                    return (worker, profiles, active_profile_id, endpoint);
                 }
                 WorkerEvent::ProfileStorageUnavailable(error) => {
                     panic!("profile storage unavailable: {error}");
@@ -1392,6 +1538,25 @@ mod tests {
 
     fn select(worker: &CoreWorker, profile_id: &str, model_id: &str) {
         select_event(worker, profile_id, model_id).expect("model selection");
+    }
+
+    fn delete_event(worker: &CoreWorker, profile_id: &str) -> Result<(), TranslationError> {
+        worker
+            .try_send(WorkerCommand::DeleteSavedProfile {
+                profile_id: ProviderProfileId::parse(profile_id).expect("profile ID"),
+            })
+            .expect("delete profile command");
+        match worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("delete profile event")
+        {
+            WorkerEvent::ProfileDeleted {
+                profile_id: deleted,
+            } if deleted.as_str() == profile_id => Ok(()),
+            WorkerEvent::ProfileDeletionRejected { error, .. } => Err(error),
+            _ => panic!("unexpected delete profile event"),
+        }
     }
 
     fn translate(worker: &CoreWorker, model_id: &str) -> (String, TranslationEvent) {
@@ -1650,6 +1815,214 @@ mod tests {
         ]);
     }
 
+    // 单一重启流程覆盖多配置更新、默认选择和删除后的会话连续性。
+    #[allow(clippy::too_many_lines)]
+    #[test]
+    fn multiple_profiles_restore_without_requests_and_delete_preserves_live_session() {
+        let first = ExternalFakeProvider::start(FakeMode::Standard);
+        let second = ExternalFakeProvider::start(FakeMode::Standard);
+        let database = TestDatabase::new();
+        let (worker, profiles, active_profile_id, _) =
+            started_worker_with_database_snapshot(database.path());
+        assert!(profiles.is_empty());
+        assert!(active_profile_id.is_none());
+
+        connect(
+            &worker,
+            profile("profile-a", &first.endpoint, None, None),
+            None,
+            PersistenceIntent::Persistent,
+        )
+        .expect("first persistent connection");
+        select_event(&worker, "profile-a", "fake-translator")
+            .expect("first model selection")
+            .expect("first saved profile update");
+        connect(
+            &worker,
+            profile("profile-b", &second.endpoint, None, None),
+            None,
+            PersistenceIntent::Persistent,
+        )
+        .expect("second persistent connection");
+        select_event(&worker, "profile-b", "fake-slow-translator")
+            .expect("second model selection")
+            .expect("second saved profile update");
+        let updated_a = ProviderProfile::new(
+            ProviderProfileId::parse("profile-a").expect("profile ID"),
+            "Updated profile A",
+            "custom-openai-compatible",
+            "openai_chat_completions",
+            &first.endpoint,
+            None,
+        )
+        .expect("updated first profile")
+        .with_selected_model(Some("fake-translator".to_owned()))
+        .expect("updated first model");
+        connect(&worker, updated_a, None, PersistenceIntent::Persistent)
+            .expect("independent first profile update");
+        connect(
+            &worker,
+            profile(
+                "profile-b",
+                &second.endpoint,
+                None,
+                Some("fake-slow-translator"),
+            ),
+            None,
+            PersistenceIntent::Persistent,
+        )
+        .expect("restore second profile as active");
+        shutdown(&worker);
+
+        let first_requests = first.model_requests.load(Ordering::SeqCst);
+        let second_requests = second.model_requests.load(Ordering::SeqCst);
+        let (restarted, profiles, active_profile_id, _) =
+            started_worker_with_database_snapshot(database.path());
+        assert_eq!(first.model_requests.load(Ordering::SeqCst), first_requests);
+        assert_eq!(
+            second.model_requests.load(Ordering::SeqCst),
+            second_requests
+        );
+        assert_eq!(profiles.len(), 2);
+        assert_eq!(
+            active_profile_id.as_ref().map(ProviderProfileId::as_str),
+            Some("profile-b")
+        );
+        let restored_a = profiles
+            .iter()
+            .find(|profile| profile.id().as_str() == "profile-a")
+            .expect("restored first profile");
+        let restored_b = profiles
+            .iter()
+            .find(|profile| profile.id().as_str() == "profile-b")
+            .expect("restored second profile");
+        assert_eq!(restored_a.display_name(), "Updated profile A");
+        assert_eq!(restored_a.selected_model(), Some("fake-translator"));
+        assert_eq!(restored_b.selected_model(), Some("fake-slow-translator"));
+
+        delete_event(&restarted, "profile-a").expect("delete inactive profile");
+        let error = delete_event(&restarted, "missing-profile").expect_err("missing profile");
+        assert_eq!(error.kind, ErrorKind::InvalidConfiguration);
+        let restored_b = restored_b.clone();
+        let (_, _, saved_profile) =
+            connect_event(&restarted, restored_b, None, PersistenceIntent::Persistent)
+                .expect("reconnect active saved profile");
+        assert!(saved_profile.is_some());
+        delete_event(&restarted, "profile-b").expect("delete connected profile");
+
+        let (output, terminal) = translate(&restarted, "fake-slow-translator");
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        let updated = select_event(&restarted, "profile-b", "fake-translator")
+            .expect("session-only model selection after deletion");
+        assert!(updated.is_none());
+        shutdown(&restarted);
+
+        let (final_worker, profiles, active_profile_id, _) =
+            started_worker_with_database_snapshot(database.path());
+        assert!(profiles.is_empty());
+        assert!(active_profile_id.is_none());
+        shutdown(&final_worker);
+    }
+
+    #[test]
+    fn multiple_session_credentials_stay_isolated_and_never_reach_storage() {
+        const FIRST_SECRET: &str = "FIRST_PROFILE_SECRET_CANARY";
+        const SECOND_SECRET: &str = "SECOND_PROFILE_SECRET_CANARY";
+        let first = ExternalFakeProvider::start(FakeMode::Authenticated(FIRST_SECRET));
+        let second = ExternalFakeProvider::start(FakeMode::Authenticated(SECOND_SECRET));
+        let database = TestDatabase::new();
+        let (worker, profiles, active_profile_id, _) =
+            started_worker_with_database_snapshot(database.path());
+        assert!(profiles.is_empty());
+        assert!(active_profile_id.is_none());
+
+        let first_ref = SecretRef::new(SecretRefNamespace::Session);
+        let first_ref_text = first_ref.as_str().to_owned();
+        connect(
+            &worker,
+            profile("secret-profile-a", &first.endpoint, Some(first_ref), None),
+            Some(SecretValue::new(FIRST_SECRET)),
+            PersistenceIntent::Persistent,
+        )
+        .expect("first authenticated persistence");
+        select_event(&worker, "secret-profile-a", "fake-translator")
+            .expect("first saved model")
+            .expect("first saved profile");
+
+        let second_ref = SecretRef::new(SecretRefNamespace::Session);
+        let second_ref_text = second_ref.as_str().to_owned();
+        connect(
+            &worker,
+            profile("secret-profile-b", &second.endpoint, Some(second_ref), None),
+            Some(SecretValue::new(SECOND_SECRET)),
+            PersistenceIntent::Persistent,
+        )
+        .expect("second authenticated persistence");
+        select_event(&worker, "secret-profile-b", "fake-slow-translator")
+            .expect("second saved model")
+            .expect("second saved profile");
+        database.assert_absent_from_files(&[
+            FIRST_SECRET,
+            SECOND_SECRET,
+            "session:",
+            first_ref_text.as_str(),
+            second_ref_text.as_str(),
+        ]);
+        shutdown(&worker);
+
+        let (restarted, profiles, active_profile_id, _) =
+            started_worker_with_database_snapshot(database.path());
+        assert_eq!(profiles.len(), 2);
+        assert_eq!(
+            active_profile_id.as_ref().map(ProviderProfileId::as_str),
+            Some("secret-profile-b")
+        );
+        let saved_a = profiles
+            .iter()
+            .find(|profile| profile.id().as_str() == "secret-profile-a")
+            .expect("saved first profile");
+        assert!(saved_a.secret_ref().is_none());
+        let error = connect(
+            &restarted,
+            runtime_profile_with_session_secret(saved_a),
+            None,
+            PersistenceIntent::Persistent,
+        )
+        .expect_err("credential re-entry required");
+        assert_eq!(error.kind, ErrorKind::SecretUnavailable);
+
+        let saved_b = profiles
+            .iter()
+            .find(|profile| profile.id().as_str() == "secret-profile-b")
+            .expect("saved second profile");
+        let error = connect(
+            &restarted,
+            runtime_profile_with_session_secret(saved_b),
+            Some(SecretValue::new(FIRST_SECRET)),
+            PersistenceIntent::Persistent,
+        )
+        .expect_err("credentials are not copied between profiles");
+        assert_eq!(error.kind, ErrorKind::Authentication);
+        assert!(!error.message.contains(FIRST_SECRET));
+        connect(
+            &restarted,
+            runtime_profile_with_session_secret(saved_b),
+            Some(SecretValue::new(SECOND_SECRET)),
+            PersistenceIntent::Persistent,
+        )
+        .expect("second credential re-entry");
+        shutdown(&restarted);
+
+        database.assert_absent_from_files(&[
+            FIRST_SECRET,
+            SECOND_SECRET,
+            "session:",
+            first_ref_text.as_str(),
+            second_ref_text.as_str(),
+        ]);
+    }
+
     #[test]
     fn session_switch_does_not_replace_saved_restart_profile() {
         let first = ExternalFakeProvider::start(FakeMode::Standard);
@@ -1844,6 +2217,71 @@ mod tests {
         let (output, terminal) = translate(&worker, "fake-translator");
         assert_eq!(output, "你好，LinguaMesh！");
         assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        let error = delete_event(&worker, "fallback-provider")
+            .expect_err("delete requires profile storage");
+        assert_eq!(error.kind, ErrorKind::Persistence);
+        shutdown(&worker);
+    }
+
+    #[test]
+    fn active_translation_rejects_saved_profile_deletion() {
+        let database = TestDatabase::new();
+        let (worker, restored, endpoint) = started_worker_with_database(database.path());
+        assert!(restored.is_none());
+        connect(
+            &worker,
+            profile("busy-profile", &endpoint, None, None),
+            None,
+            PersistenceIntent::Persistent,
+        )
+        .expect("persistent connection");
+        select_event(&worker, "busy-profile", "fake-slow-translator")
+            .expect("saved slow model")
+            .expect("saved profile update");
+        worker
+            .try_send(WorkerCommand::Translate(TranslationRequest::new(
+                "Hello",
+                "zh-CN",
+                "fake-slow-translator",
+            )))
+            .expect("translation command");
+        assert!(matches!(
+            worker.events.recv_timeout(Duration::from_secs(5)),
+            Ok(WorkerEvent::Translation(TranslationEvent::Started { .. }))
+        ));
+        worker
+            .try_send(WorkerCommand::DeleteSavedProfile {
+                profile_id: ProviderProfileId::parse("busy-profile").expect("profile ID"),
+            })
+            .expect("delete command");
+
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let mut deletion_rejected = false;
+        let mut translation_completed = false;
+        while Instant::now() < deadline && !(deletion_rejected && translation_completed) {
+            let event = match worker.events.recv_timeout(Duration::from_millis(500)) {
+                Ok(event) => event,
+                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => continue,
+                Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+                    panic!("worker disconnected during busy operation")
+                }
+            };
+            match event {
+                WorkerEvent::ProfileDeletionRejected { error, .. } => {
+                    assert_eq!(error.kind, ErrorKind::InvalidConfiguration);
+                    deletion_rejected = true;
+                }
+                WorkerEvent::Translation(event) if event.is_terminal() => {
+                    assert!(matches!(event, TranslationEvent::Completed { .. }));
+                    translation_completed = true;
+                }
+                WorkerEvent::Translation(_) => {}
+                _ => panic!("unexpected busy operation event"),
+            }
+        }
+        assert!(deletion_rejected);
+        assert!(translation_completed);
+        delete_event(&worker, "busy-profile").expect("delete after translation");
         shutdown(&worker);
     }
 
@@ -2052,7 +2490,13 @@ mod tests {
         }
         assert_eq!(external.model_requests.load(Ordering::SeqCst), 1);
 
-        for index in 0..COMMAND_CAPACITY {
+        worker
+            .commands
+            .try_send(QueuedCommand::DeleteSavedProfile {
+                profile_id: ProviderProfileId::parse("full-queue-provider").expect("profile ID"),
+            })
+            .expect("queued delete command");
+        for index in 0..(COMMAND_CAPACITY - 1) {
             worker
                 .commands
                 .try_send(QueuedCommand::SelectModel {
@@ -2081,7 +2525,16 @@ mod tests {
             rejected,
             WorkerEvent::ProviderRejected { error, .. } if error.kind == ErrorKind::Cancelled
         ));
-        for _ in 0..COMMAND_CAPACITY {
+        let rejected = worker
+            .events
+            .recv_timeout(Duration::from_secs(1))
+            .expect("queued delete cancellation");
+        assert!(matches!(
+            rejected,
+            WorkerEvent::ProfileDeletionRejected { error, .. }
+                if error.kind == ErrorKind::Cancelled
+        ));
+        for _ in 0..(COMMAND_CAPACITY - 1) {
             let rejected = worker
                 .events
                 .recv_timeout(Duration::from_secs(1))

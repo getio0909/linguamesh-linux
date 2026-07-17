@@ -9,12 +9,14 @@ commits that profile and its discovered models. A stale success or failure is re
 changing the active state. A failed switch therefore preserves the previous provider, models, and
 selection.
 
-Model discovery never selects the first entry implicitly. A saved profile can be loaded into the
-form at startup, but the reducer remains `Disconnected` and does not treat it as active. Its
-`ProviderProfile.selected_model` is restored only after an explicit reconnect and only when that
-exact model remains in the discovery result; otherwise the user must select a model deliberately.
-The reducer also enforces ordered translation events, retains partial output on cancellation or
-failure, and maps every Core `0.1.0-alpha.2` error category to safe UI text.
+Model discovery never selects the first entry implicitly. Startup atomically restores a sorted
+vector of saved profiles, the persisted active ID, and each model preference, while the reducer
+remains `Disconnected`. The selected form row, persisted default, connected saved row, and pending
+deletion are separate state so browsing one profile cannot mutate another. A saved model is
+restored only after an explicit reconnect and only when that exact model remains in discovery;
+otherwise the user must select a model deliberately. The reducer also enforces ordered translation
+events, retains partial output on cancellation or failure, and maps every Core `0.1.0-alpha.2`
+error category to safe UI text.
 
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
@@ -30,8 +32,9 @@ is exact Core `0.1.0-alpha.2`, ABI 1, protocol 1, provider catalog `0.1.0`, and 
 - `streaming_text_v1`
 - `text_translation_v1`
 
-The development fake service starts on loopback and emits `DemoProviderReady`, which only supplies
-an endpoint when no restored profile exists. It does not create an active provider. Provider
+The worker loads every stored profile and the last activated ID before the development fake service
+starts on loopback and emits `DemoProviderReady`, which only supplies an endpoint when no restored
+profile exists. Startup does not create an active provider or issue a provider request. Provider
 controls remain disabled until the preceding storage result and this readiness event have both
 arrived, preventing a startup result from racing an explicit connection. An explicit `Connect`
 command creates a candidate `ProviderManager`; only successful secret resolution and model
@@ -47,13 +50,14 @@ translation cancellation remain in Core.
 
 With `gui`, `src/main.rs` binds this state and worker to GTK 4/libadwaita widgets. GTK objects remain
 on the main context, which processes at most 64 queued events per timer tick without performing
-network work. The shell exposes provider name, endpoint, optional session credential, explicit
-Connect, an explicit **Remember non-secret profile and model** checkbox, explicit model selection,
-source and target locales, source and streamed output editors, Translate/Stop, typed errors,
-appearance, locale preference with an English fallback, and redacted diagnostics. A restored
-profile prefills the name and endpoint and selects the remember checkbox without connecting or
-populating the discovered-model list. Connection and translation states disable conflicting
-controls.
+network work. The shell exposes a saved-profile dropdown, provider name, endpoint, optional session
+credential, explicit Connect, **Remember non-secret profile and model**, **Remove saved profile**,
+model selection, source and target locales, source and streamed output editors, Translate/Stop,
+typed errors, appearance, locale preference with an English fallback, and redacted diagnostics.
+Selecting a restored profile prefills only its non-secret form fields without connecting or
+changing the active runtime model. New persistent profiles use a GLib random UUID validated as a
+Core `ProviderProfileId`; display names are never database keys. Pending connection, model
+selection, translation, or deletion disables conflicting controls.
 
 The user-facing endpoint example is loopback. Under its shared endpoint policy, Core accepts
 loopback HTTP and also accepts HTTPS endpoints; the Linux client does not duplicate URL parsing.
@@ -71,12 +75,20 @@ retains the `SecretValue` only for the active provider session and clears it whe
 disconnected or replaced.
 
 When the user selects the remember checkbox, the worker uses Core's `linguamesh-storage` crate to
-save a credential-free profile only after connection and model discovery succeed. The saved
-user-configured fields are the provider name, endpoint, and validated model preference. Selecting a
-new model updates the saved preference before the in-memory confirmation is emitted. A failed
-candidate or cancellation observed before the persistence commit leaves both the active manager
-and saved restart profile unchanged; a session-only switch also leaves the prior restart profile
-intact.
+create or update that credential-free profile and atomically make it the persisted default only
+after connection and model discovery succeed. The saved user-configured fields are the provider
+name, endpoint, and validated model preference. Multiple rows may share a name or endpoint because
+their random stable IDs remain distinct. Selecting a new model updates only the connected saved row
+before the in-memory confirmation is emitted, even when another row is displayed in the form. A
+failed candidate or cancellation observed before the persistence commit leaves the active manager,
+every saved row, and the restart default unchanged; a session-only switch does the same.
+
+Profile deletion is a separate exact-ID command. Core commits its transactional row deletion first,
+then the worker emits success. Removing a non-default row leaves the persisted default unchanged.
+Removing the connected or persisted-default row clears its persisted/default marker after commit;
+an already validated matching runtime engine and selected model remain alive as session-only, and
+later model changes do not recreate the row. A missing row, storage failure, active translation,
+shutdown, or stale result preserves the reducer snapshot and produces a typed rejection.
 
 The database is
 `$XDG_DATA_HOME/dev.linguamesh.LinguaMesh/linguamesh.sqlite3`, using GLib's resolved user data
