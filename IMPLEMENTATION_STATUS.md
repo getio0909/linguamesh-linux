@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, and the GIO Secret Service adapter are implemented; native keyring integration evidence remains open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, and generic completion desktop notifications are implemented; native keyring integration evidence remains open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -155,6 +155,9 @@ Validated on 2026-07-17 with Rust 1.93.0:
   connection/model discovery, cancellable streaming with partial output,
   active/queued/full-command-queue shutdown, translation terminal delivery during shutdown,
   saved-model validation, and failed-switch rollback.
+- The notification slice keeps the desktop payload fixed to generic English text and sends no
+  source or translated content. Local source-level GTK checks and the demo-provider suite above
+  passed after the `GApplication` notification call was added.
 - `bash tools/run-storage-fault-test.sh` passed its exact ignored test separately: 1 passed, 0
   failed, 0 ignored. A private 8 MiB tmpfs produced real kernel `ENOSPC` failures for persistent
   model update, deletion, and provider switch; each preserved prior-session translation, and each
@@ -177,6 +180,14 @@ Validated on 2026-07-17 with Rust 1.93.0:
   their action metadata uses Node 24 or a composite action.
 
 ## Remote validation evidence
+
+Desktop-notification functional revision `07b89f36269155469a488ab830e8f485b3a1323b` passed
+repository-foundation run `29594795681` (job `87932451692`) and Native Linux run `29594795691`
+(job `87932451631`). The Ubuntu 24.04 job passed strict all-feature Clippy, 68 GUI-enabled
+library tests with one intentional ignore, the real GTK test and its generic notification path,
+the private-tmpfs storage fault test, the X11/Xvfb and forced Wayland/headless Weston GTK flow,
+and the all-target native build. Desktop notification-server delivery and packaging integration
+remain runtime/release boundaries.
 
 Runtime localization validation revision `1dfe2bcac684696ee55f56e625fcf89ffcb1a6dd` passed
 repository-foundation run `29593874763` (job `87929412298`) and Native Linux run `29593874961`
