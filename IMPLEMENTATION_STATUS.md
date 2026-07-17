@@ -84,7 +84,8 @@ older distributions and future Flatpak runtimes require separate packaging valid
   reference are stripped before any profile write and must be entered again after restart. Persistent
   secret references are stored and resolved through the Linux Secret Service adapter;
   unavailable or locked keyrings fail closed and never fall back to plaintext. Secret-item cleanup
-  after profile deletion and a real desktop-keyring CI service remain open.
+  is covered by the isolated CI daemon fixture; persistent desktop restoration and locked/prompted
+  lifecycle behavior remain open.
 - Connection cancellation uses a `CancellationToken`; translation cancellation uses Core's
   cross-thread handle. Both bypass command-queue backpressure. Partial output is retained, control
   commands receive priority, and a cancellation/terminal-event race remains idempotent.
@@ -197,8 +198,17 @@ Secret Service session-parameter fix revision `9bcd8d9ca30d109f5c7c9c20e6f72f6a7
 repository-foundation run `29598255993` and Native Linux run `29598255988` (job `87943844854`).
 The Ubuntu 24.04 job passed strict all-feature Clippy, the GTK-enabled test suite, both display
 gates, the private-tmpfs storage fault test, and the all-target native build after the wire-shape
-regression was added. Real desktop keyring CRUD, locked/prompted behavior, and cleanup remain
+regression was added. Persistent desktop keyring restoration and locked/prompted behavior remain
 unverified because the CI session has no unlocked desktop keyring.
+
+Secret Service CRUD functional revision `726508f8412727f8b14e32d27407487491f5e4cd` passed
+repository-foundation run `29600898977` and Native Linux run `29600898951` (job `87952473459`).
+The Ubuntu 24.04 job passed strict all-feature Clippy, 75 library tests with 2 intentional ignores,
+the real GTK binary test under X11/Xvfb and forced Wayland/headless Weston, the exact storage-fault
+test, the isolated real-daemon store/resolve/delete fixture (1 passed), and the all-target native
+build. This proves the session wire shape, default-collection CRUD, secret resolution, and cleanup
+against an isolated `gnome-keyring` daemon; persistent desktop keyring restoration and locked/prompted
+behavior remain separate lifecycle gates.
 
 Linux drag-and-drop functional revision `b0da3819d97ae24f8c85147da5e7e1c65fe2d6fc` passed
 repository-foundation run `29597016893` (job `87939785643`) and Native Linux run `29597016894`

@@ -132,7 +132,7 @@ On Debian or Ubuntu, install the native development headers:
 
 ```sh
 sudo apt-get install \
-  libgtk-4-dev libadwaita-1-dev dbus-daemon gettext mount pkg-config python3 util-linux weston \
+  libgtk-4-dev libadwaita-1-dev dbus-daemon gettext gnome-keyring mount pkg-config python3 util-linux weston \
   xauth xvfb
 ```
 
