@@ -121,18 +121,31 @@ prove physical desktop-shell rendering, compositor behavior, or visual placement
 The document portal runner starts the real XDG document portal services on a private D-Bus session,
 adds a temporary fixture through a file descriptor, verifies the returned host path, grants and
 revokes the application read permission, and deletes the lease. This proves the document-portal
-lease lifecycle without touching a developer file; interactive GTK file chooser and drag/drop
-gestures remain separate integration boundaries.
+lease lifecycle without touching a developer file; application-level chooser and drag/drop callbacks
+are exercised by the dedicated GTK fixture below.
 
 The interactive file chooser runner starts the real `xdg-desktop-portal-gtk` backend under Xvfb,
 issues the actual `FileChooser.OpenFile` request, injects a fixture path into the visible chooser,
 and verifies the response URI and UTF-8 contents. This proves backend portal UI and lease behavior;
-the Linux application's GTK `FileDialog` callback remains a separate integration boundary.
+the Linux application's GTK `FileDialog` callback is verified by the application-level fixture:
+
+```sh
+bash tools/run-gtk-file-chooser-portal-test.sh
+```
+
+That runner launches the real binary with a hidden test environment, drives the visible chooser with
+`xdotool`, and asserts the callback plus asynchronous GIO read markers.
 
 The toolkit-independent suite also tests the text-import decoder for UTF-8 BOM removal, invalid
 UTF-8 rejection, and the 4 MiB bound. The native GTK flow verifies the **Open text file** control
-is focusable, is disabled after worker loss, and registers a single-file `DropTarget` on the source
-editor. Interactive file-dialog and drag/drop gestures remain manual portal integration boundaries.
+is focusable, is disabled after worker loss, and registers URI-list/GIO `DropTarget` types on the
+source editor. The application-level drag fixture performs an actual XTest drag through the editor:
+
+```sh
+bash tools/run-gtk-drag-and-drop-test.sh
+```
+
+Physical desktop-shell rendering and prompted portal/keyring flows remain manual boundaries.
 
 The GTK Rust source can be checked without native linking as a limited diagnostic. The `v4_10`
 gtk-rs feature is enabled because the accessibility test helpers and semantic update APIs require
