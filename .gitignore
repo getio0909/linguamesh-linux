@@ -1,0 +1,14 @@
+.DS_Store
+target/
+build/
+build-dir/
+.flatpak-builder/
+.cargo/
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.swp
+*~
+

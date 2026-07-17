@@ -1,0 +1,35 @@
+name: Repository Foundation
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  foundation:
+    name: Validate repository foundation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Validate required files and documentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          required_files="README.md LICENSE AGENTS.md REPOSITORY_ROLE.md GLOBAL_GOAL.md SECURITY.md CONTRIBUTING.md CODE_OF_CONDUCT.md THIRD_PARTY_NOTICES.md IMPLEMENTATION_STATUS.md docs/architecture.md docs/testing.md docs/releasing.md .gitignore .github/workflows/foundation.yml"
+          for file in $required_files; do
+            test -s "$file" || {
+              printf 'Missing required file: %s\n' "$file"
+              exit 1
+            }
+          done
+          grep -Fqx 'Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`' GLOBAL_GOAL.md
+          if find . -type f \( -name '*.md' -o -name '*.yml' \) -not -path './.git/*' -exec awk '/[[:blank:]]$/ { printf "%s:%d: trailing whitespace\n", FILENAME, FNR; bad=1 } END { exit bad }' {} +; then
+            printf '%s\n' 'Foundation validation passed.'
+          else
+            exit 1
+          fi
