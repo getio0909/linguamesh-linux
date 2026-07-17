@@ -57,7 +57,7 @@ network work. The shell exposes a saved-profile dropdown, provider name, endpoin
 credential, explicit Connect, **Remember profile, model, and credential in Secret Service**,
 **Remove saved profile**,
 model selection, source and target locales, source and streamed output editors, Translate/Stop,
-typed errors, appearance, locale preference with an English fallback, and redacted diagnostics.
+typed errors, appearance, runtime catalog-backed locale preference, and redacted diagnostics.
 An always-current Provider setup card explains the next required action, warns when saved-profile
 storage is unavailable, distinguishes fatal worker shutdown from startup, and identifies the
 confirmed provider stable ID/model that will receive the next request. It never connects, selects,
@@ -149,8 +149,9 @@ locked, unavailable, or interactive-only keyring states fail closed. There is no
 startup does not auto-connect, and the UI keeps an explicit session-only path.
 
 `l10n/linux/` is a byte-for-byte consumer snapshot of the canonical PO catalogs at the revision
-enforced by `tools/sync-l10n.sh`. Resource provenance and format validation are implemented, while
-runtime gettext lookup remains a separate incomplete client concern.
+enforced by `tools/sync-l10n.sh`. The GTK host now parses the pinned English and Simplified Chinese
+catalogs at runtime for translated action labels, with explicit English fallback for keys not yet
+covered by the UI.
 
 The application state and worker command/event wrappers intentionally do not derive `Debug`, so
 source text and streamed output are not exposed through routine debug formatting. Diagnostics omit

@@ -4,9 +4,9 @@ Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline 
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
-Assumption: canonical generated PO resources are synchronized and format-validated, but selecting
-`zh-CN` continues to present an explicit English fallback until the GTK gettext adapter is
-implemented and tested.
+Assumption: canonical generated PO resources are synchronized and format-validated. The GTK host
+now parses the pinned English and Simplified Chinese catalogs at runtime for localized action
+labels; complete UI coverage, plural handling, and visual locale/RTL review remain open.
 
 Assumption: the existing first-party `linguamesh-storage` crate and the already-reviewed GTK/GIO
 dependency closure are the approved persistence contract for this Linux slice. The Secret Service
@@ -91,7 +91,8 @@ older distributions and future Flatpak runtimes require separate packaging valid
 - GTK 4/libadwaita source provides a saved-profile dropdown, random stable IDs for new profiles,
   provider name, endpoint, optional session credential, explicit non-secret remember/remove
   choices, connection and model selection, saved/session status, language controls, source/output
-  views, Translate/Stop, typed errors, partial-result display, appearance, locale fallback notice,
+  views, Translate/Stop, typed errors, partial-result display, appearance, runtime catalog-backed
+  action labels with an explicit fallback notice,
   keyboard mnemonics, and redacted diagnostics. An always-current Provider setup card explains the
   next required action, warns that unavailable saved-profile storage requires session-only use, and
   keeps that warning visible through connection, model selection, and Ready while naming the
@@ -282,7 +283,7 @@ in the GitHub Actions evidence above, but those native checks remain unavailable
   compatibility beyond the alpha.2 startup gate remains unclaimed.
 - Interoperability evidence for third-party local servers, including Ollama; automated endpoint
   coverage currently uses only LinguaMesh fake providers on loopback.
-- Runtime gettext lookup, complete canonical UI coverage, and visual locale/RTL verification.
+- Complete canonical UI gettext coverage, plural/placeholder handling, and visual locale/RTL verification.
 - Runtime database faults beyond the verified private-tmpfs `ENOSPC` transaction boundary,
   including read-only media, corruption, power loss, and broader SQLite VFS failures.
 - XDG portals beyond the implemented user-data path, file workflows,

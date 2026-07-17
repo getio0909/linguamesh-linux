@@ -2,6 +2,9 @@
 
 pub mod model;
 
+#[cfg(feature = "gui")]
+pub mod localization;
+
 #[cfg(feature = "demo-provider")]
 pub mod worker;
 

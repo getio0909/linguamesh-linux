@@ -103,8 +103,9 @@ functional revision above; an arbitrary default branch is not compatibility evid
 
 Canonical PO catalogs are synchronized from immutable l10n revision
 `52e73ea2a6cc7e6e7409b2b6eb0d02db35576a49` and validated with `msgfmt`. The locale selector
-currently records `en` or `zh-CN`, but English remains the explicit runtime fallback until the
-GTK gettext adapter is implemented.
+records `en` or `zh-CN`; the Linux host now loads the pinned English and Simplified Chinese PO
+catalogs at runtime for localized action labels without losing active text. Remaining UI strings
+still use English fallbacks until complete gettext coverage is wired.
 
 ## Documentation
 

@@ -44,7 +44,7 @@ A Linux release may be prepared only after:
 
 1. pinned Rust, GTK, GLib/GIO, and packaging toolchains build and test successfully on documented environments;
 2. LinguaMesh Core, protocol, provider catalog, persistence, and localization versions match the central release manifest;
-3. the native Secret Service backend, session-only fallback, complete SecretRef-backed profile lifecycle including item cleanup, multi-profile management, XDG paths, portals, accessibility, Wayland, practical X11 support, migrations, and packaging smoke tests are verified;
+3. real desktop Secret Service CRUD/cleanup, the session-only fallback, complete SecretRef-backed profile lifecycle, multi-profile management, XDG paths, portals, accessibility, Wayland, practical X11 support, migrations, and packaging smoke tests are verified;
 4. dependency and LGPL compliance review, third-party notices, privacy/security review, changelog, checksums, source archive, and rollback information are complete;
 5. protected release infrastructure produces reproducible artifacts without exposing credentials.
 

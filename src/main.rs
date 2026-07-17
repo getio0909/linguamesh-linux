@@ -3,6 +3,7 @@ use gtk::glib;
 use linguamesh_domain::{
     ErrorKind, ProviderProfileId, SecretRef, SecretRefNamespace, SecretValue, TranslationError,
 };
+use linguamesh_linux::localization;
 use linguamesh_linux::model::{
     AppState, AppStatus, OnboardingStage, ProfileStorageStatus, ProviderProfile, StateError,
     ThemePreference, UiLocale,
@@ -1344,8 +1345,21 @@ fn refresh_onboarding(bindings: &UiBindings, state: &AppState) {
     bindings.onboarding_detail.set_label(&detail);
 }
 
+fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
+    let translate = localization::text(locale, "action.translate", "Translate");
+    let stop = localization::text(locale, "accessibility.stop_translation", "Stop translation");
+    let translate_label = format!("_{translate}");
+    let stop_label = format!("_{stop}");
+    bindings.translate.set_label(&translate_label);
+    bindings.stop.set_label(&stop_label);
+    bindings
+        .stop
+        .update_property(&[gtk::accessible::Property::Label(&stop)]);
+}
+
 #[allow(clippy::too_many_lines)]
 fn refresh_ui(bindings: &UiBindings, state: &AppState) {
+    refresh_localized_actions(bindings, state.locale());
     bindings.output.set_text(state.output());
     let status_label = if state.worker_unavailable() {
         "Unavailable"
@@ -1382,7 +1396,7 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     bindings
         .locale_note
         .set_label(if state.locale() == UiLocale::SimplifiedChinese {
-            "Simplified Chinese resources are not wired into the runtime; English fallback remains active."
+            "Simplified Chinese resources are loaded from the pinned runtime catalog; translations remain unreviewed drafts."
         } else {
             ""
         });
@@ -1454,7 +1468,7 @@ mod tests {
     use super::{
         AppState, AppStatus, CUSTOM_PROVIDER_PRESET_ID, CoreWorker, DEFAULT_PROVIDER_ENDPOINT,
         DEFAULT_PROVIDER_NAME, ErrorKind, OPENAI_ADAPTER_TYPE, OnboardingStage, ProviderProfileId,
-        SecretRef, SecretRefNamespace, TranslationError, WorkerCommand, WorkerEvent,
+        SecretRef, SecretRefNamespace, TranslationError, UiLocale, WorkerCommand, WorkerEvent,
         apply_worker_event, connect_action_handlers, connect_selection_handlers, create_window,
         custom_provider_profile, generate_custom_provider_id, refresh_ui, start_event_pump,
     };
@@ -1527,6 +1541,12 @@ mod tests {
         );
         refresh_ui(&bindings, &state.borrow());
         window.present();
+        state.borrow_mut().set_locale(UiLocale::SimplifiedChinese);
+        refresh_ui(&bindings, &state.borrow());
+        assert_eq!(bindings.translate.label().as_deref(), Some("_翻译"));
+        assert_eq!(bindings.stop.label().as_deref(), Some("_停止翻译"));
+        state.borrow_mut().set_locale(UiLocale::English);
+        refresh_ui(&bindings, &state.borrow());
 
         assert!(gtk::test_accessible_has_role(
             &bindings.workspace,

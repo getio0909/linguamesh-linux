@@ -40,6 +40,7 @@ cargo clippy --all-targets --features demo-provider --locked -- -D warnings
 cargo test --no-default-features --locked
 cargo test --features demo-provider --locked
 cargo build --features demo-provider --locked
+DOCS_RS=1 cargo check --all-targets --all-features --locked
 ```
 
 The no-default suite contains 41 reducer tests. It covers the disconnected initial state, atomic
