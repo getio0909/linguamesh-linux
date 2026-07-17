@@ -15,8 +15,9 @@ path is tested only with LinguaMesh's loopback fake provider. Persistent secret 
 closed because no native Secret Service backend exists. The native workflow pins reviewed Core
 functional revision
 `fbf3e9b5927049dccaa19f8c36013495ffebba12`, whose storage delta adds
-`SQLITE_OPEN_NOFOLLOW`, rather than checking out a floating branch. Native CI
-for the current non-secret persistence and restart revision is pending.
+`SQLITE_OPEN_NOFOLLOW`, rather than checking out a floating branch. Functional revision
+`c58a54c2479045773358bd9c456b45a958e98e1e` passed Native Linux run `29574265570`; this validation
+does not create a distributable artifact or satisfy the future release gate below.
 
 ## Future release gate
 

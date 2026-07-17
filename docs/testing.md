@@ -117,9 +117,12 @@ accessibility, or Wayland coverage.
 
 The GitHub Actions native workflow pins Core revision
 `fbf3e9b5927049dccaa19f8c36013495ffebba12`, installs the headers plus D-Bus/Xvfb support, and runs
-the complete gate. Native CI for the current non-secret persistence and restart revision is pending.
-A local host without `gtk4.pc` or `libadwaita-1.pc` must not claim that the GUI build, launch, or GTK
-button test passed.
+the complete gate. Functional persistence revision
+`c58a54c2479045773358bd9c456b45a958e98e1e` passed Native Linux run `29574265570` (job
+`87865028892`): strict all-feature Clippy, 50 library tests, the real GTK binary test, and the
+all-target all-feature build all succeeded. Repository-foundation run `29574265553` also passed. A
+local host without `gtk4.pc` or `libadwaita-1.pc` must not substitute this remote result for an
+unexecuted local GUI build, launch, or GTK test.
 
 ## Repository foundation check
 

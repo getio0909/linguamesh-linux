@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Core alpha.2 non-secret persistence/restart slice verified locally; native Linux CI pending
+Status: Core alpha.2 non-secret persistence/restart slice verified locally and in native Linux CI
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -100,6 +100,13 @@ Validated on 2026-07-17 with Rust 1.93.0:
 
 ## Remote validation evidence
 
+Functional persistence revision `c58a54c2479045773358bd9c456b45a958e98e1e` passed
+repository-foundation run `29574265553` and Native Linux run `29574265570` (job `87865028892`).
+The native Ubuntu 24.04 job checked out exact Core revision
+`fbf3e9b5927049dccaa19f8c36013495ffebba12`, synchronized localization, passed formatting and
+strict all-feature Clippy, passed 50 library tests plus the real GTK binary test under serialized
+X11/D-Bus/Xvfb, and built all targets with all features.
+
 Functional alpha.2 revision `0455baf8f258c6280d66d1d568fd6a01fdad8486` passed repository-foundation
 run `29569227294` (job `87848829297`) and Native Linux run `29569227256` (job `87848829235`). The
 native Ubuntu 24.04 job installed GTK 4, libadwaita, D-Bus, and Xvfb support; validated the exact
@@ -133,8 +140,8 @@ Runtime database I/O fault injection after successful startup is not covered loc
 - A native Secret Service implementation, credential create/read/update/delete tests, onboarding,
   deletion, and active switching among multiple saved profiles. The current credential path is
   deliberately session-only and does not satisfy secure credential persistence.
-- Native CI evidence and central release-manifest integration for this exact Linux/Core revision;
-  broader product compatibility beyond the alpha.2 startup gate remains unclaimed.
+- Central release-manifest integration for this exact Linux/Core revision; broader product
+  compatibility beyond the alpha.2 startup gate remains unclaimed.
 - Interoperability evidence for third-party local servers, including Ollama; automated endpoint
   coverage currently uses only LinguaMesh fake providers on loopback.
 - Runtime gettext lookup, complete canonical UI coverage, and visual locale/RTL verification.
