@@ -1461,6 +1461,7 @@ mod tests {
     use adw::prelude::*;
     use gtk::glib;
     use std::cell::RefCell;
+    use std::fs;
     use std::rc::Rc;
     use std::time::{Duration, Instant};
 
@@ -1920,7 +1921,12 @@ mod tests {
         assert!(!bindings.stop.is_sensitive());
 
         let restored_state = Rc::new(RefCell::new(AppState::default()));
-        let restored_worker = Rc::new(CoreWorker::spawn());
+        let restored_database_directory =
+            std::env::temp_dir().join(format!("linguamesh-linux-gtk-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&restored_database_directory);
+        let restored_worker = Rc::new(CoreWorker::spawn_with_database(
+            restored_database_directory.join("state.sqlite3"),
+        ));
         let (restored_window, restored_bindings, restored_theme, restored_locale) =
             create_window(&application);
         connect_selection_handlers(
@@ -2149,5 +2155,6 @@ mod tests {
 
         let _ = worker.try_send(WorkerCommand::Shutdown);
         window.close();
+        let _ = fs::remove_dir_all(restored_database_directory);
     }
 }
