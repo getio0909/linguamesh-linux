@@ -42,7 +42,14 @@ XDG_CACHE_HOME="$workspace/cache" \
       wait "$app_pid" >/dev/null 2>&1 || true
       exit 1
     fi
-    app_window=$(xdotool search --onlyvisible --name "LinguaMesh" | tail -n 1 || true)
+    app_window=""
+    while read -r candidate_window; do
+      candidate_width=$(xdotool getwindowgeometry --shell "$candidate_window" | awk -F= '$1 == "WIDTH" {print $2}')
+      if [[ "$candidate_width" =~ ^[0-9]+$ ]] && ((candidate_width >= 1000)); then
+        app_window="$candidate_window"
+        break
+      fi
+    done < <(xdotool search --onlyvisible --name '^LinguaMesh$' || true)
     if [[ -z "$app_window" ]]; then
       cat "$LINGUAMESH_FILE_DROP_LOG" >&2
       printf "%s\n" "GTK drag-and-drop fixture could not find the application window." >&2
@@ -52,12 +59,16 @@ XDG_CACHE_HOME="$workspace/cache" \
     fi
     read -r source_x source_y source_width source_height target_x target_y target_width target_height <"$LINGUAMESH_FILE_DROP_COORDINATES"
     printf "%s\n" "Widget coordinates: $(cat "$LINGUAMESH_FILE_DROP_COORDINATES")"
-    eval "$(xdotool getwindowgeometry --shell "$app_window")"
-    printf "%s\n" "Window geometry: $X $Y $WIDTH $HEIGHT"
-    source_abs_x=$((X + source_x + source_width / 2))
-    source_abs_y=$((Y + source_y + source_height / 2))
-    target_abs_x=$((X + target_x + target_width / 2))
-    target_abs_y=$((Y + target_y + target_height / 2))
+    window_geometry=$(xdotool getwindowgeometry --shell "$app_window")
+    window_x=$(printf "%s\n" "$window_geometry" | awk -F= '$1 == "X" {print $2}')
+    window_y=$(printf "%s\n" "$window_geometry" | awk -F= '$1 == "Y" {print $2}')
+    window_width=$(printf "%s\n" "$window_geometry" | awk -F= '$1 == "WIDTH" {print $2}')
+    window_height=$(printf "%s\n" "$window_geometry" | awk -F= '$1 == "HEIGHT" {print $2}')
+    printf "%s\n" "Window geometry: $window_x $window_y $window_width $window_height"
+    source_abs_x=$((window_x + source_x + source_width / 2))
+    source_abs_y=$((window_y + source_y + source_height / 2))
+    target_abs_x=$((window_x + target_x + target_width / 2))
+    target_abs_y=$((window_y + target_y + target_height / 2))
     xdotool mousemove --sync "$source_abs_x" "$source_abs_y"
     xdotool getmouselocation --shell
     xdotool mousedown 1
