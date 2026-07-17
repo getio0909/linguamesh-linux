@@ -281,6 +281,20 @@ fn create_window(
         gtk::gdk::FileList::static_type(),
         gtk::gdk::DragAction::COPY,
     );
+    source_drop_target.set_propagation_phase(gtk::PropagationPhase::Capture);
+    if std::env::var_os("LINGUAMESH_TEST_FILE_DROP").is_some() {
+        source_drop_target.connect_enter(|_, _, _| {
+            println!("GTK drag-and-drop fixture entered the source editor.");
+            gtk::gdk::DragAction::COPY
+        });
+        source_drop_target.connect_motion(|_, _, _| {
+            println!("GTK drag-and-drop fixture moved over the source editor.");
+            gtk::gdk::DragAction::COPY
+        });
+        source_drop_target.connect_leave(|_| {
+            println!("GTK drag-and-drop fixture left the source editor.");
+        });
+    }
     editor_bindings
         .source_view
         .add_controller(source_drop_target.clone());
