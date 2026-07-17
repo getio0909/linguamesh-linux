@@ -5,8 +5,9 @@ Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
 Assumption: canonical generated PO resources are synchronized and format-validated. The GTK host
-now parses the pinned English and Simplified Chinese catalogs at runtime for localized action
-labels; complete UI coverage, plural handling, and visual locale/RTL review remain open.
+now parses all twelve pinned official Linux catalogs at runtime, exposes BCP 47 locale choices,
+and switches the root direction for Arabic; complete UI coverage, plural handling, and visual
+locale/RTL review remain open.
 
 Assumption: the existing first-party `linguamesh-storage` crate and the already-reviewed GTK/GIO
 dependency closure are the approved persistence contract for this Linux slice. The Secret Service
@@ -114,7 +115,9 @@ older distributions and future Flatpak runtimes require separate packaging valid
   one-shot credential is passed through the existing typed broker and is never written to SQLite.
 - Fourteen canonical official/pseudo PO catalogs pinned to l10n revision
   `52e73ea2a6cc7e6e7409b2b6eb0d02db35576a49`. Sync rejects a different revision, dirty generated
-  source artifacts, stale copies, and unexpected catalog counts.
+  source artifacts, stale copies, and unexpected catalog counts. The GTK locale selector exposes
+  the twelve official packs, runtime action labels switch without losing state, and Arabic applies
+  right-to-left root direction; non-action UI strings still use explicit English fallbacks.
 - Foundation and native workflow sources use immutable Node 24-compatible action commits and
   disable persisted checkout credentials. Native CI pins reviewed Core revision
   `fbf3e9b5927049dccaa19f8c36013495ffebba12` and localization revision
@@ -215,6 +218,9 @@ Validated on 2026-07-17 with Rust 1.93.0:
   native environment.
 - `bash tools/sync-l10n.sh --check` passed against the exact clean l10n checkout, and all 14 PO
   catalogs passed `msgfmt --check --check-format`.
+- The Linux localization unit suite parsed all twelve official catalogs and verified non-empty
+  application/action entries, unique BCP 47 tags, and Arabic RTL metadata. `cargo test --features
+  gui --lib localization::tests --locked` passed 4 tests; the portable model suite passed 45 tests.
 - The checkout, Rust-toolchain, and Rust-cache action SHAs resolved through the GitHub commits API;
   their action metadata uses Node 24 or a composite action.
 

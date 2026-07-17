@@ -606,7 +606,8 @@ fn create_controls() -> (
     let target_locale =
         gtk::DropDown::from_strings(&["Chinese (Simplified)", "English", "Japanese"]);
     let theme = gtk::DropDown::from_strings(&["System", "Light", "Dark"]);
-    let locale = gtk::DropDown::from_strings(&["English", "Simplified Chinese"]);
+    let locale_labels = UiLocale::ALL.map(UiLocale::label);
+    let locale = gtk::DropDown::from_strings(&locale_labels);
     for (label, control) in [
         ("_Model", model.upcast_ref::<gtk::Widget>()),
         (
@@ -930,11 +931,7 @@ fn connect_selection_handlers(
     let locale_bindings = bindings.clone();
     let locale_state = Rc::clone(state);
     locale.connect_selected_notify(move |drop_down| {
-        let selected = if drop_down.selected() == 1 {
-            UiLocale::SimplifiedChinese
-        } else {
-            UiLocale::English
-        };
+        let selected = UiLocale::from_index(drop_down.selected() as usize);
         locale_state.borrow_mut().set_locale(selected);
         refresh_ui(&locale_bindings, &locale_state.borrow());
     });
@@ -1677,6 +1674,13 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
 #[allow(clippy::too_many_lines)]
 fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     refresh_localized_actions(bindings, state.locale());
+    bindings
+        .workspace
+        .set_direction(if state.locale().is_rtl() {
+            gtk::TextDirection::Rtl
+        } else {
+            gtk::TextDirection::Ltr
+        });
     bindings.output.set_text(state.output());
     let status_label = if state.worker_unavailable() {
         "Unavailable"
@@ -2021,6 +2025,9 @@ mod tests {
             bindings.open_source.label().as_deref(),
             Some("_Open text file")
         );
+        state.borrow_mut().set_locale(UiLocale::Arabic);
+        refresh_ui(&bindings, &state.borrow());
+        assert_eq!(bindings.workspace.direction(), gtk::TextDirection::Rtl);
         state.borrow_mut().set_locale(UiLocale::English);
         refresh_ui(&bindings, &state.borrow());
 

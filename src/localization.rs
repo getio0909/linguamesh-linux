@@ -101,22 +101,63 @@ fn parse_po_string(value: &str) -> Option<String> {
 }
 
 fn catalog(locale: UiLocale) -> &'static Catalog {
-    static ENGLISH: OnceLock<Catalog> = OnceLock::new();
-    static SIMPLIFIED_CHINESE: OnceLock<Catalog> = OnceLock::new();
-    match locale {
-        UiLocale::English => ENGLISH.get_or_init(|| {
+    static CATALOGS: OnceLock<[Catalog; 12]> = OnceLock::new();
+    let catalogs = CATALOGS.get_or_init(|| {
+        [
             Catalog::from_po(include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/l10n/linux/en/LC_MESSAGES/linguamesh.po"
-            )))
-        }),
-        UiLocale::SimplifiedChinese => SIMPLIFIED_CHINESE.get_or_init(|| {
+            ))),
             Catalog::from_po(include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/l10n/linux/zh-Hans/LC_MESSAGES/linguamesh.po"
-            )))
-        }),
-    }
+            ))),
+            Catalog::from_po(include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/l10n/linux/zh-Hant/LC_MESSAGES/linguamesh.po"
+            ))),
+            Catalog::from_po(include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/l10n/linux/es/LC_MESSAGES/linguamesh.po"
+            ))),
+            Catalog::from_po(include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/l10n/linux/fr/LC_MESSAGES/linguamesh.po"
+            ))),
+            Catalog::from_po(include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/l10n/linux/de/LC_MESSAGES/linguamesh.po"
+            ))),
+            Catalog::from_po(include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/l10n/linux/ja/LC_MESSAGES/linguamesh.po"
+            ))),
+            Catalog::from_po(include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/l10n/linux/ko/LC_MESSAGES/linguamesh.po"
+            ))),
+            Catalog::from_po(include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/l10n/linux/pt-BR/LC_MESSAGES/linguamesh.po"
+            ))),
+            Catalog::from_po(include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/l10n/linux/ru/LC_MESSAGES/linguamesh.po"
+            ))),
+            Catalog::from_po(include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/l10n/linux/ar/LC_MESSAGES/linguamesh.po"
+            ))),
+            Catalog::from_po(include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/l10n/linux/hi/LC_MESSAGES/linguamesh.po"
+            ))),
+        ]
+    });
+    &catalogs[UiLocale::ALL
+        .iter()
+        .position(|candidate| *candidate == locale)
+        .unwrap_or_default()]
 }
 
 #[must_use]
@@ -143,6 +184,14 @@ mod tests {
             text(UiLocale::SimplifiedChinese, "action.translate", "Translate"),
             "翻译"
         );
+    }
+
+    #[test]
+    fn resolves_every_official_linux_catalog() {
+        for locale in UiLocale::ALL {
+            assert!(!text(locale, "app.title", "").is_empty());
+            assert!(!text(locale, "action.translate", "").is_empty());
+        }
     }
 
     #[test]

@@ -118,6 +118,13 @@ bash tools/run-secret-service-prompt-test.sh
 This proves the fail-closed boundary without automating user approval or unlock UI; end-user prompt
 acceptance remains a separate validation gate.
 
+The localization unit suite parses every official Linux PO catalog, checks action entries are
+available, and verifies unique BCP 47 tags plus Arabic RTL metadata:
+
+```sh
+cargo test --features gui --lib localization::tests --locked
+```
+
 The notification transport runner starts a private `org.freedesktop.Notifications` fixture service and
 captures the real GTK translation test's `Notify` call on a private D-Bus session. It requires fixed
 generic title and body text and absence of the source and translated strings. This proves the

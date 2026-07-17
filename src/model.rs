@@ -114,17 +114,63 @@ pub enum UiLocale {
     /// 使用规范英文回退。
     #[default]
     English,
-    /// 记录简体中文偏好并等待运行时本地化接入。
+    /// 记录简体中文界面偏好。
     SimplifiedChinese,
+    /// 使用繁体中文目录。
+    TraditionalChinese,
+    /// 使用西班牙语目录。
+    Spanish,
+    /// 使用法语目录。
+    French,
+    /// 使用德语目录。
+    German,
+    /// 使用日语目录。
+    Japanese,
+    /// 使用韩语目录。
+    Korean,
+    /// 使用巴西葡萄牙语目录。
+    BrazilianPortuguese,
+    /// 使用俄语目录。
+    Russian,
+    /// 使用阿拉伯语目录。
+    Arabic,
+    /// 使用印地语目录。
+    Hindi,
 }
 
 impl UiLocale {
+    /// 返回原生界面下拉框使用的稳定顺序。
+    pub const ALL: [Self; 12] = [
+        Self::English,
+        Self::SimplifiedChinese,
+        Self::TraditionalChinese,
+        Self::Spanish,
+        Self::French,
+        Self::German,
+        Self::Japanese,
+        Self::Korean,
+        Self::BrazilianPortuguese,
+        Self::Russian,
+        Self::Arabic,
+        Self::Hindi,
+    ];
+
     /// 返回界面中显示的名称。
     #[must_use]
     pub const fn label(self) -> &'static str {
         match self {
             Self::English => "English",
             Self::SimplifiedChinese => "Simplified Chinese",
+            Self::TraditionalChinese => "Traditional Chinese",
+            Self::Spanish => "Spanish",
+            Self::French => "French",
+            Self::German => "German",
+            Self::Japanese => "Japanese",
+            Self::Korean => "Korean",
+            Self::BrazilianPortuguese => "Portuguese (Brazil)",
+            Self::Russian => "Russian",
+            Self::Arabic => "Arabic",
+            Self::Hindi => "Hindi",
         }
     }
 
@@ -134,7 +180,33 @@ impl UiLocale {
         match self {
             Self::English => "en",
             Self::SimplifiedChinese => "zh-CN",
+            Self::TraditionalChinese => "zh-Hant",
+            Self::Spanish => "es",
+            Self::French => "fr",
+            Self::German => "de",
+            Self::Japanese => "ja",
+            Self::Korean => "ko",
+            Self::BrazilianPortuguese => "pt-BR",
+            Self::Russian => "ru",
+            Self::Arabic => "ar",
+            Self::Hindi => "hi",
         }
+    }
+
+    /// 将界面下拉框索引转换为受支持的区域设置。
+    #[must_use]
+    pub const fn from_index(index: usize) -> Self {
+        if index < Self::ALL.len() {
+            Self::ALL[index]
+        } else {
+            Self::English
+        }
+    }
+
+    /// 返回是否需要从右向左的文字方向。
+    #[must_use]
+    pub const fn is_rtl(self) -> bool {
+        matches!(self, Self::Arabic)
     }
 }
 
@@ -1770,6 +1842,18 @@ mod tests {
         assert!(diagnostics.contains("Theme: Dark"));
         assert!(diagnostics.contains("Locale: zh-CN"));
         assert!(!diagnostics.contains("Hello"));
+    }
+
+    #[test]
+    fn supported_ui_locales_have_unique_bcp47_tags_and_rtl_metadata() {
+        let tags = UiLocale::ALL
+            .iter()
+            .map(|locale| locale.language_tag())
+            .collect::<std::collections::BTreeSet<_>>();
+        assert_eq!(tags.len(), UiLocale::ALL.len());
+        assert!(UiLocale::Arabic.is_rtl());
+        assert!(!UiLocale::Hindi.is_rtl());
+        assert_eq!(UiLocale::from_index(999), UiLocale::English);
     }
 
     #[test]
