@@ -4,9 +4,10 @@
 
 An unreleased native application target and a pinned Flatpak packaging scaffold now exist. The
 GNOME 49 SDK workflow builds a prerelease CI bundle from pinned sources and runs the bounded
-Xvfb/private-D-Bus sandbox smoke. The native gate verifies the real document-portal lease lifecycle
-and headless delivery to a real `dunst` notification daemon under Xvfb, but no interactive
-file-chooser portal, physical desktop notification rendering, signed artifact, or
+Xvfb/private-D-Bus sandbox smoke. The native gate verifies the real document-portal lease lifecycle,
+the real interactive `xdg-desktop-portal-gtk` FileChooser backend, and headless delivery to a real
+`dunst` notification daemon under Xvfb, but no application-level GTK file-dialog callback,
+physical desktop notification rendering, signed artifact, or
 distributable release has been verified. The
 vertical slice must not be tagged or published as a product release, and no packaging claim beyond
 the recorded CI build is valid. Its bundled fake provider is development-only behavior. The optional

@@ -58,9 +58,10 @@ writes no completion flag. A user-supplied OpenAI-compatible base endpoint such 
 Use **Open text file** to load a UTF-8 TXT or Markdown file into the source editor. The native
 GTK file dialog and asynchronous GIO partial read enforce a 4 MiB limit, strip a UTF-8 BOM, reject
 invalid UTF-8, and never place the selected path or file contents in diagnostics. Dropping one GIO
-file onto the source editor reuses the same bounded import path. Native CI also verifies the real
-XDG document-portal lease lifecycle; interactive portal file chooser and drag/drop gestures remain
-separate follow-up work.
+file onto the source editor reuses the same bounded import path. Native CI verifies the real XDG
+document-portal lease lifecycle and drives the real GTK portal FileChooser backend under Xvfb;
+application-level GTK file-dialog callbacks and drag/drop portal gestures remain separate follow-up
+work.
 
 The credential field is optional. Its value is copied into Core's secret-aware `SecretValue`, the
 widget is cleared immediately, and the temporary GTK string is dropped. Without Remember, a
@@ -104,7 +105,8 @@ entry, AppStream metadata, and icon under [`packaging/flatpak`](packaging/flatpa
 `bash tools/validate-flatpak-metadata.sh` for local metadata validation. The GNOME 49 SDK build and
 bounded private-D-Bus sandbox smoke run remotely; the resulting bundle is a prerelease CI artifact,
 not a signed or published release. Native CI verifies headless delivery to a real `dunst` notification
-daemon; physical desktop-shell rendering and portal interaction remain separate gates.
+daemon; the direct portal chooser backend fixture passes, while application-level portal callbacks,
+physical desktop-shell rendering, and release artifacts remain separate gates.
 
 The two display gates execute the same real GTK binary test. Headless Weston proves that the client
 can initialize and complete that flow with `GDK_BACKEND=wayland` and no X11 fallback; it is not

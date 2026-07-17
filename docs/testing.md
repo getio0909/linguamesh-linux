@@ -124,6 +124,11 @@ revokes the application read permission, and deletes the lease. This proves the 
 lease lifecycle without touching a developer file; interactive GTK file chooser and drag/drop
 gestures remain separate integration boundaries.
 
+The interactive file chooser runner starts the real `xdg-desktop-portal-gtk` backend under Xvfb,
+issues the actual `FileChooser.OpenFile` request, injects a fixture path into the visible chooser,
+and verifies the response URI and UTF-8 contents. This proves backend portal UI and lease behavior;
+the Linux application's GTK `FileDialog` callback remains a separate integration boundary.
+
 The toolkit-independent suite also tests the text-import decoder for UTF-8 BOM removal, invalid
 UTF-8 rejection, and the 4 MiB bound. The native GTK flow verifies the **Open text file** control
 is focusable, is disabled after worker loss, and registers a single-file `DropTarget` on the source

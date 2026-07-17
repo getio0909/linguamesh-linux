@@ -179,10 +179,12 @@ release-manifest integration and broader product compatibility remain required b
 The client owns native lifecycle, accessibility, appearance, keyboard behavior, file dialogs,
 portals, drag-and-drop, clipboard, notifications, XDG paths, desktop metadata, display-server
 integration, and credential resolution. This slice includes the XDG profile-database path,
-runtime action-label catalogs, a real document-portal lease lifecycle fixture, and a completion notification through `GApplication`; the
-notification contains generic English text and never source or translated content. Native CI also
-delivers that payload to a real `dunst` notification daemon under Xvfb; physical desktop-shell
-rendering remains a packaging/runtime validation boundary.
+runtime action-label catalogs, a real document-portal lease lifecycle fixture, a real interactive
+`xdg-desktop-portal-gtk` FileChooser backend fixture, and a completion notification through
+`GApplication`; the notification contains generic English text and never source or translated
+content. Native CI also delivers that payload to a real `dunst` notification daemon under Xvfb;
+application-level GTK file-dialog callbacks, drag/drop portal gestures, and physical desktop-shell
+rendering remain validation boundaries.
 
 ## Security and portability boundaries
 

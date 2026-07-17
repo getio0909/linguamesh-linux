@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, and a real XDG document-portal lease lifecycle fixture are implemented; prompted interactive flows, interactive file-chooser portal leases, physical desktop-shell notification rendering, and release artifacts remain open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, a real XDG document-portal lease lifecycle fixture, and a real interactive portal FileChooser backend fixture are implemented; prompted interactive flows, application-level GTK file-dialog integration, drag-and-drop portal gestures, physical desktop-shell notification rendering, and release artifacts remain open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -179,8 +179,10 @@ Validated on 2026-07-17 with Rust 1.93.0:
   BOM, rejects invalid or oversized input, and reads through GIO's partial asynchronous API. The
   source editor also accepts a single GIO file through GTK drag-and-drop and reuses the same
   validation path. Decoder tests and source-level checks passed locally. The real XDG document
-  portal fixture now verifies add, host-path mapping, application permission grant/revoke, and
-  lease deletion; interactive file-chooser and drag/drop portal gestures remain open.
+  portal fixture verifies add, host-path mapping, application permission grant/revoke, and lease
+  deletion. A separate Native CI fixture drives the real `xdg-desktop-portal-gtk` FileChooser under
+  Xvfb, injects a temporary UTF-8 fixture path, and verifies the returned URI and contents; the
+  application's GTK FileDialog callback and drag/drop portal gestures remain separate boundaries.
 - `bash tools/validate-flatpak-metadata.sh` passed locally. It parsed the Flatpak manifest and
   Cargo source set, verified immutable Linux/Core source pins and archive hashes, and passed
   `desktop-file-validate` plus `appstreamcli`. The manifest uses the GNOME 49 SDK, installs the
@@ -188,8 +190,8 @@ Validated on 2026-07-17 with Rust 1.93.0:
   current Linux surface. The `Flatpak Linux` workflow runs this manifest in a GNOME 49 SDK
   container, uploads a prerelease CI bundle, and runs the bounded Xvfb/private-D-Bus sandbox smoke;
   local `flatpak-builder` is unavailable, so the SDK build and sandbox smoke remain remote-only.
-  Interactive file-chooser portal leases, physical desktop-shell notification rendering, and release-artifact reproducibility remain
-  separate gates.
+  Application-level GTK file-dialog integration, drag/drop portal gestures, physical desktop-shell
+  notification rendering, and release-artifact reproducibility remain separate gates.
 - `bash tools/run-storage-fault-test.sh` passed its exact ignored test separately: 1 passed, 0
   failed, 0 ignored. A private 8 MiB tmpfs produced real kernel `ENOSPC` failures for persistent
   model update, deletion, and provider switch; each preserved prior-session translation, and each
@@ -259,6 +261,13 @@ The Ubuntu 24.04 job installed the real XDG document portal services and verifie
 mapping, application read-permission grant/revoke, and lease deletion against a private temporary
 fixture. This proves the document-portal lease lifecycle, not interactive GTK file chooser or
 drag-and-drop gestures; those remain separate gates.
+
+Interactive portal chooser revision `59bed27` passed Native Linux run `29615157729` (job
+`87998524591`), repository-foundation run `29615157686`, and Flatpak Linux run `29615157675`.
+The native Ubuntu 24.04 job started the real `xdg-desktop-portal-gtk` chooser under Xvfb, used the
+actual `FileChooser.OpenFile` request, selected a temporary UTF-8 fixture through the visible
+dialog, and verified the returned URI and file contents. This is backend portal UI/lease evidence;
+the application's GTK FileDialog callback and source-editor drag/drop gestures remain open.
 
 Notification daemon delivery revision `83cfcda` passed the native, foundation, and Flatpak
 workflows. The native Ubuntu 24.04 job started the real `dunst` server under Xvfb, observed its
@@ -425,8 +434,9 @@ in the GitHub Actions evidence above, but those native checks remain unavailable
 - Complete canonical UI gettext coverage, plural/placeholder handling, and visual locale/RTL verification.
 - Runtime database faults beyond the verified private-tmpfs `ENOSPC` transaction boundary,
   including read-only media, corruption, power loss, and broader SQLite VFS failures.
-- XDG portals beyond the implemented user-data path and document-portal lease lifecycle, interactive
-  file chooser/drag-and-drop gestures, physical desktop-shell notification rendering, AT-SPI/Orca and physical-keyboard accessibility coverage,
+- XDG portals beyond the implemented user-data path, document-portal lease lifecycle, and direct
+  FileChooser backend fixture; application-level GTK file-dialog and drag-and-drop gestures,
+  physical desktop-shell notification rendering, AT-SPI/Orca and physical-keyboard accessibility coverage,
   physical-compositor/GPU Wayland coverage, broader X11/desktop coverage, Flatpak portal/notification
   delivery, and release artifacts.
 - Directory-descriptor or `openat2` hardening against a concurrent same-UID path replacement during
