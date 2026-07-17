@@ -100,8 +100,10 @@ documented in
 
 The repository now includes a reproducible Flatpak manifest, pinned Cargo source set, desktop
 entry, AppStream metadata, and icon under [`packaging/flatpak`](packaging/flatpak). Run
-`bash tools/validate-flatpak-metadata.sh` for local metadata validation. A Flatpak SDK build and
-sandbox smoke test remain release-gate work and are not claimed by this checkpoint.
+`bash tools/validate-flatpak-metadata.sh` for local metadata validation. The GNOME 49 SDK build and
+bounded private-D-Bus sandbox smoke run remotely; the resulting bundle is a prerelease CI artifact,
+not a signed or published release, and portal leases plus desktop-shell delivery remain separate
+gates.
 
 The two display gates execute the same real GTK binary test. Headless Weston proves that the client
 can initialize and complete that flow with `GDK_BACKEND=wayland` and no X11 fallback; it is not

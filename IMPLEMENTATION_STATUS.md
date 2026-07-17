@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, and a remotely built pinned Flatpak bundle with bounded sandbox startup are implemented; prompted interactive flows, portal/notification delivery, and release artifacts remain open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, a remotely built pinned Flatpak bundle with bounded sandbox startup, and private notification-service transport validation are implemented; prompted interactive flows, portal leases, desktop-shell notification delivery, and release artifacts remain open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -165,8 +165,9 @@ Validated on 2026-07-17 with Rust 1.93.0:
 - The loopback OpenAI-compatible path connects without a credential, manually selects a discovered
   model, streams `你好，LinguaMesh！`, and counts one chat request against the isolated fake provider.
   The notification slice keeps the desktop payload fixed to generic English text and sends no
-  source or translated content. Local source-level GTK checks and the demo-provider suite above
-  passed after the `GApplication` notification call was added.
+  source or translated content. The native transport fixture uses a private
+  `org.freedesktop.Notifications` service and verifies the real `Notify` call plus the generic
+  payload; desktop-shell rendering remains open.
 - The Secret Service adapter now sends an `(sv)` `OpenSession` request with a single plain-string
   Variant; its shape regression passed locally. The isolated real-daemon fixture is wired into
   native CI and covers persistent daemon-restart restoration, locked-item fail-closed resolution,
@@ -184,7 +185,8 @@ Validated on 2026-07-17 with Rust 1.93.0:
   current Linux surface. The `Flatpak Linux` workflow runs this manifest in a GNOME 49 SDK
   container, uploads a prerelease CI bundle, and runs the bounded Xvfb/private-D-Bus sandbox smoke;
   local `flatpak-builder` is unavailable, so the SDK build and sandbox smoke remain remote-only.
-  Portal lease, notification delivery, and release-artifact reproducibility remain separate gates.
+  Portal leases, desktop-shell notification delivery, and release-artifact reproducibility remain
+  separate gates.
 - `bash tools/run-storage-fault-test.sh` passed its exact ignored test separately: 1 passed, 0
   failed, 0 ignored. A private 8 MiB tmpfs produced real kernel `ENOSPC` failures for persistent
   model update, deletion, and provider switch; each preserved prior-session translation, and each
@@ -238,6 +240,15 @@ without credential re-entry, restarted and reconnected from the restored SecretR
 GTK onboarding path that clears the credential form, persists only the SecretRef, authenticates a
 real loopback fake provider, translates, and verifies the database contains no credential canary.
 Prompted interactive flows remain a separate gate.
+
+Notification transport fixture revision `bf751479c3826ae1529d0d9c33effbc5212cd75f` passed
+repository-foundation run `29609857686` and Native Linux run `29609857730` (job `87981724178`).
+The Ubuntu 24.04 job ran the real GTK translation test with a private notification-service
+implementation, captured `org.freedesktop.Notifications.Notify`, and verified the fixed generic
+title/body without source or translated content. Earlier fixture revisions `124ab16` and `3def30a`
+remain retained failures: the first listened on a bus without a private session and the second
+corrected that session but still had no notification service. Desktop-shell rendering, portal leases,
+and prompted interactive flows remain separate gates.
 
 Loopback provider revision `7d7eba9960b657f0460fb0daaaaebaaa609f39b1` passed repository-foundation
 run `29604269516` and Native Linux run `29604269568` (job `87963611054`). The Ubuntu 24.04 job
@@ -399,7 +410,7 @@ in the GitHub Actions evidence above, but those native checks remain unavailable
 - Runtime database faults beyond the verified private-tmpfs `ENOSPC` transaction boundary,
   including read-only media, corruption, power loss, and broader SQLite VFS failures.
 - XDG portals beyond the implemented user-data path, file workflows,
-  clipboard/drag-and-drop/notifications, AT-SPI/Orca and physical-keyboard accessibility coverage,
+  clipboard/drag-and-drop, desktop-shell notification rendering, AT-SPI/Orca and physical-keyboard accessibility coverage,
   physical-compositor/GPU Wayland coverage, broader X11/desktop coverage, Flatpak portal/notification
   delivery, and release artifacts.
 - Directory-descriptor or `openat2` hardening against a concurrent same-UID path replacement during

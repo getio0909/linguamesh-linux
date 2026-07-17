@@ -108,10 +108,10 @@ an authenticated loopback provider under Xvfb. It proves CRUD, persistent restor
 handling, cleanup, and SecretRef-only persistence without touching a developer keyring; prompted
 interactive flows remain a separate gate.
 
-The notification transport runner captures `org.gtk.Notifications` on a private D-Bus session while
-the real GTK translation test completes. It requires the `AddNotification` call, fixed generic title
-and body text, and absence of the source and translated strings. This proves the application-to-bus
-transport and privacy boundary, not desktop-shell rendering or notification-server delivery.
+The notification transport runner starts a private `org.freedesktop.Notifications` fixture service and
+captures the real GTK translation test's `Notify` call on a private D-Bus session. It requires fixed
+generic title and body text and absence of the source and translated strings. This proves the
+application-to-notification-service transport and privacy boundary, not desktop-shell rendering.
 
 The toolkit-independent suite also tests the text-import decoder for UTF-8 BOM removal, invalid
 UTF-8 rejection, and the 4 MiB bound. The native GTK flow verifies the **Open text file** control
