@@ -2,6 +2,7 @@ use adw::prelude::*;
 use gtk::glib;
 use linguamesh_domain::{
     ErrorKind, ProviderProfileId, SecretRef, SecretRefNamespace, SecretValue, TranslationError,
+    TranslationEvent,
 };
 use linguamesh_linux::localization;
 use linguamesh_linux::model::{
@@ -26,6 +27,7 @@ const DEFAULT_PROVIDER_ENDPOINT: &str = "http://127.0.0.1:11434/v1/";
 
 #[derive(Clone)]
 struct UiBindings {
+    application: adw::Application,
     workspace: gtk::Box,
     onboarding: gtk::Box,
     onboarding_title: gtk::Label,
@@ -190,6 +192,7 @@ fn create_window(
     (
         window,
         UiBindings {
+            application: application.clone(),
             workspace: root,
             onboarding,
             onboarding_title,
@@ -1185,12 +1188,15 @@ fn apply_worker_event(
             state.borrow_mut().record_client_error(error.to_string());
         }
         WorkerEvent::Translation(event) => {
+            let completed = matches!(&event, TranslationEvent::Completed { .. });
             let result = state.borrow_mut().apply_translation_event(event);
             if let Err(error) = result {
                 state.borrow_mut().record_stream_error(error.to_string());
                 if let Err(error) = worker.try_send(WorkerCommand::Cancel) {
                     state.borrow_mut().record_client_error(error.to_string());
                 }
+            } else if completed && state.borrow().status() == AppStatus::Completed {
+                send_translation_notification(bindings);
             }
         }
         WorkerEvent::OperationFailed(error) | WorkerEvent::TranslationRejected(error) => {
@@ -1220,6 +1226,15 @@ fn apply_worker_event(
             }
         }
     }
+}
+
+// 翻译完成时只发送不含源文和译文的桌面通知，避免通知服务保存敏感内容。
+fn send_translation_notification(bindings: &UiBindings) {
+    let notification = gtk::gio::Notification::new("Translation complete");
+    notification.set_body(Some("The translated output is ready in LinguaMesh."));
+    bindings
+        .application
+        .send_notification(Some("translation-complete"), &notification);
 }
 
 const fn operation_is_terminal(status: AppStatus) -> bool {

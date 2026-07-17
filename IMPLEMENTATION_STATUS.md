@@ -92,8 +92,9 @@ older distributions and future Flatpak runtimes require separate packaging valid
   provider name, endpoint, optional session credential, explicit non-secret remember/remove
   choices, connection and model selection, saved/session status, language controls, source/output
   views, Translate/Stop, typed errors, partial-result display, appearance, runtime catalog-backed
-  action labels with an explicit fallback notice,
-  keyboard mnemonics, and redacted diagnostics. An always-current Provider setup card explains the
+  action labels with an explicit fallback notice, a generic completion desktop notification that
+  excludes source and translated content, keyboard mnemonics, and redacted diagnostics. An
+  always-current Provider setup card explains the
   next required action, warns that unavailable saved-profile storage requires session-only use, and
   keeps that warning visible through connection, model selection, and Ready while naming the
   confirmed provider stable ID/model for the next request. Selecting a row only prefills non-secret

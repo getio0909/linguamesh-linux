@@ -107,6 +107,10 @@ records `en` or `zh-CN`; the Linux host now loads the pinned English and Simplif
 catalogs at runtime for localized action labels without losing active text. Remaining UI strings
 still use English fallbacks until complete gettext coverage is wired.
 
+When a translation completes, the registered Linux application sends a desktop notification with
+generic English text only; source and translated content are never included in notification
+payloads.
+
 ## Documentation
 
 - [Architecture](docs/architecture.md)

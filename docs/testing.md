@@ -152,7 +152,9 @@ that pending model confirmation remains in Step 2 and fatal worker shutdown beco
 instead of remaining at Starting, with Connect, model, translation, and stop controls disabled. It
 waits for fake-endpoint readiness without auto-connect, clears a session credential from the form
 immediately after Connect, explicitly selects a discovered model, preserves the active
-provider/model and Ready identity after a failed switch, and completes a streamed translation. It
+provider/model and Ready identity after a failed switch, and completes a streamed translation. A
+completed translation also exercises the registered application notification path; its payload is
+fixed generic English text and does not contain source or translated content. It
 also verifies the storage-unavailable session-only warning persists in Ready, injects a two-profile
 startup snapshot, verifies persisted-active prefill without activation, browses another row without
 changing the runtime/default, checks the disconnected storage warning, preserves a
@@ -236,6 +238,7 @@ Broader GTK component/UI automation, AT-SPI/Orca and physical-keyboard accessibi
 physical-compositor and GPU-backed Wayland coverage, a broader X11/desktop matrix, a real desktop
 Secret Service integration fixture, locked/prompted item behavior, secret-item cleanup on profile
 deletion, and end-to-end secure-credential onboarding/persistence tests, broader XDG and portal tests, third-party
-local-server interoperability, Flatpak smoke tests, runtime localization behavior, runtime database
+local-server interoperability, Flatpak smoke tests, runtime localization behavior beyond the
+currently catalog-backed action labels, runtime database
 faults beyond the implemented Linux `ENOSPC` transaction boundary, dependency/license automation,
 and release builds remain required before a supported release.
