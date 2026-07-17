@@ -179,9 +179,9 @@ Validated on 2026-07-17 with Rust 1.93.0:
   lease coverage remains open.
 - `bash tools/validate-flatpak-metadata.sh` passed locally. It parsed the Flatpak manifest and
   Cargo source set, verified immutable Linux/Core source pins and archive hashes, and passed
-  `desktop-file-validate` plus `appstreamcli`. The manifest uses the GNOME 48 SDK, installs the
+  `desktop-file-validate` plus `appstreamcli`. The manifest uses the GNOME 49 SDK, installs the
   native binary and desktop metadata, and declares only the runtime interfaces required for the
-  current Linux surface. The `Flatpak Linux` workflow runs this manifest in a GNOME 48 SDK
+  current Linux surface. The `Flatpak Linux` workflow runs this manifest in a GNOME 49 SDK
   container and uploads a prerelease CI bundle; local `flatpak-builder` is unavailable, so the
   SDK build remains remote-only. Portal lease, sandbox launch, and release-artifact reproducibility
   remain separate gates.
