@@ -29,6 +29,7 @@ assert "--talk-name=org.freedesktop.secrets" in manifest["finish-args"]
 assert "--talk-name=org.freedesktop.Notifications" in manifest["finish-args"]
 rust_module, module = manifest["modules"]
 assert rust_module["name"] == "rust-toolchain"
+assert rust_module["build-options"]["no-debuginfo"] is True
 rust_source = rust_module["sources"][0]
 assert rust_source["url"].endswith("rust-1.93.0-x86_64-unknown-linux-gnu.tar.xz")
 assert rust_source["sha256"] == "b9d9f01a96a2542852ccfddd82194276ba1c86bc76353309ff636b737fc0a772"
