@@ -2135,6 +2135,23 @@ mod tests {
     }
 
     #[test]
+    fn loopback_openai_compatible_provider_translates_without_secret() {
+        let external = ExternalFakeProvider::start(FakeMode::Standard);
+        let (worker, _) = started_worker();
+        let runtime = profile("loopback-provider", &external.endpoint, None, None);
+        let models = connect(&worker, runtime, None, PersistenceIntent::SessionOnly)
+            .expect("loopback provider connection");
+        assert!(models.iter().any(|model| model.id == "fake-translator"));
+        select_event(&worker, "loopback-provider", "fake-translator")
+            .expect("select loopback model");
+        let (output, terminal) = translate(&worker, "fake-translator");
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        assert_eq!(external.chat_requests.load(Ordering::SeqCst), 1);
+        shutdown(&worker);
+    }
+
+    #[test]
     fn remembered_session_profile_and_model_restore_without_secret() {
         const SECRET_CANARY: &str = "PERSISTENCE_SECRET_CANARY";
         let external = ExternalFakeProvider::start(FakeMode::Authenticated(SECRET_CANARY));
