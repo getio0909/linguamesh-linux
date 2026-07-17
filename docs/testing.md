@@ -136,7 +136,11 @@ UI automation, accessibility, or Wayland coverage.
 
 The GitHub Actions native workflow pins Core revision
 `fbf3e9b5927049dccaa19f8c36013495ffebba12`, installs the headers plus D-Bus/Xvfb support, and runs
-the complete gate. Functional multi-profile revision
+the complete gate. Functional onboarding revision
+`9729b23ce1a4280ebb434339e880010103b4859d` passed Native Linux run `29580444723` (job
+`87884607879`): strict all-feature Clippy, 65 library tests, the real GTK binary test, and the
+all-target all-feature build all succeeded. Repository-foundation run `29580444697` also passed.
+The preceding functional multi-profile revision
 `c88d37a5de2f03c2ae5d2940c4d25e5d998c301d` passed Native Linux run `29577918335` (job
 `87876528763`): strict all-feature Clippy, 62 library tests, the real GTK binary test, and the
 all-target all-feature build all succeeded. Repository-foundation run `29577918346` also passed.

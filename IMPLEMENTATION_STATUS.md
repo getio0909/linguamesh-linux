@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Linux provider onboarding and one-Connect routing verified locally; native Linux CI pending
+Status: Linux provider onboarding and one-Connect routing verified locally and in native Linux CI
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -129,6 +129,16 @@ Validated on 2026-07-17 with Rust 1.93.0:
 
 ## Remote validation evidence
 
+Functional onboarding revision `9729b23ce1a4280ebb434339e880010103b4859d` passed
+repository-foundation run `29580444697` and Native Linux run `29580444723` (job `87884607879`).
+The native Ubuntu 24.04 job checked out exact Core revision
+`fbf3e9b5927049dccaa19f8c36013495ffebba12`, synchronized localization, passed formatting and
+strict all-feature Clippy, passed 65 library tests plus the real GTK binary test under serialized
+X11/D-Bus/Xvfb, and built all targets with all features. The GTK test exercised the derived setup
+stages, stable next-request identity, pending-model state, persistent storage-degradation warning,
+worker-unavailable command blocking, the existing multi-profile lifecycle, explicit connection and
+model selection, failed-switch rollback, and streamed translation through real widgets.
+
 Functional multi-profile revision `c88d37a5de2f03c2ae5d2940c4d25e5d998c301d` passed
 repository-foundation run `29577918346` and Native Linux run `29577918335` (job `87876528763`).
 The native Ubuntu 24.04 job checked out exact Core revision
@@ -173,9 +183,8 @@ display-server, accessibility, or GTK button-test result is claimed. With the GT
 present, `DOCS_RS=1 cargo test --all-targets --all-features --locked --no-run` reaches native
 linking and failed on unavailable GTK symbols; it is not a valid header-free substitute.
 Runtime database I/O fault injection after successful startup is not covered locally or remotely.
-The preceding GTK multi-profile flow passed its real widget test, native linking, and build in the
-GitHub Actions evidence above. The new Provider setup card and its GTK assertions have only passed
-header-free source checks locally and still require the native CI gate.
+The Provider setup and multi-profile flows passed their real widget test, native linking, and build
+in the GitHub Actions evidence above, but those native checks remain unavailable on this local host.
 
 ## Remaining scope
 
