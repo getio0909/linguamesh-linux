@@ -13,9 +13,10 @@ use linguamesh_linux::model::{
 use linguamesh_linux::secret_service;
 use linguamesh_linux::worker::{CoreWorker, PersistenceIntent, WorkerCommand, WorkerEvent};
 use std::cell::{Cell, RefCell};
+use std::fs;
 use std::rc::Rc;
 use std::sync::mpsc::TryRecvError;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 const SOURCE_LOCALES: [Option<&str>; 3] = [None, Some("en"), Some("zh-CN")];
 const TARGET_LOCALES: [&str; 3] = ["zh-CN", "en", "ja"];
@@ -83,11 +84,12 @@ fn main() -> glib::ExitCode {
     let application = adw::Application::builder()
         .application_id("dev.linguamesh.LinguaMesh")
         .build();
-    application.connect_activate(build_ui);
+    let file_dialog_fixture = std::env::args().any(|argument| argument == "--test-file-dialog");
+    application.connect_activate(move |application| build_ui(application, file_dialog_fixture));
     application.run()
 }
 
-fn build_ui(application: &adw::Application) {
+fn build_ui(application: &adw::Application, file_dialog_fixture: bool) {
     if let Some(window) = application.active_window() {
         window.present();
         return;
@@ -108,6 +110,51 @@ fn build_ui(application: &adw::Application) {
     });
     refresh_ui(&bindings, &state.borrow());
     window.present();
+    if file_dialog_fixture {
+        start_file_dialog_fixture(application, bindings, &state);
+    }
+}
+
+fn start_file_dialog_fixture(
+    application: &adw::Application,
+    bindings: UiBindings,
+    state: &Rc<RefCell<AppState>>,
+) {
+    let fixture_path = std::env::var("LINGUAMESH_FILE_CHOOSER_FIXTURE")
+        .expect("LINGUAMESH_FILE_CHOOSER_FIXTURE must be set");
+    let expected = fs::read_to_string(&fixture_path).expect("read file chooser fixture");
+    let open_bindings = bindings.clone();
+    let open_state = Rc::clone(state);
+    glib::timeout_add_local(Duration::from_millis(250), move || {
+        begin_source_file_open(&open_bindings, &open_state);
+        glib::ControlFlow::Break
+    });
+
+    let poll_bindings = bindings;
+    let application = application.clone();
+    let deadline = Instant::now() + Duration::from_secs(20);
+    glib::timeout_add_local(Duration::from_millis(20), move || {
+        let contents = poll_bindings.source.text(
+            &poll_bindings.source.start_iter(),
+            &poll_bindings.source.end_iter(),
+            true,
+        );
+        if contents.as_str() == expected {
+            println!(
+                "GTK file chooser application fixture passed: portal selection loaded the UTF-8 fixture."
+            );
+            application.quit();
+            glib::ControlFlow::Break
+        } else if Instant::now() >= deadline {
+            eprintln!(
+                "GTK file chooser application fixture timed out while loading the selected file."
+            );
+            application.quit();
+            glib::ControlFlow::Break
+        } else {
+            glib::ControlFlow::Continue
+        }
+    });
 }
 
 #[allow(clippy::too_many_lines)]

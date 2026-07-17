@@ -118,6 +118,9 @@ jobs:
       - name: Run interactive file chooser portal fixture
         working-directory: linguamesh-linux
         run: bash tools/run-file-chooser-portal-test.sh
+      - name: Run GTK file chooser portal application fixture
+        working-directory: linguamesh-linux
+        run: bash tools/run-gtk-file-chooser-portal-test.sh
       - name: Run GTK test on Wayland
         working-directory: linguamesh-linux
         run: dbus-run-session -- bash tools/run-wayland-test.sh
