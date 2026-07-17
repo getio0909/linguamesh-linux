@@ -28,3 +28,5 @@ jobs:
           cache-key: flatpak-builder-${{ github.sha }}
           upload-artifact: true
           verbose: true
+      - name: Run Flatpak sandbox smoke
+        run: bash tools/run-flatpak-smoke.sh linguamesh-linux-x86_64.flatpak
