@@ -23,7 +23,7 @@ LINGUAMESH_FILE_CHOOSER_FIXTURE="$fixture" LINGUAMESH_FILE_CHOOSER_LOG="$log" \
     set -euo pipefail
     export XDG_CURRENT_DESKTOP=GNOME
     export GDK_BACKEND=x11
-    cargo test --all-targets --all-features --locked \
+    cargo test --all-targets --all-features --locked --ignored \
       "tests::gtk_file_dialog_uses_portal_and_loads_selected_fixture" \
       -- --exact --test-threads=1 >"$LINGUAMESH_FILE_CHOOSER_LOG" 2>&1 &
     test_pid=$!

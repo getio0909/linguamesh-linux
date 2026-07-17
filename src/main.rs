@@ -1718,6 +1718,7 @@ mod tests {
         assert_eq!(label.mnemonic_widget().as_ref(), Some(control));
     }
 
+    #[ignore = "requires the interactive portal chooser fixture"]
     #[test]
     fn gtk_file_dialog_uses_portal_and_loads_selected_fixture() {
         adw::init().expect("initialize GTK and libadwaita");
