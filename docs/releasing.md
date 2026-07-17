@@ -22,9 +22,12 @@ is unavailable or requires an interactive prompt. The native workflow
 pins reviewed Core functional revision
 `fbf3e9b5927049dccaa19f8c36013495ffebba12`, whose storage delta adds
 `SQLITE_OPEN_NOFOLLOW`, rather than checking out a floating branch. Functional revision
+`7d7eba9960b657f0460fb0daaaaebaaa609f39b1` passed Native Linux run `29604269568` (job
+`87963611054`) and repository-foundation run `29604269516`; it includes the no-credential
+OpenAI-compatible loopback regression, secure onboarding fixtures, strict Clippy, both display
+gates, and the all-feature build. Earlier functional revision
 `9729b23ce1a4280ebb434339e880010103b4859d` passed Native Linux run `29580444723` (job
-`87884607879`) with 65 library tests, the real GTK test, strict Clippy, and the all-feature build;
-that evidence used the X11/Xvfb gate. Wayland-gate revision
+`87884607879`) with 65 library tests and the first real GTK flow. Wayland-gate revision
 `10b31a040fd3c44ecbaef31eb5c66c0c8e5cb620` passed Native Linux run `29582513061` (job
 `87891382469`) with the same GTK binary test succeeding under both X11/Xvfb and forced
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the

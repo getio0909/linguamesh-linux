@@ -162,7 +162,9 @@ Validated on 2026-07-17 with Rust 1.93.0:
   collection, verifies store/resolve, locks an item and checks fail-closed resolution, restarts the
   daemon, resolves and deletes the item, runs the worker secure-onboarding connect/translate and
   restart path, and runs the GTK Remember/clear-form/real-authenticated-provider path under Xvfb.
-- The notification slice keeps the desktop payload fixed to generic English text and sends no
+- The loopback OpenAI-compatible path connects without a credential, manually selects a discovered
+  model, streams `你好，LinguaMesh！`, and counts one chat request against the isolated fake provider.
+  The notification slice keeps the desktop payload fixed to generic English text and sends no
   source or translated content. Local source-level GTK checks and the demo-provider suite above
   passed after the `GApplication` notification call was added.
 - The Secret Service adapter now sends an `(sv)` `OpenSession` request with a single plain-string
@@ -228,6 +230,12 @@ without credential re-entry, restarted and reconnected from the restored SecretR
 GTK onboarding path that clears the credential form, persists only the SecretRef, authenticates a
 real loopback fake provider, translates, and verifies the database contains no credential canary.
 Prompted interactive flows remain a separate gate.
+
+Loopback provider revision `7d7eba9960b657f0460fb0daaaaebaaa609f39b1` passed repository-foundation
+run `29604269516` and Native Linux run `29604269568` (job `87963611054`). The Ubuntu 24.04 job
+added a no-credential OpenAI-compatible loopback connection, manual model selection, streamed
+translation, and request-count assertion to the ordinary worker suite; all native validation,
+display gates, Secret Service fixtures, and the all-target build passed.
 
 Linux drag-and-drop functional revision `b0da3819d97ae24f8c85147da5e7e1c65fe2d6fc` passed
 repository-foundation run `29597016893` (job `87939785643`) and Native Linux run `29597016894`

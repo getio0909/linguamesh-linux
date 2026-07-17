@@ -55,7 +55,7 @@ Ready identity, pending-model confirmation that cannot claim Ready, worker-unava
 storage-unavailable fallback, runtime persistence degradation that retains the confirmed session,
 and diagnostics that omit content, endpoints, IDs, model IDs, and secret references.
 
-The ordinary `demo-provider` run passes 70 tests and reports one intentionally ignored namespace
+The ordinary `demo-provider` run passes 71 tests and reports one intentionally ignored namespace
 test. Its worker tests validate the exact Core
 compatibility contract, prove that fake-service readiness does not auto-connect, require explicit
 Connect and model selection, exercise real loopback HTTP/SSE streaming, consume an authenticated
