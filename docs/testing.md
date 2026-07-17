@@ -142,9 +142,12 @@ physical-compositor test, or GPU-rendering evidence.
 
 The GitHub Actions native workflow pins Core revision
 `fbf3e9b5927049dccaa19f8c36013495ffebba12`, installs the headers plus D-Bus, Xvfb, and test-only
-Weston support, and runs both display gates before the all-feature build. The Wayland gate has
-source-level local validation in the current change but awaits its first remote execution result.
-The preceding functional onboarding revision
+Weston support, and runs both display gates before the all-feature build. Wayland-gate revision
+`10b31a040fd3c44ecbaef31eb5c66c0c8e5cb620` passed Native Linux run `29582513061` (job
+`87891382469`): strict all-feature Clippy, 65 library tests, the real GTK binary test under
+X11/Xvfb, the same test under forced Wayland/headless Weston, and the all-target all-feature build
+all succeeded. Repository-foundation run `29582513073` (job `87891382540`) also passed. The
+preceding functional onboarding revision
 `9729b23ce1a4280ebb434339e880010103b4859d` passed Native Linux run `29580444723` (job
 `87884607879`): strict all-feature Clippy, 65 library tests, the real GTK binary test, and the
 all-target all-feature build all succeeded under the then-current X11 gate. Repository-foundation

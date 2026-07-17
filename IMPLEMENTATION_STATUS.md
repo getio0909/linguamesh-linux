@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Linux onboarding is verified; the dual-backend GTK gate is implemented with Wayland CI pending
+Status: Linux onboarding and the forced Wayland/X11 GTK gates are verified in native Linux CI
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -138,6 +138,15 @@ Validated on 2026-07-17 with Rust 1.93.0:
 
 ## Remote validation evidence
 
+Wayland-gate revision `10b31a040fd3c44ecbaef31eb5c66c0c8e5cb620` passed
+repository-foundation run `29582513073` (job `87891382540`) and Native Linux run `29582513061`
+(job `87891382469`). The native Ubuntu 24.04 job checked out exact Core revision
+`fbf3e9b5927049dccaa19f8c36013495ffebba12`, synchronized localization, passed formatting and
+strict all-feature Clippy, passed 65 library tests plus the real GTK binary test under serialized
+X11/D-Bus/Xvfb, reran the same GTK binary test under forced Wayland/headless Weston with no X11
+fallback, and built all targets with all features. The Wayland result covers the existing widget
+flow only; physical compositors, GPU rendering, and assistive technology remain unclaimed.
+
 Functional onboarding revision `9729b23ce1a4280ebb434339e880010103b4859d` passed
 repository-foundation run `29580444697` and Native Linux run `29580444723` (job `87884607879`).
 The native Ubuntu 24.04 job checked out exact Core revision
@@ -147,9 +156,6 @@ X11/D-Bus/Xvfb, and built all targets with all features. The GTK test exercised 
 stages, stable next-request identity, pending-model state, persistent storage-degradation warning,
 worker-unavailable command blocking, the existing multi-profile lifecycle, explicit connection and
 model selection, failed-switch rollback, and streamed translation through real widgets.
-
-This is the latest completed remote evidence before the headless Wayland gate was added. The first
-remote X11-plus-Wayland result for the current change is pending and is not claimed here.
 
 Functional multi-profile revision `c88d37a5de2f03c2ae5d2940c4d25e5d998c301d` passed
 repository-foundation run `29577918346` and Native Linux run `29577918335` (job `87876528763`).
