@@ -172,7 +172,8 @@ fn start_file_drop_fixture(application: &adw::Application, bindings: UiBindings)
     drag_button.set_focusable(true);
     drag_button.set_size_request(240, 48);
     let file = gtk::gio::File::for_path(&fixture_path);
-    let provider = gtk::gdk::ContentProvider::for_value(&file.to_value());
+    let file_list = gtk::gdk::FileList::from_array(std::slice::from_ref(&file));
+    let provider = gtk::gdk::ContentProvider::for_value(&file_list.to_value());
     let drag_source = gtk::DragSource::new();
     drag_source.set_actions(gtk::gdk::DragAction::COPY);
     drag_source.set_content(Some(&provider));
@@ -276,8 +277,10 @@ fn create_window(
     root.append(&controls);
 
     let editor_bindings = create_editors();
-    let source_drop_target =
-        gtk::DropTarget::new(gtk::gio::File::static_type(), gtk::gdk::DragAction::COPY);
+    let source_drop_target = gtk::DropTarget::new(
+        gtk::gdk::FileList::static_type(),
+        gtk::gdk::DragAction::COPY,
+    );
     editor_bindings
         .source_view
         .add_controller(source_drop_target.clone());
@@ -939,7 +942,10 @@ fn connect_action_handlers(
             if !source_import_allowed(&drop_state.borrow()) {
                 return false;
             }
-            let Ok(file) = value.get::<gtk::gio::File>() else {
+            let Ok(file_list) = value.get::<gtk::gdk::FileList>() else {
+                return false;
+            };
+            let Some(file) = file_list.files().into_iter().next() else {
                 return false;
             };
             load_source_file(&file, &drop_bindings, &drop_state);
