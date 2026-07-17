@@ -82,7 +82,9 @@ form. Enter the credential again when required, then click **Connect** to valida
 runtime session and model continue in visibly session-only mode. Provider controls remain disabled
 until startup finishes. Credential values are never written to the database; only persistent
 `SecretRef` identifiers are stored. Secret Service absence, locked items, and unsupported
-interactive prompts fail closed with typed errors instead of falling back to plaintext. Session-only
+interactive prompts fail closed with typed errors instead of falling back to plaintext. Native CI
+also exercises non-root prompt paths for store and delete and verifies the same typed rejection;
+end-user prompt approval and unlock UI remain outside the automated gate. Session-only
 connection remains available when remembering is disabled or profile storage/keyring access is
 unavailable. Connection and translation can both be cancelled, and a failed provider switch
 preserves the previously confirmed provider and model.

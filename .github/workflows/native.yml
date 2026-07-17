@@ -107,6 +107,9 @@ jobs:
       - name: Run Secret Service integration fixture
         working-directory: linguamesh-linux
         run: bash tools/run-secret-service-test.sh
+      - name: Run Secret Service prompted-flow fixture
+        working-directory: linguamesh-linux
+        run: bash tools/run-secret-service-prompt-test.sh
       - name: Run notification transport fixture
         working-directory: linguamesh-linux
         run: dbus-run-session -- bash tools/run-notification-test.sh

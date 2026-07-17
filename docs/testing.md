@@ -105,8 +105,18 @@ resolves an item, locks the collection and verifies fail-closed lookup, stops an
 daemon, then resolves and deletes the item before rerunning the cleanup round trip. It also runs the
 worker secure-onboarding connect/translate/restart test and the GTK Remember/clear-form flow against
 an authenticated loopback provider under Xvfb. It proves CRUD, persistent restoration, locked-item
-handling, cleanup, and SecretRef-only persistence without touching a developer keyring; prompted
-interactive flows remain a separate gate.
+handling, cleanup, and SecretRef-only persistence without touching a developer keyring.
+
+The prompted-flow runner starts a separate Python Secret Service fixture twice. It returns a non-root
+prompt path from `CreateItem` and `Delete`, then requires the Linux adapter to reject each operation
+with `SecureStorageUnavailable` and the stable interactive-prompt message:
+
+```sh
+bash tools/run-secret-service-prompt-test.sh
+```
+
+This proves the fail-closed boundary without automating user approval or unlock UI; end-user prompt
+acceptance remains a separate validation gate.
 
 The notification transport runner starts a private `org.freedesktop.Notifications` fixture service and
 captures the real GTK translation test's `Notify` call on a private D-Bus session. It requires fixed
@@ -151,7 +161,7 @@ source editor. The application-level drag fixture performs an actual XTest drag 
 bash tools/run-gtk-drag-and-drop-test.sh
 ```
 
-Physical desktop-shell rendering and prompted portal/keyring flows remain manual boundaries.
+Physical desktop-shell rendering and prompted portal/keyring approval UI remain manual boundaries.
 
 The GTK Rust source can be checked without native linking as a limited diagnostic. The `v4_10`
 gtk-rs feature is enabled because the accessibility test helpers and semantic update APIs require

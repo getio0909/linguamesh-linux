@@ -153,8 +153,9 @@ startup does not auto-connect, and the UI keeps an explicit session-only path.
 
 Native CI exercises this onboarding boundary with an authenticated loopback provider: the GTK form
 clears the credential immediately, persists only the SecretRef, reconnects after worker restart, and
-checks that the credential canary is absent from SQLite. Interactive Secret Service prompts remain
-unsupported and fail closed.
+checks that the credential canary is absent from SQLite. A separate prompt fixture returns non-root
+prompt paths for store and delete and verifies the adapter fails closed; user approval and unlock UI
+remain outside the automated boundary.
 
 `l10n/linux/` is a byte-for-byte consumer snapshot of the canonical PO catalogs at the revision
 enforced by `tools/sync-l10n.sh`. The GTK host now parses the pinned English and Simplified Chinese
@@ -185,7 +186,7 @@ runtime action-label catalogs, a real document-portal lease lifecycle fixture, a
 content. Native CI also delivers that payload to a real `dunst` notification daemon under Xvfb,
 asserts a visible viewable Dunst desktop-shell window, verifies the asynchronous GTK FileDialog
 callback, and performs a real URI-list drag/drop through the source editor. Physical compositor/GPU
-rendering and prompted flows remain validation boundaries.
+rendering and end-user prompted approval remain validation boundaries.
 
 ## Security and portability boundaries
 

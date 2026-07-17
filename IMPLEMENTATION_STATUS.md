@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; prompted interactive flows and release artifacts remain open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; end-user prompt acceptance and release artifacts remain open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -162,6 +162,10 @@ Validated on 2026-07-17 with Rust 1.93.0:
   collection, verifies store/resolve, locks an item and checks fail-closed resolution, restarts the
   daemon, resolves and deletes the item, runs the worker secure-onboarding connect/translate and
   restart path, and runs the GTK Remember/clear-form/real-authenticated-provider path under Xvfb.
+- `bash tools/run-secret-service-prompt-test.sh` passed locally. Its isolated Python D-Bus fixture
+  returns a non-root prompt path for `CreateItem` and `Delete`; both exact ignored tests passed and
+  asserted `SecureStorageUnavailable` with the stable interactive-prompt message. The fixture does
+  not automate user approval or unlock UI.
 - The loopback OpenAI-compatible path connects without a credential, manually selects a discovered
   model, streams `你好，LinguaMesh！`, and counts one chat request against the isolated fake provider.
   The notification slice keeps the desktop payload fixed to generic English text and sends no
@@ -173,8 +177,9 @@ Validated on 2026-07-17 with Rust 1.93.0:
 - The Secret Service adapter now sends an `(sv)` `OpenSession` request with a single plain-string
   Variant; its shape regression passed locally. The isolated real-daemon fixture is wired into
   native CI and covers persistent daemon-restart restoration, locked-item fail-closed resolution,
-  cleanup, worker credential resolution, and GTK secure persistent-credential onboarding; prompted
-  interactive flows remain open.
+  cleanup, worker credential resolution, and GTK secure persistent-credential onboarding. The
+  prompted-flow fixture also verifies that non-root `CreateItem` and `Delete` prompt paths are
+  rejected with `SecureStorageUnavailable`; end-user prompt acceptance remains open.
 - The native text import slice accepts only UTF-8 TXT/Markdown content up to 4 MiB, strips a UTF-8
   BOM, rejects invalid or oversized input, and reads through GIO's partial asynchronous API. The
   source editor also accepts a single URI-list/GIO file through GTK drag-and-drop and reuses the
@@ -432,9 +437,9 @@ in the GitHub Actions evidence above, but those native checks remain unavailable
 
 ## Remaining scope
 
-- Prompted interactive Secret Service flows. The GIO adapter, fail-closed remembered-credential
-  path, and secure persistent-credential onboarding are implemented, while session-only fallback
-  remains available when the keyring is unavailable.
+- End-user Secret Service prompt acceptance and unlock UX. The GIO adapter, fail-closed prompted
+  store/delete boundary, remembered-credential path, and secure persistent-credential onboarding
+  are implemented, while session-only fallback remains available when the keyring is unavailable.
 - Central release-manifest integration for this exact Linux/Core revision; broader product
   compatibility beyond the alpha.2 startup gate remains unclaimed.
 - Interoperability evidence for third-party local servers, including Ollama; automated endpoint

@@ -249,7 +249,7 @@ mod tests {
         properties, resolve_secret, store_secret,
     };
     use gtk::glib::VariantTy;
-    use linguamesh_domain::{SecretRef, SecretRefNamespace, SecretValue};
+    use linguamesh_domain::{ErrorKind, SecretRef, SecretRefNamespace, SecretValue};
 
     const PERSISTENT_FIXTURE_REF: &str = "secret-service:11111111-1111-4111-8111-111111111111";
 
@@ -321,6 +321,32 @@ mod tests {
             resolve_secret(&secret_ref),
             Err(LookupError::Locked)
         ));
+    }
+
+    #[test]
+    #[ignore = "requires the isolated Secret Service prompt fixture"]
+    fn secret_service_prompt_is_rejected_when_storing() {
+        let secret_ref = persistent_fixture_ref();
+        let secret = SecretValue::new("linguamesh-prompt-fixture");
+        let error =
+            store_secret(&secret_ref, &secret).expect_err("prompted store must fail closed");
+        assert_eq!(error.kind, ErrorKind::SecureStorageUnavailable);
+        assert_eq!(
+            error.message,
+            "Secret Service requires an interactive prompt."
+        );
+    }
+
+    #[test]
+    #[ignore = "requires the isolated Secret Service prompt fixture"]
+    fn secret_service_prompt_is_rejected_when_deleting() {
+        let secret_ref = persistent_fixture_ref();
+        let error = delete_secret(&secret_ref).expect_err("prompted delete must fail closed");
+        assert_eq!(error.kind, ErrorKind::SecureStorageUnavailable);
+        assert_eq!(
+            error.message,
+            "Secret Service requires an interactive prompt."
+        );
     }
 
     #[test]
