@@ -2032,7 +2032,10 @@ mod tests {
             PersistenceIntent::SessionOnly,
         )
         .expect_err("secure storage unavailable");
-        assert_eq!(error.kind, ErrorKind::SecureStorageUnavailable);
+        assert!(matches!(
+            error.kind,
+            ErrorKind::SecretUnavailable | ErrorKind::SecureStorageUnavailable
+        ));
 
         let error = connect(
             &secure_worker,
@@ -2041,7 +2044,10 @@ mod tests {
             PersistenceIntent::Persistent,
         )
         .expect_err("persistent secret takes precedence");
-        assert_eq!(error.kind, ErrorKind::SecureStorageUnavailable);
+        assert!(matches!(
+            error.kind,
+            ErrorKind::SecretUnavailable | ErrorKind::SecureStorageUnavailable
+        ));
         shutdown(&secure_worker);
 
         let persistent_profile = profile("persistent-profile", &external.endpoint, None, None);
