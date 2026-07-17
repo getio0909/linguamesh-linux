@@ -23,8 +23,9 @@ XDG_CACHE_HOME="$workspace/cache" \
     set -euo pipefail
     export XDG_CURRENT_DESKTOP=GNOME
     export GDK_BACKEND=x11
+    export LINGUAMESH_TEST_FILE_DIALOG=1
     mkdir -p "$XDG_DATA_HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME"
-    target/debug/linguamesh-linux --test-file-dialog >"$LINGUAMESH_FILE_CHOOSER_LOG" 2>&1 &
+    target/debug/linguamesh-linux >"$LINGUAMESH_FILE_CHOOSER_LOG" 2>&1 &
     app_pid=$!
     chooser_window=""
     for _ in {1..200}; do

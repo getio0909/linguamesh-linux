@@ -84,7 +84,7 @@ fn main() -> glib::ExitCode {
     let application = adw::Application::builder()
         .application_id("dev.linguamesh.LinguaMesh")
         .build();
-    let file_dialog_fixture = std::env::args().any(|argument| argument == "--test-file-dialog");
+    let file_dialog_fixture = std::env::var_os("LINGUAMESH_TEST_FILE_DIALOG").is_some();
     application.connect_activate(move |application| build_ui(application, file_dialog_fixture));
     application.run()
 }
