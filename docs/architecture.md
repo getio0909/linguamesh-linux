@@ -57,7 +57,7 @@ network work. The shell exposes a saved-profile dropdown, provider name, endpoin
 credential, explicit Connect, **Remember profile, model, and credential in Secret Service**,
 **Remove saved profile**,
 model selection, source and target locales, source and streamed output editors, native **Open text
-file** import, Translate/Stop,
+file** import, single-file drag-and-drop onto the source editor, Translate/Stop,
 typed errors, appearance, runtime catalog-backed locale preference, and redacted diagnostics.
 An always-current Provider setup card explains the next required action, warns when saved-profile
 storage is unavailable, distinguishes fatal worker shutdown from startup, and identifies the

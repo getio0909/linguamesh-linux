@@ -161,8 +161,9 @@ Validated on 2026-07-17 with Rust 1.93.0:
   passed after the `GApplication` notification call was added.
 - The native text import slice accepts only UTF-8 TXT/Markdown content up to 4 MiB, strips a UTF-8
   BOM, rejects invalid or oversized input, and reads through GIO's partial asynchronous API. The
-  decoder tests passed locally; interactive portal/file-lease and drag-and-drop coverage remain
-  open.
+  source editor also accepts a single GIO file through GTK drag-and-drop and reuses the same
+  validation path. Decoder tests and source-level checks passed locally; interactive portal/file-
+  lease coverage remains open.
 - `bash tools/run-storage-fault-test.sh` passed its exact ignored test separately: 1 passed, 0
   failed, 0 ignored. A private 8 MiB tmpfs produced real kernel `ENOSPC` failures for persistent
   model update, deletion, and provider switch; each preserved prior-session translation, and each

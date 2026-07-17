@@ -64,13 +64,13 @@ struct UiBindings {
     diagnostics: gtk::Label,
     profile_selection_guard: Rc<Cell<bool>>,
     draft_profile_id: Rc<RefCell<Option<ProviderProfileId>>>,
+    source_drop_target: gtk::DropTarget,
 }
 
 struct EditorBindings {
     editors: gtk::Paned,
     source: gtk::TextBuffer,
     output: gtk::TextBuffer,
-    #[cfg(test)]
     source_view: gtk::TextView,
     output_view: gtk::TextView,
     #[cfg(test)]
@@ -148,6 +148,11 @@ fn create_window(
     root.append(&controls);
 
     let editor_bindings = create_editors();
+    let source_drop_target =
+        gtk::DropTarget::new(gtk::gio::File::static_type(), gtk::gdk::DragAction::COPY);
+    editor_bindings
+        .source_view
+        .add_controller(source_drop_target.clone());
     root.append(&editor_bindings.editors);
 
     let action_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
@@ -236,6 +241,7 @@ fn create_window(
             diagnostics,
             profile_selection_guard: Rc::new(Cell::new(false)),
             draft_profile_id: Rc::new(RefCell::new(None)),
+            source_drop_target,
         },
         theme,
         locale,
@@ -323,7 +329,6 @@ fn create_editors() -> EditorBindings {
         editors,
         source,
         output,
-        #[cfg(test)]
         source_view,
         output_view,
         #[cfg(test)]
@@ -799,6 +804,20 @@ fn connect_action_handlers(
     bindings.open_source.connect_clicked(move |_| {
         begin_source_file_open(&open_bindings, &open_state);
     });
+    let drop_bindings = bindings.clone();
+    let drop_state = Rc::clone(state);
+    bindings
+        .source_drop_target
+        .connect_drop(move |_, value, _, _| {
+            if !source_import_allowed(&drop_state.borrow()) {
+                return false;
+            }
+            let Ok(file) = value.get::<gtk::gio::File>() else {
+                return false;
+            };
+            load_source_file(&file, &drop_bindings, &drop_state);
+            true
+        });
 
     let connect_bindings = bindings.clone();
     let connect_state = Rc::clone(state);
@@ -1088,6 +1107,17 @@ fn show_file_import_error(bindings: &UiBindings, message: &str) {
     bindings.error.set_label(message);
     bindings.error.set_visible(true);
     bindings.error.reset_state(gtk::AccessibleState::Hidden);
+}
+
+// 拖放和按钮导入共享相同的工作状态边界，避免覆盖正在处理的用户内容。
+fn source_import_allowed(state: &AppState) -> bool {
+    !state.worker_unavailable()
+        && state.pending_profile_deletion().is_none()
+        && state.pending_model_selection().is_none()
+        && !matches!(
+            state.status(),
+            AppStatus::Connecting | AppStatus::Translating | AppStatus::Cancelling
+        )
 }
 
 fn start_event_pump(bindings: &UiBindings, state: &Rc<RefCell<AppState>>, worker: &Rc<CoreWorker>) {
@@ -1568,7 +1598,7 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         .set_sensitive(state.worker_ready() && !blocked && state.selected_model().is_some());
     bindings
         .open_source
-        .set_sensitive(!state.worker_unavailable() && !blocked);
+        .set_sensitive(source_import_allowed(state));
     bindings.stop.set_sensitive(
         state.worker_ready()
             && matches!(
