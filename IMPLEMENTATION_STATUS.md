@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback is verified locally; native Linux CI is pending
+Status: Runtime storage ENOSPC rollback and the forced Wayland/X11 GTK gates are verified in native Linux CI
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -143,8 +143,8 @@ Validated on 2026-07-17 with Rust 1.93.0:
   model update, deletion, and provider switch; each preserved prior-session translation, and each
   restart exposed only pre-fault state. Post-fault model selection also succeeded only in session
   mode and remained absent after restart. No temporary mount or directory remained afterward. This
-  host used the unprivileged path; passwordless `sudo` is unavailable, so the controlled fallback
-  awaits the first Native Linux CI run.
+  host used the unprivileged path; the controlled `sudo` fallback passed in the remote evidence
+  below.
 - `DOCS_RS=1 cargo check --all-targets --all-features --locked` and the equivalent strict Clippy
   command passed only as source-level diagnostics of the GTK code.
 - The exact foundation block in `docs/testing.md`, `git diff --check`, shell syntax validation, and
@@ -159,8 +159,16 @@ Validated on 2026-07-17 with Rust 1.93.0:
 
 ## Remote validation evidence
 
-The runtime storage write-fault change has not yet completed its first Native Linux CI run. The
-following evidence remains the latest completed remote gate until that run is recorded.
+Runtime-storage functional revision `c37702c76c3b1a2f9cec805cf9e219721ef7b5ce` passed
+repository-foundation run `29586531915` (job `87904787120`) and Native Linux run `29586532049`
+(job `87904787338`). The Ubuntu 24.04 job checked out exact Core revision
+`fbf3e9b5927049dccaa19f8c36013495ffebba12`, synchronized localization, passed formatting and strict
+all-feature Clippy, passed 66 library tests with the namespace test intentionally ignored in the
+ordinary suite, and passed the real GTK binary test under X11/D-Bus/Xvfb. Ubuntu restricted the
+unprivileged mount, so the dedicated gate used the controlled coordinator fallback and passed the
+exact runtime storage test once with zero ignored tests. The same GTK binary then passed under
+forced Wayland/headless Weston, and the all-target all-feature build passed. This proves the
+implemented `ENOSPC` transaction boundary, not every database or storage failure.
 
 Wayland-gate revision `10b31a040fd3c44ecbaef31eb5c66c0c8e5cb620` passed
 repository-foundation run `29582513073` (job `87891382540`) and Native Linux run `29582513061`

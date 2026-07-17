@@ -30,10 +30,12 @@ Wayland/headless Weston. Neither validation creates a distributable artifact or 
 future release gate below.
 
 The current native gate also includes a real post-startup `ENOSPC` regression for persistent model
-updates, profile deletion, and provider switching. Local evidence proves exact rejection, continued
-use of the prior session, and restart recovery of only pre-fault state; its first remote run is
-pending. This is not evidence for corruption, power-loss recovery, read-only media, or every
-storage-failure path.
+updates, profile deletion, and provider switching. Runtime-storage functional revision
+`c37702c76c3b1a2f9cec805cf9e219721ef7b5ce` passed Native Linux run `29586532049` (job
+`87904787338`) and repository-foundation run `29586531915` (job `87904787120`). Ubuntu exercised
+the controlled mount fallback and proved exact rejection, continued use of the prior session,
+session-only post-fault model selection, and restart recovery of only pre-fault state. This is not
+evidence for corruption, power-loss recovery, read-only media, or every storage-failure path.
 
 ## Future release gate
 

@@ -167,8 +167,13 @@ The GitHub Actions native workflow pins Core revision
 `fbf3e9b5927049dccaa19f8c36013495ffebba12`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
-namespace test through the unprivileged path; the controlled `sudo` fallback and its first Native
-Linux CI result are pending. Wayland-gate revision
+namespace test through the unprivileged path. Runtime-storage functional revision
+`c37702c76c3b1a2f9cec805cf9e219721ef7b5ce` passed Native Linux run `29586532049` (job
+`87904787338`): strict all-feature Clippy, 66 ordinary library tests with one intentional ignore,
+the real GTK binary test under X11/Xvfb, the exact storage-fault test with 1 pass and 0 ignored via
+the controlled `sudo` fallback, the same GTK test under forced Wayland/headless Weston, and the
+all-target all-feature build all succeeded. Repository-foundation run `29586531915` (job
+`87904787120`) also passed. Wayland-gate revision
 `10b31a040fd3c44ecbaef31eb5c66c0c8e5cb620` passed Native Linux run `29582513061` (job
 `87891382469`): strict all-feature Clippy, 65 library tests, the real GTK binary test under
 X11/Xvfb, the same test under forced Wayland/headless Weston, and the all-target all-feature build
