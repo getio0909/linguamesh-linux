@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, and a real XDG document-portal lease lifecycle fixture are implemented; prompted interactive flows, interactive file-chooser portal leases, desktop-shell notification delivery, and release artifacts remain open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, and a real XDG document-portal lease lifecycle fixture are implemented; prompted interactive flows, interactive file-chooser portal leases, physical desktop-shell notification rendering, and release artifacts remain open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -167,7 +167,9 @@ Validated on 2026-07-17 with Rust 1.93.0:
   The notification slice keeps the desktop payload fixed to generic English text and sends no
   source or translated content. The native transport fixture uses a private
   `org.freedesktop.Notifications` service and verifies the real `Notify` call plus the generic
-  payload; desktop-shell rendering remains open.
+  payload. A second native fixture starts the real `dunst` notification daemon under Xvfb, waits
+  for it to own the service, and verifies delivery of the same redacted payload; physical
+  desktop-shell rendering remains open.
 - The Secret Service adapter now sends an `(sv)` `OpenSession` request with a single plain-string
   Variant; its shape regression passed locally. The isolated real-daemon fixture is wired into
   native CI and covers persistent daemon-restart restoration, locked-item fail-closed resolution,
@@ -186,7 +188,7 @@ Validated on 2026-07-17 with Rust 1.93.0:
   current Linux surface. The `Flatpak Linux` workflow runs this manifest in a GNOME 49 SDK
   container, uploads a prerelease CI bundle, and runs the bounded Xvfb/private-D-Bus sandbox smoke;
   local `flatpak-builder` is unavailable, so the SDK build and sandbox smoke remain remote-only.
-  Interactive file-chooser portal leases, desktop-shell notification delivery, and release-artifact reproducibility remain
+  Interactive file-chooser portal leases, physical desktop-shell notification rendering, and release-artifact reproducibility remain
   separate gates.
 - `bash tools/run-storage-fault-test.sh` passed its exact ignored test separately: 1 passed, 0
   failed, 0 ignored. A private 8 MiB tmpfs produced real kernel `ENOSPC` failures for persistent
@@ -257,6 +259,12 @@ The Ubuntu 24.04 job installed the real XDG document portal services and verifie
 mapping, application read-permission grant/revoke, and lease deletion against a private temporary
 fixture. This proves the document-portal lease lifecycle, not interactive GTK file chooser or
 drag-and-drop gestures; those remain separate gates.
+
+Notification daemon delivery revision `83cfcda` passed the native, foundation, and Flatpak
+workflows. The native Ubuntu 24.04 job started the real `dunst` server under Xvfb, observed its
+`org.freedesktop.Notifications` name on the session bus, ran the GTK translation flow, and verified
+the received `Notify` payload stayed generic and contained neither source nor translated text. This
+is headless daemon delivery evidence, not physical desktop-shell rendering or compositor coverage.
 
 Loopback provider revision `7d7eba9960b657f0460fb0daaaaebaaa609f39b1` passed repository-foundation
 run `29604269516` and Native Linux run `29604269568` (job `87963611054`). The Ubuntu 24.04 job
@@ -418,7 +426,7 @@ in the GitHub Actions evidence above, but those native checks remain unavailable
 - Runtime database faults beyond the verified private-tmpfs `ENOSPC` transaction boundary,
   including read-only media, corruption, power loss, and broader SQLite VFS failures.
 - XDG portals beyond the implemented user-data path and document-portal lease lifecycle, interactive
-  file chooser/drag-and-drop gestures, desktop-shell notification rendering, AT-SPI/Orca and physical-keyboard accessibility coverage,
+  file chooser/drag-and-drop gestures, physical desktop-shell notification rendering, AT-SPI/Orca and physical-keyboard accessibility coverage,
   physical-compositor/GPU Wayland coverage, broader X11/desktop coverage, Flatpak portal/notification
   delivery, and release artifacts.
 - Directory-descriptor or `openat2` hardening against a concurrent same-UID path replacement during

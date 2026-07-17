@@ -113,6 +113,11 @@ captures the real GTK translation test's `Notify` call on a private D-Bus sessio
 generic title and body text and absence of the source and translated strings. This proves the
 application-to-notification-service transport and privacy boundary, not desktop-shell rendering.
 
+The notification daemon runner starts the real `dunst` server under Xvfb, waits for it to own the
+session notification name, runs the same GTK translation flow, and verifies the daemon receives the
+generic redacted payload. This proves headless delivery to a real notification daemon; it does not
+prove physical desktop-shell rendering, compositor behavior, or visual placement.
+
 The document portal runner starts the real XDG document portal services on a private D-Bus session,
 adds a temporary fixture through a file descriptor, verifies the returned host path, grants and
 revokes the application read permission, and deletes the lease. This proves the document-portal
@@ -149,7 +154,7 @@ archives, and runs `desktop-file-validate` plus `appstreamcli`. The `Flatpak Lin
 the pinned manifest in the GNOME 49 SDK container, uploads a prerelease CI bundle, and runs
 `tools/run-flatpak-smoke.sh` under Xvfb with a private D-Bus session. That smoke only proves
 installation and bounded application startup; it does not publish a release or prove interactive
-file-chooser portal leases or desktop notification delivery. `flatpak-builder` is not installed on this host, so local SDK
+file-chooser portal leases or physical desktop-shell notification rendering. `flatpak-builder` is not installed on this host, so local SDK
 build and sandbox launch remain unavailable.
 
 These commands bypass sys-crate discovery and do not validate headers, ABI, linking, launch, or

@@ -103,8 +103,8 @@ The repository now includes a reproducible Flatpak manifest, pinned Cargo source
 entry, AppStream metadata, and icon under [`packaging/flatpak`](packaging/flatpak). Run
 `bash tools/validate-flatpak-metadata.sh` for local metadata validation. The GNOME 49 SDK build and
 bounded private-D-Bus sandbox smoke run remotely; the resulting bundle is a prerelease CI artifact,
-not a signed or published release, and portal leases plus desktop-shell delivery remain separate
-gates.
+not a signed or published release. Native CI verifies headless delivery to a real `dunst` notification
+daemon; physical desktop-shell rendering and portal interaction remain separate gates.
 
 The two display gates execute the same real GTK binary test. Headless Weston proves that the client
 can initialize and complete that flow with `GDK_BACKEND=wayland` and no X11 fallback; it is not
@@ -123,7 +123,8 @@ still use English fallbacks until complete gettext coverage is wired.
 
 When a translation completes, the registered Linux application sends a desktop notification with
 generic English text only; source and translated content are never included in notification
-payloads.
+payloads. Native CI delivers that payload to a real `dunst` daemon under Xvfb, while physical
+desktop-shell rendering remains unverified.
 
 ## Documentation
 

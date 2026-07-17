@@ -180,8 +180,9 @@ The client owns native lifecycle, accessibility, appearance, keyboard behavior, 
 portals, drag-and-drop, clipboard, notifications, XDG paths, desktop metadata, display-server
 integration, and credential resolution. This slice includes the XDG profile-database path,
 runtime action-label catalogs, a real document-portal lease lifecycle fixture, and a completion notification through `GApplication`; the
-notification contains generic English text and never source or translated content. Physical
-desktop notification-server delivery remains a packaging/runtime validation boundary.
+notification contains generic English text and never source or translated content. Native CI also
+delivers that payload to a real `dunst` notification daemon under Xvfb; physical desktop-shell
+rendering remains a packaging/runtime validation boundary.
 
 ## Security and portability boundaries
 
