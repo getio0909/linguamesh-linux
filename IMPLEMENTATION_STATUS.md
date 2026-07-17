@@ -137,11 +137,11 @@ Validated on 2026-07-17 with Rust 1.93.0:
   HEAD was a documentation-only descendant whose scoped compiled-source diff from that revision
   was empty.
 - `cargo fmt --all --check`, the locked demo-provider check, strict Clippy, and build passed.
-- `cargo test --no-default-features --locked` passed: 41 tests, 0 failed. Coverage includes the
+- `cargo test --no-default-features --locked` passed: 44 tests, 0 failed. Coverage includes the
   derived onboarding progression, safe stage labels, pending-model confirmation, worker-unavailable
   and storage-unavailable fallbacks, and failed-switch rollback that preserves the confirmed Ready
   identity.
-- `cargo test --features demo-provider --locked` passed: 67 tests, 0 failed, with the dedicated
+- `cargo test --features demo-provider --locked` passed: 70 tests, 0 failed, with the dedicated
   namespace test intentionally ignored in the ordinary suite. Coverage includes
   explicit connection and model selection, exact compatibility rejection, authenticated one-shot
   session secrets, fail-closed persistent references, two-profile create/update/activate/restart,
@@ -185,6 +185,14 @@ Validated on 2026-07-17 with Rust 1.93.0:
   their action metadata uses Node 24 or a composite action.
 
 ## Remote validation evidence
+
+Native text-import functional revision `96d34a5448d0f718fd87c68e88129c05fed43ee5` passed
+repository-foundation run `29596052213` (job `87936587361`) and Native Linux run `29596052224`
+(job `87936587342`). The Ubuntu 24.04 job passed strict all-feature Clippy, 70 GUI-enabled
+library tests with one intentional ignore, the real GTK flow including the focusable Open text
+file control and worker-loss disablement, the private-tmpfs storage fault test, both display gates,
+and the all-target native build. Interactive file selection, portal leases, and drag-and-drop are
+not claimed by this evidence.
 
 Desktop-notification functional revision `07b89f36269155469a488ab830e8f485b3a1323b` passed
 repository-foundation run `29594795681` (job `87932451692`) and Native Linux run `29594795691`

@@ -43,7 +43,7 @@ cargo build --features demo-provider --locked
 DOCS_RS=1 cargo check --all-targets --all-features --locked
 ```
 
-The no-default suite contains 41 reducer tests. It covers the disconnected initial state, atomic
+The no-default suite contains 44 tests. It covers the text-import decoder in addition to the disconnected initial state, atomic
 sorted restoration of multiple profiles without activation, duplicate/missing/default/session-ref
 snapshot rejection, form-only selection, exact pending deletion, connected-row removal that keeps
 the runtime session, pending and active canonical profiles, exact stale-result rejection, atomic
@@ -55,7 +55,7 @@ Ready identity, pending-model confirmation that cannot claim Ready, worker-unava
 storage-unavailable fallback, runtime persistence degradation that retains the confirmed session,
 and diagnostics that omit content, endpoints, IDs, model IDs, and secret references.
 
-The ordinary `demo-provider` run passes 66 tests and reports one intentionally ignored namespace
+The ordinary `demo-provider` run passes 70 tests and reports one intentionally ignored namespace
 test. Its worker tests validate the exact Core
 compatibility contract, prove that fake-service readiness does not auto-connect, require explicit
 Connect and model selection, exercise real loopback HTTP/SSE streaming, consume an authenticated
