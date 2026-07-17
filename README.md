@@ -74,8 +74,14 @@ switch preserves the previously confirmed provider and model.
 
 The tested external-provider path uses the LinguaMesh fake provider on loopback. It is not evidence
 of interoperability with Ollama or any other third-party server. Full validation commands, the
-header-free local path, and the GTK/Xvfb CI gate are documented in
+header-free local path, and the GTK gates for X11/Xvfb and forced Wayland/headless Weston are
+documented in
 [`docs/testing.md`](docs/testing.md). No release or packaging artifact is implemented yet.
+
+The two display gates execute the same real GTK binary test. Headless Weston proves that the client
+can initialize and complete that flow with `GDK_BACKEND=wayland` and no X11 fallback; it is not
+evidence for a physical compositor, GPU rendering, assistive technology, or a complete desktop
+matrix.
 
 At worker startup, the client requires exact Core `0.1.0-alpha.2`, ABI 1, protocol 1, provider
 catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out the exact

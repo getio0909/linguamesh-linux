@@ -67,6 +67,13 @@ changing the active runtime model. New persistent profiles use a GLib random UUI
 Core `ProviderProfileId`; display names are never database keys. Pending connection, model
 selection, translation, or deletion disables conflicting controls.
 
+Native CI executes this same GTK binary flow first through serialized X11/Xvfb and then through a
+separate private D-Bus session with `GDK_BACKEND=wayland`. The Wayland runner starts headless Weston
+inside a private `0700` `XDG_RUNTIME_DIR`, waits a bounded time for its dedicated socket, removes
+`DISPLAY` to prevent X11 fallback, and always terminates the compositor and removes the runtime
+directory. This is a headless protocol/backend gate, not a claim about physical compositors, GPU
+rendering, desktop integration, or assistive technology.
+
 The user-facing endpoint example is loopback. Under its shared endpoint policy, Core accepts
 loopback HTTP and also accepts HTTPS endpoints; the Linux client does not duplicate URL parsing.
 Automated client evidence covers the built-in provider and an external LinguaMesh fake provider on
@@ -153,6 +160,7 @@ Persistent secrets must use Secret Service. Until that backend exists, the UI of
 clearly labeled in-memory credential path and fails closed for persistent secret references;
 remembering non-secret profile fields does not weaken that boundary. File and directory handling
 must follow XDG locations, restrictive permissions, portal leases, and cleanup rules. Wayland is
-required; X11 support is practical where dependencies and tests allow it.
+required; the headless Wayland gate and practical X11/Xvfb gate cover the current real-widget slice,
+while physical compositor and broader desktop coverage remain incomplete.
 
 Changes affecting shared contracts, the security model, display support, GTK/libadwaita policy, or distribution packaging require central compatibility review. GTK and other LGPL dependencies require documented license compliance before distribution.

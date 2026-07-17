@@ -23,7 +23,9 @@ pins reviewed Core functional revision
 `SQLITE_OPEN_NOFOLLOW`, rather than checking out a floating branch. Functional revision
 `9729b23ce1a4280ebb434339e880010103b4859d` passed Native Linux run `29580444723` (job
 `87884607879`) with 65 library tests, the real GTK test, strict Clippy, and the all-feature build;
-this validation does not create a distributable artifact or satisfy the future release gate below.
+that evidence used the X11/Xvfb gate. The current workflow also reruns the same GTK binary test with
+forced Wayland under headless Weston, but its first remote result is pending. Neither validation
+creates a distributable artifact or satisfies the future release gate below.
 
 ## Future release gate
 

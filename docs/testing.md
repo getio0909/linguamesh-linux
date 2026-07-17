@@ -95,7 +95,8 @@ linking.
 On Debian or Ubuntu, install the native development headers:
 
 ```sh
-sudo apt-get install libgtk-4-dev libadwaita-1-dev dbus-daemon gettext pkg-config xauth xvfb
+sudo apt-get install \
+  libgtk-4-dev libadwaita-1-dev dbus-daemon gettext pkg-config weston xauth xvfb
 ```
 
 Then run the complete native gate:
@@ -108,6 +109,7 @@ cargo clippy --all-targets --all-features --locked -- -D warnings
 GDK_BACKEND=x11 dbus-run-session -- xvfb-run --auto-servernum \
   --server-args="-screen 0 1280x800x24" \
   cargo test --all-targets --all-features --locked -- --test-threads=1
+dbus-run-session -- bash tools/run-wayland-test.sh
 cargo build --all-targets --all-features --locked
 ```
 
@@ -130,16 +132,23 @@ startup snapshot, verifies persisted-active prefill without activation, browses 
 changing the runtime/default, checks the disconnected storage warning, preserves a
 persistent secret reference so the real Connect path fails closed, rejects a disabled saved row
 without re-enabling it, checks delete-pending control blocking, applies an exact deletion result,
-and verifies a fresh random draft ID. A private D-Bus session and Xvfb provide the runtime
-environment; tests are serialized because GTK owns process-global state. This is not comprehensive
-UI automation, accessibility, or Wayland coverage.
+and verifies a fresh random draft ID. The test runs once in a private D-Bus session under X11/Xvfb,
+then the binary-only suite runs again in another private D-Bus session under forced Wayland and
+headless Weston. `tools/run-wayland-test.sh` creates a private `0700` runtime directory, unsets
+`DISPLAY`, sets `GDK_BACKEND=wayland`, waits at most ten seconds for a dedicated socket, and uses
+exit traps to stop Weston and remove the directory. Tests are serialized because GTK owns
+process-global state. This is not comprehensive UI automation, accessibility inspection, a
+physical-compositor test, or GPU-rendering evidence.
 
 The GitHub Actions native workflow pins Core revision
-`fbf3e9b5927049dccaa19f8c36013495ffebba12`, installs the headers plus D-Bus/Xvfb support, and runs
-the complete gate. Functional onboarding revision
+`fbf3e9b5927049dccaa19f8c36013495ffebba12`, installs the headers plus D-Bus, Xvfb, and test-only
+Weston support, and runs both display gates before the all-feature build. The Wayland gate has
+source-level local validation in the current change but awaits its first remote execution result.
+The preceding functional onboarding revision
 `9729b23ce1a4280ebb434339e880010103b4859d` passed Native Linux run `29580444723` (job
 `87884607879`): strict all-feature Clippy, 65 library tests, the real GTK binary test, and the
-all-target all-feature build all succeeded. Repository-foundation run `29580444697` also passed.
+all-target all-feature build all succeeded under the then-current X11 gate. Repository-foundation
+run `29580444697` also passed.
 The preceding functional multi-profile revision
 `c88d37a5de2f03c2ae5d2940c4d25e5d998c301d` passed Native Linux run `29577918335` (job
 `87876528763`): strict all-feature Clippy, 62 library tests, the real GTK binary test, and the
@@ -155,7 +164,7 @@ unexecuted local GUI build, launch, or GTK test.
 
 ```sh
 set -euo pipefail
-required_files="README.md LICENSE AGENTS.md REPOSITORY_ROLE.md GLOBAL_GOAL.md SECURITY.md CONTRIBUTING.md CODE_OF_CONDUCT.md THIRD_PARTY_NOTICES.md IMPLEMENTATION_STATUS.md Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml src/lib.rs src/model.rs src/worker.rs src/main.rs docs/architecture.md docs/testing.md docs/releasing.md tools/sync-l10n.sh l10n/compatibility.json l10n/manifest.json .gitignore .github/workflows/foundation.yml .github/workflows/native.yml"
+required_files="README.md LICENSE AGENTS.md REPOSITORY_ROLE.md GLOBAL_GOAL.md SECURITY.md CONTRIBUTING.md CODE_OF_CONDUCT.md THIRD_PARTY_NOTICES.md IMPLEMENTATION_STATUS.md Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml src/lib.rs src/model.rs src/worker.rs src/main.rs docs/architecture.md docs/testing.md docs/releasing.md tools/sync-l10n.sh tools/run-wayland-test.sh l10n/compatibility.json l10n/manifest.json .gitignore .github/workflows/foundation.yml .github/workflows/native.yml"
 for file in $required_files; do
   test -s "$file" || {
     printf 'Missing required file: %s\n' "$file"
@@ -173,8 +182,9 @@ git diff --check
 
 ## Unimplemented validation
 
-Broader GTK component/UI automation, accessibility inspection, Wayland/X11 smoke tests, a native
-Secret Service backend and secure-credential onboarding/persistence tests, broader XDG and portal
-tests, third-party local-server interoperability, Flatpak smoke tests, runtime localization
-behavior, runtime database I/O fault injection after successful startup, dependency/license
-automation, and release builds remain required before a supported release.
+Broader GTK component/UI automation, accessibility inspection, physical-compositor and GPU-backed
+Wayland coverage, a broader X11/desktop matrix, a native Secret Service backend and
+secure-credential onboarding/persistence tests, broader XDG and portal tests, third-party
+local-server interoperability, Flatpak smoke tests, runtime localization behavior, runtime database
+I/O fault injection after successful startup, dependency/license automation, and release builds
+remain required before a supported release.

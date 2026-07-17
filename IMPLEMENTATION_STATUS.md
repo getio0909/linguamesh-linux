@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Linux provider onboarding and one-Connect routing verified locally and in native Linux CI
+Status: Linux onboarding is verified; the dual-backend GTK gate is implemented with Wayland CI pending
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -15,6 +15,10 @@ third-party direct dependency or native Secret Service implementation is introdu
 Assumption: the Linux GTK boundary may create `profile-<GLib UUID>` stable IDs and validate them
 through Core `ProviderProfileId`; this avoids an unnecessary Core revision while names and
 timestamps remain excluded from persistent identity.
+
+Assumption: headless Weston is a test-only Ubuntu CI package. A forced Wayland GTK pass proves the
+current real-widget flow without X11 fallback; it does not prove physical-compositor, GPU, desktop,
+or assistive-technology compatibility.
 
 ## Implemented
 
@@ -87,8 +91,10 @@ timestamps remain excluded from persistent identity.
 - Foundation and native workflow sources use immutable Node 24-compatible action commits and
   disable persisted checkout credentials. Native CI pins reviewed Core revision
   `fbf3e9b5927049dccaa19f8c36013495ffebba12` and localization revision
-  `52e73ea2a6cc7e6e7409b2b6eb0d02db35576a49`. The revised native gate installs D-Bus/Xvfb support
-  and runs serialized all-target, all-feature tests under X11 before building the application.
+  `52e73ea2a6cc7e6e7409b2b6eb0d02db35576a49`. The revised native gate retains serialized all-target,
+  all-feature X11/Xvfb tests, then runs the existing GTK binary test under forced Wayland and
+  headless Weston before building the application. The Wayland runner uses a private runtime
+  directory and socket, bounded readiness, no X11 fallback, and cleanup traps.
 
 ## Local validation evidence
 
@@ -121,7 +127,10 @@ Validated on 2026-07-17 with Rust 1.93.0:
 - `DOCS_RS=1 cargo check --all-targets --all-features --locked` and the equivalent strict Clippy
   command passed only as source-level diagnostics of the GTK code.
 - The exact foundation block in `docs/testing.md`, `git diff --check`, shell syntax validation, and
-  code-comment/secret-pattern scans passed.
+  code-comment/secret-pattern scans passed. The new Wayland runner also passed Bash syntax and its
+  expected missing-Weston and early-compositor-exit failure paths without leaving a temporary
+  runtime directory; both workflow files parsed as YAML. Its actual GTK run requires the remote
+  native environment.
 - `bash tools/sync-l10n.sh --check` passed against the exact clean l10n checkout, and all 14 PO
   catalogs passed `msgfmt --check --check-format`.
 - The checkout, Rust-toolchain, and Rust-cache action SHAs resolved through the GitHub commits API;
@@ -138,6 +147,9 @@ X11/D-Bus/Xvfb, and built all targets with all features. The GTK test exercised 
 stages, stable next-request identity, pending-model state, persistent storage-degradation warning,
 worker-unavailable command blocking, the existing multi-profile lifecycle, explicit connection and
 model selection, failed-switch rollback, and streamed translation through real widgets.
+
+This is the latest completed remote evidence before the headless Wayland gate was added. The first
+remote X11-plus-Wayland result for the current change is pending and is not claimed here.
 
 Functional multi-profile revision `c88d37a5de2f03c2ae5d2940c4d25e5d998c301d` passed
 repository-foundation run `29577918346` and Native Linux run `29577918335` (job `87876528763`).
@@ -176,10 +188,11 @@ UI and Xvfb test were added.
 
 ## Not locally validated
 
-This host has no `gtk4.pc`, `libadwaita-1.pc`, or `graphene-gobject-1.0.pc`. After clearing the
+This host has no `gtk4.pc`, `libadwaita-1.pc`, `graphene-gobject-1.0.pc`, or `weston`. After clearing the
 source-only `graphene-sys` cache, a normal `cargo check --all-targets --all-features --locked`
 correctly stopped at missing `graphene-gobject-1.0`. No local GUI link, launch, screenshot,
-display-server, accessibility, or GTK button-test result is claimed. With the GTK binary test
+display-server, accessibility, or GTK button-test result is claimed. In particular, the Wayland
+runner was not executed against a local compositor. With the GTK binary test
 present, `DOCS_RS=1 cargo test --all-targets --all-features --locked --no-run` reaches native
 linking and failed on unavailable GTK symbols; it is not a valid header-free substitute.
 Runtime database I/O fault injection after successful startup is not covered locally or remotely.
@@ -199,7 +212,8 @@ in the GitHub Actions evidence above, but those native checks remain unavailable
 - Runtime gettext lookup, complete canonical UI coverage, and visual locale/RTL verification.
 - XDG portals beyond the implemented user-data path, file workflows,
   clipboard/drag-and-drop/notifications, comprehensive
-  accessibility, Wayland/X11 smoke tests, packaging, Flatpak, and release artifacts.
+  accessibility, physical-compositor/GPU Wayland coverage, broader X11/desktop coverage, packaging,
+  Flatpak, and release artifacts.
 - Directory-descriptor or `openat2` hardening against a concurrent same-UID path replacement during
   Linux host preflight; static components are checked before mutation and Core remains the final
   no-follow open gate.
