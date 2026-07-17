@@ -183,8 +183,9 @@ runtime action-label catalogs, a real document-portal lease lifecycle fixture, a
 `xdg-desktop-portal-gtk` FileChooser backend fixture, and a completion notification through
 `GApplication`; the notification contains generic English text and never source or translated
 content. Native CI also delivers that payload to a real `dunst` notification daemon under Xvfb,
-verifies the asynchronous GTK FileDialog callback, and performs a real URI-list drag/drop through
-the source editor. Physical desktop-shell rendering and prompted flows remain validation boundaries.
+asserts a visible viewable Dunst desktop-shell window, verifies the asynchronous GTK FileDialog
+callback, and performs a real URI-list drag/drop through the source editor. Physical compositor/GPU
+rendering and prompted flows remain validation boundaries.
 
 ## Security and portability boundaries
 

@@ -114,9 +114,15 @@ generic title and body text and absence of the source and translated strings. Th
 application-to-notification-service transport and privacy boundary, not desktop-shell rendering.
 
 The notification daemon runner starts the real `dunst` server under Xvfb, waits for it to own the
-session notification name, runs the same GTK translation flow, and verifies the daemon receives the
-generic redacted payload. This proves headless delivery to a real notification daemon; it does not
-prove physical desktop-shell rendering, compositor behavior, or visual placement.
+session notification name, runs the same GTK translation flow, verifies the daemon receives the
+generic redacted payload, and checks that a visible, viewable Dunst desktop-shell window exists:
+
+```sh
+bash tools/run-notification-daemon-test.sh
+```
+
+This proves the X11 desktop-shell rendering path in the headless CI display; it does not prove a
+physical compositor, GPU behavior, or visual placement on every desktop environment.
 
 The document portal runner starts the real XDG document portal services on a private D-Bus session,
 adds a temporary fixture through a file descriptor, verifies the returned host path, grants and

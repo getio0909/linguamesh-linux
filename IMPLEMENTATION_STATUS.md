@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; prompted interactive flows, physical desktop-shell notification rendering, and release artifacts remain open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; prompted interactive flows and release artifacts remain open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -168,8 +168,8 @@ Validated on 2026-07-17 with Rust 1.93.0:
   source or translated content. The native transport fixture uses a private
   `org.freedesktop.Notifications` service and verifies the real `Notify` call plus the generic
   payload. A second native fixture starts the real `dunst` notification daemon under Xvfb, waits
-  for it to own the service, and verifies delivery of the same redacted payload; physical
-  desktop-shell rendering remains open.
+  for it to own the service, verifies delivery of the same redacted payload, and asserts a visible
+  viewable Dunst desktop-shell window through X11 window inspection.
 - The Secret Service adapter now sends an `(sv)` `OpenSession` request with a single plain-string
   Variant; its shape regression passed locally. The isolated real-daemon fixture is wired into
   native CI and covers persistent daemon-restart restoration, locked-item fail-closed resolution,
@@ -190,8 +190,8 @@ Validated on 2026-07-17 with Rust 1.93.0:
   current Linux surface. The `Flatpak Linux` workflow runs this manifest in a GNOME 49 SDK
   container, uploads a prerelease CI bundle, and runs the bounded Xvfb/private-D-Bus sandbox smoke;
   local `flatpak-builder` is unavailable, so the SDK build and sandbox smoke remain remote-only.
-  Physical desktop-shell notification rendering and release-artifact reproducibility remain separate
-  gates; prompted chooser/keyring flows remain manual boundaries.
+  Release-artifact reproducibility remains a separate gate; prompted chooser/keyring flows remain
+  manual boundaries.
 - `bash tools/run-storage-fault-test.sh` passed its exact ignored test separately: 1 passed, 0
   failed, 0 ignored. A private 8 MiB tmpfs produced real kernel `ENOSPC` failures for persistent
   model update, deletion, and provider switch; each preserved prior-session translation, and each
@@ -270,17 +270,18 @@ dialog, and verified the returned URI and file contents. This is backend portal 
 
 Application GTK interaction revision `24948fbc75cdf101d2279964dd45e1489ce7bb18` passed Native
 Linux run `29619211510` (job `88010683331`) and repository-foundation run `29619211581`; the
-Flatpak run `29619211521` is still running. The native job verified the asynchronous application
+Flatpak run `29619211521` passed. The native job verified the asynchronous application
 `FileDialog` callback and GIO UTF-8 read, then used XTest pointer motion to start a real GTK drag,
 enter and move over the source editor, and complete the URI-list import callback. This closes the
-application-level chooser and source-editor gesture boundaries under Xvfb; prompted desktop flows
-and physical shell rendering remain open.
+application-level chooser and source-editor gesture boundaries under Xvfb.
 
-Notification daemon delivery revision `83cfcda` passed the native, foundation, and Flatpak
-workflows. The native Ubuntu 24.04 job started the real `dunst` server under Xvfb, observed its
-`org.freedesktop.Notifications` name on the session bus, ran the GTK translation flow, and verified
-the received `Notify` payload stayed generic and contained neither source nor translated text. This
-is headless daemon delivery evidence, not physical desktop-shell rendering or compositor coverage.
+Notification daemon rendering revision `0d2d6ed` passed Native Linux run `29619768430` (job
+`88012305004`), Foundation run `29619768408`, and Flatpak run `29619768331`. The native Ubuntu
+24.04 job started the real `dunst` server under Xvfb, observed its
+`org.freedesktop.Notifications` name on the session bus, ran the GTK translation flow, verified
+the received `Notify` payload stayed generic and contained neither source nor translated text, and
+asserted a visible viewable Dunst window through X11 inspection. Physical compositor and GPU
+coverage remain separate.
 
 Loopback provider revision `7d7eba9960b657f0460fb0daaaaebaaa609f39b1` passed repository-foundation
 run `29604269516` and Native Linux run `29604269568` (job `87963611054`). The Ubuntu 24.04 job
