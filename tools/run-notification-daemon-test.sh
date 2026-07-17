@@ -3,6 +3,7 @@ set -euo pipefail
 
 capture=$(mktemp)
 server_log=$(mktemp)
+render_marker=$(mktemp)
 monitor_pid=""
 
 cleanup() {
@@ -10,14 +11,15 @@ cleanup() {
     kill "$monitor_pid" >/dev/null 2>&1 || true
     wait "$monitor_pid" >/dev/null 2>&1 || true
   fi
-  rm -f "$capture" "$server_log"
+  rm -f "$capture" "$server_log" "$render_marker"
 }
 trap cleanup EXIT
 
 dbus-monitor --session "interface='org.freedesktop.Notifications',member='Notify'" >"$capture" 2>&1 &
 monitor_pid=$!
 
-LINGUAMESH_NOTIFICATION_SERVER_LOG="$server_log" xvfb-run --auto-servernum \
+LINGUAMESH_NOTIFICATION_SERVER_LOG="$server_log" \
+LINGUAMESH_NOTIFICATION_RENDER_MARKER="$render_marker" xvfb-run --auto-servernum \
   --server-args='-screen 0 1280x800x24' bash -c '
     set -euo pipefail
     dunst -conf /dev/null >"$LINGUAMESH_NOTIFICATION_SERVER_LOG" 2>&1 &
@@ -48,6 +50,26 @@ LINGUAMESH_NOTIFICATION_SERVER_LOG="$server_log" xvfb-run --auto-servernum \
     GDK_BACKEND=x11 cargo test --all-targets --all-features --locked \
       "tests::gtk_buttons_explicitly_connect_select_and_translate_with_session_credential" \
       -- --exact --test-threads=1
+
+    rendered_window=""
+    for _ in {1..30}; do
+      rendered_window=$(xdotool search --onlyvisible --class "Dunst" 2>/dev/null | head -n 1 || true)
+      if [[ -n "$rendered_window" ]]; then
+        break
+      fi
+      sleep 0.1
+    done
+    if [[ -z "$rendered_window" ]]; then
+      cat "$LINGUAMESH_NOTIFICATION_SERVER_LOG" >&2
+      printf "Notification daemon did not expose a visible desktop-shell window.\n" >&2
+      exit 1
+    fi
+    if ! xwininfo -id "$rendered_window" | grep -Fq "Map State: IsViewable"; then
+      printf "Notification daemon window was not viewable.\n" >&2
+      exit 1
+    fi
+    printf "Notification desktop-shell window rendered: %s.\n" "$rendered_window" \
+      >"$LINGUAMESH_NOTIFICATION_RENDER_MARKER"
   '
 
 for _ in {1..20}; do
@@ -65,4 +87,6 @@ if grep -Fq 'Hello' "$capture" || grep -Fq '你好，LinguaMesh！' "$capture"; 
   exit 1
 fi
 
-printf 'Notification daemon delivery fixture passed with generic payload.\n'
+grep -Fq 'Notification desktop-shell window rendered:' "$render_marker"
+
+printf 'Notification daemon delivery and desktop-shell rendering fixture passed with generic payload.\n'

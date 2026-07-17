@@ -62,6 +62,7 @@ jobs:
             python3 \
             python3-dbus \
             util-linux \
+            x11-utils \
             xdotool \
             weston \
             xdg-desktop-portal \
