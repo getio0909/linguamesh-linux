@@ -21,7 +21,8 @@ flatpak-builder --user --install-deps-from=flathub --force-clean \
 flatpak-builder --user --run build-dir packaging/flatpak/dev.linguamesh.LinguaMesh.yml
 ```
 
-The manifest is still an unreleased scaffold. A successful metadata check does not prove an SDK
-build, sandbox launch, portal lease, notification delivery, or distributable artifact. Regenerate
+The manifest is still an unreleased scaffold. The `Flatpak Linux` workflow builds a CI-only bundle
+with the GNOME 48 SDK, but a successful metadata check or CI build does not prove sandbox launch,
+portal lease, notification delivery, or a distributable release artifact. Regenerate
 `cargo-sources.json` from the checked-in `Cargo.lock` whenever dependencies change, then update the
 Linux source commit in the manifest after packaging files are committed.

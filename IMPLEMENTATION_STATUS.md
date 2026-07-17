@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, and a pinned Flatpak packaging scaffold are implemented; prompted interactive flows and Flatpak sandbox smoke remain open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, and a remotely built pinned Flatpak bundle are implemented; prompted interactive flows and Flatpak sandbox smoke remain open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -181,9 +181,9 @@ Validated on 2026-07-17 with Rust 1.93.0:
   Cargo source set, verified immutable Linux/Core source pins and archive hashes, and passed
   `desktop-file-validate` plus `appstreamcli`. The manifest uses the GNOME 48 SDK, installs the
   native binary and desktop metadata, and declares only the runtime interfaces required for the
-  current Linux surface. The `Flatpak Linux` workflow now runs this manifest in a GNOME 48 SDK
-  container and uploads a prerelease CI bundle; local `flatpak-builder` is unavailable, so SDK
-  build and sandbox launch remain remote-only. Portal lease and artifact reproducibility evidence
+  current Linux surface. The `Flatpak Linux` workflow runs this manifest in a GNOME 48 SDK
+  container and uploads a prerelease CI bundle; local `flatpak-builder` is unavailable, so the
+  SDK build remains remote-only. Portal lease, sandbox launch, and release-artifact reproducibility
   remain separate gates.
 - `bash tools/run-storage-fault-test.sh` passed its exact ignored test separately: 1 passed, 0
   failed, 0 ignored. A private 8 MiB tmpfs produced real kernel `ENOSPC` failures for persistent
@@ -244,6 +244,17 @@ run `29604269516` and Native Linux run `29604269568` (job `87963611054`). The Ub
 added a no-credential OpenAI-compatible loopback connection, manual model selection, streamed
 translation, and request-count assertion to the ordinary worker suite; all native validation,
 display gates, Secret Service fixtures, and the all-target build passed.
+
+Flatpak packaging revision `fd1f400058f4c68b47a9bd0823e790c6d9cef263` passed the `Flatpak Linux`
+workflow run `29606612834` (job `87971271146`). The GNOME 48 container mounted the pinned Rust
+1.93.0 toolchain, built the optimized GTK application with `cargo build --release --locked
+--offline --features gui`, installed the binary and desktop metadata, removed the build-only Rust
+toolchain from `/app`, and uploaded CI artifact `linguamesh-linux-x86_64-x86_64.flatpak` (artifact
+ID `8417198959`, 2,390,377 bytes). Earlier packaging runs are retained as failures: run
+`29605863496` stopped at missing Cargo, `29606146197` exposed the Rust 1.89 minimum-version mismatch,
+and `29606402301` exposed Flatpak debug extraction corrupting the temporary Rust toolchain; the
+current manifest fixes each boundary. This is a prerelease CI bundle, not a signed or published
+release, and no sandbox launch or portal/notification delivery is claimed.
 
 Linux drag-and-drop functional revision `b0da3819d97ae24f8c85147da5e7e1c65fe2d6fc` passed
 repository-foundation run `29597016893` (job `87939785643`) and Native Linux run `29597016894`
@@ -386,8 +397,8 @@ in the GitHub Actions evidence above, but those native checks remain unavailable
   including read-only media, corruption, power loss, and broader SQLite VFS failures.
 - XDG portals beyond the implemented user-data path, file workflows,
   clipboard/drag-and-drop/notifications, AT-SPI/Orca and physical-keyboard accessibility coverage,
-  physical-compositor/GPU Wayland coverage, broader X11/desktop coverage, Flatpak SDK/sandbox
-  smoke, and release artifacts.
+  physical-compositor/GPU Wayland coverage, broader X11/desktop coverage, Flatpak sandbox smoke,
+  portal/notification delivery, and release artifacts.
 - Directory-descriptor or `openat2` hardening against a concurrent same-UID path replacement during
   Linux host preflight; static components are checked before mutation and Core remains the final
   no-follow open gate.

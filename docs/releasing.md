@@ -2,10 +2,11 @@
 
 ## Current state
 
-An unreleased native application target and a pinned Flatpak packaging scaffold now exist, but no
-Flatpak SDK build, sandbox smoke test, or distributable artifact has been verified. The vertical
-slice must not be tagged or published as a product release, and no packaging claim beyond static
-metadata validation is valid. Its bundled fake provider is development-only behavior. The optional
+An unreleased native application target and a pinned Flatpak packaging scaffold now exist. The
+GNOME 48 SDK workflow built a prerelease CI bundle from pinned sources, but no sandbox smoke test,
+portal/notification delivery test, signed artifact, or distributable release has been verified. The
+vertical slice must not be tagged or published as a product release, and no packaging claim beyond
+the recorded CI build is valid. Its bundled fake provider is development-only behavior. The optional
 OpenAI-compatible endpoint form accepts a one-shot session credential, clears the field
 immediately, and never persists the credential value. A saved-profile dropdown and explicit remember
 checkbox can create, update, activate, switch, and remove multiple rows containing provider names,
