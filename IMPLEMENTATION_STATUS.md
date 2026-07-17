@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, and secure persistent-credential onboarding are implemented; prompted interactive flows remain open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, and a pinned Flatpak packaging scaffold are implemented; prompted interactive flows and Flatpak sandbox smoke remain open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -177,6 +177,12 @@ Validated on 2026-07-17 with Rust 1.93.0:
   source editor also accepts a single GIO file through GTK drag-and-drop and reuses the same
   validation path. Decoder tests and source-level checks passed locally; interactive portal/file-
   lease coverage remains open.
+- `bash tools/validate-flatpak-metadata.sh` passed locally. It parsed the Flatpak manifest and
+  Cargo source set, verified immutable Linux/Core source pins and archive hashes, and passed
+  `desktop-file-validate` plus `appstreamcli`. The manifest uses the GNOME 48 SDK, installs the
+  native binary and desktop metadata, and declares only the runtime interfaces required for the
+  current Linux surface. `flatpak-builder` is unavailable on this host, so SDK build, sandbox
+  launch, portal lease, and artifact reproducibility remain unverified.
 - `bash tools/run-storage-fault-test.sh` passed its exact ignored test separately: 1 passed, 0
   failed, 0 ignored. A private 8 MiB tmpfs produced real kernel `ENOSPC` failures for persistent
   model update, deletion, and provider switch; each preserved prior-session translation, and each
@@ -378,8 +384,8 @@ in the GitHub Actions evidence above, but those native checks remain unavailable
   including read-only media, corruption, power loss, and broader SQLite VFS failures.
 - XDG portals beyond the implemented user-data path, file workflows,
   clipboard/drag-and-drop/notifications, AT-SPI/Orca and physical-keyboard accessibility coverage,
-  physical-compositor/GPU Wayland coverage, broader X11/desktop coverage, packaging,
-  Flatpak, and release artifacts.
+  physical-compositor/GPU Wayland coverage, broader X11/desktop coverage, Flatpak SDK/sandbox
+  smoke, and release artifacts.
 - Directory-descriptor or `openat2` hardening against a concurrent same-UID path replacement during
   Linux host preflight; static components are checked before mutation and Core remains the final
   no-follow open gate.

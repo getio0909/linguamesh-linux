@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>dev.linguamesh.LinguaMesh</id>
+  <name>LinguaMesh</name>
+  <summary>Translate text with a local or compatible language model</summary>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <developer id="dev.linguamesh">
+    <name>LinguaMesh contributors</name>
+  </developer>
+  <description>
+    <p>LinguaMesh is a native Linux client for translating bounded text through a local or OpenAI-compatible provider.</p>
+  </description>
+  <launchable type="desktop-id">dev.linguamesh.LinguaMesh.desktop</launchable>
+  <url type="homepage">https://github.com/getio0909/linguamesh-project</url>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="0.1.0-alpha.2" date="2026-07-17">
+      <description>
+        <p>Unreleased Linux development checkpoint; packaging smoke validation is not a release artifact.</p>
+      </description>
+    </release>
+  </releases>
+</component>

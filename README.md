@@ -96,7 +96,12 @@ The tested external-provider path uses the LinguaMesh fake provider on loopback.
 of interoperability with Ollama or any other third-party server. Full validation commands, the
 header-free local path, and the GTK gates for X11/Xvfb and forced Wayland/headless Weston are
 documented in
-[`docs/testing.md`](docs/testing.md). No release or packaging artifact is implemented yet.
+[`docs/testing.md`](docs/testing.md). No release artifact is implemented yet.
+
+The repository now includes a reproducible Flatpak manifest, pinned Cargo source set, desktop
+entry, AppStream metadata, and icon under [`packaging/flatpak`](packaging/flatpak). Run
+`bash tools/validate-flatpak-metadata.sh` for local metadata validation. A Flatpak SDK build and
+sandbox smoke test remain release-gate work and are not claimed by this checkpoint.
 
 The two display gates execute the same real GTK binary test. Headless Weston proves that the client
 can initialize and complete that flow with `GDK_BACKEND=wayland` and no X11 fallback; it is not

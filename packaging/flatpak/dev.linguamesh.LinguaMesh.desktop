@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=LinguaMesh
+Comment=Translate text with a local or compatible language model
+Exec=linguamesh-linux
+Icon=dev.linguamesh.LinguaMesh
+Terminal=false
+Categories=Utility;GTK;Translation;
+StartupNotify=true
+StartupWMClass=dev.linguamesh.LinguaMesh
+Keywords=translate;translation;language;model;

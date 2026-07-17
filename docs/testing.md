@@ -122,6 +122,21 @@ DOCS_RS=1 cargo check --all-targets --all-features --locked
 DOCS_RS=1 cargo clippy --all-targets --all-features --locked -- -D warnings
 ```
 
+## Flatpak metadata validation
+
+The primary Linux packaging scaffold is kept in `packaging/flatpak`. It pins the Linux and Core
+source commits, vendors every registry dependency from `Cargo.lock`, installs the desktop entry,
+AppStream metadata, and uses Wayland with practical X11 fallback, Secret Service, notifications,
+network access, and only the application data directory. Validate the checked-in metadata with:
+
+```sh
+bash tools/validate-flatpak-metadata.sh
+```
+
+This check parses the manifest and Cargo source set, validates 40-character source pins and SHA-256
+archives, and runs `desktop-file-validate` plus `appstreamcli`. `flatpak-builder` is not installed
+on this host, so no SDK build, sandbox launch, portal lease, or distributable artifact is claimed.
+
 These commands bypass sys-crate discovery and do not validate headers, ABI, linking, launch, or
 display behavior. Their cached sys-crate output can also make a later ordinary Cargo check look
 successful. The `pkg-config` commands below are therefore mandatory native-gate prerequisites;

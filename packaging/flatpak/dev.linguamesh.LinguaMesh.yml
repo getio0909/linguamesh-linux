@@ -1,0 +1,49 @@
+{
+  "app-id": "dev.linguamesh.LinguaMesh",
+  "runtime": "org.gnome.Platform",
+  "runtime-version": "48",
+  "sdk": "org.gnome.Sdk",
+  "command": "linguamesh-linux",
+  "finish-args": [
+    "--share=ipc",
+    "--socket=wayland",
+    "--socket=fallback-x11",
+    "--device=dri",
+    "--share=network",
+    "--talk-name=org.freedesktop.secrets",
+    "--talk-name=org.freedesktop.Notifications",
+    "--filesystem=xdg-data/dev.linguamesh.LinguaMesh"
+  ],
+  "modules": [
+    {
+      "name": "linguamesh",
+      "buildsystem": "simple",
+      "build-options": {
+        "append-path": "/usr/lib/sdk/rust-stable/bin"
+      },
+      "build-commands": [
+        "install -Dm644 linguamesh-linux/packaging/flatpak/cargo-config.toml linguamesh-linux/.cargo/config.toml",
+        "cd linguamesh-linux && cargo build --release --locked --offline --features gui",
+        "install -Dm755 linguamesh-linux/target/release/linguamesh-linux /app/bin/linguamesh-linux",
+        "install -Dm644 linguamesh-linux/packaging/flatpak/dev.linguamesh.LinguaMesh.desktop /app/share/applications/dev.linguamesh.LinguaMesh.desktop",
+        "install -Dm644 linguamesh-linux/packaging/flatpak/dev.linguamesh.LinguaMesh.metainfo.xml /app/share/metainfo/dev.linguamesh.LinguaMesh.metainfo.xml",
+        "install -Dm644 linguamesh-linux/packaging/flatpak/dev.linguamesh.LinguaMesh.svg /app/share/icons/hicolor/scalable/apps/dev.linguamesh.LinguaMesh.svg"
+      ],
+      "sources": [
+        {
+          "type": "git",
+          "url": "https://github.com/getio0909/linguamesh-core.git",
+          "commit": "fbf3e9b5927049dccaa19f8c36013495ffebba12",
+          "dest": "linguamesh-core"
+        },
+        {
+          "type": "git",
+          "url": "https://github.com/getio0909/linguamesh-linux.git",
+          "commit": "a255b039ce37bcb2b362cfeb3d34a6283ed2aad5",
+          "dest": "linguamesh-linux"
+        },
+        "cargo-sources.json"
+      ]
+    }
+  ]
+}

@@ -2,9 +2,10 @@
 
 ## Current state
 
-An unreleased native application target now exists, but no Flatpak manifest or distributable
-artifact exists. The vertical slice must not be tagged or published as a product release, and no
-packaging claim is valid. Its bundled fake provider is development-only behavior. The optional
+An unreleased native application target and a pinned Flatpak packaging scaffold now exist, but no
+Flatpak SDK build, sandbox smoke test, or distributable artifact has been verified. The vertical
+slice must not be tagged or published as a product release, and no packaging claim beyond static
+metadata validation is valid. Its bundled fake provider is development-only behavior. The optional
 OpenAI-compatible endpoint form accepts a one-shot session credential, clears the field
 immediately, and never persists the credential value. A saved-profile dropdown and explicit remember
 checkbox can create, update, activate, switch, and remove multiple rows containing provider names,
