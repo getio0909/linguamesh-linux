@@ -22,6 +22,7 @@ manifest = json.loads(pathlib.Path(sys.argv[1]).read_text())
 sources = json.loads(pathlib.Path(sys.argv[2]).read_text())
 assert manifest["app-id"] == "dev.linguamesh.LinguaMesh"
 assert manifest["command"] == "linguamesh-linux"
+assert "org.freedesktop.Sdk.Extension.rust-stable" in manifest["sdk-extensions"]
 assert "--socket=wayland" in manifest["finish-args"]
 assert "--socket=fallback-x11" in manifest["finish-args"]
 assert "--talk-name=org.freedesktop.secrets" in manifest["finish-args"]
