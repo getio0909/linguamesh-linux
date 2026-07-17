@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, the corrected Secret Service session wire shape, and an isolated real-daemon Secret Service CRUD fixture are implemented; persistent desktop keyring lifecycle evidence remains open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, the corrected Secret Service session wire shape, and isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures are implemented; secure persistent-credential onboarding remains open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -84,8 +84,9 @@ older distributions and future Flatpak runtimes require separate packaging valid
   reference are stripped before any profile write and must be entered again after restart. Persistent
   secret references are stored and resolved through the Linux Secret Service adapter;
   unavailable or locked keyrings fail closed and never fall back to plaintext. Secret-item cleanup
-  is covered by the isolated CI daemon fixture; persistent desktop restoration and locked/prompted
-  lifecycle behavior remain open.
+  cleanup, persistent desktop restoration after daemon restart, and locked-item fail-closed
+  behavior are covered by the isolated CI daemon fixture; secure persistent-credential onboarding
+  remains open.
 - Connection cancellation uses a `CancellationToken`; translation cancellation uses Core's
   cross-thread handle. Both bypass command-queue backpressure. Partial output is retained, control
   commands receive priority, and a cancellation/terminal-event race remains idempotent.
@@ -158,14 +159,16 @@ Validated on 2026-07-17 with Rust 1.93.0:
   active/queued/full-command-queue shutdown, translation terminal delivery during shutdown,
   saved-model validation, and failed-switch rollback.
 - `bash tools/run-secret-service-test.sh` is a native-only check on this host because GTK headers
-  are unavailable locally; it uses a real `gnome-keyring` daemon and an isolated session collection
-  in native CI.
+  are unavailable locally; native CI uses a real `gnome-keyring` daemon with a persistent `login`
+  collection, verifies store/resolve, locks an item and checks fail-closed resolution, restarts the
+  daemon, resolves and deletes the item, then reruns the cleanup round trip.
 - The notification slice keeps the desktop payload fixed to generic English text and sends no
   source or translated content. Local source-level GTK checks and the demo-provider suite above
   passed after the `GApplication` notification call was added.
 - The Secret Service adapter now sends an `(sv)` `OpenSession` request with a single plain-string
-  Variant; its shape regression passed locally. The isolated real-daemon CRUD fixture is wired into
-  native CI; persistent desktop keyring restoration and locked/prompted behavior remain open.
+  Variant; its shape regression passed locally. The isolated real-daemon fixture is wired into
+  native CI and covers persistent daemon-restart restoration, locked-item fail-closed resolution,
+  and cleanup; secure persistent-credential onboarding remains open.
 - The native text import slice accepts only UTF-8 TXT/Markdown content up to 4 MiB, strips a UTF-8
   BOM, rejects invalid or oversized input, and reads through GIO's partial asynchronous API. The
   source editor also accepts a single GIO file through GTK drag-and-drop and reuses the same
@@ -209,6 +212,13 @@ test, the isolated real-daemon store/resolve/delete fixture (1 passed), and the 
 build. This proves the session wire shape, default-collection CRUD, secret resolution, and cleanup
 against an isolated `gnome-keyring` daemon; persistent desktop keyring restoration and locked/prompted
 behavior remain separate lifecycle gates.
+
+Secret Service persistent-lifecycle revision `f58388a8e58341a8630088dc8b1782f61ab63a7c` passed
+repository-foundation run `29602287281` and Native Linux run `29602287284` (job `87957053225`).
+The Ubuntu 24.04 job stored a persistent item in the `login` collection, verified resolution,
+locked the collection and observed fail-closed lookup, restarted the daemon, resolved and deleted
+the item, and reran the isolated cleanup round trip. Secure persistent-credential onboarding and
+prompted interactive flows remain separate gates.
 
 Linux drag-and-drop functional revision `b0da3819d97ae24f8c85147da5e7e1c65fe2d6fc` passed
 repository-foundation run `29597016893` (job `87939785643`) and Native Linux run `29597016894`
@@ -339,10 +349,9 @@ in the GitHub Actions evidence above, but those native checks remain unavailable
 
 ## Remaining scope
 
-- Native desktop-keyring integration evidence, locked/prompted item behavior, secret-item cleanup
-  on profile deletion, and end-to-end credential create/read/update/delete tests. The GIO adapter
-  and secure remembered-credential path are implemented, while session-only fallback remains
-  available when the keyring is unavailable.
+- End-to-end secure persistent-credential onboarding and prompted interactive flows. The GIO
+  adapter and fail-closed remembered-credential path are implemented, while session-only fallback
+  remains available when the keyring is unavailable.
 - Central release-manifest integration for this exact Linux/Core revision; broader product
   compatibility beyond the alpha.2 startup gate remains unclaimed.
 - Interoperability evidence for third-party local servers, including Ollama; automated endpoint

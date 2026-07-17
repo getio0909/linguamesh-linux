@@ -100,10 +100,11 @@ unmounts the private filesystem. This proves the implemented Linux `ENOSPC` tran
 it does not cover read-only media, corruption, power loss, or every SQLite VFS failure.
 
 The Secret Service runner creates an isolated XDG data directory, starts a real `gnome-keyring`
-Secret Service daemon on a private D-Bus session, aliases the unlocked session collection as the
-default, and runs the exact store/resolve/delete round trip. It proves the adapter's CRUD and
-cleanup path without touching a developer keyring; persistent desktop keyring restoration,
-locked/prompted behavior, and end-to-end secure onboarding remain separate gates.
+Secret Service daemon on a private D-Bus session with a persistent `login` collection, stores and
+resolves an item, locks the collection and verifies fail-closed lookup, stops and restarts the
+daemon, then resolves and deletes the item before rerunning the cleanup round trip. It proves CRUD,
+persistent restoration, locked-item handling, and cleanup without touching a developer keyring;
+end-to-end secure onboarding and prompted interactive flows remain separate gates.
 
 The toolkit-independent suite also tests the text-import decoder for UTF-8 BOM removal, invalid
 UTF-8 rejection, and the 4 MiB bound. The native GTK flow verifies the **Open text file** control
@@ -247,9 +248,8 @@ git diff --check
 ## Unimplemented validation
 
 Broader GTK component/UI automation, AT-SPI/Orca and physical-keyboard accessibility coverage,
-physical-compositor and GPU-backed Wayland coverage, a broader X11/desktop matrix, locked/prompted
-Secret Service item behavior, persistent desktop keyring restoration, and end-to-end secure-
-credential onboarding/persistence tests, broader XDG and portal tests, third-party
+physical-compositor and GPU-backed Wayland coverage, a broader X11/desktop matrix, end-to-end
+secure-credential onboarding/persistence tests and prompted interactive flows, broader XDG and portal tests, third-party
 local-server interoperability, Flatpak smoke tests, runtime localization behavior beyond the
 currently catalog-backed action labels, runtime database
 faults beyond the implemented Linux `ENOSPC` transaction boundary, dependency/license automation,
