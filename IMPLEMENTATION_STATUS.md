@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, generic completion desktop notifications, and bounded native text-file import are implemented; native keyring integration evidence remains open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, generic completion desktop notifications, and bounded native text-file import with source-editor drag-and-drop are implemented; native keyring integration evidence remains open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -186,6 +186,13 @@ Validated on 2026-07-17 with Rust 1.93.0:
   their action metadata uses Node 24 or a composite action.
 
 ## Remote validation evidence
+
+Linux drag-and-drop functional revision `b0da3819d97ae24f8c85147da5e7e1c65fe2d6fc` passed
+repository-foundation run `29597016893` (job `87939785643`) and Native Linux run `29597016894`
+(job `87939785693`). The Ubuntu 24.04 job passed strict all-feature Clippy, 71 GUI-enabled
+library tests with one intentional ignore, the real GTK flow with the single-file source-editor
+`DropTarget`, the private-tmpfs storage fault test, both display gates, and the all-target native
+build. Interactive drag/drop gestures and portal-specific file leases remain manual boundaries.
 
 Native text-import functional revision `96d34a5448d0f718fd87c68e88129c05fed43ee5` passed
 repository-foundation run `29596052213` (job `87936587361`) and Native Linux run `29596052224`
