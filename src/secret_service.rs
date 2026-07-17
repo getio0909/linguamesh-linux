@@ -73,7 +73,12 @@ impl SecretSession {
                 CALL_TIMEOUT_MS,
                 None::<&gio::Cancellable>,
             )
-            .map_err(|_| LookupError::Unavailable)
+            .map_err(|error| {
+                if std::env::var_os("LINGUAMESH_SECRET_SERVICE_DEBUG").is_some() {
+                    eprintln!("Secret Service call {method} on {object_path} failed: {error}");
+                }
+                LookupError::Unavailable
+            })
     }
 }
 
