@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Session-only local-provider slice verified without native headers; revised GTK/Xvfb CI pending
+Status: Session-only local-provider slice verified locally and in GTK/Xvfb CI
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -66,14 +66,17 @@ Validated on 2026-07-17 with Rust 1.93.0:
 
 ## Remote validation evidence
 
-GitHub revision `10977931ceb11bc9d4b86ec49d7fd710e3c1a063` passed the repository-foundation
-workflow run `29557845248` and Native Linux run `29557845223`. Native job `87813768615` installed
-GTK 4 and libadwaita development headers on Ubuntu 24.04, validated the exact Core and localization
-pins, and passed formatting, strict all-feature Clippy, all-feature tests, and the full native
-application build.
+GitHub revision `c13394dd477fa6e919632c61c28ac0708f61b769` passed repository-foundation run
+`29559609346` (job `87819062507`) and Native Linux run `29559609298` (job `87819062331`). The
+native job installed GTK 4, libadwaita, D-Bus, and Xvfb support on Ubuntu 24.04; validated the exact
+Core and localization pins; and passed formatting, strict all-feature Clippy, all-target all-feature
+tests, and the native application build. The library suite passed 23 tests, and the separate GTK
+binary suite passed its real-button connect-and-translate test under a serialized X11/D-Bus/Xvfb
+session.
 
-That run predates the session-provider UI test and Xvfb gate. A GitHub Actions result for the
-current change is pending; no native success for this revision is claimed here.
+Earlier revision `10977931ceb11bc9d4b86ec49d7fd710e3c1a063` also passed repository-foundation
+run `29557845248` and Native Linux run `29557845223` (job `87813768615`) before the session-provider
+UI and Xvfb test were added.
 
 ## Not locally validated
 
@@ -86,8 +89,7 @@ linking and failed on unavailable GTK symbols; it is not a valid header-free sub
 
 ## Remaining scope
 
-- Execution of the revised Xvfb/GTK workflow for this checkpoint and full
-  semantic/catalog/feature compatibility.
+- Full semantic, catalog, and feature compatibility beyond this checkpoint.
 - Secure provider profiles, Secret Service, credential handling, onboarding, persistent provider
   settings, and active switching among saved profiles. The current credential-free form is
   process-local and is not a secure profile implementation.
