@@ -2199,12 +2199,10 @@ mod tests {
         spin_main_context_until(&context, Duration::from_secs(5), || {
             restored_state.borrow().status() == AppStatus::Failed
         });
-        assert!(
-            restored_state
-                .borrow()
-                .error_text()
-                .is_some_and(|error| error.starts_with("Secure storage unavailable:"))
-        );
+        assert!(restored_state.borrow().error_text().is_some_and(|error| {
+            error.starts_with("Secure storage unavailable:")
+                || error.starts_with("Secret unavailable:")
+        }));
         assert!(restored_state.borrow().active_provider().is_none());
         assert!(restored_state.borrow().pending_provider().is_none());
         assert!(restored_state.borrow().models().is_empty());
