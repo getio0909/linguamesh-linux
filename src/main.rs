@@ -46,13 +46,13 @@ struct UiBindings {
     model: gtk::DropDown,
     source_locale: gtk::DropDown,
     target_locale: gtk::DropDown,
+    theme: gtk::DropDown,
+    locale: gtk::DropDown,
     source: gtk::TextBuffer,
     output: gtk::TextBuffer,
     source_view: gtk::TextView,
     output_view: gtk::TextView,
-    #[cfg(test)]
     source_label: gtk::Label,
-    #[cfg(test)]
     output_label: gtk::Label,
     translate: gtk::Button,
     open_source: gtk::Button,
@@ -61,6 +61,7 @@ struct UiBindings {
     partial: gtk::Label,
     error: gtk::Label,
     locale_note: gtk::Label,
+    diagnostics_panel: gtk::Expander,
     diagnostics: gtk::Label,
     profile_selection_guard: Rc<Cell<bool>>,
     draft_profile_id: Rc<RefCell<Option<ProviderProfileId>>>,
@@ -73,9 +74,7 @@ struct EditorBindings {
     output: gtk::TextBuffer,
     source_view: gtk::TextView,
     output_view: gtk::TextView,
-    #[cfg(test)]
     source_label: gtk::Label,
-    #[cfg(test)]
     output_label: gtk::Label,
 }
 
@@ -371,13 +370,13 @@ fn create_window(
             model,
             source_locale,
             target_locale,
+            theme: theme.clone(),
+            locale: locale.clone(),
             source: editor_bindings.source,
             output: editor_bindings.output,
             source_view: editor_bindings.source_view,
             output_view: editor_bindings.output_view,
-            #[cfg(test)]
             source_label: editor_bindings.source_label,
-            #[cfg(test)]
             output_label: editor_bindings.output_label,
             translate,
             open_source,
@@ -386,6 +385,7 @@ fn create_window(
             partial,
             error,
             locale_note,
+            diagnostics_panel,
             diagnostics,
             profile_selection_guard: Rc::new(Cell::new(false)),
             draft_profile_id: Rc::new(RefCell::new(None)),
@@ -468,20 +468,13 @@ fn create_editors() -> EditorBindings {
     editors.set_start_child(Some(&source_panel));
     editors.set_end_child(Some(&output_panel));
     editors.set_vexpand(true);
-    #[cfg(not(test))]
-    {
-        drop(source_label);
-        drop(output_label);
-    }
     EditorBindings {
         editors,
         source,
         output,
         source_view,
         output_view,
-        #[cfg(test)]
         source_label,
-        #[cfg(test)]
         output_label,
     }
 }
@@ -637,6 +630,16 @@ fn labeled_control(label: &str, control: &gtk::Widget) -> gtk::Box {
     container.append(&label);
     container.append(control);
     container
+}
+
+fn set_labeled_control_label(control: &gtk::Widget, text: &str) {
+    if let Some(label) = control
+        .parent()
+        .and_then(|parent| parent.first_child())
+        .and_then(|child| child.downcast::<gtk::Label>().ok())
+    {
+        label.set_label(text);
+    }
 }
 
 fn generate_custom_provider_id(
@@ -1671,9 +1674,78 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
         .update_property(&[gtk::accessible::Property::Label(&stop)]);
 }
 
+fn refresh_localized_widgets(bindings: &UiBindings, locale: UiLocale) {
+    bindings
+        .window
+        .set_title(Some(&localization::text(locale, "app.title", "LinguaMesh")));
+    bindings.source_label.set_label(&localization::text(
+        locale,
+        "field.source_text",
+        "Source text",
+    ));
+    bindings.output_label.set_label(&localization::text(
+        locale,
+        "field.translation",
+        "Translation",
+    ));
+    let source_accessible =
+        localization::text(locale, "accessibility.source_content", "Text to translate");
+    let output_accessible = localization::text(
+        locale,
+        "accessibility.translation_output",
+        "Streamed translation output",
+    );
+    bindings
+        .source_view
+        .update_property(&[gtk::accessible::Property::Label(&source_accessible)]);
+    bindings
+        .output_view
+        .update_property(&[gtk::accessible::Property::Label(&output_accessible)]);
+    set_labeled_control_label(
+        bindings.provider_name.upcast_ref(),
+        &localization::text(locale, "provider.name", "Provider name"),
+    );
+    set_labeled_control_label(
+        bindings.provider_endpoint.upcast_ref(),
+        &localization::text(locale, "field.endpoint", "Endpoint"),
+    );
+    set_labeled_control_label(
+        bindings.provider_credential.upcast_ref(),
+        &localization::text(
+            locale,
+            "field.api_key",
+            "API key (optional for local providers)",
+        ),
+    );
+    set_labeled_control_label(
+        bindings.model.upcast_ref(),
+        &localization::text(locale, "field.model", "Model"),
+    );
+    set_labeled_control_label(
+        bindings.target_locale.upcast_ref(),
+        &localization::text(locale, "settings.target_language", "Target language"),
+    );
+    set_labeled_control_label(
+        bindings.theme.upcast_ref(),
+        &localization::text(locale, "settings.theme", "Theme"),
+    );
+    set_labeled_control_label(
+        bindings.locale.upcast_ref(),
+        &localization::text(locale, "settings.ui_language", "Interface language"),
+    );
+    bindings
+        .diagnostics_panel
+        .set_label(Some(&localization::text(
+            locale,
+            "diagnostics.title",
+            "Diagnostics",
+        )));
+}
+
 #[allow(clippy::too_many_lines)]
 fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     refresh_localized_actions(bindings, state.locale());
+    refresh_localized_widgets(bindings, state.locale());
     bindings
         .workspace
         .set_direction(if state.locale().is_rtl() {
@@ -2021,6 +2093,9 @@ mod tests {
         refresh_ui(&bindings, &state.borrow());
         assert_eq!(bindings.translate.label().as_deref(), Some("_翻译"));
         assert_eq!(bindings.stop.label().as_deref(), Some("_停止翻译"));
+        assert_eq!(bindings.window.title().as_deref(), Some("LinguaMesh"));
+        assert_eq!(bindings.source_label.label(), "源文本");
+        assert_eq!(bindings.output_label.label(), "译文");
         assert_eq!(
             bindings.open_source.label().as_deref(),
             Some("_Open text file")
