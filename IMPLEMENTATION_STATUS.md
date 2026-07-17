@@ -138,7 +138,7 @@ Validated on 2026-07-17 with Rust 1.93.0:
   derived onboarding progression, safe stage labels, pending-model confirmation, worker-unavailable
   and storage-unavailable fallbacks, and failed-switch rollback that preserves the confirmed Ready
   identity.
-- `cargo test --features demo-provider --locked` passed: 66 tests, 0 failed, with the dedicated
+- `cargo test --features demo-provider --locked` passed: 67 tests, 0 failed, with the dedicated
   namespace test intentionally ignored in the ordinary suite. Coverage includes
   explicit connection and model selection, exact compatibility rejection, authenticated one-shot
   session secrets, fail-closed persistent references, two-profile create/update/activate/restart,
@@ -175,6 +175,15 @@ Validated on 2026-07-17 with Rust 1.93.0:
   their action metadata uses Node 24 or a composite action.
 
 ## Remote validation evidence
+
+Secret Service validation revision `81be457fc6cefcaebff6c6afd61408d6eb6900b3` passed
+repository-foundation run `29592320055` (job `87924170620`) and Native Linux run
+`29592319844` (job `87924169888`). The Ubuntu 24.04 job passed strict all-feature Clippy, 68
+library tests with one intentional ignore, the GTK binary test under X11/Xvfb and forced
+Wayland/headless Weston, the private-tmpfs storage-fault test, and the all-target all-feature
+build. The test environment has no desktop Secret Service implementation, so this evidence covers
+compile-time GIO integration and fail-closed behavior only; real keyring CRUD and cleanup remain
+explicitly unverified.
 
 Accessibility functional revision `d6bd2bd06ccdf04f3aead0c7f1da5ba74f84c550` passed repository-foundation
 run `29589043314` (job `87913221612`) and Native Linux run `29589043315` (job `87913221576`). The
