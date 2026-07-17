@@ -1999,7 +1999,8 @@ mod tests {
 
     #[test]
     fn unavailable_secret_backends_fail_closed() {
-        let external = ExternalFakeProvider::start(FakeMode::Standard);
+        let external =
+            ExternalFakeProvider::start(FakeMode::Authenticated("persistent-secret-test-canary"));
         let (worker, _) = started_worker();
         let missing_session = profile(
             "missing-session-secret",
