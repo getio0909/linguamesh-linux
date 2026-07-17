@@ -2017,6 +2017,8 @@ mod tests {
         .expect_err("missing secret");
         assert_eq!(error.kind, ErrorKind::SecretUnavailable);
 
+        let database = TestDatabase::new();
+        let (secure_worker, _, _) = started_worker_with_database(database.path());
         let persistent_ref = profile(
             "persistent-secret",
             &external.endpoint,
@@ -2024,7 +2026,7 @@ mod tests {
             None,
         );
         let error = connect(
-            &worker,
+            &secure_worker,
             persistent_ref.clone(),
             None,
             PersistenceIntent::SessionOnly,
@@ -2032,9 +2034,15 @@ mod tests {
         .expect_err("secure storage unavailable");
         assert_eq!(error.kind, ErrorKind::SecureStorageUnavailable);
 
-        let error = connect(&worker, persistent_ref, None, PersistenceIntent::Persistent)
-            .expect_err("persistent secret takes precedence");
+        let error = connect(
+            &secure_worker,
+            persistent_ref,
+            None,
+            PersistenceIntent::Persistent,
+        )
+        .expect_err("persistent secret takes precedence");
         assert_eq!(error.kind, ErrorKind::SecureStorageUnavailable);
+        shutdown(&secure_worker);
 
         let persistent_profile = profile("persistent-profile", &external.endpoint, None, None);
         let error = connect(
@@ -2045,6 +2053,7 @@ mod tests {
         )
         .expect_err("profile persistence unavailable");
         assert_eq!(error.kind, ErrorKind::Persistence);
+        shutdown(&worker);
     }
 
     #[test]
