@@ -69,14 +69,15 @@ XDG_CACHE_HOME="$workspace/cache" \
     source_abs_y=$((window_y + source_y + source_height / 2))
     target_abs_x=$((window_x + target_x + target_width / 2))
     target_abs_y=$((window_y + target_y + target_height / 2))
+    xdotool windowactivate --sync "$app_window"
     xdotool mousemove --sync "$source_abs_x" "$source_abs_y"
     xdotool getmouselocation --shell
     xdotool mousedown 1
-    sleep 0.3
+    sleep 0.5
     xdotool mousemove --sync "$((source_abs_x + 24))" "$((source_abs_y + 24))"
-    sleep 0.2
+    sleep 0.5
     xdotool mousemove --sync "$target_abs_x" "$target_abs_y"
-    sleep 0.6
+    sleep 1
     xdotool mouseup 1
     if ! wait "$app_pid"; then
       cat "$LINGUAMESH_FILE_DROP_LOG" >&2
