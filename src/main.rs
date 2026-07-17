@@ -172,7 +172,9 @@ fn start_file_drop_fixture(application: &adw::Application, bindings: UiBindings)
     drag_button.set_focusable(true);
     drag_button.set_size_request(240, 48);
     let file = gtk::gio::File::for_path(&fixture_path);
-    let provider = gtk::gdk::ContentProvider::for_value(&file.to_value());
+    let uri_list = format!("{}\n", file.uri());
+    let uri_bytes = gtk::glib::Bytes::from(uri_list.as_bytes());
+    let provider = gtk::gdk::ContentProvider::for_bytes("text/uri-list", &uri_bytes);
     let drag_source = gtk::DragSource::new();
     drag_source.set_actions(gtk::gdk::DragAction::COPY);
     drag_source.set_content(Some(&provider));
@@ -277,8 +279,9 @@ fn create_window(
 
     let editor_bindings = create_editors();
     let source_drop_target =
-        gtk::DropTarget::new(gtk::gio::File::static_type(), gtk::gdk::DragAction::COPY);
+        gtk::DropTarget::new(String::static_type(), gtk::gdk::DragAction::COPY);
     source_drop_target.set_types(&[
+        String::static_type(),
         gtk::gio::File::static_type(),
         gtk::gdk::FileList::static_type(),
     ]);
@@ -957,7 +960,14 @@ fn connect_action_handlers(
             if !source_import_allowed(&drop_state.borrow()) {
                 return false;
             }
-            if let Ok(file) = value.get::<gtk::gio::File>() {
+            if let Ok(uri_list) = value.get::<String>() {
+                let Some(uri) = uri_list.lines().find(|line| !line.is_empty()) else {
+                    return false;
+                };
+                let file = gtk::gio::File::for_uri(uri);
+                load_source_file(&file, &drop_bindings, &drop_state);
+                true
+            } else if let Ok(file) = value.get::<gtk::gio::File>() {
                 load_source_file(&file, &drop_bindings, &drop_state);
                 true
             } else if let Ok(file_list) = value.get::<gtk::gdk::FileList>() {
