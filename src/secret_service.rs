@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 const SERVICE_NAME: &str = "org.freedesktop.secrets";
 const SERVICE_PATH: &str = "/org/freedesktop/secrets";
 const SERVICE_INTERFACE: &str = "org.freedesktop.Secret.Service";
-const DEFAULT_COLLECTION_PATH: &str = "/org/freedesktop/secrets/aliases/default";
+const COLLECTION_INTERFACE: &str = "org.freedesktop.Secret.Collection";
 const ITEM_INTERFACE: &str = "org.freedesktop.Secret.Item";
 const CALL_TIMEOUT_MS: i32 = 5_000;
 const SECRET_ATTRIBUTE: &str = "linguamesh-secret-ref";
@@ -121,6 +121,13 @@ fn search_items(
     response.get().ok_or(LookupError::Unavailable)
 }
 
+// 通过 Secret Service 的 default 别名解析实际的密钥集合对象路径。
+fn default_collection(session: &SecretSession) -> Result<ObjectPath, LookupError> {
+    let parameters = ("default",).to_variant();
+    let response = session.call(SERVICE_PATH, SERVICE_INTERFACE, "ReadAlias", &parameters)?;
+    response.get().ok_or(LookupError::Unavailable)
+}
+
 fn secret_tuple(
     session: &SecretSession,
     secret: &SecretValue,
@@ -152,16 +159,20 @@ pub fn store_secret(secret_ref: &SecretRef, secret: &SecretValue) -> Result<(), 
     if !locked.is_empty() {
         return Err(map_store_error(LookupError::Locked));
     }
+    let collection = default_collection(&session).map_err(map_store_error)?;
     let parameters = (
-        ObjectPath::try_from(DEFAULT_COLLECTION_PATH)
-            .map_err(|_| map_store_error(LookupError::Unavailable))?,
         properties(secret_ref),
         secret_tuple(&session, secret),
         false,
     )
         .to_variant();
     let response = session
-        .call(SERVICE_PATH, SERVICE_INTERFACE, "CreateItem", &parameters)
+        .call(
+            collection.as_str(),
+            COLLECTION_INTERFACE,
+            "CreateItem",
+            &parameters,
+        )
         .map_err(map_store_error)?;
     let (_, prompt): (ObjectPath, ObjectPath) = response
         .get()
