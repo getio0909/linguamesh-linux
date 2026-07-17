@@ -6,9 +6,11 @@ only after an explicit user action, requires a deliberate model choice for a new
 translated text, and supports cancellation with partial-output retention. It can explicitly
 remember multiple non-secret provider profiles, switch or update them through the same explicit
 connection action, and revalidate each model preference after reconnect while keeping credentials
-session-only. Saved copies can be removed without interrupting an already connected session. The
-client also displays typed errors, switches appearance, records locale preference, and exposes
-redacted diagnostics.
+session-only. A derived provider-setup guide moves from startup through configuration, connection,
+and model selection, reports an unavailable worker without remaining stuck at startup, then
+identifies the provider stable ID/model that will receive the next request. Saved
+copies can be removed without interrupting an already connected session. The client also displays
+typed errors, switches appearance, records locale preference, and exposes redacted diagnostics.
 
 ## Project authority
 
@@ -39,8 +41,12 @@ cargo run --features gui
 
 The development worker starts a loopback-only fake service and places its endpoint in the form when
 the default endpoint is still untouched. Readiness does not connect it: click **Connect**, wait for
-model discovery, and deliberately choose a model before translating. A user-supplied
-OpenAI-compatible base endpoint such as `http://127.0.0.1:11434/v1/` follows the same flow.
+model discovery, and deliberately choose a model before translating. The **Provider setup** card
+shows each required step and, once ready, the exact provider name, stable ID, and confirmed model
+for the next request. A pending model change remains in Step 2 until committed, and a stopped worker
+is shown as unavailable with request controls disabled. The card is derived from live state and
+writes no completion flag. A user-supplied OpenAI-compatible base endpoint such as
+`http://127.0.0.1:11434/v1/` follows the same flow.
 
 The credential field is optional and session-only. Its value is copied into Core's secret-aware
 `SecretValue`, the widget is cleared immediately, the temporary GTK string is dropped, and a

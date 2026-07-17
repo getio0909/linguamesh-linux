@@ -1268,6 +1268,7 @@ mod tests {
     struct ExternalFakeProvider {
         endpoint: String,
         model_requests: Arc<AtomicUsize>,
+        chat_requests: Arc<AtomicUsize>,
         shutdown: Option<oneshot::Sender<()>>,
         thread: Option<JoinHandle<()>>,
     }
@@ -1297,18 +1298,23 @@ mod tests {
                     }
                     .expect("external fake provider");
                     ready_sender
-                        .send((server.base_url(), server.model_request_counter()))
+                        .send((
+                            server.base_url(),
+                            server.model_request_counter(),
+                            server.chat_request_counter(),
+                        ))
                         .expect("provider endpoint");
                     let _ = shutdown_receiver.await;
                     server.shutdown().await;
                 });
             });
-            let (endpoint, model_requests) = ready_receiver
+            let (endpoint, model_requests, chat_requests) = ready_receiver
                 .recv_timeout(Duration::from_secs(5))
                 .expect("provider startup");
             Self {
                 endpoint,
                 model_requests,
+                chat_requests,
                 shutdown: Some(shutdown),
                 thread: Some(thread),
             }
@@ -1324,6 +1330,16 @@ mod tests {
                 thread.join().expect("provider shutdown");
             }
         }
+    }
+
+    fn assert_chat_requests(
+        first: &ExternalFakeProvider,
+        first_expected: usize,
+        second: &ExternalFakeProvider,
+        second_expected: usize,
+    ) {
+        assert_eq!(first.chat_requests.load(Ordering::SeqCst), first_expected);
+        assert_eq!(second.chat_requests.load(Ordering::SeqCst), second_expected);
     }
 
     fn profile(
@@ -1567,11 +1583,19 @@ mod tests {
             .expect("translation command");
         let deadline = Instant::now() + Duration::from_secs(5);
         let mut output = String::new();
-        while Instant::now() < deadline {
-            let event = worker
-                .events
-                .recv_timeout(Duration::from_millis(500))
-                .expect("translation event");
+        loop {
+            let now = Instant::now();
+            if now >= deadline {
+                break;
+            }
+            let timeout = deadline.duration_since(now).min(Duration::from_millis(500));
+            let event = match worker.events.recv_timeout(timeout) {
+                Ok(event) => event,
+                Err(mpsc::RecvTimeoutError::Timeout) => continue,
+                Err(mpsc::RecvTimeoutError::Disconnected) => {
+                    panic!("translation event channel disconnected")
+                }
+            };
             if let WorkerEvent::Translation(event) = event {
                 match event {
                     TranslationEvent::TextDelta { text, .. } => output.push_str(&text),
@@ -1580,7 +1604,7 @@ mod tests {
                 }
             }
         }
-        panic!("translation did not terminate");
+        panic!("translation did not terminate before the deadline");
     }
 
     #[test]
@@ -2021,6 +2045,146 @@ mod tests {
             first_ref_text.as_str(),
             second_ref_text.as_str(),
         ]);
+    }
+
+    // 场景五在单一时序中验证认证提供商切换和失败回滚。
+    #[allow(clippy::too_many_lines)]
+    #[test]
+    fn scenario_five_routes_translations_only_to_confirmed_authenticated_provider() {
+        const FIRST_SECRET: &str = "SCENARIO_FIVE_FIRST_SECRET";
+        const SECOND_SECRET: &str = "SCENARIO_FIVE_SECOND_SECRET";
+        let first = ExternalFakeProvider::start(FakeMode::Authenticated(FIRST_SECRET));
+        let second = ExternalFakeProvider::start(FakeMode::Authenticated(SECOND_SECRET));
+        let database = TestDatabase::new();
+        let (worker, profiles, active_profile_id, _) =
+            started_worker_with_database_snapshot(database.path());
+        assert!(profiles.is_empty());
+        assert!(active_profile_id.is_none());
+
+        let first_ref = SecretRef::new(SecretRefNamespace::Session);
+        let first_ref_text = first_ref.as_str().to_owned();
+        connect(
+            &worker,
+            profile("scenario-five-a", &first.endpoint, Some(first_ref), None),
+            Some(SecretValue::new(FIRST_SECRET)),
+            PersistenceIntent::Persistent,
+        )
+        .expect("first authenticated connection");
+        select_event(&worker, "scenario-five-a", "fake-translator")
+            .expect("first model selection")
+            .expect("first saved model");
+        let (output, terminal) = translate(&worker, "fake-translator");
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        assert_chat_requests(&first, 1, &second, 0);
+
+        let second_ref = SecretRef::new(SecretRefNamespace::Session);
+        let second_ref_text = second_ref.as_str().to_owned();
+        connect(
+            &worker,
+            profile("scenario-five-b", &second.endpoint, Some(second_ref), None),
+            Some(SecretValue::new(SECOND_SECRET)),
+            PersistenceIntent::Persistent,
+        )
+        .expect("second authenticated connection");
+        select_event(&worker, "scenario-five-b", "fake-slow-translator")
+            .expect("second model selection")
+            .expect("second saved model");
+        let (output, terminal) = translate(&worker, "fake-slow-translator");
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        assert_chat_requests(&first, 1, &second, 1);
+
+        let first_reconnect_ref = SecretRef::new(SecretRefNamespace::Session);
+        let first_reconnect_ref_text = first_reconnect_ref.as_str().to_owned();
+        connect(
+            &worker,
+            profile(
+                "scenario-five-a",
+                &first.endpoint,
+                Some(first_reconnect_ref),
+                Some("fake-translator"),
+            ),
+            Some(SecretValue::new(FIRST_SECRET)),
+            PersistenceIntent::Persistent,
+        )
+        .expect("single reconnect to first provider");
+        let (output, terminal) = translate(&worker, "fake-translator");
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        assert_chat_requests(&first, 2, &second, 1);
+
+        let second_reconnect_ref = SecretRef::new(SecretRefNamespace::Session);
+        let second_reconnect_ref_text = second_reconnect_ref.as_str().to_owned();
+        connect(
+            &worker,
+            profile(
+                "scenario-five-b",
+                &second.endpoint,
+                Some(second_reconnect_ref),
+                Some("fake-slow-translator"),
+            ),
+            Some(SecretValue::new(SECOND_SECRET)),
+            PersistenceIntent::Persistent,
+        )
+        .expect("single reconnect to second provider");
+        let (output, terminal) = translate(&worker, "fake-slow-translator");
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        assert_chat_requests(&first, 2, &second, 2);
+
+        let candidate_ref = SecretRef::new(SecretRefNamespace::Session);
+        let candidate_ref_text = candidate_ref.as_str().to_owned();
+        let error = connect(
+            &worker,
+            profile(
+                "scenario-five-b",
+                &second.endpoint,
+                Some(candidate_ref),
+                Some("fake-slow-translator"),
+            ),
+            Some(SecretValue::new(FIRST_SECRET)),
+            PersistenceIntent::Persistent,
+        )
+        .expect_err("candidate authentication rejection");
+        assert_eq!(error.kind, ErrorKind::Authentication);
+
+        let (output, terminal) = translate(&worker, "fake-slow-translator");
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        assert_chat_requests(&first, 2, &second, 3);
+        let forbidden_storage_values = [
+            FIRST_SECRET,
+            SECOND_SECRET,
+            "session:",
+            first_ref_text.as_str(),
+            second_ref_text.as_str(),
+            first_reconnect_ref_text.as_str(),
+            second_reconnect_ref_text.as_str(),
+            candidate_ref_text.as_str(),
+        ];
+        database.assert_absent_from_files(&forbidden_storage_values);
+        shutdown(&worker);
+
+        let (restarted, profiles, active_profile_id, _) =
+            started_worker_with_database_snapshot(database.path());
+        assert_eq!(profiles.len(), 2);
+        assert_eq!(
+            active_profile_id.as_ref().map(ProviderProfileId::as_str),
+            Some("scenario-five-b")
+        );
+        let restored_a = profiles
+            .iter()
+            .find(|profile| profile.id().as_str() == "scenario-five-a")
+            .expect("restored first profile");
+        let restored_b = profiles
+            .iter()
+            .find(|profile| profile.id().as_str() == "scenario-five-b")
+            .expect("restored second profile");
+        assert_eq!(restored_a.selected_model(), Some("fake-translator"));
+        assert_eq!(restored_b.selected_model(), Some("fake-slow-translator"));
+        shutdown(&restarted);
+        database.assert_absent_from_files(&forbidden_storage_values);
     }
 
     #[test]

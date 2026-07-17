@@ -42,16 +42,19 @@ cargo test --features demo-provider --locked
 cargo build --features demo-provider --locked
 ```
 
-The no-default suite contains 38 reducer tests. It covers the disconnected initial state, atomic
+The no-default suite contains 40 reducer tests. It covers the disconnected initial state, atomic
 sorted restoration of multiple profiles without activation, duplicate/missing/default/session-ref
 snapshot rejection, form-only selection, exact pending deletion, connected-row removal that keeps
 the runtime session, pending and active canonical profiles, exact stale-result rejection, atomic
 rollback, deliberate model selection, per-ID credential-free upserts, session switches that
 preserve every restart row/default, active-ID model updates while another row is displayed,
 saved-model restoration only when available, ordered events, partial output, all Core alpha.2 error
-categories, and diagnostics that omit content, endpoints, IDs, model IDs, and secret references.
+categories, the derived provider-setup stages through Ready, rollback that preserves the confirmed
+Ready identity, pending-model confirmation that cannot claim Ready, worker-unavailable state,
+storage-unavailable fallback, and diagnostics that omit content, endpoints, IDs, model IDs, and
+secret references.
 
-The `demo-provider` suite contains 62 tests in total. Its worker tests validate the exact Core
+The `demo-provider` suite contains 65 tests in total. Its worker tests validate the exact Core
 compatibility contract, prove that fake-service readiness does not auto-connect, require explicit
 Connect and model selection, exercise real loopback HTTP/SSE streaming, consume an authenticated
 session secret through the bounded typed host-secret broker, and fail closed for unavailable
@@ -62,8 +65,13 @@ and `session:` canaries, deletes inactive/missing/connected rows, keeps a delete
 usable without recreating it, verifies exact `0700`/`0600` permissions, rejects a permissive parent,
 symbolic ancestor, and hard-linked database without following static unsafe paths, preserves every
 restart row/default across session switches, failed persistent changes, and public connection
-cancellation, and keeps session mode usable after storage initialization fails. The suite also
-covers immediate connection cancellation, translation cancellation with partial output, active,
+cancellation, and keeps session mode usable after storage initialization fails. A Linux-side
+Scenario 5 regression authenticates and saves distinct providers A and B with independent models,
+then uses one Connect action per remembered switch and proves each next translation reaches only
+the newly confirmed provider. It rejects B with A's credential without changing the active B/model
+pair, scans storage for both credentials and all secret references, and verifies the full
+profile/model/default snapshot after restart. The suite also covers immediate connection
+cancellation, translation cancellation with partial output, active,
 queued, and full-command-queue shutdown, translation terminal delivery during shutdown,
 delete rejection during translation, saved-model behavior, and failed-switch rollback to the
 previous Core `ProviderManager` and model.
@@ -110,16 +118,21 @@ cargo run --features gui
 ```
 
 The all-feature binary test creates real GTK/libadwaita widgets, verifies the initial disconnected
-state, waits for fake-endpoint readiness without auto-connect, clears a session credential from the
-form immediately after Connect, explicitly selects a discovered model, preserves the active
-provider/model after a failed switch, and completes a streamed translation. It also injects a
-two-profile startup snapshot, verifies persisted-active prefill without activation, browses another
-row without changing the runtime/default, preserves a persistent secret reference so the real
-Connect path fails closed, rejects a disabled saved row without re-enabling it, checks
-delete-pending control blocking, applies an exact deletion result, and verifies a fresh random
-draft ID. A private D-Bus session and Xvfb provide the runtime environment; tests are serialized
-because GTK owns process-global state. This is not comprehensive UI automation, accessibility, or
-Wayland coverage.
+state and the Provider setup progression from Starting through Configure, Connecting, Select model,
+and Ready, then checks that Ready identifies the confirmed provider stable ID/model. It verifies
+that pending model confirmation remains in Step 2 and fatal worker shutdown becomes Unavailable
+instead of remaining at Starting, with Connect, model, translation, and stop controls disabled. It
+waits for fake-endpoint readiness without auto-connect, clears a session credential from the form
+immediately after Connect, explicitly selects a discovered model, preserves the active
+provider/model and Ready identity after a failed switch, and completes a streamed translation. It
+also verifies the storage-unavailable session-only warning persists in Ready, injects a two-profile
+startup snapshot, verifies persisted-active prefill without activation, browses another row without
+changing the runtime/default, checks the disconnected storage warning, preserves a
+persistent secret reference so the real Connect path fails closed, rejects a disabled saved row
+without re-enabling it, checks delete-pending control blocking, applies an exact deletion result,
+and verifies a fresh random draft ID. A private D-Bus session and Xvfb provide the runtime
+environment; tests are serialized because GTK owns process-global state. This is not comprehensive
+UI automation, accessibility, or Wayland coverage.
 
 The GitHub Actions native workflow pins Core revision
 `fbf3e9b5927049dccaa19f8c36013495ffebba12`, installs the headers plus D-Bus/Xvfb support, and runs
@@ -157,7 +170,7 @@ git diff --check
 ## Unimplemented validation
 
 Broader GTK component/UI automation, accessibility inspection, Wayland/X11 smoke tests, a native
-Secret Service backend and secure-credential persistence tests, broader XDG and portal tests,
-third-party local-server interoperability, Flatpak smoke tests, runtime localization behavior,
-runtime database I/O fault injection after successful startup, dependency/license automation, and
-release builds remain required before a supported release.
+Secret Service backend and secure-credential onboarding/persistence tests, broader XDG and portal
+tests, third-party local-server interoperability, Flatpak smoke tests, runtime localization
+behavior, runtime database I/O fault injection after successful startup, dependency/license
+automation, and release builds remain required before a supported release.

@@ -52,6 +52,38 @@ impl AppStatus {
     }
 }
 
+/// 描述首次提供商配置流程的派生阶段。
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum OnboardingStage {
+    /// 工作线程仍在完成启动检查。
+    Starting,
+    /// 工作线程不可用，需要重新启动应用。
+    Unavailable,
+    /// 用户需要选择或填写提供商配置。
+    ConfigureProvider,
+    /// 提供商连接和模型发现正在进行。
+    Connecting,
+    /// 提供商已连接但尚未确认模型。
+    SelectModel,
+    /// 提供商与模型均已准备好。
+    Ready,
+}
+
+impl OnboardingStage {
+    /// 返回不包含用户配置内容的稳定英文标签。
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Starting => "Starting",
+            Self::Unavailable => "Unavailable",
+            Self::ConfigureProvider => "Configure provider",
+            Self::Connecting => "Connecting",
+            Self::SelectModel => "Select model",
+            Self::Ready => "Ready",
+        }
+    }
+}
+
 /// 描述客户端外观偏好。
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum ThemePreference {
@@ -200,6 +232,7 @@ impl Error for StateError {}
 enum WorkerStartup {
     Pending,
     Ready,
+    Failed,
 }
 
 /// 描述本地配置存储的启动结果。
@@ -291,15 +324,44 @@ impl AppState {
         matches!(self.worker_startup, WorkerStartup::Ready)
     }
 
+    /// 指示工作线程已停止或启动失败。
+    #[must_use]
+    pub const fn worker_unavailable(&self) -> bool {
+        matches!(self.worker_startup, WorkerStartup::Failed)
+    }
+
     /// 标记工作线程已准备接受用户命令。
     pub const fn mark_worker_ready(&mut self) {
         self.worker_startup = WorkerStartup::Ready;
+    }
+
+    /// 标记工作线程不可再接受用户命令。
+    pub const fn mark_worker_unavailable(&mut self) {
+        self.worker_startup = WorkerStartup::Failed;
     }
 
     /// 返回当前状态。
     #[must_use]
     pub const fn status(&self) -> AppStatus {
         self.status
+    }
+
+    /// 仅依据当前权威状态推导提供商引导阶段。
+    #[must_use]
+    pub const fn onboarding_stage(&self) -> OnboardingStage {
+        if self.worker_unavailable() {
+            OnboardingStage::Unavailable
+        } else if !self.worker_ready() {
+            OnboardingStage::Starting
+        } else if matches!(self.status, AppStatus::Connecting) {
+            OnboardingStage::Connecting
+        } else if self.active_provider.is_none() {
+            OnboardingStage::ConfigureProvider
+        } else if self.pending_model_selection.is_some() || self.selected_model.is_none() {
+            OnboardingStage::SelectModel
+        } else {
+            OnboardingStage::Ready
+        }
     }
 
     /// 返回当前提供商标识。
@@ -1037,7 +1099,8 @@ impl AppState {
     #[must_use]
     pub fn diagnostics_text(&self) -> String {
         format!(
-            "Core protocol: {PROTOCOL_VERSION}\nProvider: {}\nProvider saved: {}\nProfile storage: {}\nSaved profiles: {}\nSaved profile: {}\nPersisted active profile: {}\nSaved model: {}\nModel selected: {}\nModel selection pending: {}\nProfile deletion pending: {}\nStatus: {}\nTheme: {}\nLocale: {}\nOutput bytes: {}",
+            "Core protocol: {PROTOCOL_VERSION}\nOnboarding: {}\nProvider: {}\nProvider saved: {}\nProfile storage: {}\nSaved profiles: {}\nSaved profile: {}\nPersisted active profile: {}\nSaved model: {}\nModel selected: {}\nModel selection pending: {}\nProfile deletion pending: {}\nStatus: {}\nTheme: {}\nLocale: {}\nOutput bytes: {}",
+            self.onboarding_stage().label(),
             yes_no(self.active_provider.is_some()),
             yes_no(self.active_provider_is_saved()),
             self.profile_storage_status.label(),
@@ -1112,8 +1175,8 @@ const fn yes_no(value: bool) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::{
-        AppState, AppStatus, ProfileStorageStatus, ProviderProfile, ProviderProfileId, StateError,
-        ThemePreference, UiLocale,
+        AppState, AppStatus, OnboardingStage, ProfileStorageStatus, ProviderProfile,
+        ProviderProfileId, StateError, ThemePreference, UiLocale,
     };
     use linguamesh_domain::{
         ErrorKind, ModelDescriptor, ModelSource, SecretRef, SecretRefNamespace, TranslationError,
@@ -1189,6 +1252,7 @@ mod tests {
         let mut state = AppState::default();
 
         assert_eq!(state.status(), AppStatus::Disconnected);
+        assert_eq!(state.onboarding_stage(), OnboardingStage::Starting);
         assert!(!state.worker_ready());
         assert!(state.active_provider().is_none());
         assert!(state.provider_id().is_none());
@@ -1203,6 +1267,12 @@ mod tests {
 
         state.mark_worker_ready();
         assert!(state.worker_ready());
+        assert_eq!(state.onboarding_stage(), OnboardingStage::ConfigureProvider);
+
+        state.mark_worker_unavailable();
+        assert!(!state.worker_ready());
+        assert!(state.worker_unavailable());
+        assert_eq!(state.onboarding_stage(), OnboardingStage::Unavailable);
 
         state.set_source_text("Hello");
         assert_eq!(state.begin_translation(), Err(StateError::MissingProvider));
@@ -1221,8 +1291,10 @@ mod tests {
         state
             .restore_saved_profile(saved.clone())
             .expect("restore saved profile");
+        state.mark_worker_ready();
 
         assert_eq!(state.status(), AppStatus::Disconnected);
+        assert_eq!(state.onboarding_stage(), OnboardingStage::ConfigureProvider);
         assert_eq!(state.saved_profile(), Some(&saved));
         assert!(state.active_provider().is_none());
         assert!(state.pending_provider().is_none());
@@ -1230,6 +1302,45 @@ mod tests {
         assert!(!state.active_provider_is_saved());
         assert!(state.models().is_empty());
         assert_eq!(state.selected_model(), None);
+    }
+
+    #[test]
+    fn onboarding_stages_follow_connection_and_model_readiness() {
+        let mut state = state_with_profile_storage();
+        state.mark_worker_ready();
+        let provider = profile(
+            "onboarding-provider",
+            "Onboarding provider",
+            "http://127.0.0.1:11434/v1/",
+            None,
+        );
+
+        assert_eq!(state.onboarding_stage(), OnboardingStage::ConfigureProvider);
+        state
+            .begin_provider_connection(provider.clone())
+            .expect("begin onboarding connection");
+        assert_eq!(state.onboarding_stage(), OnboardingStage::Connecting);
+        state
+            .provider_connected(provider, vec![discovered_model("onboarding-model")])
+            .expect("complete onboarding connection");
+        assert_eq!(state.onboarding_stage(), OnboardingStage::SelectModel);
+        state
+            .select_model("onboarding-model")
+            .expect("select onboarding model");
+        assert_eq!(state.onboarding_stage(), OnboardingStage::Ready);
+    }
+
+    #[test]
+    fn onboarding_labels_are_stable_and_non_sensitive() {
+        assert_eq!(OnboardingStage::Starting.label(), "Starting");
+        assert_eq!(OnboardingStage::Unavailable.label(), "Unavailable");
+        assert_eq!(
+            OnboardingStage::ConfigureProvider.label(),
+            "Configure provider"
+        );
+        assert_eq!(OnboardingStage::Connecting.label(), "Connecting");
+        assert_eq!(OnboardingStage::SelectModel.label(), "Select model");
+        assert_eq!(OnboardingStage::Ready.label(), "Ready");
     }
 
     #[test]
@@ -1270,11 +1381,13 @@ mod tests {
         state
             .restore_saved_profiles(vec![beta.clone(), alpha.clone()], Some(beta.id().clone()))
             .expect("restore profiles");
+        state.mark_worker_ready();
 
         assert_eq!(
             state.profile_storage_status(),
             ProfileStorageStatus::Available
         );
+        assert_eq!(state.onboarding_stage(), OnboardingStage::ConfigureProvider);
         assert_eq!(state.saved_profiles(), &[alpha, beta.clone()]);
         assert_eq!(state.selected_saved_profile(), Some(&beta));
         assert_eq!(state.persisted_active_profile_id(), Some(beta.id()));
@@ -1429,7 +1542,10 @@ mod tests {
     #[test]
     fn pending_model_selection_blocks_conflicting_actions_until_confirmation() {
         let mut state = connected_state();
+        state.mark_worker_ready();
         state.models.push(discovered_model("fake-slow-translator"));
+
+        assert_eq!(state.onboarding_stage(), OnboardingStage::Ready);
 
         state
             .begin_model_selection("fake-slow-translator")
@@ -1440,6 +1556,7 @@ mod tests {
             Some("fake-slow-translator")
         );
         assert_eq!(state.selected_model(), Some("fake-translator"));
+        assert_eq!(state.onboarding_stage(), OnboardingStage::SelectModel);
         assert_eq!(
             state.begin_translation(),
             Err(StateError::ModelSelectionPending)
@@ -1471,6 +1588,7 @@ mod tests {
             .expect("confirm model selection");
         assert_eq!(state.pending_model_selection(), None);
         assert_eq!(state.selected_model(), Some("fake-slow-translator"));
+        assert_eq!(state.onboarding_stage(), OnboardingStage::Ready);
     }
 
     #[test]
@@ -1648,6 +1766,7 @@ mod tests {
         state.set_theme(ThemePreference::Dark);
         state.set_locale(UiLocale::SimplifiedChinese);
         let diagnostics = state.diagnostics_text();
+        assert!(diagnostics.contains("Onboarding: Starting"));
         assert!(diagnostics.contains("Theme: Dark"));
         assert!(diagnostics.contains("Locale: zh-CN"));
         assert!(!diagnostics.contains("Hello"));
@@ -2068,11 +2187,14 @@ mod tests {
             ErrorKind::Persistence,
             "Profile storage could not be opened.",
         ));
+        assert_eq!(state.onboarding_stage(), OnboardingStage::Starting);
+        state.mark_worker_ready();
         assert_eq!(
             state.profile_storage_status(),
             ProfileStorageStatus::Unavailable
         );
         assert_eq!(state.status(), AppStatus::Failed);
+        assert_eq!(state.onboarding_stage(), OnboardingStage::ConfigureProvider);
         assert_eq!(
             state.begin_profile_deletion(persistent.id()),
             Err(StateError::ProfileStorageUnavailable)
@@ -2111,6 +2233,7 @@ mod tests {
 
         let diagnostics = state.diagnostics_text();
 
+        assert!(diagnostics.contains("Onboarding: Starting"));
         assert!(diagnostics.contains("Profile storage: Available"));
         assert!(diagnostics.contains("Saved profiles: 2"));
         assert!(diagnostics.contains("Persisted active profile: Yes"));
@@ -2346,6 +2469,7 @@ mod tests {
     #[test]
     fn failed_connection_preserves_previous_profile_and_models() {
         let mut state = connected_state();
+        state.mark_worker_ready();
         let unavailable = profile(
             "unavailable",
             "Unavailable provider",
@@ -2355,6 +2479,7 @@ mod tests {
         state
             .begin_provider_connection(unavailable.clone())
             .expect("begin connection");
+        assert_eq!(state.onboarding_stage(), OnboardingStage::Connecting);
 
         state
             .provider_connection_failed(
@@ -2364,6 +2489,7 @@ mod tests {
             .expect("provider failure");
 
         assert_eq!(state.status(), AppStatus::Ready);
+        assert_eq!(state.onboarding_stage(), OnboardingStage::Ready);
         assert_eq!(
             state.provider_id().map(ProviderProfileId::as_str),
             Some("local-fake-provider")
@@ -2478,6 +2604,7 @@ mod tests {
     #[test]
     fn diagnostics_omit_endpoint_source_model_and_secret_reference() {
         let mut state = connected_state();
+        state.mark_worker_ready();
         state.set_source_text("SOURCE_SENTINEL");
         let secret_ref = SecretRef::new(SecretRefNamespace::Session);
         let secret_reference = secret_ref.as_str().to_owned();
@@ -2511,6 +2638,7 @@ mod tests {
 
         let diagnostics = state.diagnostics_text();
 
+        assert!(diagnostics.contains("Onboarding: Ready"));
         assert!(diagnostics.contains("Provider: Yes"));
         assert!(diagnostics.contains("Provider saved: Yes"));
         assert!(diagnostics.contains("Saved profile: Yes"));

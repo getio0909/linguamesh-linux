@@ -16,7 +16,10 @@ deletion are separate state so browsing one profile cannot mutate another. A sav
 restored only after an explicit reconnect and only when that exact model remains in discovery;
 otherwise the user must select a model deliberately. The reducer also enforces ordered translation
 events, retains partial output on cancellation or failure, and maps every Core `0.1.0-alpha.2`
-error category to safe UI text.
+error category to safe UI text. Its onboarding stage is derived from the same authoritative state
+as `Starting`, `Unavailable`, `Configure provider`, `Connecting`, `Select model`, or `Ready`; no
+parallel wizard state or persisted completion flag can race startup, restoration, pending model
+confirmation, or rollback.
 
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
@@ -54,6 +57,11 @@ network work. The shell exposes a saved-profile dropdown, provider name, endpoin
 credential, explicit Connect, **Remember non-secret profile and model**, **Remove saved profile**,
 model selection, source and target locales, source and streamed output editors, Translate/Stop,
 typed errors, appearance, locale preference with an English fallback, and redacted diagnostics.
+An always-current Provider setup card explains the next required action, warns when saved-profile
+storage is unavailable, distinguishes fatal worker shutdown from startup, and identifies the
+confirmed provider stable ID/model that will receive the next request. It never connects, selects,
+or persists anything itself. A stopped worker or disconnected event channel marks the worker
+unavailable and disables provider, model, translation, and cancellation commands.
 Selecting a restored profile prefills only its non-secret form fields without connecting or
 changing the active runtime model. New persistent profiles use a GLib random UUID validated as a
 Core `ProviderProfileId`; display names are never database keys. Pending connection, model

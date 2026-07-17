@@ -13,10 +13,12 @@ private application directory is `0700` and the database is `0600`. Removing the
 leaves its already validated runtime session active but no longer persistent. Core's no-follow
 SQLite open behavior on Linux's default Unix VFS remains required. Startup prefills the last
 persistently activated row but never auto-connects, so a credential must be entered again when
-required. The external-provider
-path is tested only with LinguaMesh's loopback fake provider. Persistent secret references fail
-closed because no native Secret Service backend exists. The native workflow pins reviewed Core
-functional revision
+required. A derived Provider setup card guides configuration, explicit connection, and deliberate
+model selection without storing a completion flag, distinguishes worker failure from startup, and
+shows the confirmed next-request stable ID/model identity.
+The external-provider path is tested only with LinguaMesh's loopback fake provider. Persistent
+secret references fail closed because no native Secret Service backend exists. The native workflow
+pins reviewed Core functional revision
 `fbf3e9b5927049dccaa19f8c36013495ffebba12`, whose storage delta adds
 `SQLITE_OPEN_NOFOLLOW`, rather than checking out a floating branch. Functional revision
 `c88d37a5de2f03c2ae5d2940c4d25e5d998c301d` passed Native Linux run `29577918335` (job

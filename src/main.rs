@@ -4,7 +4,8 @@ use linguamesh_domain::{
     ErrorKind, ProviderProfileId, SecretRef, SecretRefNamespace, SecretValue, TranslationError,
 };
 use linguamesh_linux::model::{
-    AppState, AppStatus, ProviderProfile, StateError, ThemePreference, UiLocale,
+    AppState, AppStatus, OnboardingStage, ProfileStorageStatus, ProviderProfile, StateError,
+    ThemePreference, UiLocale,
 };
 use linguamesh_linux::worker::{CoreWorker, PersistenceIntent, WorkerCommand, WorkerEvent};
 use std::cell::{Cell, RefCell};
@@ -23,6 +24,9 @@ const DEFAULT_PROVIDER_ENDPOINT: &str = "http://127.0.0.1:11434/v1/";
 
 #[derive(Clone)]
 struct UiBindings {
+    onboarding: gtk::Box,
+    onboarding_title: gtk::Label,
+    onboarding_detail: gtk::Label,
     saved_profile: gtk::DropDown,
     provider_name: gtk::Entry,
     provider_endpoint: gtk::Entry,
@@ -97,6 +101,8 @@ fn create_window(
     toolbar.add_top_bar(&header);
 
     let root = create_root();
+    let (onboarding, onboarding_title, onboarding_detail) = create_onboarding();
+    root.append(&onboarding);
     let (
         provider_session,
         saved_profile,
@@ -155,6 +161,9 @@ fn create_window(
     (
         window,
         UiBindings {
+            onboarding,
+            onboarding_title,
+            onboarding_detail,
             saved_profile,
             provider_name,
             provider_endpoint,
@@ -181,6 +190,25 @@ fn create_window(
         theme,
         locale,
     )
+}
+
+fn create_onboarding() -> (gtk::Box, gtk::Label, gtk::Label) {
+    let section = gtk::Box::new(gtk::Orientation::Vertical, 4);
+    section.add_css_class("card");
+    section.set_margin_top(4);
+    section.set_margin_bottom(4);
+    section.set_margin_start(4);
+    section.set_margin_end(4);
+    let title = gtk::Label::new(None);
+    title.set_xalign(0.0);
+    title.add_css_class("heading");
+    let detail = gtk::Label::new(None);
+    detail.set_xalign(0.0);
+    detail.set_wrap(true);
+    detail.add_css_class("dim-label");
+    section.append(&title);
+    section.append(&detail);
+    (section, title, detail)
 }
 
 fn create_root() -> gtk::Box {
@@ -870,10 +898,12 @@ fn start_event_pump(bindings: &UiBindings, state: &Rc<RefCell<AppState>>, worker
                 }
                 Err(TryRecvError::Empty) => break,
                 Err(TryRecvError::Disconnected) => {
-                    if !worker_reported_stopped {
-                        event_state
-                            .borrow_mut()
-                            .record_client_error("The core worker disconnected.");
+                    {
+                        let mut state = event_state.borrow_mut();
+                        state.mark_worker_unavailable();
+                        if !worker_reported_stopped {
+                            state.record_client_error("The core worker disconnected.");
+                        }
                     }
                     refresh_ui(&event_bindings, &event_state.borrow());
                     return glib::ControlFlow::Break;
@@ -1063,6 +1093,9 @@ fn apply_worker_event(
             let _ = state.provider_connection_failed(&profile, error);
         }
         WorkerEvent::Rejected(error) => {
+            if !state.borrow().worker_ready() {
+                state.borrow_mut().mark_worker_unavailable();
+            }
             if !matches!(
                 state.borrow().status(),
                 AppStatus::Translating | AppStatus::Cancelling
@@ -1071,10 +1104,11 @@ fn apply_worker_event(
             }
         }
         WorkerEvent::Stopped => {
-            if !operation_is_terminal(state.borrow().status()) {
-                state
-                    .borrow_mut()
-                    .record_client_error("The core worker stopped.");
+            let is_terminal = operation_is_terminal(state.borrow().status());
+            let mut state = state.borrow_mut();
+            state.mark_worker_unavailable();
+            if !is_terminal {
+                state.record_client_error("The core worker stopped.");
             }
         }
     }
@@ -1123,9 +1157,91 @@ fn refresh_active_provider_label(bindings: &UiBindings, state: &AppState) {
     }
 }
 
+fn refresh_onboarding(bindings: &UiBindings, state: &AppState) {
+    let onboarding_phase = state.onboarding_stage();
+    let (title, mut detail) = match onboarding_phase {
+        OnboardingStage::Starting => (
+            "Provider setup · Starting",
+            "Checking profile storage and starting the local validation provider. No provider connection is made automatically."
+                .to_owned(),
+        ),
+        OnboardingStage::Unavailable => (
+            "Provider setup · Unavailable",
+            "The core worker is unavailable. Restart the application and review any error below; no provider request can be sent."
+                .to_owned(),
+        ),
+        OnboardingStage::ConfigureProvider => {
+            let detail = if state.profile_storage_status() == ProfileStorageStatus::Unavailable {
+                "Saved profile storage is unavailable. Configure a provider below and leave Remember off; credentials stay in memory for this session only."
+            } else if state.saved_profiles().is_empty() {
+                "Create a provider profile below, enter a credential only if required, then choose Connect. Credentials remain in memory for this session only."
+            } else {
+                "Choose a saved profile below, re-enter its credential if required, then choose Connect. Restored profiles never connect automatically."
+            };
+            ("Provider setup · Step 1 of 2", detail.to_owned())
+        }
+        OnboardingStage::Connecting => {
+            let detail = state.pending_provider().map_or_else(
+                || {
+                    "Validating the provider and discovering models. The previous active provider remains unchanged until this succeeds."
+                        .to_owned()
+                },
+                |profile| {
+                    format!(
+                        "Validating {} [{}] and discovering models. The previous active provider remains unchanged until this succeeds.",
+                        profile.display_name(),
+                        profile.id().as_str()
+                    )
+                },
+            );
+            ("Provider setup · Connecting", detail)
+        }
+        OnboardingStage::SelectModel => {
+            let detail = state.pending_model_selection().map_or_else(
+                || {
+                    "Choose a discovered model. Translation remains disabled until the selection is confirmed."
+                        .to_owned()
+                },
+                |model| {
+                    format!(
+                        "Confirming model {model}. Translation remains disabled until this selection is committed."
+                    )
+                },
+            );
+            ("Provider setup · Step 2 of 2", detail)
+        }
+        OnboardingStage::Ready => {
+            let provider = state
+                .active_provider()
+                .map_or_else(|| "Unavailable".to_owned(), |profile| {
+                    format!("{} [{}]", profile.display_name(), profile.id().as_str())
+                });
+            let model = state.selected_model().unwrap_or("Unavailable");
+            (
+                "Provider setup · Ready",
+                format!(
+                    "Next request: {provider} · {model}. Use the saved-profile list and Connect to switch deliberately."
+                ),
+            )
+        }
+    };
+    if state.profile_storage_status() == ProfileStorageStatus::Unavailable
+        && onboarding_phase != OnboardingStage::ConfigureProvider
+    {
+        detail.push_str(
+            " Saved profile storage is unavailable; profile persistence is disabled, Remember stays off, and credentials remain session only.",
+        );
+    }
+    bindings.onboarding.set_visible(true);
+    bindings.onboarding_title.set_label(title);
+    bindings.onboarding_detail.set_label(&detail);
+}
+
 fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     bindings.output.set_text(state.output());
-    let status_label = if !state.worker_ready() {
+    let status_label = if state.worker_unavailable() {
+        "Unavailable"
+    } else if !state.worker_ready() {
         "Starting"
     } else if state.pending_profile_deletion().is_some() {
         "Removing saved profile"
@@ -1160,6 +1276,7 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             AppStatus::Connecting | AppStatus::Translating | AppStatus::Cancelling
         );
     let provider_controls_enabled = state.worker_ready() && !blocked;
+    refresh_onboarding(bindings, state);
     refresh_active_provider_label(bindings, state);
     bindings
         .provider_name
@@ -1184,14 +1301,17 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     bindings.connect.set_sensitive(provider_controls_enabled);
     bindings
         .translate
-        .set_sensitive(!blocked && state.selected_model().is_some());
-    bindings.stop.set_sensitive(matches!(
-        state.status(),
-        AppStatus::Connecting | AppStatus::Translating
-    ));
+        .set_sensitive(state.worker_ready() && !blocked && state.selected_model().is_some());
+    bindings.stop.set_sensitive(
+        state.worker_ready()
+            && matches!(
+                state.status(),
+                AppStatus::Connecting | AppStatus::Translating
+            ),
+    );
     bindings
         .model
-        .set_sensitive(!blocked && !state.models().is_empty());
+        .set_sensitive(state.worker_ready() && !blocked && !state.models().is_empty());
     bindings.source_locale.set_sensitive(!blocked);
     bindings.target_locale.set_sensitive(!blocked);
 }
@@ -1200,9 +1320,9 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
 mod tests {
     use super::{
         AppState, AppStatus, CUSTOM_PROVIDER_PRESET_ID, CoreWorker, DEFAULT_PROVIDER_ENDPOINT,
-        DEFAULT_PROVIDER_NAME, ErrorKind, OPENAI_ADAPTER_TYPE, ProviderProfileId, SecretRef,
-        SecretRefNamespace, TranslationError, WorkerCommand, WorkerEvent, apply_worker_event,
-        connect_action_handlers, connect_selection_handlers, create_window,
+        DEFAULT_PROVIDER_NAME, ErrorKind, OPENAI_ADAPTER_TYPE, OnboardingStage, ProviderProfileId,
+        SecretRef, SecretRefNamespace, TranslationError, WorkerCommand, WorkerEvent,
+        apply_worker_event, connect_action_handlers, connect_selection_handlers, create_window,
         custom_provider_profile, generate_custom_provider_id, refresh_ui, start_event_pump,
     };
     use adw::prelude::*;
@@ -1261,6 +1381,11 @@ mod tests {
         window.present();
 
         assert!(!state.borrow().worker_ready());
+        assert_eq!(state.borrow().onboarding_stage(), OnboardingStage::Starting);
+        assert_eq!(
+            bindings.onboarding_title.label(),
+            "Provider setup · Starting"
+        );
         assert_eq!(bindings.status.label(), "Status: Starting");
         assert!(!bindings.provider_name.is_sensitive());
         assert!(!bindings.provider_endpoint.is_sensitive());
@@ -1276,6 +1401,15 @@ mod tests {
                 && bindings.provider_endpoint.text() != DEFAULT_PROVIDER_ENDPOINT
         });
         assert_eq!(state.borrow().status(), AppStatus::Disconnected);
+        assert_eq!(
+            state.borrow().onboarding_stage(),
+            OnboardingStage::ConfigureProvider
+        );
+        assert_eq!(
+            bindings.onboarding_title.label(),
+            "Provider setup · Step 1 of 2"
+        );
+        assert!(bindings.onboarding_detail.label().contains("session only"));
         assert!(state.borrow().active_provider().is_none());
         assert!(!bindings.remember_profile.is_active());
         assert!(bindings.provider_name.is_sensitive());
@@ -1286,6 +1420,29 @@ mod tests {
         assert!(!bindings.remove_saved_profile.is_sensitive());
         assert!(bindings.connect.is_sensitive());
         let demo_endpoint = bindings.provider_endpoint.text().to_string();
+        apply_worker_event(
+            &bindings,
+            &state,
+            &worker,
+            WorkerEvent::ProfileStorageUnavailable(TranslationError::new(
+                ErrorKind::Persistence,
+                "Saved profile storage is unavailable.",
+            )),
+        );
+        refresh_ui(&bindings, &state.borrow());
+        assert_eq!(
+            state.borrow().onboarding_stage(),
+            OnboardingStage::ConfigureProvider
+        );
+        assert!(
+            bindings
+                .onboarding_detail
+                .label()
+                .contains("Saved profile storage is unavailable")
+        );
+        assert!(!bindings.saved_profile.is_sensitive());
+        assert!(!bindings.remember_profile.is_sensitive());
+        assert!(bindings.connect.is_sensitive());
 
         bindings.provider_name.set_text("Unavailable provider");
         bindings.provider_endpoint.set_text("not a valid endpoint");
@@ -1301,6 +1458,26 @@ mod tests {
             .set_text("GTK_SESSION_CREDENTIAL_SENTINEL");
         bindings.connect.emit_clicked();
         assert_eq!(state.borrow().status(), AppStatus::Connecting);
+        assert_eq!(
+            state.borrow().onboarding_stage(),
+            OnboardingStage::Connecting
+        );
+        assert_eq!(
+            bindings.onboarding_title.label(),
+            "Provider setup · Connecting"
+        );
+        assert!(
+            bindings
+                .onboarding_detail
+                .label()
+                .contains("GTK fake provider")
+        );
+        assert!(
+            bindings
+                .onboarding_detail
+                .label()
+                .contains("Saved profile storage is unavailable")
+        );
         assert!(bindings.provider_credential.text().is_empty());
         assert!(!bindings.connect.is_sensitive());
         assert!(!bindings.translate.is_sensitive());
@@ -1312,6 +1489,20 @@ mod tests {
                     .active_provider()
                     .is_some_and(|profile| profile.display_name() == "GTK fake provider")
         });
+        assert_eq!(
+            state.borrow().onboarding_stage(),
+            OnboardingStage::SelectModel
+        );
+        assert_eq!(
+            bindings.onboarding_title.label(),
+            "Provider setup · Step 2 of 2"
+        );
+        assert!(
+            bindings
+                .onboarding_detail
+                .label()
+                .contains("Saved profile storage is unavailable")
+        );
         assert_eq!(state.borrow().selected_model(), None);
         assert!(!bindings.translate.is_sensitive());
         assert!(
@@ -1331,6 +1522,23 @@ mod tests {
         spin_main_context_until(&context, Duration::from_secs(5), || {
             state.borrow().selected_model() == Some("fake-translator")
         });
+        let ready_identity = {
+            let state = state.borrow();
+            let profile_id = state.provider_id().expect("active provider ID");
+            format!(
+                "GTK fake provider [{}] · fake-translator",
+                profile_id.as_str()
+            )
+        };
+        assert_eq!(state.borrow().onboarding_stage(), OnboardingStage::Ready);
+        assert_eq!(bindings.onboarding_title.label(), "Provider setup · Ready");
+        assert!(bindings.onboarding_detail.label().contains(&ready_identity));
+        assert!(
+            bindings
+                .onboarding_detail
+                .label()
+                .contains("Saved profile storage is unavailable")
+        );
         assert!(bindings.translate.is_sensitive());
 
         bindings.model.set_selected(0);
@@ -1343,6 +1551,22 @@ mod tests {
             .borrow_mut()
             .begin_model_selection(&rejected_model)
             .expect("begin rejected model selection");
+        refresh_ui(&bindings, &state.borrow());
+        assert_eq!(
+            state.borrow().onboarding_stage(),
+            OnboardingStage::SelectModel
+        );
+        assert_eq!(
+            bindings.onboarding_title.label(),
+            "Provider setup · Step 2 of 2"
+        );
+        assert!(
+            bindings
+                .onboarding_detail
+                .label()
+                .contains(&format!("Confirming model {rejected_model}"))
+        );
+        assert!(!bindings.translate.is_sensitive());
         bindings.model.set_selected(2);
         let profile_id = state
             .borrow()
@@ -1362,9 +1586,12 @@ mod tests {
                 ),
             },
         );
+        refresh_ui(&bindings, &state.borrow());
         assert_eq!(bindings.model.selected(), 1);
         assert_eq!(state.borrow().selected_model(), Some("fake-translator"));
         assert!(state.borrow().pending_model_selection().is_none());
+        assert_eq!(state.borrow().onboarding_stage(), OnboardingStage::Ready);
+        assert!(bindings.onboarding_detail.label().contains(&ready_identity));
 
         bindings.provider_name.set_text("Unavailable provider");
         bindings.provider_endpoint.set_text("not a valid endpoint");
@@ -1381,6 +1608,8 @@ mod tests {
             Some("GTK fake provider".to_owned())
         );
         assert!(state.borrow().selected_model().is_some());
+        assert_eq!(state.borrow().onboarding_stage(), OnboardingStage::Ready);
+        assert!(bindings.onboarding_detail.label().contains(&ready_identity));
 
         bindings.source.set_text("Hello");
         bindings.translate.emit_clicked();
@@ -1394,6 +1623,32 @@ mod tests {
         assert_eq!(state.borrow().output(), "你好，LinguaMesh！");
         assert!(!state.borrow().has_partial_output());
         assert_eq!(bindings.status.label(), "Status: Completed");
+        assert_eq!(state.borrow().onboarding_stage(), OnboardingStage::Ready);
+        assert!(bindings.onboarding_detail.label().contains(&ready_identity));
+        assert!(
+            bindings
+                .onboarding_detail
+                .label()
+                .contains("Saved profile storage is unavailable")
+        );
+        assert!(!bindings.remember_profile.is_sensitive());
+        assert!(bindings.translate.is_sensitive());
+        apply_worker_event(&bindings, &state, &worker, WorkerEvent::Stopped);
+        refresh_ui(&bindings, &state.borrow());
+        assert!(state.borrow().worker_unavailable());
+        assert_eq!(
+            state.borrow().onboarding_stage(),
+            OnboardingStage::Unavailable
+        );
+        assert_eq!(
+            bindings.onboarding_title.label(),
+            "Provider setup · Unavailable"
+        );
+        assert_eq!(bindings.status.label(), "Status: Unavailable");
+        assert!(!bindings.connect.is_sensitive());
+        assert!(!bindings.translate.is_sensitive());
+        assert!(!bindings.model.is_sensitive());
+        assert!(!bindings.stop.is_sensitive());
 
         let restored_state = Rc::new(RefCell::new(AppState::default()));
         let restored_worker = Rc::new(CoreWorker::spawn());
@@ -1443,6 +1698,16 @@ mod tests {
             restored_state.borrow().worker_ready()
         });
         assert_eq!(restored_state.borrow().status(), AppStatus::Disconnected);
+        assert_eq!(
+            restored_state.borrow().onboarding_stage(),
+            OnboardingStage::ConfigureProvider
+        );
+        assert!(
+            restored_bindings
+                .onboarding_detail
+                .label()
+                .contains("Restored profiles never connect automatically")
+        );
         assert!(restored_state.borrow().active_provider().is_none());
         assert_eq!(restored_state.borrow().saved_profiles().len(), 2);
         assert_eq!(
@@ -1572,6 +1837,44 @@ mod tests {
             .expect("second generated ID");
         assert_ne!(generated_a, generated_b);
         assert!(generated_a.as_str().starts_with("profile-"));
+        apply_worker_event(
+            &restored_bindings,
+            &restored_state,
+            &restored_worker,
+            WorkerEvent::ProfileStorageUnavailable(TranslationError::new(
+                ErrorKind::Persistence,
+                "Saved profile storage is unavailable.",
+            )),
+        );
+        refresh_ui(&restored_bindings, &restored_state.borrow());
+        assert_eq!(
+            restored_state.borrow().onboarding_stage(),
+            OnboardingStage::ConfigureProvider
+        );
+        assert!(
+            restored_bindings
+                .onboarding_detail
+                .label()
+                .contains("Saved profile storage is unavailable")
+        );
+        apply_worker_event(
+            &restored_bindings,
+            &restored_state,
+            &restored_worker,
+            WorkerEvent::Stopped,
+        );
+        refresh_ui(&restored_bindings, &restored_state.borrow());
+        assert!(restored_state.borrow().worker_unavailable());
+        assert_eq!(
+            restored_state.borrow().onboarding_stage(),
+            OnboardingStage::Unavailable
+        );
+        assert_eq!(
+            restored_bindings.onboarding_title.label(),
+            "Provider setup · Unavailable"
+        );
+        assert_eq!(restored_bindings.status.label(), "Status: Unavailable");
+        assert!(!restored_bindings.connect.is_sensitive());
         let _ = restored_worker.try_send(WorkerCommand::Shutdown);
         restored_window.close();
 

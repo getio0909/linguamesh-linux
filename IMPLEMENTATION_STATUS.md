@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Multiple non-secret provider profiles verified locally and in native Linux CI
+Status: Linux provider onboarding and one-Connect routing verified locally; native Linux CI pending
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -33,7 +33,11 @@ timestamps remain excluded from persistent identity.
 - Model discovery does not auto-select its first result. A saved model is restored only while it is
   still available; otherwise translation remains disabled until deliberate model selection is
   confirmed by the worker. Provider controls remain disabled until startup completes, and a
-  rejected model selection resets the dropdown to the last confirmed model.
+  rejected model selection resets the dropdown to the last confirmed model. A provider-setup stage
+  is derived from the same reducer state as Starting, Unavailable, Configure provider, Connecting,
+  Select model, or Ready. Pending model confirmation cannot claim Ready, fatal worker shutdown
+  cannot remain stuck at Starting, and no wizard flag or completion marker is persisted. Worker
+  shutdown or event-channel disconnection disables all controls that can send worker commands.
 - The worker opens schema-2 Core storage at
   `$XDG_DATA_HOME/dev.linguamesh.LinguaMesh/linguamesh.sqlite3` (with GLib's user-data fallback),
   creates a private `0700` application directory and `0600` regular single-link database, and
@@ -54,7 +58,9 @@ timestamps remain excluded from persistent identity.
 - The bounded worker uses `linguamesh_application::ProviderManager` and Core's bounded typed
   host-secret broker on a dedicated Tokio runtime. Fake-provider readiness only fills the default
   endpoint; it does not connect. Explicit Connect, SelectModel, and Translate commands drive real
-  loopback model discovery and HTTP/SSE streaming.
+  loopback model discovery and HTTP/SSE streaming. Authenticated A/B regression coverage proves
+  the next translation uses only the confirmed provider/model, while a wrong-credential switch
+  leaves the previous provider/model active.
 - The optional credential is copied into secret-aware `SecretValue` storage, the widget is cleared
   immediately, and the temporary GTK string is dropped without claiming GTK-buffer zeroization. A
   random session `SecretRef` resolves it once through the broker. The credential and its `session:`
@@ -68,8 +74,11 @@ timestamps remain excluded from persistent identity.
   provider name, endpoint, optional session credential, explicit non-secret remember/remove
   choices, connection and model selection, saved/session status, language controls, source/output
   views, Translate/Stop, typed errors, partial-result display, appearance, locale fallback notice,
-  keyboard mnemonics, and redacted diagnostics. Selecting a row only prefills non-secret fields.
-  Profile/remember/remove controls fail closed when storage is unavailable, all conflicting
+  keyboard mnemonics, and redacted diagnostics. An always-current Provider setup card explains the
+  next required action, warns that unavailable saved-profile storage requires session-only use, and
+  keeps that warning visible through connection, model selection, and Ready while naming the
+  confirmed provider stable ID/model for the next request. Selecting a row only prefills non-secret
+  fields. Profile/remember/remove controls fail closed when storage is unavailable, all conflicting
   controls are blocked during connection, model selection, translation, or deletion, and event
   processing is capped per main-context tick.
 - Fourteen canonical official/pseudo PO catalogs pinned to l10n revision
@@ -91,8 +100,11 @@ Validated on 2026-07-17 with Rust 1.93.0:
   HEAD was a documentation-only descendant whose scoped compiled-source diff from that revision
   was empty.
 - `cargo fmt --all --check`, the locked demo-provider check, strict Clippy, and build passed.
-- `cargo test --no-default-features --locked` passed: 38 tests, 0 failed.
-- `cargo test --features demo-provider --locked` passed: 62 tests, 0 failed. Coverage includes
+- `cargo test --no-default-features --locked` passed: 40 tests, 0 failed. Coverage includes the
+  derived onboarding progression, safe stage labels, pending-model confirmation, worker-unavailable
+  and storage-unavailable fallbacks, and failed-switch rollback that preserves the confirmed Ready
+  identity.
+- `cargo test --features demo-provider --locked` passed: 65 tests, 0 failed. Coverage includes
   explicit connection and model selection, exact compatibility rejection, authenticated one-shot
   session secrets, fail-closed persistent references, two-profile create/update/activate/restart,
   independent last models, no-auto-connect full-snapshot restore, two-credential isolation and live
@@ -100,7 +112,9 @@ Validated on 2026-07-17 with Rust 1.93.0:
   session-only translation after deleting the connected copy, exact private permissions,
   permissive-directory, symbolic-ancestor, and hard-link rejection, session fallback after storage
   failure,
-  stale/cancelled/failed persistence rollback through the public command path, cancellable
+  stale/cancelled/failed persistence rollback through the public command path, authenticated A/B
+  one-Connect remembered switching and next-request routing with per-server request counts,
+  wrong-credential rejection that preserves B and its model, restart verification, cancellable
   connection/model discovery, cancellable streaming with partial output,
   active/queued/full-command-queue shutdown, translation terminal delivery during shutdown,
   saved-model validation, and failed-switch rollback.
@@ -159,15 +173,16 @@ display-server, accessibility, or GTK button-test result is claimed. With the GT
 present, `DOCS_RS=1 cargo test --all-targets --all-features --locked --no-run` reaches native
 linking and failed on unavailable GTK symbols; it is not a valid header-free substitute.
 Runtime database I/O fault injection after successful startup is not covered locally or remotely.
-The changed GTK multi-profile flow passed its real widget test, native linking, and build in the
-GitHub Actions evidence above, but those native checks remain unavailable on this local host.
+The preceding GTK multi-profile flow passed its real widget test, native linking, and build in the
+GitHub Actions evidence above. The new Provider setup card and its GTK assertions have only passed
+header-free source checks locally and still require the native CI gate.
 
 ## Remaining scope
 
-- A native Secret Service implementation, credential create/read/update/delete tests, and complete
-  onboarding. Non-secret multiple-profile create/update/switch/delete is implemented, but the
-  current credential path is deliberately session-only and does not satisfy secure credential
-  persistence.
+- A native Secret Service implementation, credential create/read/update/delete tests, and secure
+  persistent-credential onboarding. Guided non-secret/session setup and multiple-profile
+  create/update/switch/delete are implemented, but the current credential path is deliberately
+  session-only and does not satisfy secure credential persistence.
 - Central release-manifest integration for this exact Linux/Core revision; broader product
   compatibility beyond the alpha.2 startup gate remains unclaimed.
 - Interoperability evidence for third-party local servers, including Ollama; automated endpoint
