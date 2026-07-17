@@ -1,0 +1,30 @@
+name: Flatpak Linux
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  flatpak:
+    name: Flatpak SDK build
+    runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-48
+      options: --privileged
+    steps:
+      - name: Check out Linux client
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+      - name: Build Flatpak bundle
+        uses: flatpak/flatpak-github-actions/flatpak-builder@401fe28a8384095fc1531b9d320b292f0ee45adb
+        with:
+          manifest-path: packaging/flatpak/dev.linguamesh.LinguaMesh.yml
+          bundle: linguamesh-linux-x86_64.flatpak
+          cache-key: flatpak-builder-${{ github.sha }}
+          upload-artifact: true
+          verbose: true

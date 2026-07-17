@@ -134,8 +134,10 @@ bash tools/validate-flatpak-metadata.sh
 ```
 
 This check parses the manifest and Cargo source set, validates 40-character source pins and SHA-256
-archives, and runs `desktop-file-validate` plus `appstreamcli`. `flatpak-builder` is not installed
-on this host, so no SDK build, sandbox launch, portal lease, or distributable artifact is claimed.
+archives, and runs `desktop-file-validate` plus `appstreamcli`. The `Flatpak Linux` workflow runs
+the pinned manifest in the GNOME 48 SDK container and uploads a prerelease CI bundle; it does not
+publish a release or prove portal leases or desktop notification delivery. `flatpak-builder` is
+not installed on this host, so local SDK build and sandbox launch remain unavailable.
 
 These commands bypass sys-crate discovery and do not validate headers, ABI, linking, launch, or
 display behavior. Their cached sys-crate output can also make a later ordinary Cargo check look

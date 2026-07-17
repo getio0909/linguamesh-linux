@@ -181,8 +181,10 @@ Validated on 2026-07-17 with Rust 1.93.0:
   Cargo source set, verified immutable Linux/Core source pins and archive hashes, and passed
   `desktop-file-validate` plus `appstreamcli`. The manifest uses the GNOME 48 SDK, installs the
   native binary and desktop metadata, and declares only the runtime interfaces required for the
-  current Linux surface. `flatpak-builder` is unavailable on this host, so SDK build, sandbox
-  launch, portal lease, and artifact reproducibility remain unverified.
+  current Linux surface. The `Flatpak Linux` workflow now runs this manifest in a GNOME 48 SDK
+  container and uploads a prerelease CI bundle; local `flatpak-builder` is unavailable, so SDK
+  build and sandbox launch remain remote-only. Portal lease and artifact reproducibility evidence
+  remain separate gates.
 - `bash tools/run-storage-fault-test.sh` passed its exact ignored test separately: 1 passed, 0
   failed, 0 ignored. A private 8 MiB tmpfs produced real kernel `ENOSPC` failures for persistent
   model update, deletion, and provider switch; each preserved prior-session translation, and each
