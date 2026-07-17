@@ -62,6 +62,7 @@ jobs:
             python3 \
             python3-dbus \
             util-linux \
+            xdotool \
             weston \
             xdg-desktop-portal \
             xdg-desktop-portal-gtk \
@@ -114,6 +115,9 @@ jobs:
       - name: Run XDG document portal lease fixture
         working-directory: linguamesh-linux
         run: bash tools/run-document-portal-test.sh
+      - name: Run interactive file chooser portal fixture
+        working-directory: linguamesh-linux
+        run: bash tools/run-file-chooser-portal-test.sh
       - name: Run GTK test on Wayland
         working-directory: linguamesh-linux
         run: dbus-run-session -- bash tools/run-wayland-test.sh
