@@ -29,6 +29,12 @@ that evidence used the X11/Xvfb gate. Wayland-gate revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
+The current native gate also includes a real post-startup `ENOSPC` regression for persistent model
+updates, profile deletion, and provider switching. Local evidence proves exact rejection, continued
+use of the prior session, and restart recovery of only pre-fault state; its first remote run is
+pending. This is not evidence for corruption, power-loss recovery, read-only media, or every
+storage-failure path.
+
 ## Future release gate
 
 A Linux release may be prepared only after:

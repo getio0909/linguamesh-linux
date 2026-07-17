@@ -42,7 +42,7 @@ cargo test --features demo-provider --locked
 cargo build --features demo-provider --locked
 ```
 
-The no-default suite contains 40 reducer tests. It covers the disconnected initial state, atomic
+The no-default suite contains 41 reducer tests. It covers the disconnected initial state, atomic
 sorted restoration of multiple profiles without activation, duplicate/missing/default/session-ref
 snapshot rejection, form-only selection, exact pending deletion, connected-row removal that keeps
 the runtime session, pending and active canonical profiles, exact stale-result rejection, atomic
@@ -51,10 +51,11 @@ preserve every restart row/default, active-ID model updates while another row is
 saved-model restoration only when available, ordered events, partial output, all Core alpha.2 error
 categories, the derived provider-setup stages through Ready, rollback that preserves the confirmed
 Ready identity, pending-model confirmation that cannot claim Ready, worker-unavailable state,
-storage-unavailable fallback, and diagnostics that omit content, endpoints, IDs, model IDs, and
-secret references.
+storage-unavailable fallback, runtime persistence degradation that retains the confirmed session,
+and diagnostics that omit content, endpoints, IDs, model IDs, and secret references.
 
-The `demo-provider` suite contains 65 tests in total. Its worker tests validate the exact Core
+The ordinary `demo-provider` run passes 66 tests and reports one intentionally ignored namespace
+test. Its worker tests validate the exact Core
 compatibility contract, prove that fake-service readiness does not auto-connect, require explicit
 Connect and model selection, exercise real loopback HTTP/SSE streaming, consume an authenticated
 session secret through the bounded typed host-secret broker, and fail closed for unavailable
@@ -76,6 +77,26 @@ queued, and full-command-queue shutdown, translation terminal delivery during sh
 delete rejection during translation, saved-model behavior, and failed-switch rollback to the
 previous Core `ProviderManager` and model.
 
+The ignored regression is executed separately and must pass exactly once:
+
+```sh
+bash tools/run-storage-fault-test.sh
+```
+
+The runner compiles the exact library test as the calling user, enters a private mount namespace,
+mounts an 8 MiB tmpfs, and fills it until the kernel returns `ENOSPC`. It prefers an unprivileged
+user namespace. When Ubuntu restricts that mount, the CI fallback uses passwordless `sudo` only for
+the private mount coordinator and drops back to the original UID/GID with `setpriv` before executing
+the test binary; supplementary groups and inheritable, ambient, and bounding capabilities are
+cleared, the environment is reset, and `no_new_privs` is enabled. It verifies failed persistent
+model update, exact-ID deletion, and provider switch independently. Each operation must be rejected
+before storage becomes unavailable, the previous engine/model must still translate, a subsequent
+model change must remain session-only, and restart must restore only the pre-fault profile, default,
+and model. The runner requires
+`1 passed; 0 failed; 0 ignored` so a missing or skipped test cannot count as evidence, and cleanup
+unmounts the private filesystem. This proves the implemented Linux `ENOSPC` transaction boundary;
+it does not cover read-only media, corruption, power loss, or every SQLite VFS failure.
+
 The GTK Rust source can be checked without native linking as a limited diagnostic:
 
 ```sh
@@ -96,7 +117,8 @@ On Debian or Ubuntu, install the native development headers:
 
 ```sh
 sudo apt-get install \
-  libgtk-4-dev libadwaita-1-dev dbus-daemon gettext pkg-config weston xauth xvfb
+  libgtk-4-dev libadwaita-1-dev dbus-daemon gettext mount pkg-config python3 util-linux weston \
+  xauth xvfb
 ```
 
 Then run the complete native gate:
@@ -109,6 +131,7 @@ cargo clippy --all-targets --all-features --locked -- -D warnings
 GDK_BACKEND=x11 dbus-run-session -- xvfb-run --auto-servernum \
   --server-args="-screen 0 1280x800x24" \
   cargo test --all-targets --all-features --locked -- --test-threads=1
+bash tools/run-storage-fault-test.sh
 dbus-run-session -- bash tools/run-wayland-test.sh
 cargo build --all-targets --all-features --locked
 ```
@@ -141,8 +164,11 @@ process-global state. This is not comprehensive UI automation, accessibility ins
 physical-compositor test, or GPU-rendering evidence.
 
 The GitHub Actions native workflow pins Core revision
-`fbf3e9b5927049dccaa19f8c36013495ffebba12`, installs the headers plus D-Bus, Xvfb, and test-only
-Weston support, and runs both display gates before the all-feature build. Wayland-gate revision
+`fbf3e9b5927049dccaa19f8c36013495ffebba12`, installs the headers plus D-Bus, Xvfb, test-only
+mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
+display gates before the all-feature build. The storage write-fault change passes its exact local
+namespace test through the unprivileged path; the controlled `sudo` fallback and its first Native
+Linux CI result are pending. Wayland-gate revision
 `10b31a040fd3c44ecbaef31eb5c66c0c8e5cb620` passed Native Linux run `29582513061` (job
 `87891382469`): strict all-feature Clippy, 65 library tests, the real GTK binary test under
 X11/Xvfb, the same test under forced Wayland/headless Weston, and the all-target all-feature build
@@ -167,7 +193,7 @@ unexecuted local GUI build, launch, or GTK test.
 
 ```sh
 set -euo pipefail
-required_files="README.md LICENSE AGENTS.md REPOSITORY_ROLE.md GLOBAL_GOAL.md SECURITY.md CONTRIBUTING.md CODE_OF_CONDUCT.md THIRD_PARTY_NOTICES.md IMPLEMENTATION_STATUS.md Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml src/lib.rs src/model.rs src/worker.rs src/main.rs docs/architecture.md docs/testing.md docs/releasing.md tools/sync-l10n.sh tools/run-wayland-test.sh l10n/compatibility.json l10n/manifest.json .gitignore .github/workflows/foundation.yml .github/workflows/native.yml"
+required_files="README.md LICENSE AGENTS.md REPOSITORY_ROLE.md GLOBAL_GOAL.md SECURITY.md CONTRIBUTING.md CODE_OF_CONDUCT.md THIRD_PARTY_NOTICES.md IMPLEMENTATION_STATUS.md Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml src/lib.rs src/model.rs src/worker.rs src/main.rs docs/architecture.md docs/testing.md docs/releasing.md tools/sync-l10n.sh tools/run-wayland-test.sh tools/run-storage-fault-test.sh l10n/compatibility.json l10n/manifest.json .gitignore .github/workflows/foundation.yml .github/workflows/native.yml"
 for file in $required_files; do
   test -s "$file" || {
     printf 'Missing required file: %s\n' "$file"
@@ -189,5 +215,5 @@ Broader GTK component/UI automation, accessibility inspection, physical-composit
 Wayland coverage, a broader X11/desktop matrix, a native Secret Service backend and
 secure-credential onboarding/persistence tests, broader XDG and portal tests, third-party
 local-server interoperability, Flatpak smoke tests, runtime localization behavior, runtime database
-I/O fault injection after successful startup, dependency/license automation, and release builds
-remain required before a supported release.
+faults beyond the implemented Linux `ENOSPC` transaction boundary, dependency/license automation,
+and release builds remain required before a supported release.

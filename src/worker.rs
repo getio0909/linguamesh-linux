@@ -521,9 +521,9 @@ async fn run_worker(
                     ActiveCancellation::Connection(cancellation.clone()),
                 );
                 let mut candidate = ProviderManager::new(secret_broker.clone());
-                let result =
+                let (result, storage_write_attempted) =
                     match validate_persistence_request(&profile, persistence, storage.is_some()) {
-                        Ok(()) => connect_candidate(
+                        Ok(()) => match connect_candidate(
                             &mut candidate,
                             &profile,
                             secret,
@@ -531,16 +531,20 @@ async fn run_worker(
                             &mut secret_requests,
                         )
                         .await
-                        .and_then(|models| {
-                            finish_candidate_connection(
-                                &profile,
-                                models,
-                                persistence,
-                                storage.as_mut(),
-                                &cancellation,
-                            )
-                        }),
-                        Err(error) => Err(error),
+                        {
+                            Ok(models) => (
+                                finish_candidate_connection(
+                                    &profile,
+                                    models,
+                                    persistence,
+                                    storage.as_mut(),
+                                    &cancellation,
+                                ),
+                                persistence == PersistenceIntent::Persistent,
+                            ),
+                            Err(error) => (Err(error), false),
+                        },
+                        Err(error) => (Err(error), false),
                     };
                 clear_active_cancellation(&active_cancellation);
                 match result {
@@ -561,9 +565,25 @@ async fn run_worker(
                         }
                     }
                     Err(error) => {
+                        let storage_error = if storage_write_attempted {
+                            degrade_profile_storage_after_persistence_error(
+                                &error,
+                                &mut storage,
+                                &mut active_saved_profile,
+                            )
+                        } else {
+                            None
+                        };
                         if events
                             .send(WorkerEvent::ProviderRejected { profile, error })
                             .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                        if let Some(error) = storage_error
+                            && events
+                                .send(WorkerEvent::ProfileStorageUnavailable(error))
+                                .is_err()
                         {
                             shutting_down = true;
                         }
@@ -599,6 +619,11 @@ async fn run_worker(
                         }
                     }
                     Err(error) => {
+                        let storage_error = degrade_profile_storage_after_persistence_error(
+                            &error,
+                            &mut storage,
+                            &mut active_saved_profile,
+                        );
                         if events
                             .send(WorkerEvent::ModelSelectionRejected {
                                 profile_id,
@@ -606,6 +631,13 @@ async fn run_worker(
                                 error,
                             })
                             .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                        if let Some(error) = storage_error
+                            && events
+                                .send(WorkerEvent::ProfileStorageUnavailable(error))
+                                .is_err()
                         {
                             shutting_down = true;
                         }
@@ -630,9 +662,21 @@ async fn run_worker(
                         }
                     }
                     Err(error) => {
+                        let storage_error = degrade_profile_storage_after_persistence_error(
+                            &error,
+                            &mut storage,
+                            &mut active_saved_profile,
+                        );
                         if events
                             .send(WorkerEvent::ProfileDeletionRejected { profile_id, error })
                             .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                        if let Some(error) = storage_error
+                            && events
+                                .send(WorkerEvent::ProfileStorageUnavailable(error))
+                                .is_err()
                         {
                             shutting_down = true;
                         }
@@ -868,6 +912,19 @@ fn validate_persistence_request(
         ));
     }
     Ok(())
+}
+
+// 持久化写失败后停止复用存储句柄，并将活动连接降级为仅会话模式。
+fn degrade_profile_storage_after_persistence_error(
+    error: &TranslationError,
+    storage: &mut Option<Storage>,
+    active_saved_profile: &mut Option<ProviderProfile>,
+) -> Option<TranslationError> {
+    if error.kind != ErrorKind::Persistence || storage.take().is_none() {
+        return None;
+    }
+    *active_saved_profile = None;
+    Some(error.clone())
 }
 
 fn finish_candidate_connection(
@@ -1180,8 +1237,10 @@ mod tests {
     use linguamesh_engine::core_compatibility;
     use linguamesh_testkit::FakeProviderServer;
     use std::fs;
-    use std::os::unix::fs::{PermissionsExt, symlink};
+    use std::io::Write;
+    use std::os::unix::fs::{MetadataExt, PermissionsExt, symlink};
     use std::path::{Path, PathBuf};
+    use std::process::Command;
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::mpsc;
@@ -1198,6 +1257,7 @@ mod tests {
     }
 
     static TEST_DATABASE_COUNTER: AtomicUsize = AtomicUsize::new(0);
+    const LINUX_ENOSPC: i32 = 28;
 
     struct TestDatabase {
         directory: PathBuf,
@@ -1260,6 +1320,153 @@ mod tests {
     impl Drop for TestDatabase {
         fn drop(&mut self) {
             if self.directory.exists() {
+                let _ = fs::remove_dir_all(&self.directory);
+            }
+        }
+    }
+
+    struct RuntimeFaultMount {
+        directory: PathBuf,
+        filler: Option<fs::File>,
+        externally_managed: bool,
+    }
+
+    impl RuntimeFaultMount {
+        fn new() -> Self {
+            if let Some(directory) = std::env::var_os("LINGUAMESH_RUNTIME_STORAGE_FAULT_DIRECTORY")
+            {
+                let directory = PathBuf::from(directory);
+                Self::validate_mount(&directory);
+                return Self {
+                    directory,
+                    filler: None,
+                    externally_managed: true,
+                };
+            }
+            let sequence = TEST_DATABASE_COUNTER.fetch_add(1, Ordering::Relaxed);
+            let directory = std::env::temp_dir().join(format!(
+                "linguamesh-linux-runtime-fault-{}-{sequence}",
+                std::process::id()
+            ));
+            assert!(!directory.exists(), "fault mount path must be unique");
+            fs::create_dir(&directory).expect("fault mount directory");
+            let status = Command::new("mount")
+                .args([
+                    "-t",
+                    "tmpfs",
+                    "-o",
+                    "mode=0700,size=8m,nosuid,nodev,noexec",
+                    "tmpfs",
+                ])
+                .arg(&directory)
+                .status()
+                .expect("tmpfs mount command");
+            if !status.success() {
+                fs::remove_dir(&directory).expect("remove failed fault mount directory");
+                panic!("the private tmpfs mount failed");
+            }
+            Self::validate_mount(&directory);
+            Self {
+                directory,
+                filler: None,
+                externally_managed: false,
+            }
+        }
+
+        fn validate_mount(directory: &Path) {
+            assert!(directory.is_absolute(), "fault mount path must be absolute");
+            let metadata = fs::symlink_metadata(directory).expect("fault mount metadata");
+            assert!(metadata.is_dir(), "fault mount must be a directory");
+            assert!(
+                !metadata.file_type().is_symlink(),
+                "fault mount cannot be a symbolic link"
+            );
+            assert_eq!(
+                metadata.permissions().mode() & 0o077,
+                0,
+                "fault mount must be private"
+            );
+            let parent = directory.parent().expect("fault mount parent");
+            let parent_metadata = fs::metadata(parent).expect("fault mount parent metadata");
+            assert_ne!(
+                metadata.dev(),
+                parent_metadata.dev(),
+                "fault path must be a distinct mounted filesystem"
+            );
+            assert!(
+                fs::read_dir(directory)
+                    .expect("read fault mount")
+                    .next()
+                    .is_none(),
+                "fault mount must start empty"
+            );
+        }
+
+        fn database_path(&self) -> PathBuf {
+            self.directory.join("state.sqlite3")
+        }
+
+        fn exhaust_space(&mut self) {
+            assert!(self.filler.is_none(), "storage fault is already active");
+            let sync_status = Command::new("sync").status().expect("sync command");
+            assert!(
+                sync_status.success(),
+                "sync before filling the fault filesystem failed"
+            );
+            let filler_path = self.directory.join("storage-fault-fill");
+            let mut filler = fs::OpenOptions::new()
+                .create_new(true)
+                .write(true)
+                .open(&filler_path)
+                .expect("storage fault filler");
+            let block = vec![0_u8; 64 * 1024].into_boxed_slice();
+            loop {
+                match filler.write(&block) {
+                    Ok(0) => panic!("the storage fault filler stopped before ENOSPC"),
+                    Ok(_) => {}
+                    Err(error) if error.raw_os_error() == Some(LINUX_ENOSPC) => break,
+                    Err(error) => panic!("the storage fault filler failed unexpectedly: {error}"),
+                }
+            }
+            self.filler = Some(filler);
+        }
+
+        fn clear_fault(&mut self) {
+            drop(self.filler.take());
+            fs::remove_file(self.directory.join("storage-fault-fill"))
+                .expect("remove storage fault filler");
+        }
+
+        fn finish(mut self) {
+            assert!(self.filler.is_none(), "storage fault must be cleared");
+            if self.externally_managed {
+                self.directory.clear();
+                return;
+            }
+            let status = Command::new("umount")
+                .arg(&self.directory)
+                .status()
+                .expect("fault mount unmount command");
+            assert!(status.success(), "fault mount cleanup failed");
+            self.externally_managed = true;
+            fs::remove_dir(&self.directory).expect("remove fault mount directory");
+            self.directory.clear();
+        }
+    }
+
+    impl Drop for RuntimeFaultMount {
+        fn drop(&mut self) {
+            if self.filler.take().is_some() {
+                let _ = fs::remove_file(self.directory.join("storage-fault-fill"));
+            }
+            if self.externally_managed || self.directory.as_os_str().is_empty() {
+                return;
+            }
+            let unmounted = Command::new("umount")
+                .arg(&self.directory)
+                .status()
+                .is_ok_and(|status| status.success());
+            if unmounted && self.directory.exists() {
                 let _ = fs::remove_dir_all(&self.directory);
             }
         }
@@ -1573,6 +1780,18 @@ mod tests {
             WorkerEvent::ProfileDeletionRejected { error, .. } => Err(error),
             _ => panic!("unexpected delete profile event"),
         }
+    }
+
+    fn expect_runtime_storage_unavailable(worker: &CoreWorker) {
+        let event = worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("runtime storage event");
+        assert!(matches!(
+            event,
+            WorkerEvent::ProfileStorageUnavailable(error)
+                if error.kind == ErrorKind::Persistence
+        ));
     }
 
     fn translate(worker: &CoreWorker, model_id: &str) -> (String, TranslationEvent) {
@@ -2265,6 +2484,118 @@ mod tests {
         assert_eq!(restored.id().as_str(), "stable-provider");
         assert_eq!(restored.selected_model(), Some("fake-translator"));
         shutdown(&restarted);
+    }
+
+    #[test]
+    #[ignore = "requires a private storage-fault mount namespace"]
+    fn runtime_storage_write_failures_degrade_to_session_mode_without_false_commits() {
+        assert!(
+            matches!(
+                std::env::var("LINGUAMESH_RUNTIME_STORAGE_FAULT_TEST"),
+                Ok(value) if value == "1"
+            ),
+            "the runtime storage fault test must use its dedicated namespace runner"
+        );
+        let baseline_server = ExternalFakeProvider::start(FakeMode::Standard);
+        let rejected_server = ExternalFakeProvider::start(FakeMode::Standard);
+        let mut fault_mount = RuntimeFaultMount::new();
+        let database_path = fault_mount.database_path();
+
+        let (worker, restored, _) = started_worker_with_database(&database_path);
+        assert!(restored.is_none());
+        connect(
+            &worker,
+            profile("baseline-provider", &baseline_server.endpoint, None, None),
+            None,
+            PersistenceIntent::Persistent,
+        )
+        .expect("baseline persistent connection");
+        select_event(&worker, "baseline-provider", "fake-translator")
+            .expect("baseline model selection")
+            .expect("baseline saved model");
+
+        fault_mount.exhaust_space();
+        let error = select_event(&worker, "baseline-provider", "fake-slow-translator")
+            .expect_err("full-filesystem model update");
+        assert_eq!(error.kind, ErrorKind::Persistence);
+        expect_runtime_storage_unavailable(&worker);
+        let (output, terminal) = translate(&worker, "fake-translator");
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        assert!(
+            select_event(&worker, "baseline-provider", "fake-slow-translator")
+                .expect("session-only model selection after storage failure")
+                .is_none()
+        );
+        let (output, terminal) = translate(&worker, "fake-slow-translator");
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        shutdown(&worker);
+        fault_mount.clear_fault();
+
+        let (worker, profiles, active_profile_id, _) =
+            started_worker_with_database_snapshot(&database_path);
+        assert_eq!(profiles.len(), 1);
+        let baseline_profile = profiles[0].clone();
+        assert_eq!(baseline_profile.id().as_str(), "baseline-provider");
+        assert_eq!(baseline_profile.selected_model(), Some("fake-translator"));
+        assert_eq!(active_profile_id.as_ref(), Some(baseline_profile.id()));
+        connect(
+            &worker,
+            baseline_profile.clone(),
+            None,
+            PersistenceIntent::Persistent,
+        )
+        .expect("reconnect baseline before delete fault");
+
+        fault_mount.exhaust_space();
+        let error =
+            delete_event(&worker, "baseline-provider").expect_err("full-filesystem deletion");
+        assert_eq!(error.kind, ErrorKind::Persistence);
+        expect_runtime_storage_unavailable(&worker);
+        let (output, terminal) = translate(&worker, "fake-translator");
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        shutdown(&worker);
+        fault_mount.clear_fault();
+
+        let (worker, profiles, active_profile_id, _) =
+            started_worker_with_database_snapshot(&database_path);
+        assert_eq!(profiles, vec![baseline_profile.clone()]);
+        assert_eq!(active_profile_id.as_ref(), Some(baseline_profile.id()));
+        connect(
+            &worker,
+            baseline_profile.clone(),
+            None,
+            PersistenceIntent::Persistent,
+        )
+        .expect("reconnect baseline before provider fault");
+
+        fault_mount.exhaust_space();
+        let error = connect(
+            &worker,
+            profile("rejected-provider", &rejected_server.endpoint, None, None),
+            None,
+            PersistenceIntent::Persistent,
+        )
+        .expect_err("full-filesystem provider persistence");
+        assert_eq!(error.kind, ErrorKind::Persistence);
+        expect_runtime_storage_unavailable(&worker);
+        let (output, terminal) = translate(&worker, "fake-translator");
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        assert_chat_requests(&baseline_server, 4, &rejected_server, 0);
+        assert_eq!(rejected_server.model_requests.load(Ordering::SeqCst), 1);
+        shutdown(&worker);
+        fault_mount.clear_fault();
+
+        let (worker, profiles, active_profile_id, _) =
+            started_worker_with_database_snapshot(&database_path);
+        assert_eq!(profiles, vec![baseline_profile.clone()]);
+        assert_eq!(profiles[0].selected_model(), Some("fake-translator"));
+        assert_eq!(active_profile_id.as_ref(), Some(baseline_profile.id()));
+        shutdown(&worker);
+        fault_mount.finish();
     }
 
     #[test]

@@ -559,7 +559,7 @@ impl AppState {
         self.restore_saved_profiles(vec![saved_profile], Some(profile_id))
     }
 
-    /// 记录配置存储启动失败并保留已经建立的会话连接。
+    /// 记录配置存储不可用并保留已经建立的会话连接。
     pub fn profile_storage_unavailable(&mut self, error: TranslationError) {
         self.saved_profiles.clear();
         self.selected_saved_profile_id = None;
@@ -2210,6 +2210,70 @@ mod tests {
         assert!(!state.active_provider_is_saved());
         assert!(state.saved_profiles().is_empty());
         assert!(state.persisted_active_profile_id().is_none());
+    }
+
+    #[test]
+    fn runtime_storage_failure_downgrades_saved_connection_without_losing_the_session() {
+        let mut state = state_with_profile_storage();
+        state.mark_worker_ready();
+        let saved = profile(
+            "saved-provider",
+            "Saved provider",
+            "http://127.0.0.1:11434/v1/",
+            Some("first-model"),
+        );
+        state
+            .begin_provider_connection_with_persistence(saved.clone(), true)
+            .expect("begin saved connection");
+        state
+            .provider_connected_with_saved_profile(
+                saved.clone(),
+                vec![
+                    discovered_model("first-model"),
+                    discovered_model("second-model"),
+                ],
+                Some(saved.clone()),
+            )
+            .expect("commit saved connection");
+        state
+            .begin_model_selection("second-model")
+            .expect("begin persistent model selection");
+        state
+            .model_selection_failed(
+                "second-model",
+                TranslationError::new(
+                    ErrorKind::Persistence,
+                    "The saved model could not be updated.",
+                ),
+            )
+            .expect("reject persistent model selection");
+
+        state.profile_storage_unavailable(TranslationError::new(
+            ErrorKind::Persistence,
+            "Profile storage became unavailable after a write failed.",
+        ));
+
+        assert_eq!(state.status(), AppStatus::Ready);
+        assert_eq!(state.active_provider(), Some(&saved));
+        assert_eq!(state.selected_model(), Some("first-model"));
+        assert!(state.saved_profiles().is_empty());
+        assert!(!state.active_provider_is_saved());
+        assert!(state.persisted_active_profile_id().is_none());
+        assert_eq!(
+            state.profile_storage_status(),
+            ProfileStorageStatus::Unavailable
+        );
+        state
+            .begin_model_selection("second-model")
+            .expect("begin session model selection");
+        state
+            .confirm_model_selection("second-model")
+            .expect("confirm session model selection");
+        state.set_source_text("Hello");
+        assert_eq!(
+            state.begin_translation().expect("session request").model_id,
+            "second-model"
+        );
     }
 
     #[test]

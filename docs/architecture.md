@@ -105,6 +105,14 @@ an already validated matching runtime engine and selected model remain alive as 
 later model changes do not recreate the row. A missing row, storage failure, active translation,
 shutdown, or stale result preserves the reducer snapshot and produces a typed rejection.
 
+Any `Persistence` error returned by an already-open `Storage` during persistent connection, model
+selection, or deletion degrades that worker instance to session-only mode. The operation-specific
+rejection is emitted before `ProfileStorageUnavailable`; the worker also drops the storage handle
+and active saved-profile marker before accepting more work. It does not replace the active manager,
+profile, or confirmed model. The reducer clears its cached saved-profile/default mirror while
+preserving the validated runtime session, and a restart can therefore expose only state committed
+before the fault.
+
 The database is
 `$XDG_DATA_HOME/dev.linguamesh.LinguaMesh/linguamesh.sqlite3`, using GLib's resolved user data
 directory. The Linux worker creates a private `0700` parent directory or accepts an existing more

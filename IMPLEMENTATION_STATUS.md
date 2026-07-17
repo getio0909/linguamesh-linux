@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Linux onboarding and the forced Wayland/X11 GTK gates are verified in native Linux CI
+Status: Runtime storage ENOSPC rollback is verified locally; native Linux CI is pending
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -19,6 +19,10 @@ timestamps remain excluded from persistent identity.
 Assumption: headless Weston is a test-only Ubuntu CI package. A forced Wayland GTK pass proves the
 current real-widget flow without X11 fallback; it does not prove physical-compositor, GPU, desktop,
 or assistive-technology compatibility.
+
+Assumption: exhausting a private tmpfs until Linux returns `ENOSPC` verifies the implemented
+post-startup SQLite transaction-failure boundary. It does not represent read-only media,
+corruption, power loss, or every SQLite VFS failure.
 
 ## Implemented
 
@@ -59,6 +63,10 @@ or assistive-technology compatibility.
   translation, shutdown, and stale results are typed rejections. Deleting the connected saved copy
   intentionally preserves its validated engine/model as session-only, and later model selection
   cannot silently recreate it.
+- A post-startup `Persistence` failure during persistent Connect, model selection, or deletion
+  rejects that exact operation before success, drops the worker storage handle and active saved
+  marker, and reports storage unavailable. The prior validated engine/model remains usable as a
+  session-only connection, while restart restores only state committed before the fault.
 - The bounded worker uses `linguamesh_application::ProviderManager` and Core's bounded typed
   host-secret broker on a dedicated Tokio runtime. Fake-provider readiness only fills the default
   endpoint; it does not connect. Explicit Connect, SelectModel, and Translate commands drive real
@@ -92,8 +100,13 @@ or assistive-technology compatibility.
   disable persisted checkout credentials. Native CI pins reviewed Core revision
   `fbf3e9b5927049dccaa19f8c36013495ffebba12` and localization revision
   `52e73ea2a6cc7e6e7409b2b6eb0d02db35576a49`. The revised native gate retains serialized all-target,
-  all-feature X11/Xvfb tests, then runs the existing GTK binary test under forced Wayland and
-  headless Weston before building the application. The Wayland runner uses a private runtime
+  all-feature X11/Xvfb tests, runs the exact ignored storage-fault test in a private user/mount
+  namespace when available, then runs the existing GTK binary test under forced Wayland and
+  headless Weston before building the application. On restricted Ubuntu hosts, only the private
+  mount coordinator uses passwordless `sudo`; `setpriv` returns to the original UID/GID before the
+  test binary runs, clears supplementary groups plus inheritable, ambient, and bounding
+  capabilities, resets the environment, and sets `no_new_privs`. The storage runner requires one
+  pass, zero ignored tests, and explicit normal cleanup. The Wayland runner uses a private runtime
   directory and socket, bounded readiness, no X11 fallback, and cleanup traps.
 
 ## Local validation evidence
@@ -106,11 +119,12 @@ Validated on 2026-07-17 with Rust 1.93.0:
   HEAD was a documentation-only descendant whose scoped compiled-source diff from that revision
   was empty.
 - `cargo fmt --all --check`, the locked demo-provider check, strict Clippy, and build passed.
-- `cargo test --no-default-features --locked` passed: 40 tests, 0 failed. Coverage includes the
+- `cargo test --no-default-features --locked` passed: 41 tests, 0 failed. Coverage includes the
   derived onboarding progression, safe stage labels, pending-model confirmation, worker-unavailable
   and storage-unavailable fallbacks, and failed-switch rollback that preserves the confirmed Ready
   identity.
-- `cargo test --features demo-provider --locked` passed: 65 tests, 0 failed. Coverage includes
+- `cargo test --features demo-provider --locked` passed: 66 tests, 0 failed, with the dedicated
+  namespace test intentionally ignored in the ordinary suite. Coverage includes
   explicit connection and model selection, exact compatibility rejection, authenticated one-shot
   session secrets, fail-closed persistent references, two-profile create/update/activate/restart,
   independent last models, no-auto-connect full-snapshot restore, two-credential isolation and live
@@ -124,6 +138,13 @@ Validated on 2026-07-17 with Rust 1.93.0:
   connection/model discovery, cancellable streaming with partial output,
   active/queued/full-command-queue shutdown, translation terminal delivery during shutdown,
   saved-model validation, and failed-switch rollback.
+- `bash tools/run-storage-fault-test.sh` passed its exact ignored test separately: 1 passed, 0
+  failed, 0 ignored. A private 8 MiB tmpfs produced real kernel `ENOSPC` failures for persistent
+  model update, deletion, and provider switch; each preserved prior-session translation, and each
+  restart exposed only pre-fault state. Post-fault model selection also succeeded only in session
+  mode and remained absent after restart. No temporary mount or directory remained afterward. This
+  host used the unprivileged path; passwordless `sudo` is unavailable, so the controlled fallback
+  awaits the first Native Linux CI run.
 - `DOCS_RS=1 cargo check --all-targets --all-features --locked` and the equivalent strict Clippy
   command passed only as source-level diagnostics of the GTK code.
 - The exact foundation block in `docs/testing.md`, `git diff --check`, shell syntax validation, and
@@ -137,6 +158,9 @@ Validated on 2026-07-17 with Rust 1.93.0:
   their action metadata uses Node 24 or a composite action.
 
 ## Remote validation evidence
+
+The runtime storage write-fault change has not yet completed its first Native Linux CI run. The
+following evidence remains the latest completed remote gate until that run is recorded.
 
 Wayland-gate revision `10b31a040fd3c44ecbaef31eb5c66c0c8e5cb620` passed
 repository-foundation run `29582513073` (job `87891382540`) and Native Linux run `29582513061`
@@ -201,7 +225,6 @@ display-server, accessibility, or GTK button-test result is claimed. In particul
 runner was not executed against a local compositor. With the GTK binary test
 present, `DOCS_RS=1 cargo test --all-targets --all-features --locked --no-run` reaches native
 linking and failed on unavailable GTK symbols; it is not a valid header-free substitute.
-Runtime database I/O fault injection after successful startup is not covered locally or remotely.
 The Provider setup and multi-profile flows passed their real widget test, native linking, and build
 in the GitHub Actions evidence above, but those native checks remain unavailable on this local host.
 
@@ -216,6 +239,8 @@ in the GitHub Actions evidence above, but those native checks remain unavailable
 - Interoperability evidence for third-party local servers, including Ollama; automated endpoint
   coverage currently uses only LinguaMesh fake providers on loopback.
 - Runtime gettext lookup, complete canonical UI coverage, and visual locale/RTL verification.
+- Runtime database faults beyond the verified private-tmpfs `ENOSPC` transaction boundary,
+  including read-only media, corruption, power loss, and broader SQLite VFS failures.
 - XDG portals beyond the implemented user-data path, file workflows,
   clipboard/drag-and-drop/notifications, comprehensive
   accessibility, physical-compositor/GPU Wayland coverage, broader X11/desktop coverage, packaging,

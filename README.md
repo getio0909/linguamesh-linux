@@ -72,6 +72,13 @@ plaintext. Session-only connection remains available when remembering is disable
 storage is unavailable. Connection and translation can both be cancelled, and a failed provider
 switch preserves the previously confirmed provider and model.
 
+If an already-open database later returns a persistent write error, the triggering Connect, model
+change, or deletion is rejected before any success is reported. The worker drops that storage
+handle and saved-profile marker, keeps the previously validated engine and model usable in
+session-only mode, and reports storage as unavailable. A private Linux tmpfs regression forces a
+real `ENOSPC` at each transaction boundary and verifies after restart that only pre-fault state was
+committed.
+
 The tested external-provider path uses the LinguaMesh fake provider on loopback. It is not evidence
 of interoperability with Ollama or any other third-party server. Full validation commands, the
 header-free local path, and the GTK gates for X11/Xvfb and forced Wayland/headless Weston are
