@@ -251,6 +251,12 @@ mod tests {
     use gtk::glib::VariantTy;
     use linguamesh_domain::{SecretRef, SecretRefNamespace, SecretValue};
 
+    const PERSISTENT_FIXTURE_REF: &str = "secret-service:11111111-1111-4111-8111-111111111111";
+
+    fn persistent_fixture_ref() -> SecretRef {
+        SecretRef::parse(PERSISTENT_FIXTURE_REF).expect("persistent fixture reference")
+    }
+
     #[test]
     fn attributes_use_only_the_secret_reference() {
         let secret_ref = SecretRef::new(SecretRefNamespace::SecretService);
@@ -287,6 +293,43 @@ mod tests {
             resolved.expect("resolve secret").expose_secret(),
             secret.expose_secret()
         );
+        assert!(matches!(
+            resolve_secret(&secret_ref),
+            Err(LookupError::Missing)
+        ));
+    }
+
+    #[test]
+    #[ignore = "requires the persistent Secret Service fixture"]
+    fn secret_service_persistent_store_for_restart() {
+        let secret_ref = persistent_fixture_ref();
+        let secret = SecretValue::new("linguamesh-persistent-fixture");
+        store_secret(&secret_ref, &secret).expect("store persistent secret");
+        assert_eq!(
+            resolve_secret(&secret_ref)
+                .expect("resolve persistent secret")
+                .expose_secret(),
+            secret.expose_secret()
+        );
+    }
+
+    #[test]
+    #[ignore = "requires a locked persistent Secret Service fixture"]
+    fn secret_service_locked_item_fails_closed() {
+        let secret_ref = persistent_fixture_ref();
+        assert!(matches!(
+            resolve_secret(&secret_ref),
+            Err(LookupError::Locked)
+        ));
+    }
+
+    #[test]
+    #[ignore = "requires the persistent Secret Service fixture after daemon restart"]
+    fn secret_service_persistent_resolves_after_daemon_restart() {
+        let secret_ref = persistent_fixture_ref();
+        let resolved = resolve_secret(&secret_ref).expect("resolve after daemon restart");
+        assert_eq!(resolved.expose_secret(), "linguamesh-persistent-fixture");
+        delete_secret(&secret_ref).expect("delete persistent secret");
         assert!(matches!(
             resolve_secret(&secret_ref),
             Err(LookupError::Missing)
