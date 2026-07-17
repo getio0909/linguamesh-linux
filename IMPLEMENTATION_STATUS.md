@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, generic completion desktop notifications, and bounded native text-file import with source-editor drag-and-drop are implemented; native keyring integration evidence remains open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, and the corrected Secret Service session wire shape are implemented; native keyring integration evidence remains open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -159,6 +159,9 @@ Validated on 2026-07-17 with Rust 1.93.0:
 - The notification slice keeps the desktop payload fixed to generic English text and sends no
   source or translated content. Local source-level GTK checks and the demo-provider suite above
   passed after the `GApplication` notification call was added.
+- The Secret Service adapter now sends an `(sv)` `OpenSession` request with a single plain-string
+  Variant; the regression test passed locally. Real desktop keyring CRUD, locked/prompted behavior,
+  and cleanup remain an external native-environment gate.
 - The native text import slice accepts only UTF-8 TXT/Markdown content up to 4 MiB, strips a UTF-8
   BOM, rejects invalid or oversized input, and reads through GIO's partial asynchronous API. The
   source editor also accepts a single GIO file through GTK drag-and-drop and reuses the same
@@ -186,6 +189,13 @@ Validated on 2026-07-17 with Rust 1.93.0:
   their action metadata uses Node 24 or a composite action.
 
 ## Remote validation evidence
+
+Secret Service session-parameter fix revision `9bcd8d9ca30d109f5c7c9c20e6f72f6a77df078d` passed
+repository-foundation run `29598255993` and Native Linux run `29598255988` (job `87943844854`).
+The Ubuntu 24.04 job passed strict all-feature Clippy, the GTK-enabled test suite, both display
+gates, the private-tmpfs storage fault test, and the all-target native build after the wire-shape
+regression was added. Real desktop keyring CRUD, locked/prompted behavior, and cleanup remain
+unverified because the CI session has no unlocked desktop keyring.
 
 Linux drag-and-drop functional revision `b0da3819d97ae24f8c85147da5e7e1c65fe2d6fc` passed
 repository-foundation run `29597016893` (job `87939785643`) and Native Linux run `29597016894`
