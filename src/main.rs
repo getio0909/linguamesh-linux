@@ -127,6 +127,7 @@ fn start_file_dialog_fixture(
     let fixture_path = std::env::var("LINGUAMESH_FILE_CHOOSER_FIXTURE")
         .expect("LINGUAMESH_FILE_CHOOSER_FIXTURE must be set");
     let expected = fs::read_to_string(&fixture_path).expect("read file chooser fixture");
+    println!("GTK file chooser application fixture requesting the portal dialog.");
     let open_bindings = bindings.clone();
     let open_state = Rc::clone(state);
     glib::timeout_add_local(Duration::from_millis(250), move || {
@@ -1171,7 +1172,12 @@ fn begin_source_file_open(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) 
         Some(&bindings.window),
         None::<&gtk::gio::Cancellable>,
         move |result| match result {
-            Ok(file) => load_source_file(&file, &open_bindings, &open_state),
+            Ok(file) => {
+                if std::env::var_os("LINGUAMESH_TEST_FILE_DIALOG").is_some() {
+                    println!("GTK file chooser application fixture received the selected file.");
+                }
+                load_source_file(&file, &open_bindings, &open_state);
+            }
             Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
             Err(_) => show_file_import_error(
                 &open_bindings,
@@ -1212,6 +1218,9 @@ fn load_source_file(file: &gtk::gio::File, bindings: &UiBindings, state: &Rc<Ref
             match result {
                 Ok((contents, _)) => match file_import::decode_text_contents(contents.as_ref()) {
                     Ok(text) => {
+                        if std::env::var_os("LINGUAMESH_TEST_FILE_DIALOG").is_some() {
+                            println!("GTK file chooser application fixture completed the asynchronous GIO read.");
+                        }
                         load_bindings.source.set_text(&text);
                         load_bindings.error.set_label("");
                         load_bindings.error.set_visible(false);

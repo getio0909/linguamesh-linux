@@ -47,8 +47,13 @@ XDG_CACHE_HOME="$workspace/cache" \
     xdotool key --window "$chooser_window" ctrl+l
     xdotool type --window "$chooser_window" --delay 1 "$LINGUAMESH_FILE_CHOOSER_FIXTURE"
     xdotool key --window "$chooser_window" Return
+    sleep 0.3
     xdotool key --window "$chooser_window" Return
     if ! wait "$app_pid"; then
+      cat "$LINGUAMESH_FILE_CHOOSER_LOG" >&2
+      exit 1
+    fi
+    if ! grep -q "GTK file chooser application fixture completed the asynchronous GIO read." "$LINGUAMESH_FILE_CHOOSER_LOG"; then
       cat "$LINGUAMESH_FILE_CHOOSER_LOG" >&2
       exit 1
     fi
