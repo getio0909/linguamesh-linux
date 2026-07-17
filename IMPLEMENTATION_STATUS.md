@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Session-only local-provider slice verified locally and in GTK/Xvfb CI
+Status: Core alpha.2 session-secret slice verified locally; alpha.2 native CI pending
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -10,31 +10,42 @@ implemented and tested.
 
 ## Implemented
 
-- Rust 1.93.0 Cargo package with locked dependencies and optional `demo-provider`/`gui` features.
-- Toolkit-independent state for active and pending provider/model selection, language selection,
-  source and streamed output, strictly ordered typed events, repeated-start rejection,
-  cancellation, partial output, safe errors, theme, locale, and redacted diagnostics.
-- Credential-free provider profiles exist only in memory for the current process. A connection
-  commits its provider and discovered models atomically after success; failure preserves the last
-  usable provider and model, and an active translation rejects provider changes.
-- Bounded background worker using direct sibling `linguamesh-core` types. It runs the shared
-  built-in loopback fake provider or a user-supplied OpenAI-compatible endpoint, model discovery,
-  real HTTP/SSE translation, and Core cancellation away from the GTK main context. The user path
-  supplies no credential and has automated coverage against an external loopback fake provider.
-- Cancellation uses a cross-thread Core handle so command-queue backpressure cannot prevent the
-  request. Control commands receive priority, and cancellation racing with completion is idempotent.
-- GTK 4/libadwaita application source with a session-only provider name/endpoint form, active
-  provider status, native selectors, source/output text views, translate/stop actions, typed error
-  and partial-result display, appearance switching, locale fallback notice, keyboard mnemonics,
-  and redacted diagnostics. Provider/model/language controls are blocked during connection or an
-  active operation. Event processing is capped per main-context tick, and model updates avoid
-  `RefCell` reentrancy across GTK notifications.
+- Rust 1.93.0 Cargo package at `0.1.0-alpha.2`, with locked Core alpha.2 path dependencies and
+  optional `demo-provider`/`gui` features. Native CI pins Core functional revision
+  `c9a96da52e10554c8458f4d49600ec9336ea651b`.
+- Startup rejects any Core other than semantic version `0.1.0-alpha.2`, ABI 1, protocol 1, provider
+  catalog `0.1.0`, with the required cancellation, compatibility, typed Rust host-secret broker,
+  model-discovery, streaming-text, and text-translation features.
+- Toolkit-independent state starts disconnected and uses canonical Core `ProviderProfile` and
+  `ProviderProfileId` values. Matching connection results atomically commit pending provider and
+  models; stale results and failed switches preserve the last active provider, models, and
+  selection.
+- Model discovery does not auto-select its first result. A saved model is restored only while it is
+  still available; otherwise translation remains disabled until deliberate model selection is
+  confirmed by the worker.
+- The bounded worker uses `linguamesh_application::ProviderManager` and Core's bounded typed
+  host-secret broker on a dedicated Tokio runtime. Fake-provider readiness only fills the default
+  endpoint; it does not connect. Explicit Connect, SelectModel, and Translate commands drive real
+  loopback model discovery and HTTP/SSE streaming.
+- The optional credential is copied into secret-aware `SecretValue` storage, the widget is cleared
+  immediately, and the temporary GTK string is dropped without claiming GTK-buffer zeroization. A
+  random session `SecretRef` resolves it once through the broker. Neither it nor the provider
+  profile is persisted. Persistent intent and persistent secret references fail closed because the
+  native Secret Service backend is not implemented; no plaintext fallback exists.
+- Connection cancellation uses a `CancellationToken`; translation cancellation uses Core's
+  cross-thread handle. Both bypass command-queue backpressure. Partial output is retained, control
+  commands receive priority, and a cancellation/terminal-event race remains idempotent.
+- GTK 4/libadwaita source provides provider name, endpoint, optional session credential, explicit
+  connection and model selection, active-provider status, language controls, source/output views,
+  Translate/Stop, typed errors, partial-result display, appearance, locale fallback notice,
+  keyboard mnemonics, and redacted diagnostics. Provider/model/language controls are blocked during
+  connection or translation, and event processing is capped per main-context tick.
 - Fourteen canonical official/pseudo PO catalogs pinned to l10n revision
   `52e73ea2a6cc7e6e7409b2b6eb0d02db35576a49`. Sync rejects a different revision, dirty generated
   source artifacts, stale copies, and unexpected catalog counts.
 - Foundation and native workflow sources use immutable Node 24-compatible action commits and
   disable persisted checkout credentials. Native CI pins reviewed Core revision
-  `873b6da45447f73e4be4e2f1127c3c8d0f188cf2` and localization revision
+  `c9a96da52e10554c8458f4d49600ec9336ea651b` and localization revision
   `52e73ea2a6cc7e6e7409b2b6eb0d02db35576a49`. The revised native gate installs D-Bus/Xvfb support
   and runs serialized all-target, all-feature tests under X11 before building the application.
 
@@ -43,18 +54,18 @@ implemented and tested.
 Validated on 2026-07-17 with Rust 1.93.0:
 
 - The pinned global-goal SHA-256 matched the sibling authoritative file.
-- The sibling Core checkout was clean at pinned revision
-  `873b6da45447f73e4be4e2f1127c3c8d0f188cf2`.
-- `cargo fmt --all --check` passed.
-- `cargo check --all-targets --features demo-provider --locked` passed.
-- `cargo clippy --all-targets --features demo-provider --locked -- -D warnings` passed.
-- `cargo test --no-default-features --locked` passed: 16 tests, 0 failed.
-- `cargo test --features demo-provider --locked` passed: 23 tests, 0 failed. The tests used
-  real loopback streaming, active cancellation, cancellation-after-terminal behavior, successful
-  external loopback discovery and translation, failed-connection rollback, and active-operation
-  connection rejection. A state regression also verifies that an event stream ending without a
-  terminal event becomes a failed operation while retaining partial output.
-- `cargo build --features demo-provider --locked` passed.
+- Core functional revision `c9a96da52e10554c8458f4d49600ec9336ea651b` is the reviewed source
+  pin, and every direct Core dependency is constrained to `=0.1.0-alpha.2`. The clean local Core
+  HEAD was documentation-only descendant `418fd48e5f64e6758947dda8e33306db887bc978`; a scoped diff
+  confirmed its compiled Cargo, crate, asset, and migration sources match the functional pin.
+- `cargo fmt --all --check`, the locked demo-provider check, strict Clippy, and build passed.
+- `cargo test --no-default-features --locked` passed: 23 tests, 0 failed.
+- `cargo test --features demo-provider --locked` passed: 35 tests, 0 failed. Coverage includes
+  explicit connection and model selection, exact compatibility rejection, authenticated one-shot
+  session secrets, fail-closed persistent references, cancellable connection/model discovery,
+  cancellable streaming with partial output, active/queued/full-command-queue shutdown,
+  translation terminal delivery during shutdown, saved-model validation, and failed-switch
+  rollback.
 - `DOCS_RS=1 cargo check --all-targets --all-features --locked` and the equivalent strict Clippy
   command passed only as source-level diagnostics of the GTK code.
 - The exact foundation block in `docs/testing.md`, `git diff --check`, shell syntax validation, and
@@ -66,7 +77,10 @@ Validated on 2026-07-17 with Rust 1.93.0:
 
 ## Remote validation evidence
 
-GitHub revision `c13394dd477fa6e919632c61c28ac0708f61b769` passed repository-foundation run
+The alpha.2 revision and Core functional pin have not yet run in GitHub Actions. Remote alpha.2
+validation is pending.
+
+Historical alpha.1 revision `c13394dd477fa6e919632c61c28ac0708f61b769` passed repository-foundation run
 `29559609346` (job `87819062507`) and Native Linux run `29559609298` (job `87819062331`). The
 native job installed GTK 4, libadwaita, D-Bus, and Xvfb support on Ubuntu 24.04; validated the exact
 Core and localization pins; and passed formatting, strict all-feature Clippy, all-target all-feature
@@ -89,14 +103,13 @@ linking and failed on unavailable GTK symbols; it is not a valid header-free sub
 
 ## Remaining scope
 
-- Full semantic, catalog, and feature compatibility beyond this checkpoint.
-- Secure provider profiles, Secret Service, credential handling, onboarding, persistent provider
-  settings, and active switching among saved profiles. The current credential-free form is
-  process-local and is not a secure profile implementation.
+- A native Secret Service implementation, persistent provider profiles and model preferences,
+  restart restoration, onboarding, and active switching among saved profiles. The current
+  credential path is deliberately session-only and does not satisfy secure-profile persistence.
+- Central release-manifest integration and broader product compatibility beyond the exact alpha.2
+  startup gate implemented here.
 - Interoperability evidence for third-party local servers, including Ollama; automated endpoint
   coverage currently uses only LinguaMesh fake providers on loopback.
-- Provider discovery currently runs inline on the worker and cannot be cancelled from the UI;
-  shutdown and other commands wait for Core's bounded 30-second provider request timeout.
 - Runtime gettext lookup, complete canonical UI coverage, and visual locale/RTL verification.
 - XDG/portal integration, file workflows, clipboard/drag-and-drop/notifications, comprehensive
   accessibility, Wayland/X11 smoke tests, packaging, Flatpak, and release artifacts.

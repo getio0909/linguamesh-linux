@@ -904,49 +904,65 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66"
 
 [[package]]
-name = "linguamesh-domain"
-version = "0.1.0-alpha.1"
+name = "linguamesh-application"
+version = "0.1.0-alpha.2"
 dependencies = [
+ "linguamesh-domain",
+ "linguamesh-engine",
+ "linguamesh-provider-openai",
+ "tokio",
+ "tokio-util",
+]
+
+[[package]]
+name = "linguamesh-domain"
+version = "0.1.0-alpha.2"
+dependencies = [
+ "secrecy",
  "serde",
  "thiserror",
+ "url",
  "uuid",
 ]
 
 [[package]]
 name = "linguamesh-engine"
-version = "0.1.0-alpha.1"
+version = "0.1.0-alpha.2"
 dependencies = [
  "futures-util",
  "linguamesh-domain",
+ "linguamesh-protocol",
  "linguamesh-provider-api",
+ "linguamesh-provider-catalog",
  "tokio",
  "tokio-util",
 ]
 
 [[package]]
 name = "linguamesh-linux"
-version = "0.1.0-alpha.1"
+version = "0.1.0-alpha.2"
 dependencies = [
  "gtk4",
  "libadwaita",
+ "linguamesh-application",
  "linguamesh-domain",
  "linguamesh-engine",
  "linguamesh-protocol",
- "linguamesh-provider-openai",
  "linguamesh-testkit",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]
 name = "linguamesh-protocol"
-version = "0.1.0-alpha.1"
+version = "0.1.0-alpha.2"
 dependencies = [
  "prost",
 ]
 
 [[package]]
 name = "linguamesh-provider-api"
-version = "0.1.0-alpha.1"
+version = "0.1.0-alpha.2"
 dependencies = [
  "async-trait",
  "futures-core",
@@ -955,8 +971,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "linguamesh-provider-catalog"
+version = "0.1.0-alpha.2"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "linguamesh-provider-openai"
-version = "0.1.0-alpha.1"
+version = "0.1.0-alpha.2"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -965,7 +990,6 @@ dependencies = [
  "linguamesh-domain",
  "linguamesh-provider-api",
  "reqwest",
- "secrecy",
  "serde",
  "serde_json",
  "tokio",
@@ -974,10 +998,11 @@ dependencies = [
 
 [[package]]
 name = "linguamesh-testkit"
-version = "0.1.0-alpha.1"
+version = "0.1.0-alpha.2"
 dependencies = [
  "async-stream",
  "axum",
+ "linguamesh-domain",
  "serde",
  "serde_json",
  "tokio",
@@ -1632,6 +1657,7 @@ dependencies = [
  "bytes",
  "futures-core",
  "futures-sink",
+ "futures-util",
  "pin-project-lite",
  "tokio",
 ]

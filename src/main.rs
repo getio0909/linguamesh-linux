@@ -1,10 +1,12 @@
 use adw::prelude::*;
 use gtk::glib;
-use linguamesh_domain::{ErrorKind, TranslationError};
+use linguamesh_domain::{
+    ErrorKind, ProviderProfileId, SecretRef, SecretRefNamespace, SecretValue, TranslationError,
+};
 use linguamesh_linux::model::{
     AppState, AppStatus, ProviderProfile, StateError, ThemePreference, UiLocale,
 };
-use linguamesh_linux::worker::{CoreWorker, WorkerCommand, WorkerEvent};
+use linguamesh_linux::worker::{CoreWorker, PersistenceIntent, WorkerCommand, WorkerEvent};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::mpsc::TryRecvError;
@@ -14,13 +16,16 @@ const SOURCE_LOCALES: [Option<&str>; 3] = [None, Some("en"), Some("zh-CN")];
 const TARGET_LOCALES: [&str; 3] = ["zh-CN", "en", "ja"];
 const MAX_EVENTS_PER_TICK: usize = 64;
 const SESSION_PROVIDER_ID: &str = "session-local-provider";
+const CUSTOM_PROVIDER_PRESET_ID: &str = "custom-openai-compatible";
+const OPENAI_ADAPTER_TYPE: &str = "openai_chat_completions";
 const DEFAULT_PROVIDER_NAME: &str = "Local OpenAI-compatible provider";
-const DEFAULT_PROVIDER_ENDPOINT: &str = "http://127.0.0.1:11434/v1";
+const DEFAULT_PROVIDER_ENDPOINT: &str = "http://127.0.0.1:11434/v1/";
 
 #[derive(Clone)]
 struct UiBindings {
     provider_name: gtk::Entry,
     provider_endpoint: gtk::Entry,
+    provider_credential: gtk::PasswordEntry,
     connect: gtk::Button,
     active_provider: gtk::Label,
     model: gtk::DropDown,
@@ -53,7 +58,7 @@ fn build_ui(application: &adw::Application) {
     let state = Rc::new(RefCell::new(AppState::default()));
     let worker = Rc::new(CoreWorker::spawn());
     let (window, bindings, theme, locale) = create_window(application);
-    connect_selection_handlers(&bindings, &theme, &locale, &state);
+    connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
     connect_action_handlers(&bindings, &state, &worker);
     start_event_pump(&bindings, &state, &worker);
 
@@ -84,37 +89,19 @@ fn create_window(
     toolbar.add_top_bar(&header);
 
     let root = create_root();
-    let (provider_session, provider_name, provider_endpoint, connect, active_provider) =
-        create_provider_session();
+    let (
+        provider_session,
+        provider_name,
+        provider_endpoint,
+        provider_credential,
+        connect,
+        active_provider,
+    ) = create_provider_session();
     root.append(&provider_session);
     let (controls, model, source_locale, target_locale, theme, locale) = create_controls();
     root.append(&controls);
 
-    let source = gtk::TextBuffer::new(None::<&gtk::TextTagTable>);
-    let source_view = gtk::TextView::builder()
-        .buffer(&source)
-        .wrap_mode(gtk::WrapMode::WordChar)
-        .top_margin(8)
-        .bottom_margin(8)
-        .left_margin(8)
-        .right_margin(8)
-        .build();
-    let output = gtk::TextBuffer::new(None::<&gtk::TextTagTable>);
-    let output_view = gtk::TextView::builder()
-        .buffer(&output)
-        .editable(false)
-        .cursor_visible(false)
-        .wrap_mode(gtk::WrapMode::WordChar)
-        .top_margin(8)
-        .bottom_margin(8)
-        .left_margin(8)
-        .right_margin(8)
-        .build();
-    let editors = gtk::Paned::new(gtk::Orientation::Horizontal);
-    editors.set_wide_handle(true);
-    editors.set_start_child(Some(&editor_panel("Source text", &source_view)));
-    editors.set_end_child(Some(&editor_panel("Streamed translation", &output_view)));
-    editors.set_vexpand(true);
+    let (editors, source, output) = create_editors();
     root.append(&editors);
 
     let action_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
@@ -159,6 +146,7 @@ fn create_window(
         UiBindings {
             provider_name,
             provider_endpoint,
+            provider_credential,
             connect,
             active_provider,
             model,
@@ -188,7 +176,43 @@ fn create_root() -> gtk::Box {
     root
 }
 
-fn create_provider_session() -> (gtk::Box, gtk::Entry, gtk::Entry, gtk::Button, gtk::Label) {
+fn create_editors() -> (gtk::Paned, gtk::TextBuffer, gtk::TextBuffer) {
+    let source = gtk::TextBuffer::new(None::<&gtk::TextTagTable>);
+    let source_view = gtk::TextView::builder()
+        .buffer(&source)
+        .wrap_mode(gtk::WrapMode::WordChar)
+        .top_margin(8)
+        .bottom_margin(8)
+        .left_margin(8)
+        .right_margin(8)
+        .build();
+    let output = gtk::TextBuffer::new(None::<&gtk::TextTagTable>);
+    let output_view = gtk::TextView::builder()
+        .buffer(&output)
+        .editable(false)
+        .cursor_visible(false)
+        .wrap_mode(gtk::WrapMode::WordChar)
+        .top_margin(8)
+        .bottom_margin(8)
+        .left_margin(8)
+        .right_margin(8)
+        .build();
+    let editors = gtk::Paned::new(gtk::Orientation::Horizontal);
+    editors.set_wide_handle(true);
+    editors.set_start_child(Some(&editor_panel("Source text", &source_view)));
+    editors.set_end_child(Some(&editor_panel("Streamed translation", &output_view)));
+    editors.set_vexpand(true);
+    (editors, source, output)
+}
+
+fn create_provider_session() -> (
+    gtk::Box,
+    gtk::Entry,
+    gtk::Entry,
+    gtk::PasswordEntry,
+    gtk::Button,
+    gtk::Label,
+) {
     let section = gtk::Box::new(gtk::Orientation::Vertical, 6);
     let title = gtk::Label::new(Some("Local provider session"));
     title.set_xalign(0.0);
@@ -196,7 +220,7 @@ fn create_provider_session() -> (gtk::Box, gtk::Entry, gtk::Entry, gtk::Button, 
     section.append(&title);
 
     let note = gtk::Label::new(Some(
-        "Session only. LinguaMesh does not collect or store credentials in this connection form.",
+        "Secure credential storage is unavailable in this build. Credentials are used only for the current in-memory session, cleared from this form immediately, and never saved.",
     ));
     note.set_xalign(0.0);
     note.set_wrap(true);
@@ -214,7 +238,14 @@ fn create_provider_session() -> (gtk::Box, gtk::Entry, gtk::Entry, gtk::Button, 
         .hexpand(true)
         .build();
     provider_endpoint.set_tooltip_text(Some(
-        "Loopback OpenAI-compatible endpoint; no credential is requested or stored",
+        "HTTPS or loopback HTTP OpenAI-compatible base endpoint",
+    ));
+    let provider_credential = gtk::PasswordEntry::builder()
+        .show_peek_icon(true)
+        .hexpand(true)
+        .build();
+    provider_credential.set_tooltip_text(Some(
+        "Optional session credential; it is never written to local storage",
     ));
     let connect = gtk::Button::with_mnemonic("_Connect");
     fields.append(&labeled_control(
@@ -224,6 +255,10 @@ fn create_provider_session() -> (gtk::Box, gtk::Entry, gtk::Entry, gtk::Button, 
     fields.append(&labeled_control(
         "Endpoint (loopback example)",
         provider_endpoint.upcast_ref::<gtk::Widget>(),
+    ));
+    fields.append(&labeled_control(
+        "Credential (optional, session only)",
+        provider_credential.upcast_ref::<gtk::Widget>(),
     ));
     fields.append(&connect);
     section.append(&fields);
@@ -236,6 +271,7 @@ fn create_provider_session() -> (gtk::Box, gtk::Entry, gtk::Entry, gtk::Button, 
         section,
         provider_name,
         provider_endpoint,
+        provider_credential,
         connect,
         active_provider,
     )
@@ -250,7 +286,7 @@ fn create_controls() -> (
     gtk::DropDown,
 ) {
     let controls = gtk::Box::new(gtk::Orientation::Horizontal, 12);
-    let model = gtk::DropDown::from_strings(&["Connecting"]);
+    let model = gtk::DropDown::from_strings(&["Select a model..."]);
     let source_locale = gtk::DropDown::from_strings(&["Auto", "English", "Chinese"]);
     let target_locale =
         gtk::DropDown::from_strings(&["Chinese (Simplified)", "English", "Japanese"]);
@@ -278,6 +314,34 @@ fn labeled_control(label: &str, control: &gtk::Widget) -> gtk::Box {
     container
 }
 
+fn session_provider_profile(
+    display_name: String,
+    endpoint: String,
+    has_credential: bool,
+) -> Result<ProviderProfile, TranslationError> {
+    let profile_id = ProviderProfileId::parse(SESSION_PROVIDER_ID).map_err(|error| {
+        TranslationError::new(
+            ErrorKind::InvalidConfiguration,
+            format!("The session provider ID is invalid: {error}"),
+        )
+    })?;
+    let secret_ref = has_credential.then(|| SecretRef::new(SecretRefNamespace::Session));
+    ProviderProfile::new(
+        profile_id,
+        display_name,
+        CUSTOM_PROVIDER_PRESET_ID,
+        OPENAI_ADAPTER_TYPE,
+        endpoint,
+        secret_ref,
+    )
+    .map_err(|error| {
+        TranslationError::new(
+            ErrorKind::InvalidConfiguration,
+            format!("The session provider profile is invalid: {error}"),
+        )
+    })
+}
+
 fn editor_panel(label: &str, editor: &gtk::TextView) -> gtk::Box {
     let container = gtk::Box::new(gtk::Orientation::Vertical, 6);
     let label = gtk::Label::new(Some(label));
@@ -299,17 +363,61 @@ fn connect_selection_handlers(
     theme: &gtk::DropDown,
     locale: &gtk::DropDown,
     state: &Rc<RefCell<AppState>>,
+    worker: &Rc<CoreWorker>,
 ) {
     let model_bindings = bindings.clone();
     let model_state = Rc::clone(state);
+    let model_worker = Rc::clone(worker);
     bindings.model.connect_selected_notify(move |drop_down| {
+        let selected = drop_down.selected() as usize;
+        if selected == 0 {
+            let confirmed = {
+                let state = model_state.borrow();
+                state.selected_model().and_then(|confirmed| {
+                    state
+                        .models()
+                        .iter()
+                        .position(|model| model.id == confirmed)
+                        .map(|index| index + 1)
+                })
+            };
+            if let Some(confirmed) = confirmed {
+                drop_down.set_selected(u32::try_from(confirmed).unwrap_or(0));
+            }
+            return;
+        }
         let model_id = model_state
             .borrow()
             .models()
-            .get(drop_down.selected() as usize)
+            .get(selected - 1)
             .map(|model| model.id.clone());
         if let Some(model_id) = model_id {
-            let _ = model_state.borrow_mut().select_model(&model_id);
+            {
+                let state = model_state.borrow();
+                if state.selected_model() == Some(model_id.as_str())
+                    || state.pending_model_selection() == Some(model_id.as_str())
+                {
+                    return;
+                }
+            }
+            let selection_result = model_state.borrow_mut().begin_model_selection(&model_id);
+            if let Err(error) = selection_result {
+                model_state
+                    .borrow_mut()
+                    .record_client_error(error.to_string());
+            } else if let Err(error) =
+                model_worker.try_send(WorkerCommand::SelectModel(model_id.clone()))
+            {
+                let worker_error = TranslationError::new(ErrorKind::Internal, error.to_string());
+                if let Err(state_error) = model_state
+                    .borrow_mut()
+                    .model_selection_failed(&model_id, worker_error)
+                {
+                    model_state
+                        .borrow_mut()
+                        .record_client_error(state_error.to_string());
+                }
+            }
             refresh_ui(&model_bindings, &model_state.borrow());
         }
     });
@@ -343,6 +451,8 @@ fn connect_selection_handlers(
     });
 }
 
+// 三个原生操作共享同一状态与工作线程绑定，集中注册可保持生命周期一致。
+#[allow(clippy::too_many_lines)]
 fn connect_action_handlers(
     bindings: &UiBindings,
     state: &Rc<RefCell<AppState>>,
@@ -354,6 +464,11 @@ fn connect_action_handlers(
     bindings.connect.connect_clicked(move |_| {
         let display_name = connect_bindings.provider_name.text().trim().to_owned();
         let endpoint = connect_bindings.provider_endpoint.text().trim().to_owned();
+        let credential_text = connect_bindings.provider_credential.text();
+        let has_credential = !credential_text.is_empty();
+        let session_secret = has_credential.then(|| SecretValue::new(credential_text.as_str()));
+        connect_bindings.provider_credential.set_text("");
+        drop(credential_text);
         let mut state = connect_state.borrow_mut();
         if display_name.is_empty() {
             state.provider_failed(TranslationError::new(
@@ -371,10 +486,21 @@ fn connect_action_handlers(
             refresh_ui(&connect_bindings, &state);
             return;
         }
-        let profile = ProviderProfile::new(SESSION_PROVIDER_ID, display_name, endpoint);
+        let profile = match session_provider_profile(display_name, endpoint, has_credential) {
+            Ok(profile) => profile,
+            Err(error) => {
+                state.provider_failed(error);
+                refresh_ui(&connect_bindings, &state);
+                return;
+            }
+        };
         match state.begin_provider_connection(profile.clone()) {
             Ok(()) => {
-                if let Err(error) = connect_worker.try_send(WorkerCommand::Connect(profile)) {
+                if let Err(error) = connect_worker.try_send(WorkerCommand::Connect {
+                    profile,
+                    secret: session_secret,
+                    persistence: PersistenceIntent::SessionOnly,
+                }) {
                     state.provider_failed(TranslationError::new(
                         ErrorKind::Internal,
                         error.to_string(),
@@ -426,9 +552,12 @@ fn connect_action_handlers(
     let stop_worker = Rc::clone(worker);
     bindings.stop.connect_clicked(move |_| {
         let mut state = stop_state.borrow_mut();
-        if state.request_cancellation().is_ok()
-            && let Err(error) = stop_worker.try_send(WorkerCommand::Cancel)
-        {
+        let can_cancel = if state.status() == AppStatus::Connecting {
+            true
+        } else {
+            state.request_cancellation().is_ok()
+        };
+        if can_cancel && let Err(error) = stop_worker.try_send(WorkerCommand::Cancel) {
             state.record_client_error(error.to_string());
         }
         refresh_ui(&stop_bindings, &state);
@@ -477,15 +606,44 @@ fn apply_worker_event(
     event: WorkerEvent,
 ) {
     match event {
-        WorkerEvent::Connected(models) => {
-            let labels = models
-                .iter()
-                .map(|model| model.display_name.as_str())
-                .collect::<Vec<_>>();
-            let model_list = gtk::StringList::new(&labels);
-            state.borrow_mut().provider_connected(models);
+        WorkerEvent::DemoProviderReady { endpoint } => {
+            let should_use_demo = state.borrow().active_provider().is_none()
+                && state.borrow().pending_provider().is_none()
+                && bindings.provider_endpoint.text() == DEFAULT_PROVIDER_ENDPOINT;
+            if should_use_demo {
+                bindings.provider_endpoint.set_text(&endpoint);
+            }
+        }
+        WorkerEvent::Connected { profile, models } => {
+            let mut labels = vec!["Select a model...".to_owned()];
+            labels.extend(models.iter().map(|model| model.display_name.clone()));
+            let label_refs = labels.iter().map(String::as_str).collect::<Vec<_>>();
+            let selected = {
+                let mut state = state.borrow_mut();
+                if state.provider_connected(profile, models).is_err() {
+                    return;
+                }
+                state
+                    .selected_model()
+                    .and_then(|selected| {
+                        state.models().iter().position(|model| model.id == selected)
+                    })
+                    .map_or(0, |index| index + 1)
+            };
+            let model_list = gtk::StringList::new(&label_refs);
             bindings.model.set_model(Some(&model_list));
-            bindings.model.set_selected(0);
+            bindings
+                .model
+                .set_selected(u32::try_from(selected).unwrap_or(0));
+        }
+        WorkerEvent::ModelSelected {
+            profile_id,
+            model_id,
+        } => {
+            let mut state = state.borrow_mut();
+            if state.provider_id() == Some(&profile_id) {
+                let _ = state.confirm_model_selection(&model_id);
+            }
         }
         WorkerEvent::Translation(event) => {
             let result = state.borrow_mut().apply_translation_event(event);
@@ -496,20 +654,22 @@ fn apply_worker_event(
                 }
             }
         }
-        WorkerEvent::OperationFailed(error) => {
+        WorkerEvent::OperationFailed(error) | WorkerEvent::TranslationRejected(error) => {
             state.borrow_mut().record_operation_failure(error);
         }
-        WorkerEvent::ProviderRejected(error) => {
-            state.borrow_mut().provider_failed(error);
+        WorkerEvent::ProviderRejected { profile_id, error } => {
+            let mut state = state.borrow_mut();
+            let _ = state.provider_connection_failed(&profile_id, error);
         }
         WorkerEvent::Rejected(error) => {
-            let should_cancel = matches!(
+            let pending_model = state.borrow().pending_model_selection().map(str::to_owned);
+            if let Some(model_id) = pending_model {
+                let _ = state.borrow_mut().model_selection_failed(&model_id, error);
+            } else if !matches!(
                 state.borrow().status(),
                 AppStatus::Translating | AppStatus::Cancelling
-            );
-            state.borrow_mut().provider_failed(error);
-            if should_cancel {
-                let _ = worker.try_send(WorkerCommand::Cancel);
+            ) {
+                state.borrow_mut().provider_failed(error);
             }
         }
         WorkerEvent::Stopped => {
@@ -531,9 +691,14 @@ const fn operation_is_terminal(status: AppStatus) -> bool {
 
 fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     bindings.output.set_text(state.output());
+    let status_label = if state.pending_model_selection().is_some() {
+        "Selecting model"
+    } else {
+        state.status().label()
+    };
     bindings
         .status
-        .set_label(&format!("Status: {}", state.status().label()));
+        .set_label(&format!("Status: {status_label}"));
     bindings.partial.set_label(if state.has_partial_output() {
         "Partial output"
     } else {
@@ -550,32 +715,40 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             ""
         });
     bindings.diagnostics.set_label(&state.diagnostics_text());
-    let blocked = matches!(
-        state.status(),
-        AppStatus::Connecting | AppStatus::Translating | AppStatus::Cancelling
-    );
-    let active_provider = state.active_provider();
-    if let Some(pending_provider) = state.pending_provider() {
-        bindings.active_provider.set_label(&format!(
+    let blocked = state.pending_model_selection().is_some()
+        || matches!(
+            state.status(),
+            AppStatus::Connecting | AppStatus::Translating | AppStatus::Cancelling
+        );
+    match (state.active_provider(), state.pending_provider()) {
+        (Some(active), Some(pending)) => bindings.active_provider.set_label(&format!(
             "Active provider remains {} (session only); connecting {}.",
-            active_provider.display_name(),
-            pending_provider.display_name()
-        ));
-    } else {
-        bindings.active_provider.set_label(&format!(
+            active.display_name(),
+            pending.display_name()
+        )),
+        (None, Some(pending)) => bindings.active_provider.set_label(&format!(
+            "Connecting {} with a session-only configuration.",
+            pending.display_name()
+        )),
+        (Some(active), None) => bindings.active_provider.set_label(&format!(
             "Active provider: {} (session only)",
-            active_provider.display_name()
-        ));
+            active.display_name()
+        )),
+        (None, None) => bindings
+            .active_provider
+            .set_label("No provider connected. Session credentials are not saved."),
     }
     bindings.provider_name.set_sensitive(!blocked);
     bindings.provider_endpoint.set_sensitive(!blocked);
+    bindings.provider_credential.set_sensitive(!blocked);
     bindings.connect.set_sensitive(!blocked);
     bindings
         .translate
         .set_sensitive(!blocked && state.selected_model().is_some());
-    bindings
-        .stop
-        .set_sensitive(state.status() == AppStatus::Translating);
+    bindings.stop.set_sensitive(matches!(
+        state.status(),
+        AppStatus::Connecting | AppStatus::Translating
+    ));
     bindings
         .model
         .set_sensitive(!blocked && !state.models().is_empty());
@@ -586,12 +759,12 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
 #[cfg(test)]
 mod tests {
     use super::{
-        AppState, AppStatus, CoreWorker, WorkerCommand, connect_action_handlers,
-        connect_selection_handlers, create_window, refresh_ui, start_event_pump,
+        AppState, AppStatus, CoreWorker, DEFAULT_PROVIDER_ENDPOINT, WorkerCommand,
+        connect_action_handlers, connect_selection_handlers, create_window, refresh_ui,
+        start_event_pump,
     };
     use adw::prelude::*;
     use gtk::glib;
-    use linguamesh_linux::model::LOCAL_FAKE_PROVIDER_ENDPOINT;
     use std::cell::RefCell;
     use std::rc::Rc;
     use std::time::{Duration, Instant};
@@ -615,7 +788,7 @@ mod tests {
     }
 
     #[test]
-    fn gtk_buttons_connect_and_translate_with_builtin_provider_without_credentials() {
+    fn gtk_buttons_explicitly_connect_select_and_translate_with_session_credential() {
         adw::init().expect("initialize GTK and libadwaita");
         let application = adw::Application::builder()
             .application_id("dev.linguamesh.LinguaMesh.GtkTest")
@@ -628,7 +801,7 @@ mod tests {
         let state = Rc::new(RefCell::new(AppState::default()));
         let worker = Rc::new(CoreWorker::spawn());
         let (window, bindings, theme, locale) = create_window(&application);
-        connect_selection_handlers(&bindings, &theme, &locale, &state);
+        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
         connect_action_handlers(&bindings, &state, &worker);
         start_event_pump(&bindings, &state, &worker);
         refresh_ui(&bindings, &state.borrow());
@@ -636,40 +809,61 @@ mod tests {
 
         let context = glib::MainContext::default();
         spin_main_context_until(&context, Duration::from_secs(5), || {
-            state.borrow().status() == AppStatus::Ready
+            bindings.provider_endpoint.text() != DEFAULT_PROVIDER_ENDPOINT
         });
+        assert_eq!(state.borrow().status(), AppStatus::Disconnected);
+        assert!(state.borrow().active_provider().is_none());
+        let demo_endpoint = bindings.provider_endpoint.text().to_string();
 
         bindings.provider_name.set_text("Unavailable provider");
         bindings.provider_endpoint.set_text("not a valid endpoint");
         bindings.connect.emit_clicked();
-        assert_eq!(state.borrow().status(), AppStatus::Connecting);
-        spin_main_context_until(&context, Duration::from_secs(5), || {
-            let state = state.borrow();
-            state.status() == AppStatus::Ready && state.error_text().is_some()
-        });
-        assert_eq!(state.borrow().provider_id(), "local-fake-provider");
-        assert_eq!(state.borrow().selected_model(), Some("fake-translator"));
+        assert_eq!(state.borrow().status(), AppStatus::Failed);
+        assert!(state.borrow().active_provider().is_none());
+        assert!(state.borrow().error_text().is_some());
 
         bindings.provider_name.set_text("GTK fake provider");
+        bindings.provider_endpoint.set_text(&demo_endpoint);
         bindings
-            .provider_endpoint
-            .set_text(LOCAL_FAKE_PROVIDER_ENDPOINT);
+            .provider_credential
+            .set_text("GTK_SESSION_CREDENTIAL_SENTINEL");
         bindings.connect.emit_clicked();
         assert_eq!(state.borrow().status(), AppStatus::Connecting);
+        assert!(bindings.provider_credential.text().is_empty());
         assert!(!bindings.connect.is_sensitive());
         assert!(!bindings.translate.is_sensitive());
 
         spin_main_context_until(&context, Duration::from_secs(5), || {
             let state = state.borrow();
             state.status() == AppStatus::Ready
-                && state.active_provider().display_name() == "GTK fake provider"
+                && state
+                    .active_provider()
+                    .is_some_and(|profile| profile.display_name() == "GTK fake provider")
         });
+        assert_eq!(state.borrow().selected_model(), None);
+        assert!(!bindings.translate.is_sensitive());
         assert!(
             bindings
                 .active_provider
                 .label()
                 .contains("GTK fake provider")
         );
+
+        bindings.model.set_selected(1);
+        assert_eq!(
+            state.borrow().pending_model_selection(),
+            Some("fake-translator")
+        );
+        assert!(!bindings.translate.is_sensitive());
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().selected_model() == Some("fake-translator")
+        });
+        assert!(bindings.translate.is_sensitive());
+
+        bindings.model.set_selected(0);
+        assert_eq!(bindings.model.selected(), 1);
+        assert_eq!(state.borrow().selected_model(), Some("fake-translator"));
+        assert!(bindings.translate.is_sensitive());
 
         bindings.provider_name.set_text("Unavailable provider");
         bindings.provider_endpoint.set_text("not a valid endpoint");
@@ -679,8 +873,11 @@ mod tests {
             state.status() == AppStatus::Ready && state.error_text().is_some()
         });
         assert_eq!(
-            state.borrow().active_provider().display_name(),
-            "GTK fake provider"
+            state
+                .borrow()
+                .active_provider()
+                .map(|profile| profile.display_name().to_owned()),
+            Some("GTK fake provider".to_owned())
         );
         assert!(state.borrow().selected_model().is_some());
 

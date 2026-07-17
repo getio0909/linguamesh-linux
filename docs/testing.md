@@ -4,10 +4,15 @@
 
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
-It must be at approved revision `873b6da45447f73e4be4e2f1127c3c8d0f188cf2`; validate it with:
+Its functional source must match approved revision
+`c9a96da52e10554c8458f4d49600ec9336ea651b`. A clean documentation-only descendant is acceptable
+for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-test "$(git -C ../linguamesh-core rev-parse HEAD)" = "873b6da45447f73e4be4e2f1127c3c8d0f188cf2"
+git -C ../linguamesh-core cat-file -e c9a96da52e10554c8458f4d49600ec9336ea651b^{commit}
+git -C ../linguamesh-core diff --quiet \
+  c9a96da52e10554c8458f4d49600ec9336ea651b..HEAD -- \
+  Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
 
@@ -34,14 +39,19 @@ cargo test --features demo-provider --locked
 cargo build --features demo-provider --locked
 ```
 
-The first test command covers the pure application state, including atomic provider/model switching
-and failed-connection rollback. The feature-enabled test command also starts the shared core fake
-provider, performs real loopback HTTP/SSE streaming, verifies cancellation with partial-output
-retention, reconnects the built-in provider, connects and translates through a second loopback fake
-provider, and proves that a failed connection leaves the previous engine usable. A regression also
-verifies that an event stream ending without a terminal event becomes a failed operation while
-retaining partial output. The current counts are 16 no-default-feature tests and 23
-`demo-provider` tests.
+The no-default suite contains 23 reducer tests. It covers the disconnected initial state, pending
+and active canonical profiles, stale-result rejection, atomic rollback, deliberate model selection,
+saved-model restoration only when available, ordered events, partial output, all Core alpha.2 error
+categories, and diagnostics that omit content, endpoints, model IDs, and secret references.
+
+The `demo-provider` suite contains 35 tests in total. Its worker tests validate the exact Core
+compatibility contract, prove that fake-service readiness does not auto-connect, require explicit
+Connect and model selection, exercise real loopback HTTP/SSE streaming, consume an authenticated
+session secret through the bounded typed host-secret broker, and fail closed for unavailable
+session or persistent secrets. It also covers immediate connection cancellation, translation
+cancellation with partial output, active, queued, and full-command-queue shutdown, translation
+terminal delivery during shutdown, saved-model behavior, and failed-switch rollback to the
+previous Core `ProviderManager` and model.
 
 The GTK Rust source can be checked without native linking as a limited diagnostic:
 
@@ -84,17 +94,17 @@ Run the development slice with:
 cargo run --features gui
 ```
 
-The all-feature binary test creates real GTK/libadwaita widgets, verifies that invalid connection
-attempts retain the active provider/model, clicks Connect using the built-in credential-free
-provider, clicks Translate, and waits for the streamed result. A private D-Bus session and Xvfb
-provide the runtime environment; tests are serialized because GTK owns process-global state. This
-is not comprehensive UI automation, accessibility, or Wayland coverage.
+The all-feature binary test creates real GTK/libadwaita widgets, verifies the initial disconnected
+state, waits for fake-endpoint readiness without auto-connect, clears a session credential from the
+form immediately after Connect, explicitly selects a discovered model, preserves the active
+provider/model after a failed switch, and completes a streamed translation. A private D-Bus
+session and Xvfb provide the runtime environment; tests are serialized because GTK owns
+process-global state. This is not comprehensive UI automation, accessibility, or Wayland coverage.
 
 The GitHub Actions native workflow pins Core revision
-`873b6da45447f73e4be4e2f1127c3c8d0f188cf2`, installs the headers plus D-Bus/Xvfb support, and runs
-the complete gate. A successful workflow run may provide native build evidence. The Xvfb change
-has no remote result yet. A local host without `gtk4.pc` or `libadwaita-1.pc` must not claim that
-the GUI build, launch, or GTK button test passed.
+`c9a96da52e10554c8458f4d49600ec9336ea651b`, installs the headers plus D-Bus/Xvfb support, and runs
+the complete gate. The alpha.2 revision has no remote result yet. A local host without `gtk4.pc` or
+`libadwaita-1.pc` must not claim that the GUI build, launch, or GTK button test passed.
 
 ## Repository foundation check
 
@@ -118,7 +128,7 @@ git diff --check
 
 ## Unimplemented validation
 
-Broader GTK component/UI automation, accessibility inspection, Wayland/X11 smoke tests, Secret
-Service and portal tests, third-party local-server interoperability, Flatpak smoke tests, runtime
-localization behavior, dependency/license automation, and release builds remain required before a
-supported release.
+Broader GTK component/UI automation, accessibility inspection, Wayland/X11 smoke tests, a native
+Secret Service backend and its persistence tests, portal tests, third-party local-server
+interoperability, Flatpak smoke tests, runtime localization behavior, dependency/license
+automation, and release builds remain required before a supported release.
