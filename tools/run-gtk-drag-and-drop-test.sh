@@ -51,7 +51,7 @@ XDG_CACHE_HOME="$workspace/cache" \
       exit 1
     fi
     read -r source_x source_y source_width source_height target_x target_y target_width target_height <"$LINGUAMESH_FILE_DROP_COORDINATES"
-    printf 'Widget coordinates: %s\n' "$(cat "$LINGUAMESH_FILE_DROP_COORDINATES")"
+    printf "%s\n" "Widget coordinates: $(cat "$LINGUAMESH_FILE_DROP_COORDINATES")"
     source_x=$((source_x + source_width / 2))
     source_y=$((source_y + source_height / 2))
     target_x=$((target_x + target_width / 2))
