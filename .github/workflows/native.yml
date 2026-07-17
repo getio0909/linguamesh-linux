@@ -103,7 +103,7 @@ jobs:
         run: bash tools/run-secret-service-test.sh
       - name: Run notification transport fixture
         working-directory: linguamesh-linux
-        run: bash tools/run-notification-test.sh
+        run: dbus-run-session -- bash tools/run-notification-test.sh
       - name: Run GTK test on Wayland
         working-directory: linguamesh-linux
         run: dbus-run-session -- bash tools/run-wayland-test.sh

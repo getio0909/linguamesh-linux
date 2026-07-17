@@ -20,7 +20,7 @@ sleep 1
 GDK_BACKEND=x11 xvfb-run --auto-servernum \
   --server-args='-screen 0 1280x800x24' \
   cargo test --all-targets --all-features --locked \
-  gtk_buttons_explicitly_connect_select_and_translate_with_session_credential \
+  'tests::gtk_buttons_explicitly_connect_select_and_translate_with_session_credential' \
   -- --exact --test-threads=1
 
 for _ in {1..20}; do
