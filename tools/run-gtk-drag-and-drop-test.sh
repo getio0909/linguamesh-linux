@@ -69,7 +69,7 @@ XDG_CACHE_HOME="$workspace/cache" \
     source_abs_y=$((window_y + source_y + source_height / 2))
     target_abs_x=$((window_x + target_x + target_width / 2))
     target_abs_y=$((window_y + target_y + target_height / 2))
-    xdotool windowactivate --sync "$app_window"
+    xdotool windowactivate --sync "$app_window" >/dev/null 2>&1 || true
     xdotool mousemove --sync "$source_abs_x" "$source_abs_y"
     xdotool getmouselocation --shell
     xdotool mousedown 1
