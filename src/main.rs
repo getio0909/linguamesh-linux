@@ -4,6 +4,7 @@ use linguamesh_domain::{
     ErrorKind, ProviderProfileId, SecretRef, SecretRefNamespace, SecretValue, TranslationError,
     TranslationEvent,
 };
+use linguamesh_linux::file_import;
 use linguamesh_linux::localization;
 use linguamesh_linux::model::{
     AppState, AppStatus, OnboardingStage, ProfileStorageStatus, ProviderProfile, StateError,
@@ -28,6 +29,7 @@ const DEFAULT_PROVIDER_ENDPOINT: &str = "http://127.0.0.1:11434/v1/";
 #[derive(Clone)]
 struct UiBindings {
     application: adw::Application,
+    window: adw::ApplicationWindow,
     workspace: gtk::Box,
     onboarding: gtk::Box,
     onboarding_title: gtk::Label,
@@ -53,6 +55,7 @@ struct UiBindings {
     #[cfg(test)]
     output_label: gtk::Label,
     translate: gtk::Button,
+    open_source: gtk::Button,
     stop: gtk::Button,
     status: gtk::Label,
     partial: gtk::Label,
@@ -148,6 +151,9 @@ fn create_window(
     root.append(&editor_bindings.editors);
 
     let action_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let open_source = gtk::Button::with_mnemonic("_Open text file");
+    open_source.set_focusable(true);
+    open_source.set_tooltip_text(Some("Load a UTF-8 text file into the source editor"));
     let translate = gtk::Button::with_mnemonic("_Translate");
     translate.add_css_class("suggested-action");
     translate.set_focusable(true);
@@ -155,6 +161,7 @@ fn create_window(
     stop.add_css_class("destructive-action");
     stop.set_focusable(true);
     stop.update_property(&[gtk::accessible::Property::Label("Stop translation")]);
+    action_row.append(&open_source);
     action_row.append(&translate);
     action_row.append(&stop);
     let status = gtk::Label::new(None);
@@ -189,10 +196,12 @@ fn create_window(
 
     toolbar.set_content(Some(&root));
     window.set_content(Some(&toolbar));
+    let window_binding = window.clone();
     (
         window,
         UiBindings {
             application: application.clone(),
+            window: window_binding,
             workspace: root,
             onboarding,
             onboarding_title,
@@ -218,6 +227,7 @@ fn create_window(
             #[cfg(test)]
             output_label: editor_bindings.output_label,
             translate,
+            open_source,
             stop,
             status,
             partial,
@@ -784,6 +794,12 @@ fn connect_action_handlers(
     state: &Rc<RefCell<AppState>>,
     worker: &Rc<CoreWorker>,
 ) {
+    let open_bindings = bindings.clone();
+    let open_state = Rc::clone(state);
+    bindings.open_source.connect_clicked(move |_| {
+        begin_source_file_open(&open_bindings, &open_state);
+    });
+
     let connect_bindings = bindings.clone();
     let connect_state = Rc::clone(state);
     let connect_worker = Rc::clone(worker);
@@ -986,6 +1002,92 @@ fn connect_action_handlers(
         }
         refresh_ui(&stop_bindings, &state);
     });
+}
+
+// 通过 GTK 原生文件对话框选择文本文件，读取工作放在 GIO 异步路径中。
+fn begin_source_file_open(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
+    let filter = gtk::FileFilter::new();
+    filter.set_name(Some("Text files"));
+    filter.add_mime_type("text/plain");
+    filter.add_suffix("txt");
+    filter.add_suffix("md");
+    filter.add_suffix("markdown");
+    let filters = gtk::gio::ListStore::new::<gtk::FileFilter>();
+    filters.append(&filter);
+    let dialog = gtk::FileDialog::builder()
+        .title("Open text file")
+        .accept_label("Open")
+        .modal(true)
+        .build();
+    dialog.set_filters(Some(&filters));
+    let open_bindings = bindings.clone();
+    let open_state = Rc::clone(state);
+    dialog.open(
+        Some(&bindings.window),
+        None::<&gtk::gio::Cancellable>,
+        move |result| match result {
+            Ok(file) => load_source_file(&file, &open_bindings, &open_state),
+            Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
+            Err(_) => show_file_import_error(
+                &open_bindings,
+                "The selected text file could not be opened.",
+            ),
+        },
+    );
+}
+
+// 通过 GIO 的分块异步读取限制内存占用，并在主线程完成 UTF-8 解码。
+fn load_source_file(file: &gtk::gio::File, bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
+    let bytes_read = Rc::new(Cell::new(0_usize));
+    let too_large = Rc::new(Cell::new(false));
+    let read_bytes = Rc::clone(&bytes_read);
+    let read_too_large = Rc::clone(&too_large);
+    let load_bindings = bindings.clone();
+    let load_state = Rc::clone(state);
+    file.load_partial_contents_async(
+        None::<&gtk::gio::Cancellable>,
+        move |chunk| {
+            let next = read_bytes.get().saturating_add(chunk.len());
+            if next > file_import::MAX_TEXT_FILE_BYTES {
+                read_too_large.set(true);
+                false
+            } else {
+                read_bytes.set(next);
+                true
+            }
+        },
+        move |result| {
+            if too_large.get() {
+                show_file_import_error(
+                    &load_bindings,
+                    "The selected text file exceeds the 4 MiB limit.",
+                );
+                return;
+            }
+            match result {
+                Ok((contents, _)) => match file_import::decode_text_contents(contents.as_ref()) {
+                    Ok(text) => {
+                        load_bindings.source.set_text(&text);
+                        load_bindings.error.set_label("");
+                        load_bindings.error.set_visible(false);
+                    }
+                    Err(error) => show_file_import_error(&load_bindings, &error.to_string()),
+                },
+                Err(_) => show_file_import_error(
+                    &load_bindings,
+                    "The selected text file could not be read.",
+                ),
+            }
+            refresh_ui(&load_bindings, &load_state.borrow());
+        },
+    );
+}
+
+// 导入错误只显示安全的固定文本，不把路径或文件内容写入诊断状态。
+fn show_file_import_error(bindings: &UiBindings, message: &str) {
+    bindings.error.set_label(message);
+    bindings.error.set_visible(true);
+    bindings.error.reset_state(gtk::AccessibleState::Hidden);
 }
 
 fn start_event_pump(bindings: &UiBindings, state: &Rc<RefCell<AppState>>, worker: &Rc<CoreWorker>) {
@@ -1464,6 +1566,9 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     bindings
         .translate
         .set_sensitive(state.worker_ready() && !blocked && state.selected_model().is_some());
+    bindings
+        .open_source
+        .set_sensitive(!state.worker_unavailable() && !blocked);
     bindings.stop.set_sensitive(
         state.worker_ready()
             && matches!(
@@ -1560,6 +1665,10 @@ mod tests {
         refresh_ui(&bindings, &state.borrow());
         assert_eq!(bindings.translate.label().as_deref(), Some("_翻译"));
         assert_eq!(bindings.stop.label().as_deref(), Some("_停止翻译"));
+        assert_eq!(
+            bindings.open_source.label().as_deref(),
+            Some("_Open text file")
+        );
         state.borrow_mut().set_locale(UiLocale::English);
         refresh_ui(&bindings, &state.borrow());
 
@@ -1595,6 +1704,7 @@ mod tests {
         for button in [
             &bindings.remove_saved_profile,
             &bindings.connect,
+            &bindings.open_source,
             &bindings.translate,
             &bindings.stop,
         ] {
@@ -1764,6 +1874,7 @@ mod tests {
         );
         assert!(bindings.provider_credential.text().is_empty());
         assert!(!bindings.connect.is_sensitive());
+        assert!(!bindings.open_source.is_sensitive());
         assert!(!bindings.translate.is_sensitive());
 
         spin_main_context_until(&context, Duration::from_secs(5), || {

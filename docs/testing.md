@@ -98,6 +98,11 @@ and model. The runner requires
 unmounts the private filesystem. This proves the implemented Linux `ENOSPC` transaction boundary;
 it does not cover read-only media, corruption, power loss, or every SQLite VFS failure.
 
+The toolkit-independent suite also tests the text-import decoder for UTF-8 BOM removal, invalid
+UTF-8 rejection, and the 4 MiB bound. The native GTK flow verifies the **Open text file** control
+is focusable and is disabled after worker loss; an interactive file-dialog selection remains a
+manual/portal integration boundary.
+
 The GTK Rust source can be checked without native linking as a limited diagnostic. The `v4_10`
 gtk-rs feature is enabled because the accessibility test helpers and semantic update APIs require
 GTK 4.10 or newer:

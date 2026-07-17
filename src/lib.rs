@@ -2,6 +2,8 @@
 
 pub mod model;
 
+pub mod file_import;
+
 #[cfg(feature = "gui")]
 pub mod localization;
 

@@ -56,7 +56,8 @@ on the main context, which processes at most 64 queued events per timer tick wit
 network work. The shell exposes a saved-profile dropdown, provider name, endpoint, optional session
 credential, explicit Connect, **Remember profile, model, and credential in Secret Service**,
 **Remove saved profile**,
-model selection, source and target locales, source and streamed output editors, Translate/Stop,
+model selection, source and target locales, source and streamed output editors, native **Open text
+file** import, Translate/Stop,
 typed errors, appearance, runtime catalog-backed locale preference, and redacted diagnostics.
 An always-current Provider setup card explains the next required action, warns when saved-profile
 storage is unavailable, distinguishes fatal worker shutdown from startup, and identifies the
@@ -66,7 +67,9 @@ unavailable and disables provider, model, translation, and cancellation commands
 Selecting a restored profile prefills only its non-secret form fields without connecting or
 changing the active runtime model. New persistent profiles use a GLib random UUID validated as a
 Core `ProviderProfileId`; display names are never database keys. Pending connection, model
-selection, translation, or deletion disables conflicting controls.
+selection, translation, or deletion disables conflicting controls. Text import uses GTK's native
+`FileDialog` and GIO's bounded partial asynchronous read; only UTF-8 TXT/Markdown content up to
+4 MiB is accepted, and file paths/content are excluded from diagnostics.
 
 The GTK boundary also owns baseline accessibility semantics. The workspace uses the `Main` role;
 onboarding and provider headings use `Heading`; the live operation label uses `Status`; and the

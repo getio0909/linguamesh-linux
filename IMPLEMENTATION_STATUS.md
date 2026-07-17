@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, and generic completion desktop notifications are implemented; native keyring integration evidence remains open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, generic completion desktop notifications, and bounded native text-file import are implemented; native keyring integration evidence remains open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -93,7 +93,8 @@ older distributions and future Flatpak runtimes require separate packaging valid
   choices, connection and model selection, saved/session status, language controls, source/output
   views, Translate/Stop, typed errors, partial-result display, appearance, runtime catalog-backed
   action labels with an explicit fallback notice, a generic completion desktop notification that
-  excludes source and translated content, keyboard mnemonics, and redacted diagnostics. An
+  excludes source and translated content, bounded native UTF-8 TXT/Markdown import through GTK
+  `FileDialog`/GIO, keyboard mnemonics, and redacted diagnostics. An
   always-current Provider setup card explains the
   next required action, warns that unavailable saved-profile storage requires session-only use, and
   keeps that warning visible through connection, model selection, and Ready while naming the
@@ -158,6 +159,10 @@ Validated on 2026-07-17 with Rust 1.93.0:
 - The notification slice keeps the desktop payload fixed to generic English text and sends no
   source or translated content. Local source-level GTK checks and the demo-provider suite above
   passed after the `GApplication` notification call was added.
+- The native text import slice accepts only UTF-8 TXT/Markdown content up to 4 MiB, strips a UTF-8
+  BOM, rejects invalid or oversized input, and reads through GIO's partial asynchronous API. The
+  decoder tests passed locally; interactive portal/file-lease and drag-and-drop coverage remain
+  open.
 - `bash tools/run-storage-fault-test.sh` passed its exact ignored test separately: 1 passed, 0
   failed, 0 ignored. A private 8 MiB tmpfs produced real kernel `ENOSPC` failures for persistent
   model update, deletion, and provider switch; each preserved prior-session translation, and each

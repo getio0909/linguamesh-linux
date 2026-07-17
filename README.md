@@ -55,6 +55,11 @@ is shown as unavailable with request controls disabled. The card is derived from
 writes no completion flag. A user-supplied OpenAI-compatible base endpoint such as
 `http://127.0.0.1:11434/v1/` follows the same flow.
 
+Use **Open text file** to load a UTF-8 TXT or Markdown file into the source editor. The native
+GTK file dialog and asynchronous GIO partial read enforce a 4 MiB limit, strip a UTF-8 BOM, reject
+invalid UTF-8, and never place the selected path or file contents in diagnostics. Drag-and-drop and
+portal-specific file leases remain separate follow-up work.
+
 The credential field is optional. Its value is copied into Core's secret-aware `SecretValue`, the
 widget is cleared immediately, and the temporary GTK string is dropped. Without Remember, a
 `session:` `SecretRef` lets the bounded typed host-secret broker provide it once during connection.
