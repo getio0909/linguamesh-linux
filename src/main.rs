@@ -146,8 +146,10 @@ fn create_window(
     let action_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     let translate = gtk::Button::with_mnemonic("_Translate");
     translate.add_css_class("suggested-action");
+    translate.set_focusable(true);
     let stop = gtk::Button::with_mnemonic("_Stop");
     stop.add_css_class("destructive-action");
+    stop.set_focusable(true);
     stop.update_property(&[gtk::accessible::Property::Label("Stop translation")]);
     action_row.append(&translate);
     action_row.append(&stop);
@@ -349,6 +351,7 @@ fn create_provider_session() -> (
         "Choose a saved non-secret profile or create a new profile",
     ));
     let remove_saved_profile = gtk::Button::with_label("Remove saved profile");
+    remove_saved_profile.set_focusable(true);
     remove_saved_profile.add_css_class("destructive-action");
     remove_saved_profile.set_tooltip_text(Some(
         "Remove the selected saved profile without disconnecting its current session",
@@ -381,10 +384,12 @@ fn create_provider_session() -> (
         "Optional session credential; it is never written to local storage",
     ));
     let remember_profile = gtk::CheckButton::with_label("Remember non-secret profile and model");
+    remember_profile.set_focusable(true);
     remember_profile.set_tooltip_text(Some(
         "Save only the provider name, endpoint, and model preference",
     ));
     let connect = gtk::Button::with_mnemonic("_Connect");
+    connect.set_focusable(true);
     fields.append(&labeled_control(
         "_Provider name",
         provider_name.upcast_ref::<gtk::Widget>(),
@@ -456,6 +461,7 @@ fn labeled_control(label: &str, control: &gtk::Widget) -> gtk::Box {
     let label = gtk::Label::with_mnemonic(label);
     label.set_xalign(0.0);
     label.add_css_class("caption");
+    control.set_focusable(true);
     label.set_mnemonic_widget(Some(control));
     control.update_relation(&[gtk::accessible::Relation::LabelledBy(&[label.upcast_ref()])]);
     container.append(&label);
