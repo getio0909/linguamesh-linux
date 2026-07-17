@@ -199,6 +199,14 @@ all-target all-feature build all succeeded. Repository-foundation run `295742655
 local host without `gtk4.pc` or `libadwaita-1.pc` must not substitute this remote result for an
 unexecuted local GUI build, launch, or GTK test.
 
+Accessibility functional revision `d6bd2bd06ccdf04f3aead0c7f1da5ba74f84c550` passed repository
+foundation run `29589043314` (job `87913221612`) and Native Linux run `29589043315` (job
+`87913221576`). The native job passed the accessibility assertions described above together with
+strict Clippy, 66 ordinary library tests and one intentional ignore, the exact storage-fault gate,
+both display gates, and the all-target all-feature build. Its predecessor `e483ad8` failed at the
+first focusability assertion because GTK dropdowns defaulted to non-focusable; the final revision
+sets every labelled control and action explicitly focusable.
+
 ## Repository foundation check
 
 ```sh

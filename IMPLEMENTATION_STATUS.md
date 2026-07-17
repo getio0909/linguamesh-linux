@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, and baseline GTK accessibility semantics are implemented; native CI verification is pending for the current slice
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, and baseline GTK accessibility semantics are verified in native Linux CI
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -170,6 +170,16 @@ Validated on 2026-07-17 with Rust 1.93.0:
   their action metadata uses Node 24 or a composite action.
 
 ## Remote validation evidence
+
+Accessibility functional revision `d6bd2bd06ccdf04f3aead0c7f1da5ba74f84c550` passed repository-foundation
+run `29589043314` (job `87913221612`) and Native Linux run `29589043315` (job `87913221576`). The
+Ubuntu 24.04 job passed strict all-feature Clippy, 66 ordinary library tests with one intentional
+ignore, the real GTK binary test under X11/Xvfb with the accessibility role/property/relation,
+mnemonic, focusability, hidden-error, and Busy-reset assertions, the exact storage-fault test,
+the same GTK test under forced Wayland/headless Weston, and the all-target all-feature build. The
+preceding functional revision `e483ad8b9ff0fb9e35fd531e69959c1eb81e7e34` failed only because the
+first accessibility run exposed GTK's default non-focusable dropdown behavior; `d6bd2bd` explicitly
+sets all labelled controls and actions focusable, and the corrected run is the accepted evidence.
 
 Runtime-storage functional revision `c37702c76c3b1a2f9cec805cf9e219721ef7b5ce` passed
 repository-foundation run `29586531915` (job `87904787120`) and Native Linux run `29586532049`
