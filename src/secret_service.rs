@@ -15,6 +15,11 @@ const CALL_TIMEOUT_MS: i32 = 5_000;
 const SECRET_ATTRIBUTE: &str = "linguamesh-secret-ref";
 const SECRET_LABEL: &str = "LinguaMesh provider credential";
 
+// Secret Service 的 plain 会话参数必须是单层字符串变体。
+fn open_session_parameters() -> Variant {
+    ("plain", "".to_variant()).to_variant()
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum LookupError {
     Unavailable,
@@ -31,7 +36,7 @@ impl SecretSession {
     fn open() -> Result<Self, LookupError> {
         let connection = gio::bus_get_sync(gio::BusType::Session, None::<&gio::Cancellable>)
             .map_err(|_| LookupError::Unavailable)?;
-        let parameters = ("plain", Variant::from_variant(&"".to_variant())).to_variant();
+        let parameters = open_session_parameters();
         let response = connection
             .call_sync(
                 Some(SERVICE_NAME),
@@ -226,7 +231,8 @@ fn map_store_error(error: LookupError) -> TranslationError {
 
 #[cfg(test)]
 mod tests {
-    use super::{SECRET_ATTRIBUTE, attributes, properties};
+    use super::{SECRET_ATTRIBUTE, attributes, open_session_parameters, properties};
+    use gtk::glib::VariantTy;
     use linguamesh_domain::{SecretRef, SecretRefNamespace};
 
     #[test]
@@ -240,5 +246,15 @@ mod tests {
         let properties = properties(&secret_ref);
         assert!(properties.contains_key("org.freedesktop.Secret.Item.Label"));
         assert!(properties.contains_key("org.freedesktop.Secret.Item.Attributes"));
+    }
+
+    #[test]
+    fn open_session_parameters_wrap_only_the_plain_string() {
+        let parameters = open_session_parameters();
+        assert_eq!(parameters.type_(), VariantTy::new("(sv)").unwrap());
+        let mechanism: String = parameters.child_get(0);
+        let input: gtk::glib::Variant = parameters.child_get(1);
+        assert_eq!(mechanism, "plain");
+        assert_eq!(input.type_(), VariantTy::STRING);
     }
 }
