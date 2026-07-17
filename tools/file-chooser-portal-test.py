@@ -44,11 +44,13 @@ def activate_dialog():
                 continue
             window = windows[-1]
             try:
-                subprocess.run(["xdotool", "windowactivate", "--sync", window], check=True)
-                subprocess.run(["xdotool", "key", "ctrl+l"], check=True)
-                subprocess.run(["xdotool", "type", "--delay", "1", str(fixture)], check=True)
-                subprocess.run(["xdotool", "key", "Return"], check=True)
-                subprocess.run(["xdotool", "key", "Return"], check=True)
+                subprocess.run(["xdotool", "key", "--window", window, "ctrl+l"], check=True)
+                subprocess.run(
+                    ["xdotool", "type", "--window", window, "--delay", "1", str(fixture)],
+                    check=True,
+                )
+                subprocess.run(["xdotool", "key", "--window", window, "Return"], check=True)
+                subprocess.run(["xdotool", "key", "--window", window, "Return"], check=True)
                 return
             except (OSError, subprocess.CalledProcessError) as error:
                 abort(f"File chooser portal automation failed: {error}")
