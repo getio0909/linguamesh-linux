@@ -123,7 +123,11 @@ Wayland coverage.
 
 The GitHub Actions native workflow pins Core revision
 `fbf3e9b5927049dccaa19f8c36013495ffebba12`, installs the headers plus D-Bus/Xvfb support, and runs
-the complete gate. Functional persistence revision
+the complete gate. Functional multi-profile revision
+`c88d37a5de2f03c2ae5d2940c4d25e5d998c301d` passed Native Linux run `29577918335` (job
+`87876528763`): strict all-feature Clippy, 62 library tests, the real GTK binary test, and the
+all-target all-feature build all succeeded. Repository-foundation run `29577918346` also passed.
+The preceding functional persistence revision
 `c58a54c2479045773358bd9c456b45a958e98e1e` passed Native Linux run `29574265570` (job
 `87865028892`): strict all-feature Clippy, 50 library tests, the real GTK binary test, and the
 all-target all-feature build all succeeded. Repository-foundation run `29574265553` also passed. A

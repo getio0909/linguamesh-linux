@@ -19,8 +19,9 @@ closed because no native Secret Service backend exists. The native workflow pins
 functional revision
 `fbf3e9b5927049dccaa19f8c36013495ffebba12`, whose storage delta adds
 `SQLITE_OPEN_NOFOLLOW`, rather than checking out a floating branch. Functional revision
-`c58a54c2479045773358bd9c456b45a958e98e1e` passed Native Linux run `29574265570`; this validation
-does not create a distributable artifact or satisfy the future release gate below.
+`c88d37a5de2f03c2ae5d2940c4d25e5d998c301d` passed Native Linux run `29577918335` (job
+`87876528763`) with 62 library tests, the real GTK test, strict Clippy, and the all-feature build;
+this validation does not create a distributable artifact or satisfy the future release gate below.
 
 ## Future release gate
 

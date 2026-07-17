@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Multiple non-secret provider profiles verified locally; native Linux CI pending
+Status: Multiple non-secret provider profiles verified locally and in native Linux CI
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -115,6 +115,16 @@ Validated on 2026-07-17 with Rust 1.93.0:
 
 ## Remote validation evidence
 
+Functional multi-profile revision `c88d37a5de2f03c2ae5d2940c4d25e5d998c301d` passed
+repository-foundation run `29577918346` and Native Linux run `29577918335` (job `87876528763`).
+The native Ubuntu 24.04 job checked out exact Core revision
+`fbf3e9b5927049dccaa19f8c36013495ffebba12`, synchronized localization, passed formatting and
+strict all-feature Clippy, passed 62 library tests plus the real GTK binary test under serialized
+X11/D-Bus/Xvfb, and built all targets with all features. The GTK test exercised persistent-secret
+fail-closed behavior, disabled-row preservation, form-only selection, exact deletion, random draft
+identity, session credential handling, explicit model selection, failed-switch rollback, and
+streaming translation through real widgets.
+
 Functional persistence revision `c58a54c2479045773358bd9c456b45a958e98e1e` passed
 repository-foundation run `29574265553` and Native Linux run `29574265570` (job `87865028892`).
 The native Ubuntu 24.04 job checked out exact Core revision
@@ -149,8 +159,8 @@ display-server, accessibility, or GTK button-test result is claimed. With the GT
 present, `DOCS_RS=1 cargo test --all-targets --all-features --locked --no-run` reaches native
 linking and failed on unavailable GTK symbols; it is not a valid header-free substitute.
 Runtime database I/O fault injection after successful startup is not covered locally or remotely.
-The changed GTK multi-profile flow has only passed header-free source checking locally; its real
-widget test, native linking, and build still require the pending GitHub Actions run.
+The changed GTK multi-profile flow passed its real widget test, native linking, and build in the
+GitHub Actions evidence above, but those native checks remain unavailable on this local host.
 
 ## Remaining scope
 
