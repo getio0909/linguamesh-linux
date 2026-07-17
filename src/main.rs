@@ -48,7 +48,6 @@ struct UiBindings {
     target_locale: gtk::DropDown,
     source: gtk::TextBuffer,
     output: gtk::TextBuffer,
-    #[cfg(test)]
     source_view: gtk::TextView,
     output_view: gtk::TextView,
     #[cfg(test)]
@@ -85,11 +84,14 @@ fn main() -> glib::ExitCode {
         .application_id("dev.linguamesh.LinguaMesh")
         .build();
     let file_dialog_fixture = std::env::var_os("LINGUAMESH_TEST_FILE_DIALOG").is_some();
-    application.connect_activate(move |application| build_ui(application, file_dialog_fixture));
+    let file_drop_fixture = std::env::var_os("LINGUAMESH_TEST_FILE_DROP").is_some();
+    application.connect_activate(move |application| {
+        build_ui(application, file_dialog_fixture, file_drop_fixture);
+    });
     application.run()
 }
 
-fn build_ui(application: &adw::Application, file_dialog_fixture: bool) {
+fn build_ui(application: &adw::Application, file_dialog_fixture: bool, file_drop_fixture: bool) {
     if let Some(window) = application.active_window() {
         window.present();
         return;
@@ -112,6 +114,8 @@ fn build_ui(application: &adw::Application, file_dialog_fixture: bool) {
     window.present();
     if file_dialog_fixture {
         start_file_dialog_fixture(application, bindings, &state);
+    } else if file_drop_fixture {
+        start_file_drop_fixture(application, bindings);
     }
 }
 
@@ -150,6 +154,80 @@ fn start_file_dialog_fixture(
                 "GTK file chooser application fixture timed out while loading the selected file."
             );
             application.quit();
+            glib::ControlFlow::Break
+        } else {
+            glib::ControlFlow::Continue
+        }
+    });
+}
+
+fn start_file_drop_fixture(application: &adw::Application, bindings: UiBindings) {
+    let fixture_path = std::env::var("LINGUAMESH_FILE_DROP_FIXTURE")
+        .expect("LINGUAMESH_FILE_DROP_FIXTURE must be set");
+    let coordinates_path = std::env::var("LINGUAMESH_FILE_DROP_COORDINATES")
+        .expect("LINGUAMESH_FILE_DROP_COORDINATES must be set");
+    let expected = fs::read_to_string(&fixture_path).expect("read file drop fixture");
+    let drag_button = gtk::Button::with_label("Drag fixture");
+    drag_button.set_focusable(true);
+    drag_button.set_size_request(240, 48);
+    let file = gtk::gio::File::for_path(&fixture_path);
+    let provider = gtk::gdk::ContentProvider::for_value(&file.to_value());
+    let drag_source = gtk::DragSource::new();
+    drag_source.set_actions(gtk::gdk::DragAction::COPY);
+    drag_source.set_content(Some(&provider));
+    drag_button.add_controller(drag_source);
+    bindings.workspace.prepend(&drag_button);
+
+    let coordinate_button = drag_button.clone();
+    let coordinate_target = bindings.source_view.clone();
+    let coordinate_window = bindings.window.clone();
+    let coordinate_application = application.clone();
+    let coordinate_deadline = Instant::now() + Duration::from_secs(5);
+    glib::timeout_add_local(Duration::from_millis(50), move || {
+        let source_bounds = coordinate_button.compute_bounds(&coordinate_window);
+        let target_bounds = coordinate_target.compute_bounds(&coordinate_window);
+        if let (Some(source_bounds), Some(target_bounds)) = (source_bounds, target_bounds) {
+            let content = format!(
+                "{:.0} {:.0} {:.0} {:.0} {:.0} {:.0} {:.0} {:.0}\n",
+                source_bounds.x(),
+                source_bounds.y(),
+                source_bounds.width(),
+                source_bounds.height(),
+                target_bounds.x(),
+                target_bounds.y(),
+                target_bounds.width(),
+                target_bounds.height(),
+            );
+            if fs::write(&coordinates_path, content).is_err() {
+                eprintln!("GTK drag-and-drop fixture could not write widget coordinates.");
+                coordinate_application.quit();
+            }
+            glib::ControlFlow::Break
+        } else if Instant::now() >= coordinate_deadline {
+            eprintln!("GTK drag-and-drop fixture could not resolve widget coordinates.");
+            coordinate_application.quit();
+            glib::ControlFlow::Break
+        } else {
+            glib::ControlFlow::Continue
+        }
+    });
+
+    let poll_source = bindings.source;
+    let poll_application = application.clone();
+    let poll_deadline = Instant::now() + Duration::from_secs(20);
+    glib::timeout_add_local(Duration::from_millis(20), move || {
+        let contents = poll_source.text(&poll_source.start_iter(), &poll_source.end_iter(), true);
+        if contents.as_str() == expected {
+            println!(
+                "GTK drag-and-drop application fixture passed: the source editor loaded the UTF-8 fixture."
+            );
+            poll_application.quit();
+            glib::ControlFlow::Break
+        } else if Instant::now() >= poll_deadline {
+            eprintln!(
+                "GTK drag-and-drop application fixture timed out while loading the dropped file."
+            );
+            poll_application.quit();
             glib::ControlFlow::Break
         } else {
             glib::ControlFlow::Continue
@@ -271,7 +349,6 @@ fn create_window(
             target_locale,
             source: editor_bindings.source,
             output: editor_bindings.output,
-            #[cfg(test)]
             source_view: editor_bindings.source_view,
             output_view: editor_bindings.output_view,
             #[cfg(test)]
