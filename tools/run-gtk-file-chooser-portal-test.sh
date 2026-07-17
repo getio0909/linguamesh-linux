@@ -25,7 +25,10 @@ LINGUAMESH_FILE_CHOOSER_FIXTURE="$fixture" LINGUAMESH_FILE_CHOOSER_LOG="$log" \
     export GDK_BACKEND=x11
     cargo test --all-targets --all-features --locked \
       "tests::gtk_file_dialog_uses_portal_and_loads_selected_fixture" \
-      -- --exact --ignored --test-threads=1 >"$LINGUAMESH_FILE_CHOOSER_LOG" 2>&1 &
+      --no-run >"$LINGUAMESH_FILE_CHOOSER_LOG" 2>&1
+    cargo test --all-targets --all-features --locked \
+      "tests::gtk_file_dialog_uses_portal_and_loads_selected_fixture" \
+      -- --exact --ignored --test-threads=1 >>"$LINGUAMESH_FILE_CHOOSER_LOG" 2>&1 &
     test_pid=$!
     chooser_window=""
     for _ in {1..150}; do
