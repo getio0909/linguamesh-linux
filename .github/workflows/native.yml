@@ -59,8 +59,11 @@ jobs:
             mount \
             pkg-config \
             python3 \
+            python3-dbus \
             util-linux \
             weston \
+            xdg-desktop-portal \
+            xdg-desktop-portal-gtk \
             xauth \
             xvfb
       - name: Install pinned Rust toolchain
@@ -104,6 +107,9 @@ jobs:
       - name: Run notification transport fixture
         working-directory: linguamesh-linux
         run: dbus-run-session -- bash tools/run-notification-test.sh
+      - name: Run XDG document portal lease fixture
+        working-directory: linguamesh-linux
+        run: bash tools/run-document-portal-test.sh
       - name: Run GTK test on Wayland
         working-directory: linguamesh-linux
         run: dbus-run-session -- bash tools/run-wayland-test.sh
