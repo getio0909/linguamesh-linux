@@ -151,6 +151,11 @@ Linux GIO Secret Service adapter stores the value and SQLite retains only its pe
 locked, unavailable, or interactive-only keyring states fail closed. There is no plaintext fallback,
 startup does not auto-connect, and the UI keeps an explicit session-only path.
 
+Native CI exercises this onboarding boundary with an authenticated loopback provider: the GTK form
+clears the credential immediately, persists only the SecretRef, reconnects after worker restart, and
+checks that the credential canary is absent from SQLite. Interactive Secret Service prompts remain
+unsupported and fail closed.
+
 `l10n/linux/` is a byte-for-byte consumer snapshot of the canonical PO catalogs at the revision
 enforced by `tools/sync-l10n.sh`. The GTK host now parses the pinned English and Simplified Chinese
 catalogs at runtime for translated action labels, with explicit English fallback for keys not yet
