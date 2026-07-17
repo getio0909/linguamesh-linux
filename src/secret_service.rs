@@ -204,7 +204,8 @@ pub fn resolve_secret(secret_ref: &SecretRef) -> Result<SecretValue, LookupError
         }
         return Err(LookupError::Missing);
     };
-    let response = session.call(item, ITEM_INTERFACE, "GetSecret", &().to_variant())?;
+    let parameters = (&session.path,).to_variant();
+    let response = session.call(item, ITEM_INTERFACE, "GetSecret", &parameters)?;
     let (_, _, value, _): (ObjectPath, Vec<u8>, Vec<u8>, String) =
         response.get().ok_or(LookupError::Unavailable)?;
     let value = String::from_utf8(value).map_err(|_| LookupError::Unavailable)?;
