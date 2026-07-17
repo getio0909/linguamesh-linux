@@ -130,7 +130,8 @@ fn search_items(
 fn default_collection(session: &SecretSession) -> Result<ObjectPath, LookupError> {
     let parameters = ("default",).to_variant();
     let response = session.call(SERVICE_PATH, SERVICE_INTERFACE, "ReadAlias", &parameters)?;
-    response.get().ok_or(LookupError::Unavailable)
+    let (collection,): (ObjectPath,) = response.get().ok_or(LookupError::Unavailable)?;
+    Ok(collection)
 }
 
 fn secret_tuple(
