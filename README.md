@@ -25,10 +25,17 @@ reviewed Core functional revision `fbf3e9b5927049dccaa19f8c36013495ffebba12`, wh
 
 ## Native stack
 
-The client uses stable Rust, GTK 4 through gtk-rs, GLib/GIO, and libadwaita. Shared provider,
+The client uses stable Rust, GTK 4.10 or newer through gtk-rs, GLib/GIO, and libadwaita. Shared provider,
 streaming, cancellation, compatibility, and secret-broker behavior comes through Core's public
 Rust application layer. The Linux layer owns native state reduction, host-secret responses,
 background scheduling, and widgets.
+
+The current GTK surface includes baseline accessibility semantics: the main workspace, headings,
+status, and errors expose explicit roles; source/output editors expose names, multi-line and
+read-only properties; editable fields and dropdowns are labelled by visible mnemonic labels; the
+output region reports translation busy state; empty errors are hidden from the accessibility tree;
+and Stop has the explicit accessible name “Stop translation”. Focusable controls retain the visual
+tab order. This is semantic widget wiring, not a claim of Orca/AT-SPI or physical-keyboard coverage.
 
 ## Build and run
 

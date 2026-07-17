@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback and the forced Wayland/X11 GTK gates are verified in native Linux CI
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, and baseline GTK accessibility semantics are implemented; native CI verification is pending for the current slice
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -23,6 +23,10 @@ or assistive-technology compatibility.
 Assumption: exhausting a private tmpfs until Linux returns `ENOSPC` verifies the implemented
 post-startup SQLite transaction-failure boundary. It does not represent read-only media,
 corruption, power loss, or every SQLite VFS failure.
+
+Assumption: enabling gtk-rs `v4_10` is an existing-dependency API feature, not a new third-party
+package. Ubuntu 24.04 native CI is the compatibility gate for this GTK 4.10-or-newer surface;
+older distributions and future Flatpak runtimes require separate packaging validation.
 
 ## Implemented
 
@@ -93,6 +97,12 @@ corruption, power loss, or every SQLite VFS failure.
   fields. Profile/remember/remove controls fail closed when storage is unavailable, all conflicting
   controls are blocked during connection, model selection, translation, or deletion, and event
   processing is capped per main-context tick.
+- The GTK boundary provides baseline accessibility semantics: `Main`, `Heading`, `Status`, and
+  `Alert` roles; named multi-line source/output `TextBox` editors with output read-only; visible
+  label-to-control `LabelledBy` and mnemonic relations; focusable editor and action controls; an
+  explicit `Stop translation` accessible name; output `Busy` state during translation with terminal
+  reset; and an accessibility-hidden empty error label. These are semantic wiring guarantees, not
+  AT-SPI/Orca, physical-keyboard, RTL, high-contrast, or full desktop accessibility evidence.
 - Fourteen canonical official/pseudo PO catalogs pinned to l10n revision
   `52e73ea2a6cc7e6e7409b2b6eb0d02db35576a49`. Sync rejects a different revision, dirty generated
   source artifacts, stale copies, and unexpected catalog counts.
@@ -146,7 +156,9 @@ Validated on 2026-07-17 with Rust 1.93.0:
   host used the unprivileged path; the controlled `sudo` fallback passed in the remote evidence
   below.
 - `DOCS_RS=1 cargo check --all-targets --all-features --locked` and the equivalent strict Clippy
-  command passed only as source-level diagnostics of the GTK code.
+  command passed only as source-level diagnostics of the GTK code, including the `v4_10`
+  accessibility APIs and the test assertions. The native GTK binary test for this slice remains a
+  remote-only gate on this host.
 - The exact foundation block in `docs/testing.md`, `git diff --check`, shell syntax validation, and
   code-comment/secret-pattern scans passed. The new Wayland runner also passed Bash syntax and its
   expected missing-Weston and early-compositor-exit failure paths without leaving a temporary
@@ -229,7 +241,7 @@ UI and Xvfb test were added.
 This host has no `gtk4.pc`, `libadwaita-1.pc`, `graphene-gobject-1.0.pc`, or `weston`. After clearing the
 source-only `graphene-sys` cache, a normal `cargo check --all-targets --all-features --locked`
 correctly stopped at missing `graphene-gobject-1.0`. No local GUI link, launch, screenshot,
-display-server, accessibility, or GTK button-test result is claimed. In particular, the Wayland
+display-server, AT-SPI/Orca, physical-keyboard, or GTK button-test result is claimed. In particular, the Wayland
 runner was not executed against a local compositor. With the GTK binary test
 present, `DOCS_RS=1 cargo test --all-targets --all-features --locked --no-run` reaches native
 linking and failed on unavailable GTK symbols; it is not a valid header-free substitute.
@@ -250,8 +262,8 @@ in the GitHub Actions evidence above, but those native checks remain unavailable
 - Runtime database faults beyond the verified private-tmpfs `ENOSPC` transaction boundary,
   including read-only media, corruption, power loss, and broader SQLite VFS failures.
 - XDG portals beyond the implemented user-data path, file workflows,
-  clipboard/drag-and-drop/notifications, comprehensive
-  accessibility, physical-compositor/GPU Wayland coverage, broader X11/desktop coverage, packaging,
+  clipboard/drag-and-drop/notifications, AT-SPI/Orca and physical-keyboard accessibility coverage,
+  physical-compositor/GPU Wayland coverage, broader X11/desktop coverage, packaging,
   Flatpak, and release artifacts.
 - Directory-descriptor or `openat2` hardening against a concurrent same-UID path replacement during
   Linux host preflight; static components are checked before mutation and Core remains the final

@@ -97,7 +97,9 @@ and model. The runner requires
 unmounts the private filesystem. This proves the implemented Linux `ENOSPC` transaction boundary;
 it does not cover read-only media, corruption, power loss, or every SQLite VFS failure.
 
-The GTK Rust source can be checked without native linking as a limited diagnostic:
+The GTK Rust source can be checked without native linking as a limited diagnostic. The `v4_10`
+gtk-rs feature is enabled because the accessibility test helpers and semantic update APIs require
+GTK 4.10 or newer:
 
 ```sh
 DOCS_RS=1 cargo check --all-targets --all-features --locked
@@ -160,8 +162,11 @@ then the binary-only suite runs again in another private D-Bus session under for
 headless Weston. `tools/run-wayland-test.sh` creates a private `0700` runtime directory, unsets
 `DISPLAY`, sets `GDK_BACKEND=wayland`, waits at most ten seconds for a dedicated socket, and uses
 exit traps to stop Weston and remove the directory. Tests are serialized because GTK owns
-process-global state. This is not comprehensive UI automation, accessibility inspection, a
-physical-compositor test, or GPU-rendering evidence.
+process-global state. The same test asserts the baseline accessibility roles, editor properties,
+visible-label relations and mnemonics, focusability, explicit Stop name, hidden-empty-error
+behavior, and Busy-state reset. GTK's helpers prove semantic presence and reset behavior; they do
+not prove AT-SPI export, Orca speech, physical keyboard traversal, RTL/high-contrast presentation,
+a physical compositor, or GPU rendering.
 
 The GitHub Actions native workflow pins Core revision
 `fbf3e9b5927049dccaa19f8c36013495ffebba12`, installs the headers plus D-Bus, Xvfb, test-only
@@ -216,8 +221,8 @@ git diff --check
 
 ## Unimplemented validation
 
-Broader GTK component/UI automation, accessibility inspection, physical-compositor and GPU-backed
-Wayland coverage, a broader X11/desktop matrix, a native Secret Service backend and
+Broader GTK component/UI automation, AT-SPI/Orca and physical-keyboard accessibility coverage,
+physical-compositor and GPU-backed Wayland coverage, a broader X11/desktop matrix, a native Secret Service backend and
 secure-credential onboarding/persistence tests, broader XDG and portal tests, third-party
 local-server interoperability, Flatpak smoke tests, runtime localization behavior, runtime database
 faults beyond the implemented Linux `ENOSPC` transaction boundary, dependency/license automation,

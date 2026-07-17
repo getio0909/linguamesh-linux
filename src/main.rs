@@ -24,6 +24,7 @@ const DEFAULT_PROVIDER_ENDPOINT: &str = "http://127.0.0.1:11434/v1/";
 
 #[derive(Clone)]
 struct UiBindings {
+    workspace: gtk::Box,
     onboarding: gtk::Box,
     onboarding_title: gtk::Label,
     onboarding_detail: gtk::Label,
@@ -40,6 +41,13 @@ struct UiBindings {
     target_locale: gtk::DropDown,
     source: gtk::TextBuffer,
     output: gtk::TextBuffer,
+    #[cfg(test)]
+    source_view: gtk::TextView,
+    output_view: gtk::TextView,
+    #[cfg(test)]
+    source_label: gtk::Label,
+    #[cfg(test)]
+    output_label: gtk::Label,
     translate: gtk::Button,
     stop: gtk::Button,
     status: gtk::Label,
@@ -49,6 +57,19 @@ struct UiBindings {
     diagnostics: gtk::Label,
     profile_selection_guard: Rc<Cell<bool>>,
     draft_profile_id: Rc<RefCell<Option<ProviderProfileId>>>,
+}
+
+struct EditorBindings {
+    editors: gtk::Paned,
+    source: gtk::TextBuffer,
+    output: gtk::TextBuffer,
+    #[cfg(test)]
+    source_view: gtk::TextView,
+    output_view: gtk::TextView,
+    #[cfg(test)]
+    source_label: gtk::Label,
+    #[cfg(test)]
+    output_label: gtk::Label,
 }
 
 fn main() -> glib::ExitCode {
@@ -82,6 +103,7 @@ fn build_ui(application: &adw::Application) {
     window.present();
 }
 
+#[allow(clippy::too_many_lines)]
 fn create_window(
     application: &adw::Application,
 ) -> (
@@ -118,17 +140,19 @@ fn create_window(
     let (controls, model, source_locale, target_locale, theme, locale) = create_controls();
     root.append(&controls);
 
-    let (editors, source, output) = create_editors();
-    root.append(&editors);
+    let editor_bindings = create_editors();
+    root.append(&editor_bindings.editors);
 
     let action_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     let translate = gtk::Button::with_mnemonic("_Translate");
     translate.add_css_class("suggested-action");
     let stop = gtk::Button::with_mnemonic("_Stop");
     stop.add_css_class("destructive-action");
+    stop.update_property(&[gtk::accessible::Property::Label("Stop translation")]);
     action_row.append(&translate);
     action_row.append(&stop);
     let status = gtk::Label::new(None);
+    status.set_accessible_role(gtk::AccessibleRole::Status);
     status.set_xalign(0.0);
     status.set_hexpand(true);
     action_row.append(&status);
@@ -138,6 +162,7 @@ fn create_window(
     root.append(&action_row);
 
     let error = gtk::Label::new(None);
+    error.set_accessible_role(gtk::AccessibleRole::Alert);
     error.set_xalign(0.0);
     error.set_wrap(true);
     error.add_css_class("error");
@@ -161,6 +186,7 @@ fn create_window(
     (
         window,
         UiBindings {
+            workspace: root,
             onboarding,
             onboarding_title,
             onboarding_detail,
@@ -175,8 +201,15 @@ fn create_window(
             model,
             source_locale,
             target_locale,
-            source,
-            output,
+            source: editor_bindings.source,
+            output: editor_bindings.output,
+            #[cfg(test)]
+            source_view: editor_bindings.source_view,
+            output_view: editor_bindings.output_view,
+            #[cfg(test)]
+            source_label: editor_bindings.source_label,
+            #[cfg(test)]
+            output_label: editor_bindings.output_label,
             translate,
             stop,
             status,
@@ -200,6 +233,7 @@ fn create_onboarding() -> (gtk::Box, gtk::Label, gtk::Label) {
     section.set_margin_start(4);
     section.set_margin_end(4);
     let title = gtk::Label::new(None);
+    title.set_accessible_role(gtk::AccessibleRole::Heading);
     title.set_xalign(0.0);
     title.add_css_class("heading");
     let detail = gtk::Label::new(None);
@@ -213,6 +247,7 @@ fn create_onboarding() -> (gtk::Box, gtk::Label, gtk::Label) {
 
 fn create_root() -> gtk::Box {
     let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    root.set_accessible_role(gtk::AccessibleRole::Main);
     root.set_margin_top(16);
     root.set_margin_bottom(16);
     root.set_margin_start(16);
@@ -220,7 +255,7 @@ fn create_root() -> gtk::Box {
     root
 }
 
-fn create_editors() -> (gtk::Paned, gtk::TextBuffer, gtk::TextBuffer) {
+fn create_editors() -> EditorBindings {
     let source = gtk::TextBuffer::new(None::<&gtk::TextTagTable>);
     let source_view = gtk::TextView::builder()
         .buffer(&source)
@@ -230,6 +265,13 @@ fn create_editors() -> (gtk::Paned, gtk::TextBuffer, gtk::TextBuffer) {
         .left_margin(8)
         .right_margin(8)
         .build();
+    source_view.set_accessible_role(gtk::AccessibleRole::TextBox);
+    source_view.set_focusable(true);
+    source_view.update_property(&[
+        gtk::accessible::Property::Label("Source text"),
+        gtk::accessible::Property::MultiLine(true),
+        gtk::accessible::Property::ReadOnly(false),
+    ]);
     let output = gtk::TextBuffer::new(None::<&gtk::TextTagTable>);
     let output_view = gtk::TextView::builder()
         .buffer(&output)
@@ -241,12 +283,37 @@ fn create_editors() -> (gtk::Paned, gtk::TextBuffer, gtk::TextBuffer) {
         .left_margin(8)
         .right_margin(8)
         .build();
+    output_view.set_accessible_role(gtk::AccessibleRole::TextBox);
+    output_view.set_focusable(true);
+    output_view.update_property(&[
+        gtk::accessible::Property::Label("Streamed translation"),
+        gtk::accessible::Property::MultiLine(true),
+        gtk::accessible::Property::ReadOnly(true),
+    ]);
     let editors = gtk::Paned::new(gtk::Orientation::Horizontal);
     editors.set_wide_handle(true);
-    editors.set_start_child(Some(&editor_panel("Source text", &source_view)));
-    editors.set_end_child(Some(&editor_panel("Streamed translation", &output_view)));
+    let (source_panel, source_label) = editor_panel("Source te_xt", &source_view);
+    let (output_panel, output_label) = editor_panel("Streamed translatio_n", &output_view);
+    editors.set_start_child(Some(&source_panel));
+    editors.set_end_child(Some(&output_panel));
     editors.set_vexpand(true);
-    (editors, source, output)
+    #[cfg(not(test))]
+    {
+        drop(source_label);
+        drop(output_label);
+    }
+    EditorBindings {
+        editors,
+        source,
+        output,
+        #[cfg(test)]
+        source_view,
+        output_view,
+        #[cfg(test)]
+        source_label,
+        #[cfg(test)]
+        output_label,
+    }
 }
 
 fn create_provider_session() -> (
@@ -262,6 +329,7 @@ fn create_provider_session() -> (
 ) {
     let section = gtk::Box::new(gtk::Orientation::Vertical, 6);
     let title = gtk::Label::new(Some("Provider profiles"));
+    title.set_accessible_role(gtk::AccessibleRole::Heading);
     title.set_xalign(0.0);
     title.add_css_class("heading");
     section.append(&title);
@@ -286,7 +354,7 @@ fn create_provider_session() -> (
         "Remove the selected saved profile without disconnecting its current session",
     ));
     profile_actions.append(&labeled_control(
-        "Saved profile",
+        "Sa_ved profile",
         saved_profile.upcast_ref::<gtk::Widget>(),
     ));
     profile_actions.append(&remove_saved_profile);
@@ -318,15 +386,15 @@ fn create_provider_session() -> (
     ));
     let connect = gtk::Button::with_mnemonic("_Connect");
     fields.append(&labeled_control(
-        "Provider name",
+        "_Provider name",
         provider_name.upcast_ref::<gtk::Widget>(),
     ));
     fields.append(&labeled_control(
-        "Endpoint (loopback example)",
+        "_Endpoint (loopback example)",
         provider_endpoint.upcast_ref::<gtk::Widget>(),
     ));
     fields.append(&labeled_control(
-        "Credential (optional, session only)",
+        "C_redential (optional, session only)",
         provider_credential.upcast_ref::<gtk::Widget>(),
     ));
     fields.append(&connect);
@@ -366,11 +434,17 @@ fn create_controls() -> (
     let theme = gtk::DropDown::from_strings(&["System", "Light", "Dark"]);
     let locale = gtk::DropDown::from_strings(&["English", "Simplified Chinese"]);
     for (label, control) in [
-        ("Model", model.upcast_ref::<gtk::Widget>()),
-        ("Source language", source_locale.upcast_ref::<gtk::Widget>()),
-        ("Target language", target_locale.upcast_ref::<gtk::Widget>()),
-        ("Theme", theme.upcast_ref::<gtk::Widget>()),
-        ("UI locale", locale.upcast_ref::<gtk::Widget>()),
+        ("_Model", model.upcast_ref::<gtk::Widget>()),
+        (
+            "Source _language",
+            source_locale.upcast_ref::<gtk::Widget>(),
+        ),
+        (
+            "Target l_anguage",
+            target_locale.upcast_ref::<gtk::Widget>(),
+        ),
+        ("T_heme", theme.upcast_ref::<gtk::Widget>()),
+        ("_UI locale", locale.upcast_ref::<gtk::Widget>()),
     ] {
         controls.append(&labeled_control(label, control));
     }
@@ -379,9 +453,11 @@ fn create_controls() -> (
 
 fn labeled_control(label: &str, control: &gtk::Widget) -> gtk::Box {
     let container = gtk::Box::new(gtk::Orientation::Vertical, 4);
-    let label = gtk::Label::new(Some(label));
+    let label = gtk::Label::with_mnemonic(label);
     label.set_xalign(0.0);
     label.add_css_class("caption");
+    label.set_mnemonic_widget(Some(control));
+    control.update_relation(&[gtk::accessible::Relation::LabelledBy(&[label.upcast_ref()])]);
     container.append(&label);
     container.append(control);
     container
@@ -497,11 +573,13 @@ fn custom_provider_profile(
     })
 }
 
-fn editor_panel(label: &str, editor: &gtk::TextView) -> gtk::Box {
+fn editor_panel(label: &str, editor: &gtk::TextView) -> (gtk::Box, gtk::Label) {
     let container = gtk::Box::new(gtk::Orientation::Vertical, 6);
-    let label = gtk::Label::new(Some(label));
+    let label = gtk::Label::with_mnemonic(label);
     label.set_xalign(0.0);
     label.add_css_class("heading");
+    label.set_mnemonic_widget(Some(editor));
+    editor.update_relation(&[gtk::accessible::Relation::LabelledBy(&[label.upcast_ref()])]);
     let scroller = gtk::ScrolledWindow::builder()
         .child(editor)
         .hscrollbar_policy(gtk::PolicyType::Automatic)
@@ -510,7 +588,7 @@ fn editor_panel(label: &str, editor: &gtk::TextView) -> gtk::Box {
     scroller.set_vexpand(true);
     container.append(&label);
     container.append(&scroller);
-    container
+    (container, label)
 }
 
 fn confirmed_model_index(state: &AppState) -> u32 {
@@ -1237,6 +1315,7 @@ fn refresh_onboarding(bindings: &UiBindings, state: &AppState) {
     bindings.onboarding_detail.set_label(&detail);
 }
 
+#[allow(clippy::too_many_lines)]
 fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     bindings.output.set_text(state.output());
     let status_label = if state.worker_unavailable() {
@@ -1258,9 +1337,19 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     } else {
         ""
     });
+    let error_text = state.error_text();
+    let has_error = error_text.is_some();
     bindings
         .error
-        .set_label(&state.error_text().unwrap_or_default());
+        .set_label(error_text.as_deref().unwrap_or_default());
+    bindings.error.set_visible(has_error);
+    if has_error {
+        bindings.error.reset_state(gtk::AccessibleState::Hidden);
+    } else {
+        bindings
+            .error
+            .update_state(&[gtk::accessible::State::Hidden(true)]);
+    }
     bindings
         .locale_note
         .set_label(if state.locale() == UiLocale::SimplifiedChinese {
@@ -1269,6 +1358,21 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             ""
         });
     bindings.diagnostics.set_label(&state.diagnostics_text());
+    let translation_busy = matches!(
+        state.status(),
+        AppStatus::Translating | AppStatus::Cancelling
+    );
+    if translation_busy {
+        bindings
+            .workspace
+            .update_state(&[gtk::accessible::State::Busy(true)]);
+        bindings
+            .output_view
+            .update_state(&[gtk::accessible::State::Busy(true)]);
+    } else {
+        bindings.workspace.reset_state(gtk::AccessibleState::Busy);
+        bindings.output_view.reset_state(gtk::AccessibleState::Busy);
+    }
     let blocked = state.pending_profile_deletion().is_some()
         || state.pending_model_selection().is_some()
         || matches!(
@@ -1349,6 +1453,20 @@ mod tests {
         panic!("Timed out while waiting for the GTK state transition.");
     }
 
+    fn assert_labeled_control(control: &gtk::Widget) {
+        assert!(gtk::test_accessible_has_relation(
+            control,
+            gtk::AccessibleRelation::LabelledBy
+        ));
+        assert!(control.is_focusable());
+        let label = control
+            .parent()
+            .and_then(|parent| parent.first_child())
+            .and_then(|child| child.downcast::<gtk::Label>().ok())
+            .expect("control label");
+        assert_eq!(label.mnemonic_widget().as_ref(), Some(control));
+    }
+
     // 单个原生流程覆盖真实控件生命周期和恢复表单，避免拆分后并行初始化 GTK。
     #[allow(clippy::too_many_lines)]
     #[test]
@@ -1379,6 +1497,102 @@ mod tests {
         );
         refresh_ui(&bindings, &state.borrow());
         window.present();
+
+        assert!(gtk::test_accessible_has_role(
+            &bindings.workspace,
+            gtk::AccessibleRole::Main
+        ));
+        assert!(gtk::test_accessible_has_role(
+            &bindings.onboarding_title,
+            gtk::AccessibleRole::Heading
+        ));
+        assert!(gtk::test_accessible_has_role(
+            &bindings.status,
+            gtk::AccessibleRole::Status
+        ));
+        assert!(gtk::test_accessible_has_role(
+            &bindings.error,
+            gtk::AccessibleRole::Alert
+        ));
+        for control in [
+            bindings.saved_profile.upcast_ref::<gtk::Widget>(),
+            bindings.provider_name.upcast_ref::<gtk::Widget>(),
+            bindings.provider_endpoint.upcast_ref::<gtk::Widget>(),
+            bindings.provider_credential.upcast_ref::<gtk::Widget>(),
+            bindings.model.upcast_ref::<gtk::Widget>(),
+            bindings.source_locale.upcast_ref::<gtk::Widget>(),
+            bindings.target_locale.upcast_ref::<gtk::Widget>(),
+            theme.upcast_ref::<gtk::Widget>(),
+            locale.upcast_ref::<gtk::Widget>(),
+        ] {
+            assert_labeled_control(control);
+        }
+        for button in [
+            &bindings.remove_saved_profile,
+            &bindings.connect,
+            &bindings.translate,
+            &bindings.stop,
+        ] {
+            assert!(button.is_focusable());
+        }
+        assert!(bindings.remember_profile.is_focusable());
+        assert!(bindings.source_view.is_focusable());
+        assert!(bindings.output_view.is_focusable());
+        assert!(gtk::test_accessible_has_role(
+            &bindings.source_view,
+            gtk::AccessibleRole::TextBox
+        ));
+        assert!(gtk::test_accessible_has_role(
+            &bindings.output_view,
+            gtk::AccessibleRole::TextBox
+        ));
+        for property in [
+            gtk::AccessibleProperty::Label,
+            gtk::AccessibleProperty::MultiLine,
+            gtk::AccessibleProperty::ReadOnly,
+        ] {
+            assert!(gtk::test_accessible_has_property(
+                &bindings.source_view,
+                property
+            ));
+            assert!(gtk::test_accessible_has_property(
+                &bindings.output_view,
+                property
+            ));
+        }
+        assert!(gtk::test_accessible_has_relation(
+            &bindings.source_view,
+            gtk::AccessibleRelation::LabelledBy
+        ));
+        assert!(gtk::test_accessible_has_relation(
+            &bindings.output_view,
+            gtk::AccessibleRelation::LabelledBy
+        ));
+        assert_eq!(
+            bindings.source_label.mnemonic_widget(),
+            Some(bindings.source_view.clone().upcast::<gtk::Widget>())
+        );
+        assert_eq!(
+            bindings.output_label.mnemonic_widget(),
+            Some(bindings.output_view.clone().upcast::<gtk::Widget>())
+        );
+        assert!(gtk::test_accessible_has_property(
+            &bindings.stop,
+            gtk::AccessibleProperty::Label
+        ));
+        assert!(!gtk::test_accessible_has_state(
+            &bindings.workspace,
+            gtk::AccessibleState::Busy
+        ));
+        assert!(!gtk::test_accessible_has_state(
+            &bindings.output_view,
+            gtk::AccessibleState::Busy
+        ));
+        assert!(gtk::test_accessible_has_state(
+            &bindings.error,
+            gtk::AccessibleState::Hidden
+        ));
+        assert!(!bindings.error.is_visible());
 
         assert!(!state.borrow().worker_ready());
         assert_eq!(state.borrow().onboarding_stage(), OnboardingStage::Starting);
@@ -1450,6 +1664,11 @@ mod tests {
         assert_eq!(state.borrow().status(), AppStatus::Failed);
         assert!(state.borrow().active_provider().is_none());
         assert!(state.borrow().error_text().is_some());
+        assert!(bindings.error.is_visible());
+        assert!(!gtk::test_accessible_has_state(
+            &bindings.error,
+            gtk::AccessibleState::Hidden
+        ));
 
         bindings.provider_name.set_text("GTK fake provider");
         bindings.provider_endpoint.set_text(&demo_endpoint);
@@ -1512,6 +1731,11 @@ mod tests {
                 .contains("GTK fake provider")
         );
         assert!(bindings.active_provider.label().contains("session only"));
+        assert!(!bindings.error.is_visible());
+        assert!(gtk::test_accessible_has_state(
+            &bindings.error,
+            gtk::AccessibleState::Hidden
+        ));
 
         bindings.model.set_selected(1);
         assert_eq!(
@@ -1616,6 +1840,14 @@ mod tests {
         assert_eq!(state.borrow().status(), AppStatus::Translating);
         assert!(!bindings.connect.is_sensitive());
         assert!(!bindings.translate.is_sensitive());
+        assert!(gtk::test_accessible_has_state(
+            &bindings.workspace,
+            gtk::AccessibleState::Busy
+        ));
+        assert!(gtk::test_accessible_has_state(
+            &bindings.output_view,
+            gtk::AccessibleState::Busy
+        ));
 
         spin_main_context_until(&context, Duration::from_secs(5), || {
             state.borrow().status() == AppStatus::Completed
@@ -1623,6 +1855,14 @@ mod tests {
         assert_eq!(state.borrow().output(), "你好，LinguaMesh！");
         assert!(!state.borrow().has_partial_output());
         assert_eq!(bindings.status.label(), "Status: Completed");
+        assert!(!gtk::test_accessible_has_state(
+            &bindings.workspace,
+            gtk::AccessibleState::Busy
+        ));
+        assert!(!gtk::test_accessible_has_state(
+            &bindings.output_view,
+            gtk::AccessibleState::Busy
+        ));
         assert_eq!(state.borrow().onboarding_stage(), OnboardingStage::Ready);
         assert!(bindings.onboarding_detail.label().contains(&ready_identity));
         assert!(

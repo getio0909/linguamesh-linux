@@ -67,6 +67,15 @@ changing the active runtime model. New persistent profiles use a GLib random UUI
 Core `ProviderProfileId`; display names are never database keys. Pending connection, model
 selection, translation, or deletion disables conflicting controls.
 
+The GTK boundary also owns baseline accessibility semantics. The workspace uses the `Main` role;
+onboarding and provider headings use `Heading`; the live operation label uses `Status`; and the
+error label uses `Alert` while remaining hidden when there is no error. Source and output
+`TextView`s use `TextBox` with explicit accessible names and multi-line properties, with output
+marked read-only and both editors kept focusable. Visible labels establish `LabelledBy` relations
+and mnemonic targets for every entry and dropdown, including the editor labels. The output region
+reports `Busy` during translation and resets it at a terminal state, while the Stop button uses
+the explicit accessible name `Stop translation`.
+
 Native CI executes this same GTK binary flow first through serialized X11/Xvfb and then through a
 separate private D-Bus session with `GDK_BACKEND=wayland`. The Wayland runner starts headless Weston
 inside a private `0700` `XDG_RUNTIME_DIR`, waits a bounded time for its dedicated socket, removes
