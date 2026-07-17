@@ -55,13 +55,13 @@ is shown as unavailable with request controls disabled. The card is derived from
 writes no completion flag. A user-supplied OpenAI-compatible base endpoint such as
 `http://127.0.0.1:11434/v1/` follows the same flow.
 
-The credential field is optional and session-only. Its value is copied into Core's secret-aware
-`SecretValue`, the widget is cleared immediately, the temporary GTK string is dropped, and a
+The credential field is optional. Its value is copied into Core's secret-aware `SecretValue`, the
+widget is cleared immediately, and the temporary GTK string is dropped. Without Remember, a
 `session:` `SecretRef` lets the bounded typed host-secret broker provide it once during connection.
-Choose **New profile...** or an existing saved profile, then select **Remember non-secret profile
-and model** before connecting to create, update, and activate only its provider name, endpoint, and
-validated model preference. New saved profiles receive a random stable ID independent of their
-display name. The worker stores each credential-free copy in Core's SQLite database at
+When Remember is selected with a credential, the Linux host stores it through Secret Service and
+persists only the resulting `secret-service:` reference with the profile. New saved profiles
+receive a random stable ID independent of their display name. The worker stores each non-secret
+profile copy in Core's SQLite database at
 `$XDG_DATA_HOME/dev.linguamesh.LinguaMesh/linguamesh.sqlite3` (normally under
 `~/.local/share`) with a `0700` application directory and `0600` database file. Core opens SQLite
 with no-follow protection on Linux's default Unix VFS, rejecting any symbolic-link component; the
@@ -72,12 +72,12 @@ but remains disconnected and performs no provider request. Selecting another row
 form. Enter the credential again when required, then click **Connect** to validate and switch.
 **Remove saved profile** deletes only that stored row; if it is currently connected, the validated
 runtime session and model continue in visibly session-only mode. Provider controls remain disabled
-until startup finishes. Credential
-values and secret references are never written to the database. Secret Service is not implemented,
-so a persistent `SecretRef` still fails closed with a typed error instead of falling back to
-plaintext. Session-only connection remains available when remembering is disabled or profile
-storage is unavailable. Connection and translation can both be cancelled, and a failed provider
-switch preserves the previously confirmed provider and model.
+until startup finishes. Credential values are never written to the database; only persistent
+`SecretRef` identifiers are stored. Secret Service absence, locked items, and unsupported
+interactive prompts fail closed with typed errors instead of falling back to plaintext. Session-only
+connection remains available when remembering is disabled or profile storage/keyring access is
+unavailable. Connection and translation can both be cancelled, and a failed provider switch
+preserves the previously confirmed provider and model.
 
 If an already-open database later returns a persistent write error, the triggering Connect, model
 change, or deletion is rejected before any success is reported. The worker drops that storage

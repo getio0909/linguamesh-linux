@@ -6,9 +6,9 @@ An unreleased native application target now exists, but no Flatpak manifest or d
 artifact exists. The vertical slice must not be tagged or published as a product release, and no
 packaging claim is valid. Its bundled fake provider is development-only behavior. The optional
 OpenAI-compatible endpoint form accepts a one-shot session credential, clears the field
-immediately, and never persists the credential or its reference. A saved-profile dropdown and
-explicit remember checkbox can create, update, activate, switch, and remove multiple rows containing
-only provider names, endpoints, and model preferences in the XDG user data SQLite database. The
+immediately, and never persists the credential value. A saved-profile dropdown and explicit remember
+checkbox can create, update, activate, switch, and remove multiple rows containing provider names,
+endpoints, model preferences, and persistent Secret Service references in the XDG user data SQLite database. The
 private application directory is `0700` and the database is `0600`. Removing the connected row
 leaves its already validated runtime session active but no longer persistent. Core's no-follow
 SQLite open behavior on Linux's default Unix VFS remains required. Startup prefills the last
@@ -17,7 +17,8 @@ required. A derived Provider setup card guides configuration, explicit connectio
 model selection without storing a completion flag, distinguishes worker failure from startup, and
 shows the confirmed next-request stable ID/model identity.
 The external-provider path is tested only with LinguaMesh's loopback fake provider. Persistent
-secret references fail closed because no native Secret Service backend exists. The native workflow
+secret references use the Linux GIO Secret Service adapter and fail closed when the desktop keyring
+is unavailable or requires an interactive prompt. The native workflow
 pins reviewed Core functional revision
 `fbf3e9b5927049dccaa19f8c36013495ffebba12`, whose storage delta adds
 `SQLITE_OPEN_NOFOLLOW`, rather than checking out a floating branch. Functional revision
@@ -43,7 +44,7 @@ A Linux release may be prepared only after:
 
 1. pinned Rust, GTK, GLib/GIO, and packaging toolchains build and test successfully on documented environments;
 2. LinguaMesh Core, protocol, provider catalog, persistence, and localization versions match the central release manifest;
-3. the native Secret Service backend, session-only fallback, complete SecretRef-backed profile lifecycle, multi-profile management, XDG paths, portals, accessibility, Wayland, practical X11 support, migrations, and packaging smoke tests are verified;
+3. the native Secret Service backend, session-only fallback, complete SecretRef-backed profile lifecycle including item cleanup, multi-profile management, XDG paths, portals, accessibility, Wayland, practical X11 support, migrations, and packaging smoke tests are verified;
 4. dependency and LGPL compliance review, third-party notices, privacy/security review, changelog, checksums, source archive, and rollback information are complete;
 5. protected release infrastructure produces reproducible artifacts without exposing credentials.
 

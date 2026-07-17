@@ -54,7 +54,8 @@ translation cancellation remain in Core.
 With `gui`, `src/main.rs` binds this state and worker to GTK 4/libadwaita widgets. GTK objects remain
 on the main context, which processes at most 64 queued events per timer tick without performing
 network work. The shell exposes a saved-profile dropdown, provider name, endpoint, optional session
-credential, explicit Connect, **Remember non-secret profile and model**, **Remove saved profile**,
+credential, explicit Connect, **Remember profile, model, and credential in Secret Service**,
+**Remove saved profile**,
 model selection, source and target locales, source and streamed output editors, Translate/Stop,
 typed errors, appearance, locale preference with an English fallback, and redacted diagnostics.
 An always-current Provider setup card explains the next required action, warns when saved-profile
@@ -140,12 +141,12 @@ directory after creation and the file's identity after open. This static preflig
 directory-descriptor or `openat2` guarantee against concurrent same-UID path replacement; Core's
 no-follow open remains the final database-use gate.
 
-Neither credential values nor secret references are persisted. A runtime session reference is
-stripped before the profile reaches SQLite, and restored profiles therefore require credential
-re-entry when authentication is needed. A persistent `SecretRef`, including a `secret-service:`
-reference, returns `SecureStorageUnavailable` because the native Secret Service backend is not
-implemented. There is no plaintext fallback, startup does not auto-connect, and the UI does not
-claim that a credential was saved.
+Neither credential values nor session references are persisted. A runtime session reference is
+stripped before the profile reaches SQLite. When the user chooses Remember with a credential, the
+Linux GIO Secret Service adapter stores the value and SQLite retains only its persistent
+`secret-service:` reference. Restored profiles resolve that reference on explicit Connect; missing,
+locked, unavailable, or interactive-only keyring states fail closed. There is no plaintext fallback,
+startup does not auto-connect, and the UI keeps an explicit session-only path.
 
 `l10n/linux/` is a byte-for-byte consumer snapshot of the canonical PO catalogs at the revision
 enforced by `tools/sync-l10n.sh`. Resource provenance and format validation are implemented, while
@@ -173,9 +174,9 @@ addition to lifecycle, basic keyboard mnemonics, appearance, and the text worksp
 
 ## Security and portability boundaries
 
-Persistent secrets must use Secret Service. Until that backend exists, the UI offers only the
-clearly labeled in-memory credential path and fails closed for persistent secret references;
-remembering non-secret profile fields does not weaken that boundary. File and directory handling
+Persistent secrets use Secret Service. When that service is unavailable, the UI offers only the
+clearly labeled in-memory credential path and fails closed for persistent references; remembering
+profile fields does not weaken that boundary. File and directory handling
 must follow XDG locations, restrictive permissions, portal leases, and cleanup rules. Wayland is
 required; the headless Wayland gate and practical X11/Xvfb gate cover the current real-widget slice,
 while physical compositor and broader desktop coverage remain incomplete.

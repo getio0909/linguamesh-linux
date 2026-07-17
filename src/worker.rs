@@ -123,6 +123,14 @@ pub enum WorkerEvent {
         /// 已删除的稳定配置标识。
         profile_id: ProviderProfileId,
     },
+    /// 配置已删除但 Secret Service 项目清理失败。
+    #[cfg(feature = "gui")]
+    SecretCleanupFailed {
+        /// 已删除配置的稳定标识。
+        profile_id: ProviderProfileId,
+        /// 不包含秘密值的清理错误。
+        error: TranslationError,
+    },
     /// 配置删除被精确拒绝且保存状态保持不变。
     ProfileDeletionRejected {
         /// 被拒绝删除的稳定配置标识。
@@ -647,19 +655,46 @@ async fn run_worker(
             Some(QueuedCommand::DeleteSavedProfile { profile_id }) => {
                 let result = delete_saved_profile(storage.as_mut(), &profile_id);
                 match result {
-                    Ok(()) => {
+                    Ok(secret_ref) => {
                         if active_saved_profile
                             .as_ref()
                             .is_some_and(|profile| profile.id() == &profile_id)
                         {
                             active_saved_profile = None;
                         }
+                        #[cfg(feature = "gui")]
+                        let deleted_profile_id = profile_id.clone();
                         if events
                             .send(WorkerEvent::ProfileDeleted { profile_id })
                             .is_err()
                         {
                             shutting_down = true;
                         }
+                        #[cfg(feature = "gui")]
+                        if let Some(secret_ref) = secret_ref {
+                            let cleanup = tokio::task::spawn_blocking(move || {
+                                crate::secret_service::delete_secret(&secret_ref)
+                            })
+                            .await
+                            .unwrap_or_else(|_| {
+                                Err(TranslationError::new(
+                                    ErrorKind::SecureStorageUnavailable,
+                                    "Secret Service cleanup failed after profile removal.",
+                                ))
+                            });
+                            if let Err(error) = cleanup
+                                && events
+                                    .send(WorkerEvent::SecretCleanupFailed {
+                                        profile_id: deleted_profile_id,
+                                        error,
+                                    })
+                                    .is_err()
+                            {
+                                shutting_down = true;
+                            }
+                        }
+                        #[cfg(not(feature = "gui"))]
+                        let _ = secret_ref;
                     }
                     Err(error) => {
                         let storage_error = degrade_profile_storage_after_persistence_error(
@@ -900,6 +935,7 @@ fn validate_persistence_request(
         .secret_ref()
         .is_some_and(linguamesh_domain::SecretRef::is_persistent)
     {
+        #[cfg(not(feature = "gui"))]
         return Err(TranslationError::new(
             ErrorKind::SecureStorageUnavailable,
             "Secure credential storage is unavailable.",
@@ -977,7 +1013,10 @@ fn profile_without_secret(profile: &ProviderProfile) -> Result<ProviderProfile, 
         profile.preset_id(),
         profile.adapter_type(),
         profile.base_endpoint(),
-        None,
+        profile
+            .secret_ref()
+            .filter(|secret_ref| secret_ref.is_persistent())
+            .cloned(),
     )
     .map(|saved| saved.with_enabled(profile.enabled()))
     .and_then(|saved| saved.with_selected_model(profile.selected_model().map(str::to_owned)))
@@ -1028,15 +1067,26 @@ fn prepare_model_selection(
 fn delete_saved_profile(
     storage: Option<&mut Storage>,
     profile_id: &ProviderProfileId,
-) -> Result<(), TranslationError> {
+) -> Result<Option<linguamesh_domain::SecretRef>, TranslationError> {
     let storage = storage.ok_or_else(|| {
         TranslationError::new(
             ErrorKind::Persistence,
             "Profile storage is unavailable; no saved profile was removed.",
         )
     })?;
+    let secret_ref = storage
+        .provider_profile(profile_id)?
+        .ok_or_else(|| {
+            TranslationError::new(
+                ErrorKind::InvalidConfiguration,
+                "The saved provider profile no longer exists.",
+            )
+        })?
+        .secret_ref()
+        .filter(|secret_ref| secret_ref.is_persistent())
+        .cloned();
     if storage.delete_provider_profile(profile_id)? {
-        Ok(())
+        Ok(secret_ref)
     } else {
         Err(TranslationError::new(
             ErrorKind::InvalidConfiguration,
@@ -1110,12 +1160,32 @@ async fn connect_candidate(
                     ));
                 };
                 let required_ref = request.required().secret_ref.clone();
-                let response = if required_ref.is_persistent() {
-                    request.reject_secure_storage_unavailable()
-                } else if profile.secret_ref() == Some(&required_ref) {
-                    match session_secret.take() {
-                        Some(secret) => request.provide_secret(secret),
-                        None => request.reject_unavailable(),
+                let response = if profile.secret_ref() == Some(&required_ref) {
+                    if let Some(secret) = session_secret.take() {
+                        request.provide_secret(secret)
+                    } else if required_ref.is_persistent() {
+                        #[cfg(feature = "gui")]
+                        {
+                            let resolution = tokio::task::spawn_blocking(move || {
+                                crate::secret_service::resolve_secret(&required_ref)
+                            })
+                            .await;
+                            match resolution {
+                                Ok(Ok(secret)) => request.provide_secret(secret),
+                                Ok(Err(crate::secret_service::LookupError::Missing)) => {
+                                    request.reject_unavailable()
+                                }
+                                Ok(Err(_)) | Err(_) => {
+                                    request.reject_secure_storage_unavailable()
+                                }
+                            }
+                        }
+                        #[cfg(not(feature = "gui"))]
+                        {
+                            request.reject_secure_storage_unavailable()
+                        }
+                    } else {
+                        request.reject_unavailable()
                     }
                 } else {
                     request.reject_unavailable()
@@ -1227,7 +1297,7 @@ fn cancel_active(active_cancellation: &Mutex<Option<ActiveCancellation>>) {
 mod tests {
     use super::{
         COMMAND_CAPACITY, CoreWorker, PersistenceIntent, QueuedCommand, REQUIRED_CORE_FEATURES,
-        WorkerCommand, WorkerEvent, validate_core_contract,
+        WorkerCommand, WorkerEvent, profile_without_secret, validate_core_contract,
     };
     use crate::model::{ProviderProfile, ProviderProfileId};
     use linguamesh_domain::{
@@ -1974,6 +2044,27 @@ mod tests {
         )
         .expect_err("profile persistence unavailable");
         assert_eq!(error.kind, ErrorKind::Persistence);
+    }
+
+    #[test]
+    fn profile_persistence_preserves_only_persistent_secret_references() {
+        let persistent = profile(
+            "persistent-ref",
+            "http://127.0.0.1:1/v1/",
+            Some(SecretRef::new(SecretRefNamespace::SecretService)),
+            None,
+        );
+        let saved = profile_without_secret(&persistent).expect("persistent profile");
+        assert!(saved.secret_ref().is_some_and(SecretRef::is_persistent));
+
+        let session = profile(
+            "session-ref",
+            "http://127.0.0.1:1/v1/",
+            Some(SecretRef::new(SecretRefNamespace::Session)),
+            None,
+        );
+        let saved = profile_without_secret(&session).expect("session profile");
+        assert!(saved.secret_ref().is_none());
     }
 
     #[test]

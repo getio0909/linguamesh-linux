@@ -155,7 +155,8 @@ provider/model and Ready identity after a failed switch, and completes a streame
 also verifies the storage-unavailable session-only warning persists in Ready, injects a two-profile
 startup snapshot, verifies persisted-active prefill without activation, browses another row without
 changing the runtime/default, checks the disconnected storage warning, preserves a
-persistent secret reference so the real Connect path fails closed, rejects a disabled saved row
+persistent secret reference so the real Connect path fails closed when the test desktop has no
+matching Secret Service item, rejects a disabled saved row
 without re-enabling it, checks delete-pending control blocking, applies an exact deletion result,
 and verifies a fresh random draft ID. The test runs once in a private D-Bus session under X11/Xvfb,
 then the binary-only suite runs again in another private D-Bus session under forced Wayland and
@@ -230,8 +231,9 @@ git diff --check
 ## Unimplemented validation
 
 Broader GTK component/UI automation, AT-SPI/Orca and physical-keyboard accessibility coverage,
-physical-compositor and GPU-backed Wayland coverage, a broader X11/desktop matrix, a native Secret Service backend and
-secure-credential onboarding/persistence tests, broader XDG and portal tests, third-party
+physical-compositor and GPU-backed Wayland coverage, a broader X11/desktop matrix, a real desktop
+Secret Service integration fixture, locked/prompted item behavior, secret-item cleanup on profile
+deletion, and end-to-end secure-credential onboarding/persistence tests, broader XDG and portal tests, third-party
 local-server interoperability, Flatpak smoke tests, runtime localization behavior, runtime database
 faults beyond the implemented Linux `ENOSPC` transaction boundary, dependency/license automation,
 and release builds remain required before a supported release.

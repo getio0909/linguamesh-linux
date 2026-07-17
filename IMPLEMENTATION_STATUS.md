@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, and baseline GTK accessibility semantics are verified in native Linux CI
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, and the GIO Secret Service adapter are implemented; native keyring integration evidence remains open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -8,9 +8,10 @@ Assumption: canonical generated PO resources are synchronized and format-validat
 `zh-CN` continues to present an explicit English fallback until the GTK gettext adapter is
 implemented and tested.
 
-Assumption: the existing first-party `linguamesh-storage` crate and its already-reviewed bundled
-SQLite dependency closure are the approved persistence contract for this Linux slice. No new
-third-party direct dependency or native Secret Service implementation is introduced.
+Assumption: the existing first-party `linguamesh-storage` crate and the already-reviewed GTK/GIO
+dependency closure are the approved persistence contract for this Linux slice. The Secret Service
+adapter uses GIO D-Bus calls and adds no third-party direct dependency; a desktop keyring remains
+an external runtime prerequisite.
 
 Assumption: the Linux GTK boundary may create `profile-<GLib UUID>` stable IDs and validate them
 through Core `ProviderProfileId`; this avoids an unnecessary Core revision while names and
@@ -80,9 +81,10 @@ older distributions and future Flatpak runtimes require separate packaging valid
 - The optional credential is copied into secret-aware `SecretValue` storage, the widget is cleared
   immediately, and the temporary GTK string is dropped without claiming GTK-buffer zeroization. A
   random session `SecretRef` resolves it once through the broker. The credential and its `session:`
-  reference are stripped before any profile write and must be entered again after restart. A
-  persistent secret reference still fails closed because the native Secret Service backend is not
-  implemented; no plaintext fallback exists.
+  reference are stripped before any profile write and must be entered again after restart. Persistent
+  secret references are stored and resolved through the Linux Secret Service adapter;
+  unavailable or locked keyrings fail closed and never fall back to plaintext. Secret-item cleanup
+  after profile deletion and a real desktop-keyring CI service remain open.
 - Connection cancellation uses a `CancellationToken`; translation cancellation uses Core's
   cross-thread handle. Both bypass command-queue backpressure. Partial output is retained, control
   commands receive priority, and a cancellation/terminal-event race remains idempotent.
@@ -103,6 +105,9 @@ older distributions and future Flatpak runtimes require separate packaging valid
   explicit `Stop translation` accessible name; output `Busy` state during translation with terminal
   reset; and an accessibility-hidden empty error label. These are semantic wiring guarantees, not
   AT-SPI/Orca, physical-keyboard, RTL, high-contrast, or full desktop accessibility evidence.
+- The Linux host now uses existing GIO D-Bus bindings for Secret Service `OpenSession`, item search,
+  create/update, and `GetSecret` resolution. Persistent profiles retain only a SecretRef; the
+  one-shot credential is passed through the existing typed broker and is never written to SQLite.
 - Fourteen canonical official/pseudo PO catalogs pinned to l10n revision
   `52e73ea2a6cc7e6e7409b2b6eb0d02db35576a49`. Sync rejects a different revision, dirty generated
   source artifacts, stale copies, and unexpected catalog counts.
@@ -260,10 +265,10 @@ in the GitHub Actions evidence above, but those native checks remain unavailable
 
 ## Remaining scope
 
-- A native Secret Service implementation, credential create/read/update/delete tests, and secure
-  persistent-credential onboarding. Guided non-secret/session setup and multiple-profile
-  create/update/switch/delete are implemented, but the current credential path is deliberately
-  session-only and does not satisfy secure credential persistence.
+- Native desktop-keyring integration evidence, locked/prompted item behavior, secret-item cleanup
+  on profile deletion, and end-to-end credential create/read/update/delete tests. The GIO adapter
+  and secure remembered-credential path are implemented, while session-only fallback remains
+  available when the keyring is unavailable.
 - Central release-manifest integration for this exact Linux/Core revision; broader product
   compatibility beyond the alpha.2 startup gate remains unclaimed.
 - Interoperability evidence for third-party local servers, including Ollama; automated endpoint

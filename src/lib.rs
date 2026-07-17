@@ -4,3 +4,6 @@ pub mod model;
 
 #[cfg(feature = "demo-provider")]
 pub mod worker;
+
+#[cfg(feature = "gui")]
+pub mod secret_service;

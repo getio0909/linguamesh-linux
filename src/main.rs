@@ -7,6 +7,7 @@ use linguamesh_linux::model::{
     AppState, AppStatus, OnboardingStage, ProfileStorageStatus, ProviderProfile, StateError,
     ThemePreference, UiLocale,
 };
+use linguamesh_linux::secret_service;
 use linguamesh_linux::worker::{CoreWorker, PersistenceIntent, WorkerCommand, WorkerEvent};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -337,7 +338,7 @@ fn create_provider_session() -> (
     section.append(&title);
 
     let note = gtk::Label::new(Some(
-        "Multiple names, endpoints, and model preferences can be remembered. Credentials remain session-only, are cleared from this form immediately, and must be entered again after restart. Removing a saved profile does not disconnect its current session. Secret Service storage is not available yet.",
+        "Names, endpoints, model preferences, and credentials can be remembered through Secret Service. Credentials are cleared from this form immediately and remain session-only when secure storage is unavailable. Removing a saved profile does not disconnect its current session.",
     ));
     note.set_xalign(0.0);
     note.set_wrap(true);
@@ -381,12 +382,13 @@ fn create_provider_session() -> (
         .hexpand(true)
         .build();
     provider_credential.set_tooltip_text(Some(
-        "Optional session credential; it is never written to local storage",
+        "Optional credential; it is kept in memory unless remembered through Secret Service",
     ));
-    let remember_profile = gtk::CheckButton::with_label("Remember non-secret profile and model");
+    let remember_profile =
+        gtk::CheckButton::with_label("Remember profile, model, and credential in Secret Service");
     remember_profile.set_focusable(true);
     remember_profile.set_tooltip_text(Some(
-        "Save only the provider name, endpoint, and model preference",
+        "Save non-secret profile data and the credential through Secret Service",
     ));
     let connect = gtk::Button::with_mnemonic("_Connect");
     connect.set_focusable(true);
@@ -399,7 +401,7 @@ fn create_provider_session() -> (
         provider_endpoint.upcast_ref::<gtk::Widget>(),
     ));
     fields.append(&labeled_control(
-        "C_redential (optional, session only)",
+        "C_redential (optional; secure when remembered)",
         provider_credential.upcast_ref::<gtk::Widget>(),
     ));
     fields.append(&connect);
@@ -837,13 +839,31 @@ fn connect_action_handlers(
                 return;
             }
         };
+        let persistent_secret_ref = if remember_profile && has_credential {
+            let secret_ref = saved_secret_ref
+                .clone()
+                .filter(SecretRef::is_persistent)
+                .unwrap_or_else(|| SecretRef::new(SecretRefNamespace::SecretService));
+            if let Some(secret) = session_secret.as_ref()
+                && let Err(error) = secret_service::store_secret(&secret_ref, secret)
+            {
+                state.provider_failed(error);
+                refresh_ui(&connect_bindings, &state);
+                return;
+            }
+            Some(secret_ref)
+        } else {
+            None
+        };
         let profile = match custom_provider_profile(
             profile_id,
             display_name,
             preset_id,
             adapter_type,
             endpoint,
-            if has_credential {
+            if let Some(secret_ref) = persistent_secret_ref {
+                Some(secret_ref)
+            } else if has_credential {
                 Some(SecretRef::new(SecretRefNamespace::Session))
             } else {
                 saved_secret_ref
@@ -1160,6 +1180,9 @@ fn apply_worker_event(
                     .profile_deletion_failed(&profile_id, error);
             }
         }
+        WorkerEvent::SecretCleanupFailed { error, .. } => {
+            state.borrow_mut().record_client_error(error.to_string());
+        }
         WorkerEvent::Translation(event) => {
             let result = state.borrow_mut().apply_translation_event(event);
             if let Err(error) = result {
@@ -1212,7 +1235,7 @@ fn refresh_active_provider_label(bindings: &UiBindings, state: &AppState) {
         "session only"
     };
     let pending_mode = if state.pending_provider_will_be_saved() {
-        "will be saved without credentials"
+        "will be saved with Secret Service credential protection when supplied"
     } else {
         "session only"
     };
@@ -1236,7 +1259,7 @@ fn refresh_active_provider_label(bindings: &UiBindings, state: &AppState) {
             );
         }
         (None, None) => bindings.active_provider.set_label(
-            "No provider connected. Credentials are always session-only and are never saved.",
+            "No provider connected. Credentials stay session-only unless remembered through Secret Service.",
         ),
     }
 }
@@ -1258,7 +1281,7 @@ fn refresh_onboarding(bindings: &UiBindings, state: &AppState) {
             let detail = if state.profile_storage_status() == ProfileStorageStatus::Unavailable {
                 "Saved profile storage is unavailable. Configure a provider below and leave Remember off; credentials stay in memory for this session only."
             } else if state.saved_profiles().is_empty() {
-                "Create a provider profile below, enter a credential only if required, then choose Connect. Credentials remain in memory for this session only."
+                "Create a provider profile below, enter a credential only if required, then choose Connect. Remembering uses Secret Service; otherwise the credential remains in memory for this session only."
             } else {
                 "Choose a saved profile below, re-enter its credential if required, then choose Connect. Restored profiles never connect automatically."
             };
