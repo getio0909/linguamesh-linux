@@ -36,11 +36,12 @@ dbus-run-session -- bash -c '
   start_keyring
   cargo test --features gui --lib secret_service::tests::secret_service_persistent_store_for_restart \
     --locked -- --ignored --exact
+  lock_objects="[objectpath $(printf "\\047")/org/freedesktop/secrets/collection/login$(printf "\\047")]"
   gdbus call --session \
     --dest org.freedesktop.secrets \
     --object-path /org/freedesktop/secrets \
     --method org.freedesktop.Secret.Service.Lock \
-    "[objectpath \\"/org/freedesktop/secrets/collection/login\\"]" >/dev/null
+    "$lock_objects" >/dev/null
   cargo test --features gui --lib secret_service::tests::secret_service_locked_item_fails_closed \
     --locked -- --ignored --exact
   stop_keyring
