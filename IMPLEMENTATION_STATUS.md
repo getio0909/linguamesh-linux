@@ -246,14 +246,15 @@ translation, and request-count assertion to the ordinary worker suite; all nativ
 display gates, Secret Service fixtures, and the all-target build passed.
 
 Flatpak packaging revision `fd1f400058f4c68b47a9bd0823e790c6d9cef263` passed the `Flatpak Linux`
-workflow run `29606612834` (job `87971271146`). The GNOME 48 container mounted the pinned Rust
+workflow run `29607653864` (job `87974679904`). The GNOME 49 container mounted the pinned Rust
 1.93.0 toolchain, built the optimized GTK application with `cargo build --release --locked
 --offline --features gui`, installed the binary and desktop metadata, removed the build-only Rust
 toolchain from `/app`, and uploaded CI artifact `linguamesh-linux-x86_64-x86_64.flatpak` (artifact
-ID `8417198959`, 2,390,377 bytes). Earlier packaging runs are retained as failures: run
+ID `8417588673`, 2,396,371 bytes). Earlier packaging runs are retained as failures: run
 `29605863496` stopped at missing Cargo, `29606146197` exposed the Rust 1.89 minimum-version mismatch,
 and `29606402301` exposed Flatpak debug extraction corrupting the temporary Rust toolchain; the
-current manifest fixes each boundary. This is a prerelease CI bundle, not a signed or published
+current manifest fixes each boundary. The earlier GNOME 48 bundle run `29606612834` remains historical;
+this is a prerelease CI bundle, not a signed or published
 release, and no sandbox launch or portal/notification delivery is claimed.
 
 Linux drag-and-drop functional revision `b0da3819d97ae24f8c85147da5e7e1c65fe2d6fc` passed
