@@ -166,8 +166,9 @@ headless Weston. `tools/run-wayland-test.sh` creates a private `0700` runtime di
 exit traps to stop Weston and remove the directory. Tests are serialized because GTK owns
 process-global state. The same test asserts the baseline accessibility roles, editor properties,
 visible-label relations and mnemonics, focusability, explicit Stop name, hidden-empty-error
-behavior, and Busy-state reset. GTK's helpers prove semantic presence and reset behavior; they do
-not prove AT-SPI export, Orca speech, physical keyboard traversal, RTL/high-contrast presentation,
+behavior, and Busy-state reset. The test also switches the runtime locale to Simplified Chinese and
+verifies the catalog-backed Translate and Stop labels before restoring English. GTK's helpers prove
+semantic presence and reset behavior; they do not prove AT-SPI export, Orca speech, physical keyboard traversal, RTL/high-contrast presentation,
 a physical compositor, or GPU rendering.
 
 The GitHub Actions native workflow pins Core revision

@@ -177,6 +177,14 @@ Validated on 2026-07-17 with Rust 1.93.0:
 
 ## Remote validation evidence
 
+Runtime localization validation revision `1dfe2bcac684696ee55f56e625fcf89ffcb1a6dd` passed
+repository-foundation run `29593874763` (job `87929412298`) and Native Linux run `29593874961`
+(job `87929412911`). The Ubuntu 24.04 job passed 71 GUI-enabled library tests with one
+intentional ignore, the runtime catalog and GTK action-label assertions, the private-tmpfs storage
+fault test, the X11/Xvfb and forced Wayland/headless Weston GTK flow, and the all-target build.
+The catalogs are embedded from the pinned PO snapshot; complete UI gettext coverage and human
+review of non-English drafts remain open.
+
 Secret Service validation revision `81be457fc6cefcaebff6c6afd61408d6eb6900b3` passed
 repository-foundation run `29592320055` (job `87924170620`) and Native Linux run
 `29592319844` (job `87924169888`). The Ubuntu 24.04 job passed strict all-feature Clippy, 68
