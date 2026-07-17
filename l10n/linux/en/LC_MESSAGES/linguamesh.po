@@ -1,0 +1,242 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: LinguaMesh 0.1.0\n"
+"Language: en\n"
+"Language-Team: English (source)\n"
+"PO-Revision-Date: 2026-07-17 00:00+0000\n"
+"Last-Translator: LinguaMesh source maintainers <noreply@linguamesh.invalid>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-LinguaMesh-Review-Status: source\n"
+"X-LinguaMesh-Machine-Generated: false\n"
+
+#. Application name shown in native shells and About views.
+msgctxt "app.title"
+msgid "LinguaMesh"
+msgstr "LinguaMesh"
+
+#. Navigation label for the text translation workspace.
+msgctxt "nav.text_translation"
+msgid "Text translation"
+msgstr "Text translation"
+
+#. Primary action that starts a translation.
+msgctxt "action.translate"
+msgid "Translate"
+msgstr "Translate"
+
+#. Action that cancels the active operation.
+msgctxt "action.cancel"
+msgid "Cancel"
+msgstr "Cancel"
+
+#. Identifies the provider that will receive the next request.
+#, python-brace-format
+msgctxt "provider.active"
+msgid "Active provider: {provider}"
+msgstr "Active provider: {provider}"
+
+#. Progress summary for translated document segments.
+#, python-brace-format
+msgctxt "translation.progress"
+msgid "{completed} of {total} segments translated"
+msgstr "{completed} of {total} segments translated"
+
+#. Number of files selected for a document translation job.
+#, python-brace-format
+msgctxt "document.file_count"
+msgid "{count} file"
+msgid_plural "{count} files"
+msgstr[0] "{count} file"
+msgstr[1] "{count} files"
+
+#. Explains the selected history persistence mode.
+#, python-brace-format
+msgctxt "history.mode[disabled]"
+msgid "History is disabled"
+msgstr "History is disabled"
+
+#. Explains the selected history persistence mode.
+#, python-brace-format
+msgctxt "history.mode[enabled]"
+msgid "History is saved on this device"
+msgstr "History is saved on this device"
+
+#. Explains the selected history persistence mode.
+#, python-brace-format
+msgctxt "history.mode[incognito]"
+msgid "Incognito mode does not save this translation"
+msgstr "Incognito mode does not save this translation"
+
+#. Authentication error that names the affected provider without exposing credentials.
+#, python-brace-format
+msgctxt "error.authentication_failed"
+msgid "Check the credentials for {provider} and try again."
+msgstr "Check the credentials for {provider} and try again."
+
+#. Retry guidance after a provider rate limit.
+#, python-brace-format
+msgctxt "error.rate_limited"
+msgid "Try again in {seconds} second."
+msgid_plural "Try again in {seconds} seconds."
+msgstr[0] "Try again in {seconds} second."
+msgstr[1] "Try again in {seconds} seconds."
+
+#. Screen-reader label for stopping an active translation.
+msgctxt "accessibility.stop_translation"
+msgid "Stop translation"
+msgstr "Stop translation"
+
+#. Names the active interface language in Settings.
+#, python-brace-format
+msgctxt "locale.current"
+msgid "Interface language: {language}"
+msgstr "Interface language: {language}"
+
+#. Actionable error shown when a remote provider cannot be reached.
+msgctxt "error.network_unavailable"
+msgid "Check your network connection and try again."
+msgstr "Check your network connection and try again."
+
+#. Heading for the initial provider setup screen.
+msgctxt "onboarding.title"
+msgid "Connect a translation provider"
+msgstr "Connect a translation provider"
+
+#. Privacy explanation shown during initial provider setup.
+msgctxt "onboarding.description"
+msgid "Your content goes directly to the provider you configure. LinguaMesh never bundles an API key."
+msgstr "Your content goes directly to the provider you configure. LinguaMesh never bundles an API key."
+
+#. Label for the provider profile name field.
+msgctxt "provider.name"
+msgid "Provider name"
+msgstr "Provider name"
+
+#. Label for the provider endpoint field.
+msgctxt "field.endpoint"
+msgid "Endpoint"
+msgstr "Endpoint"
+
+#. Label for the provider model field.
+msgctxt "field.model"
+msgid "Model"
+msgstr "Model"
+
+#. Label for the optional provider API key field.
+msgctxt "field.api_key"
+msgid "API key (optional for local providers)"
+msgstr "API key (optional for local providers)"
+
+#. Action that validates and saves a provider profile.
+msgctxt "action.save_provider"
+msgid "Save provider"
+msgstr "Save provider"
+
+#. Label for the source text input field.
+msgctxt "field.source_text"
+msgid "Source text"
+msgstr "Source text"
+
+#. Heading for translated output.
+msgctxt "field.translation"
+msgid "Translation"
+msgstr "Translation"
+
+#. Heading and navigation label for application settings.
+msgctxt "settings.title"
+msgid "Settings"
+msgstr "Settings"
+
+#. Heading for the interface theme preference.
+msgctxt "settings.theme"
+msgid "Theme"
+msgstr "Theme"
+
+#. Theme option that follows the operating system setting.
+msgctxt "theme.system"
+msgid "System"
+msgstr "System"
+
+#. Theme option for the light color scheme.
+msgctxt "theme.light"
+msgid "Light"
+msgstr "Light"
+
+#. Theme option for the dark color scheme.
+msgctxt "theme.dark"
+msgid "Dark"
+msgstr "Dark"
+
+#. Heading for the interface language preference.
+msgctxt "settings.ui_language"
+msgid "Interface language"
+msgstr "Interface language"
+
+#. Label for the translation target language selector.
+msgctxt "settings.target_language"
+msgid "Target language"
+msgstr "Target language"
+
+#. Status shown when the translator is ready for input.
+msgctxt "status.ready"
+msgid "Ready"
+msgstr "Ready"
+
+#. Status shown while translated output is streaming.
+msgctxt "status.translating"
+msgid "Translating…"
+msgstr "Translating…"
+
+#. Status shown after cancellation when partial output remains available.
+msgctxt "status.cancelled"
+msgid "Translation cancelled. Partial output was kept."
+msgstr "Translation cancelled. Partial output was kept."
+
+#. Validation error for an incomplete provider profile.
+msgctxt "error.invalid_profile"
+msgid "Enter a provider name, endpoint, and model."
+msgstr "Enter a provider name, endpoint, and model."
+
+#. Authentication guidance that does not expose credential content.
+msgctxt "error.authentication"
+msgid "Check the provider credential and try again."
+msgstr "Check the provider credential and try again."
+
+#. Error shown when the native core contract is incompatible.
+msgctxt "error.incompatible_core"
+msgid "This app requires a compatible LinguaMesh Core library."
+msgstr "This app requires a compatible LinguaMesh Core library."
+
+#. Fallback translation error with actionable diagnostic guidance.
+msgctxt "error.unknown"
+msgid "Translation failed. Review diagnostics and try again."
+msgstr "Translation failed. Review diagnostics and try again."
+
+#. Heading for non-sensitive compatibility diagnostics.
+msgctxt "diagnostics.title"
+msgid "Diagnostics"
+msgstr "Diagnostics"
+
+#. Summary of the loaded core ABI and protocol revisions.
+#, python-brace-format
+msgctxt "diagnostics.summary"
+msgid "Core ABI {core_abi} · Protocol {protocol}"
+msgstr "Core ABI {core_abi} · Protocol {protocol}"
+
+#. Action that closes the settings view.
+msgctxt "action.close_settings"
+msgid "Close settings"
+msgstr "Close settings"
+
+#. Accessible name for the source text editor.
+msgctxt "accessibility.source_content"
+msgid "Text to translate"
+msgstr "Text to translate"
+
+#. Accessible name for streamed translated output.
+msgctxt "accessibility.translation_output"
+msgid "Streamed translation output"
+msgstr "Streamed translation output"

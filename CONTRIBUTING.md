@@ -17,4 +17,7 @@ Use short imperative commit subjects, optionally scoped, such as `docs: define F
 
 ## Validation
 
-Run the complete current foundation check in `docs/testing.md`. Product format, lint, test, and build commands do not exist yet and must not be reported as run. Once native targets are introduced, update `docs/testing.md` and CI in the same change.
+Run every locally available command in `docs/testing.md`. On hosts without GTK 4/libadwaita
+development headers, run both the toolkit-independent and `demo-provider` test/lint paths and state
+that the GUI build was not run. Native CI validates `--all-features` against the exact Core commit
+pinned in `.github/workflows/native.yml`; changing that pin requires compatibility review.

@@ -1,0 +1,85 @@
+name: Native Linux
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rust-and-gtk:
+    name: Rust and GTK validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    # 固定已审查的 LinguaMesh Core 提交。
+    env:
+      CORE_REVISION: 873b6da45447f73e4be4e2f1127c3c8d0f188cf2
+    steps:
+      - name: Check out Linux client
+        # 固定 actions/checkout v7.0.0。
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          path: linguamesh-linux
+          persist-credentials: false
+      - name: Validate pinned Core revision
+        shell: bash
+        run: |
+          if [[ ! "$CORE_REVISION" =~ ^[0-9a-f]{40}$ ]]; then
+            printf '%s\n' 'Core revision pin must be a lowercase 40-character commit SHA.' >&2
+            exit 1
+          fi
+      - name: Check out shared core
+        # 固定 actions/checkout v7.0.0。
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          repository: ${{ github.repository_owner }}/linguamesh-core
+          ref: ${{ env.CORE_REVISION }}
+          path: linguamesh-core
+          persist-credentials: false
+      - name: Check out localization source
+        # 固定 actions/checkout v7.0.0。
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          repository: ${{ github.repository_owner }}/linguamesh-l10n
+          ref: 52e73ea2a6cc7e6e7409b2b6eb0d02db35576a49
+          path: linguamesh-l10n
+          persist-credentials: false
+      - name: Install native development headers
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            libadwaita-1-dev \
+            libgtk-4-dev \
+            gettext \
+            pkg-config
+      - name: Install pinned Rust toolchain
+        # 固定 dtolnay/rust-toolchain 当前提交。
+        uses: dtolnay/rust-toolchain@d0befba8b9ddf874327619e84c39b094edd58b66
+        with:
+          components: clippy,rustfmt
+      - name: Cache Rust artifacts
+        # 固定 Swatinem/rust-cache v2.9.1。
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+        with:
+          workspaces: linguamesh-linux -> target
+      - name: Validate canonical localization resources
+        working-directory: linguamesh-linux
+        run: |
+          bash tools/sync-l10n.sh --check
+          for file in l10n/linux/*/LC_MESSAGES/linguamesh.po; do
+            msgfmt --check --check-format -o /dev/null "$file"
+          done
+      - name: Check formatting
+        working-directory: linguamesh-linux
+        run: cargo fmt --all --check
+      - name: Run strict Clippy
+        working-directory: linguamesh-linux
+        run: cargo clippy --all-targets --all-features --locked -- -D warnings
+      - name: Run all tests
+        working-directory: linguamesh-linux
+        run: cargo test --all-targets --all-features --locked
+      - name: Build native application
+        working-directory: linguamesh-linux
+        run: cargo build --all-targets --all-features --locked

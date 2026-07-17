@@ -6,7 +6,8 @@ Do not disclose suspected vulnerabilities in a public issue. Use this repository
 
 ## Supported versions
 
-This repository has no released application version. The documentation-only foundation receives maintenance, but there is currently no product binary to classify as supported.
+This repository has no released application version. The unreleased native vertical slice receives
+maintenance, but there is no product binary to classify as supported.
 
 ## Security requirements
 

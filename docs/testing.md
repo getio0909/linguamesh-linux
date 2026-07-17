@@ -1,12 +1,90 @@
 # Testing and Validation
 
-## Current foundation checks
+## Host prerequisites
 
-Setup requires only Git and standard POSIX shell tools. From the repository root, run this exact validation:
+Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
+because the client deliberately uses typed path dependencies instead of copying shared behavior.
+It must be at approved revision `873b6da45447f73e4be4e2f1127c3c8d0f188cf2`; validate it with:
+
+```sh
+test "$(git -C ../linguamesh-core rev-parse HEAD)" = "873b6da45447f73e4be4e2f1127c3c8d0f188cf2"
+test -z "$(git -C ../linguamesh-core status --porcelain)"
+```
+
+A sibling `../linguamesh-l10n` checkout at the revision pinned by `tools/sync-l10n.sh` is required
+to verify the checked-in PO catalogs.
+
+Validate localization provenance and gettext syntax with:
+
+```sh
+bash tools/sync-l10n.sh --check
+for file in l10n/linux/*/LC_MESSAGES/linguamesh.po; do
+  msgfmt --check --check-format -o /dev/null "$file"
+done
+```
+
+Toolkit-independent validation requires no GTK development headers:
+
+```sh
+cargo fmt --all --check
+cargo check --all-targets --features demo-provider --locked
+cargo clippy --all-targets --features demo-provider --locked -- -D warnings
+cargo test --no-default-features --locked
+cargo test --features demo-provider --locked
+cargo build --features demo-provider --locked
+```
+
+The first test command covers the pure application state. The feature-enabled test command also
+starts the shared core fake provider, performs real loopback HTTP/SSE streaming, and verifies
+cancellation with partial-output retention.
+
+The GTK Rust source can be checked without native linking as a limited diagnostic:
+
+```sh
+DOCS_RS=1 cargo check --all-targets --all-features --locked
+DOCS_RS=1 cargo clippy --all-targets --all-features --locked -- -D warnings
+```
+
+These commands bypass sys-crate discovery and do not validate headers, ABI, linking, launch, or
+display behavior. Their cached sys-crate output can also make a later ordinary Cargo check look
+successful. The `pkg-config` commands below are therefore mandatory native-gate prerequisites;
+run `cargo clean -p graphene-sys` before rechecking native discovery after a source-only check.
+
+## Native GUI validation
+
+On Debian or Ubuntu, install the native development headers:
+
+```sh
+sudo apt-get install libgtk-4-dev libadwaita-1-dev gettext pkg-config
+```
+
+Then run the complete native gate:
+
+```sh
+pkg-config --modversion gtk4
+pkg-config --modversion libadwaita-1
+cargo fmt --all --check
+cargo clippy --all-targets --all-features --locked -- -D warnings
+cargo test --all-targets --all-features --locked
+cargo build --all-targets --all-features --locked
+```
+
+Run the development slice with:
+
+```sh
+cargo run --features gui
+```
+
+The GitHub Actions native workflow pins Core revision
+`873b6da45447f73e4be4e2f1127c3c8d0f188cf2`, installs the headers, and runs the complete gate. A
+successful workflow run may provide native build evidence. A local host without `gtk4.pc` or
+`libadwaita-1.pc` must not claim that the GUI build or launch passed.
+
+## Repository foundation check
 
 ```sh
 set -euo pipefail
-required_files="README.md LICENSE AGENTS.md REPOSITORY_ROLE.md GLOBAL_GOAL.md SECURITY.md CONTRIBUTING.md CODE_OF_CONDUCT.md THIRD_PARTY_NOTICES.md IMPLEMENTATION_STATUS.md docs/architecture.md docs/testing.md docs/releasing.md .gitignore .github/workflows/foundation.yml"
+required_files="README.md LICENSE AGENTS.md REPOSITORY_ROLE.md GLOBAL_GOAL.md SECURITY.md CONTRIBUTING.md CODE_OF_CONDUCT.md THIRD_PARTY_NOTICES.md IMPLEMENTATION_STATUS.md Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml src/lib.rs src/model.rs src/worker.rs src/main.rs docs/architecture.md docs/testing.md docs/releasing.md tools/sync-l10n.sh l10n/compatibility.json l10n/manifest.json .gitignore .github/workflows/foundation.yml .github/workflows/native.yml"
 for file in $required_files; do
   test -s "$file" || {
     printf 'Missing required file: %s\n' "$file"
@@ -22,16 +100,8 @@ fi
 git diff --check
 ```
 
-This validates required non-empty files, the pinned goal digest, trailing whitespace, and tracked-file patch whitespace. It does not build or test an application.
+## Unimplemented validation
 
-## Command availability
-
-| Activity | Current command | Status |
-| --- | --- | --- |
-| Setup | No dependency command | Foundation has no dependencies |
-| Format | No formatter command | Unavailable until Rust sources and policy exist |
-| Lint | Foundation shell block above | Available for documentation only |
-| Test | No product test command | Unavailable until test targets exist |
-| Build | No product build command | Unavailable until a Cargo package exists |
-
-When implementation begins, replace unavailable entries with exact pinned toolchain and package commands. Product CI must eventually cover `cargo fmt`, strict Clippy, Rust tests, GTK component and accessibility tests, virtual-display UI tests, portal abstractions, Wayland/X11 smoke tests, release builds, Flatpak smoke tests, and dependency/license review. Do not record these future checks as passing before they run.
+GTK component/UI automation, accessibility inspection, virtual-display execution, Wayland/X11
+smoke tests, Secret Service and portal tests, Flatpak smoke tests, runtime localization behavior,
+dependency/license automation, and release builds remain required before a supported release.

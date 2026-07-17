@@ -1,6 +1,10 @@
 # LinguaMesh for Linux
 
-LinguaMesh for Linux is the native Rust and GTK 4 client for the LinguaMesh translation suite. This repository currently contains only its verified repository foundation. It does not yet contain a Cargo package, application source, tests, Flatpak manifest, or release artifacts.
+LinguaMesh for Linux is the native Rust, GTK 4, and libadwaita client for the LinguaMesh
+translation suite. The current vertical slice connects to the shared core's loopback fake
+provider, discovers and selects a model, streams translated text, supports cancellation with
+partial-output retention, displays typed errors, switches appearance, records locale preference,
+and exposes redacted diagnostics.
 
 ## Project authority
 
@@ -8,23 +12,37 @@ LinguaMesh for Linux is the native Rust and GTK 4 client for the LinguaMesh tran
 - [`REPOSITORY_ROLE.md`](REPOSITORY_ROLE.md) defines this repository's ownership boundaries.
 - [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md) records what is actually implemented and verified.
 
-The authoritative specification lives in the sibling `linguamesh-project` repository. Product work must remain compatible with pinned LinguaMesh Core crates and the central release train.
+The authoritative specification lives in the sibling `linguamesh-project` repository. Product
+work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
+reviewed Core revision `873b6da45447f73e4be4e2f1127c3c8d0f188cf2`.
 
-## Intended native stack
+## Native stack
 
-The client will use stable Rust, GTK 4 through gtk-rs, GLib/GIO, and libadwaita where it does not make core behavior depend on GNOME-only services. It will integrate XDG directories and portals, Secret Service with session-only fallback, Wayland, and practical X11 support. These are requirements, not claims of current implementation.
+The client uses stable Rust, GTK 4 through gtk-rs, GLib/GIO, and libadwaita. Shared domain,
+provider, streaming, cancellation, and protocol behavior comes directly from sibling
+`linguamesh-core` crates. The Linux layer owns only application state, background scheduling, and
+native widgets.
 
-## Current validation
+## Build and run
 
-The foundation requires only Git and standard POSIX shell tools:
+On Debian or Ubuntu, install native development headers:
 
 ```sh
-cd linguamesh-linux
-git status --short --branch
-git diff --check
+sudo apt-get install libgtk-4-dev libadwaita-1-dev gettext pkg-config
+cargo run --features gui
 ```
 
-The complete documentation check is in [`docs/testing.md`](docs/testing.md) and runs in [`.github/workflows/foundation.yml`](.github/workflows/foundation.yml). Product format, lint, test, and build commands are unavailable until the native project is implemented.
+The app starts a loopback-only fake provider and requires no commercial credential. Full validation
+commands and the header-free local test path are documented in
+[`docs/testing.md`](docs/testing.md). No release or packaging artifact is implemented yet.
+
+The native workflow checks out Core at the exact reviewed revision above. Development against an
+arbitrary default branch is not accepted as compatibility evidence.
+
+Canonical PO catalogs are synchronized from immutable l10n revision
+`52e73ea2a6cc7e6e7409b2b6eb0d02db35576a49` and validated with `msgfmt`. The locale selector
+currently records `en` or `zh-CN`, but English remains the explicit runtime fallback until the
+GTK gettext adapter is implemented.
 
 ## Documentation
 

@@ -1,0 +1,336 @@
+{
+  "artifacts": [
+    {
+      "path": "android/values/strings.xml",
+      "sha256": "5f974a61d8bddadfebceb85d31ed602ec181bac663d6d9c63934147bcb2baebc",
+      "size": 3332
+    },
+    {
+      "path": "android/values-b+ar/strings.xml",
+      "sha256": "cd63ed8635795bf96a029c58c05d79ee57d6a54ea5e68e2f6467c5cfc3b47b87",
+      "size": 4609
+    },
+    {
+      "path": "android/values-b+ar+XB/strings.xml",
+      "sha256": "f58da22d3fc77258630653948ee264b9e216e682739ac9c8b13d8c0582867ee9",
+      "size": 4412
+    },
+    {
+      "path": "android/values-b+de/strings.xml",
+      "sha256": "aeb15e9ae33b10e287f71485b48af523d2df93df0f0b638e78157a6a0beb37b4",
+      "size": 3604
+    },
+    {
+      "path": "android/values-b+en+XA/strings.xml",
+      "sha256": "a4a604b9d310e35ce04a61b63647e5ae09278eaa306bc3fa47e719391ba18924",
+      "size": 4835
+    },
+    {
+      "path": "android/values-b+es/strings.xml",
+      "sha256": "6a844bf03e134269a02593fde8849ae9d31ea6854309c6f0dd7cbf8d71ce031a",
+      "size": 3716
+    },
+    {
+      "path": "android/values-b+fr/strings.xml",
+      "sha256": "7a48c12228fbefa8cefafcdc0c42930165eb7ff086d5dca2f2bfe975f3d258aa",
+      "size": 3734
+    },
+    {
+      "path": "android/values-b+hi/strings.xml",
+      "sha256": "bfd887c9f3f144f2a1c4b3dc35d2b6cbe0f221967b4fd51f8110c3a938e6d4d2",
+      "size": 4997
+    },
+    {
+      "path": "android/values-b+ja/strings.xml",
+      "sha256": "6fa34cd789e868cd4ee9e419e7dfcd444fcc4e14ac4f167608c33b50b8f56586",
+      "size": 3796
+    },
+    {
+      "path": "android/values-b+ko/strings.xml",
+      "sha256": "65a9b08501527f0fc6183cd195543befbbca861849f632e17aa76d8a4aa34018",
+      "size": 3504
+    },
+    {
+      "path": "android/values-b+pt+BR/strings.xml",
+      "sha256": "ac22d9c3215ea170aa4d585a105cba4a75ca095c3b712c94361357647c764bc3",
+      "size": 3602
+    },
+    {
+      "path": "android/values-b+ru/strings.xml",
+      "sha256": "2f6b03c0cbf0dc593f30d70d904a42282ac2cb21d9314a9302874af637ceb277",
+      "size": 4769
+    },
+    {
+      "path": "android/values-b+zh+Hans/strings.xml",
+      "sha256": "a7787656ce14a54a2aad80a92b95b79f2ecc9cda920d91d1a49f255da73d42d4",
+      "size": 3166
+    },
+    {
+      "path": "android/values-b+zh+Hant/strings.xml",
+      "sha256": "dff6cbe0a998dbe7bbc3b3cf5b01f3cdac9654ebc6eea2b5b525783c6ea2519d",
+      "size": 3217
+    },
+    {
+      "path": "linux/ar/LC_MESSAGES/linguamesh.po",
+      "sha256": "35eba184234f6a83de5b81445f59de254c2d6cf2d1c8884e24861ce54251dab9",
+      "size": 8929
+    },
+    {
+      "path": "linux/ar-XB/LC_MESSAGES/linguamesh.po",
+      "sha256": "31621cebb221ff745bda054aae12c8753324b4a438920aafbd49c87db285fa14",
+      "size": 8741
+    },
+    {
+      "path": "linux/de/LC_MESSAGES/linguamesh.po",
+      "sha256": "6150b59699e42c2c56b03bdd3701283a47916f3b42738d47dfe74aeae47d144b",
+      "size": 8003
+    },
+    {
+      "path": "linux/en/LC_MESSAGES/linguamesh.po",
+      "sha256": "841f20ad8d2cc5fa670172f092b6324d752b6543def74a768ff77e382a7208cd",
+      "size": 7363
+    },
+    {
+      "path": "linux/en-XA/LC_MESSAGES/linguamesh.po",
+      "sha256": "832f2b81da4f40ef193a21b5632750b020ead06619a8959895cfdb54854eda45",
+      "size": 9248
+    },
+    {
+      "path": "linux/es/LC_MESSAGES/linguamesh.po",
+      "sha256": "95e898b7fb5585eed1c2f70e3dd5704a1ebbd54eb2980b26aeb138db4dc7acb0",
+      "size": 7990
+    },
+    {
+      "path": "linux/fr/LC_MESSAGES/linguamesh.po",
+      "sha256": "075279f43548a3dd0f6767e64124b9beda4884d539f3b6a8b440e19bf512442b",
+      "size": 8013
+    },
+    {
+      "path": "linux/hi/LC_MESSAGES/linguamesh.po",
+      "sha256": "8304364cf8aeb728002c54b8465696d5feeae3d0f0910c1407a71b00e2d23dad",
+      "size": 9395
+    },
+    {
+      "path": "linux/ja/LC_MESSAGES/linguamesh.po",
+      "sha256": "3a70aaec343c6e4a3623f29331af4da1ed9d9229694e57b2066ea3c6e9f0fce4",
+      "size": 8230
+    },
+    {
+      "path": "linux/ko/LC_MESSAGES/linguamesh.po",
+      "sha256": "1600d808bbbb77592f49818e07c7030de5a106e29c103c943df5b2bc07ebb1e2",
+      "size": 7936
+    },
+    {
+      "path": "linux/pt-BR/LC_MESSAGES/linguamesh.po",
+      "sha256": "0c0d75b1edd05f349af2490dc58cb562bc4fdadf6ffdafde13c7a878417fa81e",
+      "size": 7894
+    },
+    {
+      "path": "linux/ru/LC_MESSAGES/linguamesh.po",
+      "sha256": "e201934c22a1278068b7bd0968e89484e3496b3eec364a1f68e886ae7f0a3484",
+      "size": 9047
+    },
+    {
+      "path": "linux/zh-Hans/LC_MESSAGES/linguamesh.po",
+      "sha256": "096704a2ee68ee37a234065ba37ade38f472a7bb22d58e8598f8065ed0cf85c0",
+      "size": 7617
+    },
+    {
+      "path": "linux/zh-Hant/LC_MESSAGES/linguamesh.po",
+      "sha256": "a58a8570b9e02f8a7b0d25493b18e2df1363a1b333edc4cfdb72685a3bc6cdae",
+      "size": 7669
+    },
+    {
+      "path": "macos/Localizable.xcstrings",
+      "sha256": "19b951925b7c676f42b84d7880c0d9c5383289c48920de5cf2611dbe8d7cad36",
+      "size": 112786
+    },
+    {
+      "path": "pseudo/ar-XB.json",
+      "sha256": "a37379ed74c6332ac1435757586224a20eb8150ef3da5b4b54c51983d920c211",
+      "size": 7365
+    },
+    {
+      "path": "pseudo/en-XA.json",
+      "sha256": "fd5cd758fc11dedc78d5faee88f7308b7fc6816170c0984a85a968c67e17a915",
+      "size": 7712
+    },
+    {
+      "path": "windows/ar/Resources.resw",
+      "sha256": "cd52d10bac5ac39ab8a9abdfd7ab9aa6e9b563782e037c6bf14152a17481002d",
+      "size": 13067
+    },
+    {
+      "path": "windows/ar-XB/Resources.resw",
+      "sha256": "45a51ab10b622adfb33aac159df9a724cf66236542d9016118470eac6dd657e8",
+      "size": 12870
+    },
+    {
+      "path": "windows/de/Resources.resw",
+      "sha256": "42c94775b2fefbdc490125f5f46e39fe98ec1d3061c22ab3c487610985c2b4ff",
+      "size": 10742
+    },
+    {
+      "path": "windows/en/Resources.resw",
+      "sha256": "103dfff1efb60e49f508cb3b49ddff17f4cc0d3073638c392299133e65422543",
+      "size": 10515
+    },
+    {
+      "path": "windows/en-XA/Resources.resw",
+      "sha256": "e84fe386d9d8331c6c220c47bae1f7644b14cb85c65798cd7675b387fbbef209",
+      "size": 11973
+    },
+    {
+      "path": "windows/es/Resources.resw",
+      "sha256": "8939ad205259e23d4d710a69f1f95ee944579703323015bf216e17987ba92dbb",
+      "size": 11184
+    },
+    {
+      "path": "windows/fr/Resources.resw",
+      "sha256": "9c107b106a12d469182f18de7a0105c6c4c3eb9169f5133da119d7e0427ce274",
+      "size": 11202
+    },
+    {
+      "path": "windows/hi/Resources.resw",
+      "sha256": "bc459bb0894f3aadc36a639ae8d11458014327e5326725f55bac8a12fd37efd4",
+      "size": 12135
+    },
+    {
+      "path": "windows/ja/Resources.resw",
+      "sha256": "05e8c44b973cdd1ac17d9e8cbf9a94ceaf089ba5ffc1617ef5e63d61511d1532",
+      "size": 10604
+    },
+    {
+      "path": "windows/ko/Resources.resw",
+      "sha256": "75d0faffa855cf459a4c5c019b46caad7dc434958c7d52d80f2934c41c5c3b3a",
+      "size": 10312
+    },
+    {
+      "path": "windows/pt-BR/Resources.resw",
+      "sha256": "352e516ecbd5c936ece5dff0ddeef758dfa1f4a0f0f9b87e03427614d0503c34",
+      "size": 11070
+    },
+    {
+      "path": "windows/ru/Resources.resw",
+      "sha256": "edd5e779545697de71911d282567e947be74a56982d118fb7ee6a0088eaf2696",
+      "size": 12567
+    },
+    {
+      "path": "windows/zh-Hans/Resources.resw",
+      "sha256": "76fbd28f0809b6001c3ee4b7ee6c1d3a6dc8f86cf9342b8d5b5bb87d9fc78449",
+      "size": 9974
+    },
+    {
+      "path": "windows/zh-Hant/Resources.resw",
+      "sha256": "0c64cdd18bb92d802746e9a49b73a30007c1a53c985ad228c8422a5f33f91343",
+      "size": 10025
+    }
+  ],
+  "catalogVersion": "0.1.0",
+  "compatibility": {
+    "platformResourceContractVersion": 1,
+    "status": "development"
+  },
+  "locales": [
+    {
+      "direction": "rtl",
+      "machineGenerated": true,
+      "reviewStatus": "unreviewed",
+      "status": "draft",
+      "tag": "ar"
+    },
+    {
+      "direction": "ltr",
+      "machineGenerated": true,
+      "reviewStatus": "unreviewed",
+      "status": "draft",
+      "tag": "de"
+    },
+    {
+      "direction": "ltr",
+      "machineGenerated": false,
+      "reviewStatus": "source",
+      "status": "source",
+      "tag": "en"
+    },
+    {
+      "direction": "ltr",
+      "machineGenerated": true,
+      "reviewStatus": "unreviewed",
+      "status": "draft",
+      "tag": "es"
+    },
+    {
+      "direction": "ltr",
+      "machineGenerated": true,
+      "reviewStatus": "unreviewed",
+      "status": "draft",
+      "tag": "fr"
+    },
+    {
+      "direction": "ltr",
+      "machineGenerated": true,
+      "reviewStatus": "unreviewed",
+      "status": "draft",
+      "tag": "hi"
+    },
+    {
+      "direction": "ltr",
+      "machineGenerated": true,
+      "reviewStatus": "unreviewed",
+      "status": "draft",
+      "tag": "ja"
+    },
+    {
+      "direction": "ltr",
+      "machineGenerated": true,
+      "reviewStatus": "unreviewed",
+      "status": "draft",
+      "tag": "ko"
+    },
+    {
+      "direction": "ltr",
+      "machineGenerated": true,
+      "reviewStatus": "unreviewed",
+      "status": "draft",
+      "tag": "pt-BR"
+    },
+    {
+      "direction": "ltr",
+      "machineGenerated": true,
+      "reviewStatus": "unreviewed",
+      "status": "draft",
+      "tag": "ru"
+    },
+    {
+      "direction": "ltr",
+      "machineGenerated": true,
+      "reviewStatus": "unreviewed",
+      "status": "draft",
+      "tag": "zh-Hans"
+    },
+    {
+      "direction": "ltr",
+      "machineGenerated": true,
+      "reviewStatus": "unreviewed",
+      "status": "draft",
+      "tag": "zh-Hant"
+    },
+    {
+      "direction": "ltr",
+      "machineGenerated": true,
+      "reviewStatus": "unreviewed",
+      "status": "draft",
+      "tag": "en-XA"
+    },
+    {
+      "direction": "rtl",
+      "machineGenerated": true,
+      "reviewStatus": "unreviewed",
+      "status": "draft",
+      "tag": "ar-XB"
+    }
+  ],
+  "schemaVersion": 1,
+  "sourceRevision": 1
+}

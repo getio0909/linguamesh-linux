@@ -1,0 +1,19 @@
+{
+  "catalogSchemaVersion": 1,
+  "globalGoalSha256": "11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198",
+  "limitations": [
+    "Non-English official locale packs are machine-generated drafts pending qualified human review.",
+    "Native client ingestion and runtime locale switching have not yet been verified.",
+    "This development bundle is not part of a stable release train."
+  ],
+  "localizationVersion": "0.1.0",
+  "minimumClientVersions": {
+    "android": null,
+    "linux": null,
+    "macos": null,
+    "windows": null
+  },
+  "platformResourceContractVersion": 1,
+  "schemaVersion": 1,
+  "status": "development"
+}

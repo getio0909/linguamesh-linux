@@ -2,7 +2,11 @@
 
 ## Current state
 
-No application target, Flatpak manifest, or distributable artifact exists. This foundation must not be tagged or published as a product release, and no packaging claim is valid.
+An unreleased native application target now exists, but no Flatpak manifest or distributable
+artifact exists. The vertical slice must not be tagged or published as a product release, and no
+packaging claim is valid. Its bundled fake provider is development-only behavior. The native
+workflow pins reviewed Core revision `873b6da45447f73e4be4e2f1127c3c8d0f188cf2` rather than
+checking out a floating branch.
 
 ## Future release gate
 

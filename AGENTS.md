@@ -23,7 +23,12 @@ All code comments must be in Simplified Chinese on separate lines immediately ab
 
 ## Current commands
 
-The repository is documentation-only. It has no dependency setup, Rust toolchain pin, formatter invocation, product linter, test target, Cargo package, or build command. Run the exact foundation validation in `docs/testing.md`. Do not invent successful `cargo`, GTK, Flatpak, packaging, Wayland, or X11 results.
+Use the pinned Rust toolchain and exact commands in `docs/testing.md`. Hosts without GTK 4 and
+libadwaita development headers can format, lint, and test the toolkit-independent state and the
+real shared-core worker with `--features demo-provider`. Run `--all-features` only when native
+headers are present. Native CI pins the approved Core revision
+`873b6da45447f73e4be4e2f1127c3c8d0f188cf2`; changing it requires a new compatibility review. Do
+not invent successful GTK, Flatpak, packaging, Wayland, or X11 results.
 
 ## Safety
 

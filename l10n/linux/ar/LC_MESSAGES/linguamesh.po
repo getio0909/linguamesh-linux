@@ -1,0 +1,283 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: LinguaMesh 0.1.0\n"
+"Language: ar\n"
+"Language-Team: Arabic (unreviewed)\n"
+"PO-Revision-Date: 2026-07-17 00:00+0000\n"
+"Last-Translator: LinguaMesh machine draft <noreply@linguamesh.invalid>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=6; plural=(n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 && n%100<=10 ? 3 : n%100>=11 && n%100<=99 ? 4 : 5);\n"
+"X-LinguaMesh-Review-Status: unreviewed\n"
+"X-LinguaMesh-Machine-Generated: true\n"
+
+#. Application name shown in native shells and About views.
+#, fuzzy
+msgctxt "app.title"
+msgid "LinguaMesh"
+msgstr "LinguaMesh"
+
+#. Navigation label for the text translation workspace.
+#, fuzzy
+msgctxt "nav.text_translation"
+msgid "Text translation"
+msgstr "ترجمة النص"
+
+#. Primary action that starts a translation.
+#, fuzzy
+msgctxt "action.translate"
+msgid "Translate"
+msgstr "ترجمة"
+
+#. Action that cancels the active operation.
+#, fuzzy
+msgctxt "action.cancel"
+msgid "Cancel"
+msgstr "إلغاء"
+
+#. Identifies the provider that will receive the next request.
+#, fuzzy, python-brace-format
+msgctxt "provider.active"
+msgid "Active provider: {provider}"
+msgstr "المزوّد النشط: {provider}"
+
+#. Progress summary for translated document segments.
+#, fuzzy, python-brace-format
+msgctxt "translation.progress"
+msgid "{completed} of {total} segments translated"
+msgstr "تمت ترجمة {completed} من {total} مقاطع"
+
+#. Number of files selected for a document translation job.
+#, fuzzy, python-brace-format
+msgctxt "document.file_count"
+msgid "{count} file"
+msgid_plural "{count} files"
+msgstr[0] "لم يتم تحديد أي ملفات ({count})"
+msgstr[1] "تم تحديد ملف واحد ({count})"
+msgstr[2] "تم تحديد ملفين ({count})"
+msgstr[3] "تم تحديد {count} ملفات"
+msgstr[4] "تم تحديد {count} ملفًا"
+msgstr[5] "تم تحديد {count} ملف"
+
+#. Explains the selected history persistence mode.
+#, fuzzy, python-brace-format
+msgctxt "history.mode[disabled]"
+msgid "History is disabled"
+msgstr "السجل معطّل"
+
+#. Explains the selected history persistence mode.
+#, fuzzy, python-brace-format
+msgctxt "history.mode[enabled]"
+msgid "History is saved on this device"
+msgstr "يُحفظ السجل على هذا الجهاز"
+
+#. Explains the selected history persistence mode.
+#, fuzzy, python-brace-format
+msgctxt "history.mode[incognito]"
+msgid "Incognito mode does not save this translation"
+msgstr "لا يحفظ وضع التصفح الخفي هذه الترجمة"
+
+#. Authentication error that names the affected provider without exposing credentials.
+#, fuzzy, python-brace-format
+msgctxt "error.authentication_failed"
+msgid "Check the credentials for {provider} and try again."
+msgstr "تحقق من بيانات اعتماد {provider} وحاول مرة أخرى."
+
+#. Retry guidance after a provider rate limit.
+#, fuzzy, python-brace-format
+msgctxt "error.rate_limited"
+msgid "Try again in {seconds} second."
+msgid_plural "Try again in {seconds} seconds."
+msgstr[0] "أعد المحاولة الآن ({seconds} ثانية)."
+msgstr[1] "أعد المحاولة بعد ثانية واحدة ({seconds})."
+msgstr[2] "أعد المحاولة بعد ثانيتين ({seconds})."
+msgstr[3] "أعد المحاولة بعد {seconds} ثوانٍ."
+msgstr[4] "أعد المحاولة بعد {seconds} ثانية."
+msgstr[5] "أعد المحاولة بعد {seconds} ثانية."
+
+#. Screen-reader label for stopping an active translation.
+#, fuzzy
+msgctxt "accessibility.stop_translation"
+msgid "Stop translation"
+msgstr "إيقاف الترجمة"
+
+#. Names the active interface language in Settings.
+#, fuzzy, python-brace-format
+msgctxt "locale.current"
+msgid "Interface language: {language}"
+msgstr "لغة الواجهة: {language}"
+
+#. Actionable error shown when a remote provider cannot be reached.
+#, fuzzy
+msgctxt "error.network_unavailable"
+msgid "Check your network connection and try again."
+msgstr "تحقق من اتصال الشبكة وحاول مرة أخرى."
+
+#. Heading for the initial provider setup screen.
+#, fuzzy
+msgctxt "onboarding.title"
+msgid "Connect a translation provider"
+msgstr "الاتصال بمزوّد ترجمة"
+
+#. Privacy explanation shown during initial provider setup.
+#, fuzzy
+msgctxt "onboarding.description"
+msgid "Your content goes directly to the provider you configure. LinguaMesh never bundles an API key."
+msgstr "يُرسل محتواك مباشرةً إلى المزوّد الذي تضبطه. لا يتضمن LinguaMesh أي مفتاح API."
+
+#. Label for the provider profile name field.
+#, fuzzy
+msgctxt "provider.name"
+msgid "Provider name"
+msgstr "اسم المزوّد"
+
+#. Label for the provider endpoint field.
+#, fuzzy
+msgctxt "field.endpoint"
+msgid "Endpoint"
+msgstr "نقطة النهاية"
+
+#. Label for the provider model field.
+#, fuzzy
+msgctxt "field.model"
+msgid "Model"
+msgstr "النموذج"
+
+#. Label for the optional provider API key field.
+#, fuzzy
+msgctxt "field.api_key"
+msgid "API key (optional for local providers)"
+msgstr "مفتاح API (اختياري للمزوّدين المحليين)"
+
+#. Action that validates and saves a provider profile.
+#, fuzzy
+msgctxt "action.save_provider"
+msgid "Save provider"
+msgstr "حفظ المزوّد"
+
+#. Label for the source text input field.
+#, fuzzy
+msgctxt "field.source_text"
+msgid "Source text"
+msgstr "النص المصدر"
+
+#. Heading for translated output.
+#, fuzzy
+msgctxt "field.translation"
+msgid "Translation"
+msgstr "الترجمة"
+
+#. Heading and navigation label for application settings.
+#, fuzzy
+msgctxt "settings.title"
+msgid "Settings"
+msgstr "الإعدادات"
+
+#. Heading for the interface theme preference.
+#, fuzzy
+msgctxt "settings.theme"
+msgid "Theme"
+msgstr "السمة"
+
+#. Theme option that follows the operating system setting.
+#, fuzzy
+msgctxt "theme.system"
+msgid "System"
+msgstr "النظام"
+
+#. Theme option for the light color scheme.
+#, fuzzy
+msgctxt "theme.light"
+msgid "Light"
+msgstr "فاتح"
+
+#. Theme option for the dark color scheme.
+#, fuzzy
+msgctxt "theme.dark"
+msgid "Dark"
+msgstr "داكن"
+
+#. Heading for the interface language preference.
+#, fuzzy
+msgctxt "settings.ui_language"
+msgid "Interface language"
+msgstr "لغة الواجهة"
+
+#. Label for the translation target language selector.
+#, fuzzy
+msgctxt "settings.target_language"
+msgid "Target language"
+msgstr "اللغة الهدف"
+
+#. Status shown when the translator is ready for input.
+#, fuzzy
+msgctxt "status.ready"
+msgid "Ready"
+msgstr "جاهز"
+
+#. Status shown while translated output is streaming.
+#, fuzzy
+msgctxt "status.translating"
+msgid "Translating…"
+msgstr "جارٍ الترجمة…"
+
+#. Status shown after cancellation when partial output remains available.
+#, fuzzy
+msgctxt "status.cancelled"
+msgid "Translation cancelled. Partial output was kept."
+msgstr "أُلغيت الترجمة. تم الاحتفاظ بالمخرجات الجزئية."
+
+#. Validation error for an incomplete provider profile.
+#, fuzzy
+msgctxt "error.invalid_profile"
+msgid "Enter a provider name, endpoint, and model."
+msgstr "أدخل اسم المزوّد ونقطة النهاية والنموذج."
+
+#. Authentication guidance that does not expose credential content.
+#, fuzzy
+msgctxt "error.authentication"
+msgid "Check the provider credential and try again."
+msgstr "تحقق من بيانات اعتماد المزوّد وحاول مرة أخرى."
+
+#. Error shown when the native core contract is incompatible.
+#, fuzzy
+msgctxt "error.incompatible_core"
+msgid "This app requires a compatible LinguaMesh Core library."
+msgstr "يتطلب هذا التطبيق مكتبة LinguaMesh Core متوافقة."
+
+#. Fallback translation error with actionable diagnostic guidance.
+#, fuzzy
+msgctxt "error.unknown"
+msgid "Translation failed. Review diagnostics and try again."
+msgstr "فشلت الترجمة. راجع معلومات التشخيص وحاول مرة أخرى."
+
+#. Heading for non-sensitive compatibility diagnostics.
+#, fuzzy
+msgctxt "diagnostics.title"
+msgid "Diagnostics"
+msgstr "التشخيص"
+
+#. Summary of the loaded core ABI and protocol revisions.
+#, fuzzy, python-brace-format
+msgctxt "diagnostics.summary"
+msgid "Core ABI {core_abi} · Protocol {protocol}"
+msgstr "Core ABI {core_abi} · البروتوكول {protocol}"
+
+#. Action that closes the settings view.
+#, fuzzy
+msgctxt "action.close_settings"
+msgid "Close settings"
+msgstr "إغلاق الإعدادات"
+
+#. Accessible name for the source text editor.
+#, fuzzy
+msgctxt "accessibility.source_content"
+msgid "Text to translate"
+msgstr "النص المطلوب ترجمته"
+
+#. Accessible name for streamed translated output.
+#, fuzzy
+msgctxt "accessibility.translation_output"
+msgid "Streamed translation output"
+msgstr "مخرجات الترجمة المتدفقة"
