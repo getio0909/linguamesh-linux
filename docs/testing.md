@@ -78,10 +78,11 @@ queued, and full-command-queue shutdown, translation terminal delivery during sh
 delete rejection during translation, saved-model behavior, and failed-switch rollback to the
 previous Core `ProviderManager` and model.
 
-The ignored regression is executed separately and must pass exactly once:
+The isolated regressions are executed separately and must each pass exactly once:
 
 ```sh
 bash tools/run-storage-fault-test.sh
+bash tools/run-secret-service-test.sh
 ```
 
 The runner compiles the exact library test as the calling user, enters a private mount namespace,
@@ -97,6 +98,12 @@ and model. The runner requires
 `1 passed; 0 failed; 0 ignored` so a missing or skipped test cannot count as evidence, and cleanup
 unmounts the private filesystem. This proves the implemented Linux `ENOSPC` transaction boundary;
 it does not cover read-only media, corruption, power loss, or every SQLite VFS failure.
+
+The Secret Service runner creates an isolated XDG data directory, starts a real `gnome-keyring`
+Secret Service daemon on a private D-Bus session, aliases the unlocked session collection as the
+default, and runs the exact store/resolve/delete round trip. It proves the adapter's CRUD and
+cleanup path without touching a developer keyring; persistent desktop keyring restoration,
+locked/prompted behavior, and end-to-end secure onboarding remain separate gates.
 
 The toolkit-independent suite also tests the text-import decoder for UTF-8 BOM removal, invalid
 UTF-8 rejection, and the 4 MiB bound. The native GTK flow verifies the **Open text file** control
@@ -240,9 +247,9 @@ git diff --check
 ## Unimplemented validation
 
 Broader GTK component/UI automation, AT-SPI/Orca and physical-keyboard accessibility coverage,
-physical-compositor and GPU-backed Wayland coverage, a broader X11/desktop matrix, a real desktop
-Secret Service integration fixture, locked/prompted item behavior, secret-item cleanup on profile
-deletion, and end-to-end secure-credential onboarding/persistence tests, broader XDG and portal tests, third-party
+physical-compositor and GPU-backed Wayland coverage, a broader X11/desktop matrix, locked/prompted
+Secret Service item behavior, persistent desktop keyring restoration, and end-to-end secure-
+credential onboarding/persistence tests, broader XDG and portal tests, third-party
 local-server interoperability, Flatpak smoke tests, runtime localization behavior beyond the
 currently catalog-backed action labels, runtime database
 faults beyond the implemented Linux `ENOSPC` transaction boundary, dependency/license automation,

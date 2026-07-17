@@ -55,6 +55,7 @@ jobs:
             libgtk-4-dev \
             dbus-daemon \
             gettext \
+            gnome-keyring \
             mount \
             pkg-config \
             python3 \
@@ -97,6 +98,9 @@ jobs:
       - name: Run runtime storage write-fault test
         working-directory: linguamesh-linux
         run: bash tools/run-storage-fault-test.sh
+      - name: Run Secret Service integration fixture
+        working-directory: linguamesh-linux
+        run: bash tools/run-secret-service-test.sh
       - name: Run GTK test on Wayland
         working-directory: linguamesh-linux
         run: dbus-run-session -- bash tools/run-wayland-test.sh

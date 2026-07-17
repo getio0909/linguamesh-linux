@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, and the corrected Secret Service session wire shape are implemented; native keyring integration evidence remains open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, the corrected Secret Service session wire shape, and an isolated real-daemon Secret Service CRUD fixture are implemented; persistent desktop keyring lifecycle evidence remains open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -156,12 +156,15 @@ Validated on 2026-07-17 with Rust 1.93.0:
   connection/model discovery, cancellable streaming with partial output,
   active/queued/full-command-queue shutdown, translation terminal delivery during shutdown,
   saved-model validation, and failed-switch rollback.
+- `bash tools/run-secret-service-test.sh` is a native-only check on this host because GTK headers
+  are unavailable locally; it uses a real `gnome-keyring` daemon and an isolated session collection
+  in native CI.
 - The notification slice keeps the desktop payload fixed to generic English text and sends no
   source or translated content. Local source-level GTK checks and the demo-provider suite above
   passed after the `GApplication` notification call was added.
 - The Secret Service adapter now sends an `(sv)` `OpenSession` request with a single plain-string
-  Variant; the regression test passed locally. Real desktop keyring CRUD, locked/prompted behavior,
-  and cleanup remain an external native-environment gate.
+  Variant; its shape regression passed locally. The isolated real-daemon CRUD fixture is wired into
+  native CI; persistent desktop keyring restoration and locked/prompted behavior remain open.
 - The native text import slice accepts only UTF-8 TXT/Markdown content up to 4 MiB, strips a UTF-8
   BOM, rejects invalid or oversized input, and reads through GIO's partial asynchronous API. The
   source editor also accepts a single GIO file through GTK drag-and-drop and reuses the same

@@ -231,9 +231,12 @@ fn map_store_error(error: LookupError) -> TranslationError {
 
 #[cfg(test)]
 mod tests {
-    use super::{SECRET_ATTRIBUTE, attributes, open_session_parameters, properties};
+    use super::{
+        LookupError, SECRET_ATTRIBUTE, attributes, delete_secret, open_session_parameters,
+        properties, resolve_secret, store_secret,
+    };
     use gtk::glib::VariantTy;
-    use linguamesh_domain::{SecretRef, SecretRefNamespace};
+    use linguamesh_domain::{SecretRef, SecretRefNamespace, SecretValue};
 
     #[test]
     fn attributes_use_only_the_secret_reference() {
@@ -256,5 +259,24 @@ mod tests {
         let input: gtk::glib::Variant = parameters.child_get(1);
         assert_eq!(mechanism, "plain");
         assert_eq!(input.type_(), VariantTy::STRING);
+    }
+
+    #[test]
+    #[ignore = "requires the isolated Secret Service fixture"]
+    fn secret_service_round_trip_and_cleanup() {
+        let secret_ref = SecretRef::new(SecretRefNamespace::SecretService);
+        let secret = SecretValue::new("linguamesh-ci-secret");
+        store_secret(&secret_ref, &secret).expect("store secret");
+        let resolved = resolve_secret(&secret_ref);
+        let cleanup = delete_secret(&secret_ref);
+        cleanup.expect("delete secret");
+        assert_eq!(
+            resolved.expect("resolve secret").expose_secret(),
+            secret.expose_secret()
+        );
+        assert!(matches!(
+            resolve_secret(&secret_ref),
+            Err(LookupError::Missing)
+        ));
     }
 }
