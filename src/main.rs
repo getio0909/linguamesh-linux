@@ -1959,6 +1959,10 @@ mod tests {
             Some("fake-slow-translator".to_owned()),
         )
         .expect("second restored profile");
+        restored_window.present();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            restored_state.borrow().worker_ready()
+        });
         apply_worker_event(
             &restored_bindings,
             &restored_state,
@@ -1968,10 +1972,7 @@ mod tests {
                 active_profile_id: Some(restored_profile_b.id().clone()),
             },
         );
-        restored_window.present();
-        spin_main_context_until(&context, Duration::from_secs(5), || {
-            restored_state.borrow().worker_ready()
-        });
+        refresh_ui(&restored_bindings, &restored_state.borrow());
         assert_eq!(restored_state.borrow().status(), AppStatus::Disconnected);
         assert_eq!(
             restored_state.borrow().onboarding_stage(),
