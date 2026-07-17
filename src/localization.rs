@@ -6,6 +6,10 @@ struct Catalog {
     messages: BTreeMap<String, String>,
 }
 
+fn append_field(field: &mut Option<String>, value: &str) {
+    field.get_or_insert_with(String::new).push_str(value);
+}
+
 impl Catalog {
     fn from_po(source: &str) -> Self {
         let mut messages = BTreeMap::new();
@@ -42,9 +46,9 @@ impl Catalog {
             };
             if let Some(value) = value {
                 match next_field {
-                    Some(Field::Context) => context = Some(value),
-                    Some(Field::MessageId) => message_id = Some(value),
-                    Some(Field::Message) => message = Some(value),
+                    Some(Field::Context) => append_field(&mut context, &value),
+                    Some(Field::MessageId) => append_field(&mut message_id, &value),
+                    Some(Field::Message) => append_field(&mut message, &value),
                     None => {}
                 }
                 field = next_field;
