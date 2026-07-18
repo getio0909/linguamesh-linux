@@ -342,14 +342,14 @@ first focusability assertion because GTK dropdowns defaulted to non-focusable; t
 sets every labelled control and action explicitly focusable.
 
 The bounded-history checkpoint is Core `8cd65c5846a677e70c4828e4b4a5192319d775d5`, Linux
-`dbec42349b4bebc57f56f8e63d2391c4e2318b0a`, and l10n `4678fc3810b1e21e5ab8c1095e552930b8649687`.
+`b968cc21978dd5bea1b4bc6d1c8828bb8ecdc489`, and l10n `4678fc3810b1e21e5ab8c1095e552930b8649687`.
 Local Core workspace tests, Clippy, offline build, and cargo-deny passed; Linux passed all-target
 Clippy, 54 portable tests, and 82 demo-provider tests with one intentional ignore; l10n `make check`
 passed with 230 messages and bundle checksum `03889105a74aec819ae716ee577f78e1da8a235d42be4918aa0fb6f9c5e194b8`.
 Core CI `29636624648`, Native SDK `29636624656`, l10n Localization `29636630359`, l10n Foundation
-`29636630348`, Linux Native `29636710260` (job `88060223294`), Linux Foundation `29636710261`, and
-Flatpak `29636710259` (job `88060223278`) passed bounded standard-history persistence, Incognito
-skip, startup count restoration, clear-all wiring, the all-feature Linux binary link, and the real
+`29636630348`, Linux Native `29637270603` (job `88061682829`), Linux Foundation `29637270599`, and
+Flatpak `29637270601` (job `88061682853`) passed bounded standard-history persistence, Incognito
+skip, startup count restoration, immediate post-write count refresh, clear-all wiring, the all-feature Linux binary link, and the real
 GTK/Flatpak gates. History inspection/export, per-entry deletion, and translation-memory storage
 remain open.
 
