@@ -5,7 +5,7 @@
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`fd79752fe8857ea37098602cefed294924fa1db5`. This revision carries the explicit request-level
+`31e7d3d2ed753246f87a99d97d4c80385874b6ae`. This revision carries the explicit request-level
 Incognito privacy policy and changes file-backed Core storage to add SQLite's `SQLITE_OPEN_NOFOLLOW`
 flag, adds protected-span restoration and request-level glossary
 protection for streamed text, and adds bounded semantic chunking. On
@@ -14,16 +14,17 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e fd79752fe8857ea37098602cefed294924fa1db5^{commit}
+git -C ../linguamesh-core cat-file -e 31e7d3d2ed753246f87a99d97d4c80385874b6ae^{commit}
 git -C ../linguamesh-core diff --quiet \
-  fd79752fe8857ea37098602cefed294924fa1db5..HEAD -- \
+  31e7d3d2ed753246f87a99d97d4c80385874b6ae..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
 
 The same Core pin also negotiates `bounded_text_document_v1`: Linux imports only bounded UTF-8 TXT
 and Markdown, preserves line endings, keeps Markdown fenced code and blank structure verbatim, and
-persists pending/running/paused document jobs for worker restart recovery. The Linux worker tests also cover
+persists pending/running/paused document jobs and validated non-secret translation options for worker
+restart recovery. The Linux worker tests also cover
 sequential prose-segment translation, per-segment persistence, safe reconstruction, and cancellation
 to a persisted cancelled snapshot. The GTK surface now exposes per-job progress and
 pause/resume/retry controls; multi-job selection remains outside the validation gate.

@@ -2002,22 +2002,17 @@ fn connect_action_handlers(
             return;
         };
         let mut state = resume_state.borrow_mut();
-        match current_document_options(&resume_bindings, &mut state).and_then(
-            |(source_locale, target_locale, glossary)| {
-                state.begin_document_translation().map_err(|error| {
-                    TranslationError::new(ErrorKind::InvalidConfiguration, error.to_string())
-                })?;
+        let result = state
+            .begin_document_translation()
+            .map_err(|error| {
+                TranslationError::new(ErrorKind::InvalidConfiguration, error.to_string())
+            })
+            .and_then(|()| {
                 resume_worker
-                    .try_send(WorkerCommand::ResumeDocumentJob {
-                        job_id,
-                        source_locale,
-                        target_locale,
-                        glossary,
-                        privacy_mode: state.privacy_mode(),
-                    })
+                    .try_send(WorkerCommand::ResumeDocumentJob { job_id })
                     .map_err(|error| TranslationError::new(ErrorKind::Internal, error.to_string()))
-            },
-        ) {
+            });
+        match result {
             Ok(()) => resume_bindings
                 .document_job_state
                 .set(Some(DocumentJobState::Running)),
@@ -2034,22 +2029,17 @@ fn connect_action_handlers(
             return;
         };
         let mut state = retry_state.borrow_mut();
-        match current_document_options(&retry_bindings, &mut state).and_then(
-            |(source_locale, target_locale, glossary)| {
-                state.begin_document_translation().map_err(|error| {
-                    TranslationError::new(ErrorKind::InvalidConfiguration, error.to_string())
-                })?;
+        let result = state
+            .begin_document_translation()
+            .map_err(|error| {
+                TranslationError::new(ErrorKind::InvalidConfiguration, error.to_string())
+            })
+            .and_then(|()| {
                 retry_worker
-                    .try_send(WorkerCommand::RetryDocumentJob {
-                        job_id,
-                        source_locale,
-                        target_locale,
-                        glossary,
-                        privacy_mode: state.privacy_mode(),
-                    })
+                    .try_send(WorkerCommand::RetryDocumentJob { job_id })
                     .map_err(|error| TranslationError::new(ErrorKind::Internal, error.to_string()))
-            },
-        ) {
+            });
+        match result {
             Ok(()) => retry_bindings
                 .document_job_state
                 .set(Some(DocumentJobState::Running)),

@@ -41,7 +41,7 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
 
 - Rust 1.93.0 Cargo package at `0.1.0-alpha.2`, with locked Core alpha.2 path dependencies and
   optional `demo-provider`/`gui` features. Native CI pins Core functional revision
-  `fd79752fe8857ea37098602cefed294924fa1db5`.
+  `31e7d3d2ed753246f87a99d97d4c80385874b6ae`.
 - Startup rejects any Core other than semantic version `0.1.0-alpha.2`, ABI 1, protocol 1, provider
   catalog `0.1.0`, with the required cancellation, compatibility, typed Rust host-secret broker,
   model-discovery, protected-span, streaming-text, and text-translation features.
@@ -126,10 +126,9 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
 - Imported TXT/Markdown files are converted into Core `DocumentJob` snapshots before the source
   editor is populated. The existing Translate action starts a sequential worker pipeline for pending
   prose segments, forwards the request glossary and privacy policy, and writes each completed segment
-  back to schema-6 storage. Document terminal snapshots reconstruct safely into the output editor;
-  Stop persists cancellation, and Incognito rejects document jobs rather than creating durable
-  progress. The GTK surface still lacks a dedicated multi-job queue, retry controls, and persisted
-  provider-parameter metadata for automatic restart.
+  back to schema-8 storage. Document terminal snapshots reconstruct safely into the output editor;
+  Stop persists cancellation, and Incognito rejects new document jobs rather than creating durable
+  progress. The GTK surface still lacks a dedicated multi-job queue.
 - The GTK boundary provides baseline accessibility semantics: `Main`, `Heading`, `Status`, and
   `Alert` roles; named multi-line source/output `TextBox` editors with output read-only; visible
   label-to-control `LabelledBy` and mnemonic relations; focusable editor and action controls; an
@@ -629,14 +628,36 @@ pending segments with explicit provider options, while retry accepts cancelled o
 
 Implemented Core schema 7 and Linux worker pause, resume, and retry commands. The GTK surface now
 shows per-job completed/total progress and exposes lifecycle controls for pause, resume, and retry.
-Android, Windows, and macOS remain intentionally out of scope for this Linux-first slice. Automatic
-provider-parameter persistence, archive codecs, and multi-job queue selection remain open.
+Android, Windows, and macOS remain intentionally out of scope for this Linux-first slice. At this
+checkpoint, automatic provider-parameter persistence, archive codecs, and multi-job queue selection
+remained open; the next checkpoint records the parameter persistence implementation.
 
 Validated locally:
 
 - `cargo test --features demo-provider --lib --offline` passed: 92 passed, 0 failed, 1 intentional
   environment-dependent ignore, including the pause/resume/retry worker regression.
 - `cargo check --all-targets --all-features --offline` and `git diff --check` passed.
+- Full GUI test linking remains CI-only because this host lacks the GTK 4.10 symbols required by
+  the installed system libraries.
+
+## 2026-07-18 — Linux document restart options checkpoint
+
+Assumption: only non-secret document translation parameters are reusable after restart. Resume and
+Retry must match the saved provider profile and model; endpoints, credentials, session secrets, and
+privacy-mode state remain runtime-only.
+
+Implemented Core schema 8 persistence for validated source/target locales, provider/model IDs, and
+optional glossary rules. Linux Translate saves these options before entering the running state;
+Resume and Retry load them from storage and use standard privacy after exact runtime matching. The
+worker regression pauses a slow job, restarts the worker and loopback provider, reconnects, and
+completes the job without supplying UI translation options again. Android, Windows, and macOS remain
+intentionally out of scope; archive codecs and multi-job queue selection remain open.
+
+Validated locally:
+
+- `cargo test --features demo-provider --lib --offline` passed: 93 tests, 0 failed, 1 intentional
+  environment-dependent ignore, including the restart-options regression.
+- `cargo check --all-targets --all-features --offline` and `cargo fmt --all` passed.
 - Full GUI test linking remains CI-only because this host lacks the GTK 4.10 symbols required by
   the installed system libraries.
 

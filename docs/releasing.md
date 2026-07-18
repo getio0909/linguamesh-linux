@@ -41,16 +41,16 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `fd79752fe8857ea37098602cefed294924fa1db5` and l10n
+The current Linux gate consumes Core `31e7d3d2ed753246f87a99d97d4c80385874b6ae` and l10n
 `d64d4085fb3c1cc69c9f7965bd97ffca54ca1995`. Request-level glossary rules, bounded CSV,
 interchange are implemented in the Linux slice; persistent glossary libraries and TBX import
 remain outside the release claim.
 
 The Linux document slice now persists bounded TXT/Markdown jobs, translates pending prose segments
-sequentially, and restores completed or cancelled snapshots into the editor. This is not yet a
-release-ready multi-job queue: provider parameters must be supplied again after restart, retry and
-archive workflows are absent, and the document-job execution path still requires the native Linux
-validation gate below.
+sequentially, and restores completed or cancelled snapshots into the editor. Validated non-secret
+provider/model/glossary options are persisted and reused by Resume and Retry after restart only when
+the active runtime matches. This is not yet a release-ready multi-job queue: archive workflows and
+the document-job execution path still require the native Linux validation gate below.
 
 The current native gate also includes a real post-startup `ENOSPC` regression for persistent model
 updates, profile deletion, and provider switching. Runtime-storage functional revision

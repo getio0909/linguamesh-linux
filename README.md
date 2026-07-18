@@ -20,12 +20,13 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `fd79752fe8857ea37098602cefed294924fa1db5`, which adds
+reviewed Core functional revision `31e7d3d2ed753246f87a99d97d4c80385874b6ae`, which adds
 `SQLITE_OPEN_NOFOLLOW` to file-backed storage, protected-span and request-level glossary
 restoration, bounded semantic chunking for long streamed text, bounded translation history, and
 optional translation-memory storage with versioned request identity, and the bounded TXT/Markdown
-document contract with preserved line endings and verbatim Markdown fences, plus schema-6 document
-job snapshots that survive worker restart without persisting source paths or credentials.
+document contract with preserved line endings and verbatim Markdown fences, plus schema-8 document
+job snapshots that survive worker restart without persisting source paths or credentials, plus
+validated non-secret provider/model/glossary options reused by Resume and Retry after restart.
 
 ## Native stack
 
@@ -69,9 +70,11 @@ editor. Prompted desktop flows and physical shell rendering remain separate foll
 
 Each successful TXT/Markdown import is also stored as a bounded Core document job. **Translate**
 then sends pending prose segments sequentially through the confirmed provider, emits segment events,
-and persists each completed segment so a worker restart can restore the unfinished snapshot. **Stop**
+persists each completed segment, and saves only validated non-secret source/target locale,
+provider/model identifiers, and glossary rules. A worker restart can restore the unfinished snapshot;
+**Resume** and **Retry** reuse those options only after the active provider and model match. **Stop**
 cancels the active document segment and leaves the source unchanged; Incognito mode intentionally
-rejects document jobs because their progress must be persisted.
+rejects new document jobs because their progress must be persisted.
 
 After a translation completes, **Export translation** opens a native GTK save dialog and writes the
 output asynchronously as UTF-8. Export remains disabled without output, reports a localized success
