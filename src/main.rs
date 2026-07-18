@@ -849,7 +849,7 @@ fn install_keyboard_focus_probe(
             focus_deadline = Some(Instant::now() + Duration::from_secs(5));
             focus_window.present();
         }
-        gtk::prelude::GtkWindowExt::set_focus(&focus_window, Some(&initial_focus));
+        gtk::prelude::RootExt::set_focus(&focus_window, Some(&initial_focus));
         let grabbed = initial_focus.grab_focus_without_selecting();
         let focused = grabbed && initial_focus.has_focus();
         if !focus_attempt_logged.get() {
@@ -1120,6 +1120,7 @@ fn install_provider_focus_traversal(
 ) {
     let controller = gtk::EventControllerKey::new();
     controller.set_propagation_phase(gtk::PropagationPhase::Capture);
+    let focus_root = window.clone();
     controller.connect_key_pressed(move |_, key, _, state| {
         if key != gtk::gdk::Key::Tab {
             return gtk::glib::Propagation::Proceed;
@@ -1141,11 +1142,10 @@ fn install_provider_focus_traversal(
             let Some(widget) = focus_order.get(index) else {
                 break;
             };
-            if widget.is_visible()
-                && widget.is_sensitive()
-                && widget.is_focusable()
-                && widget.grab_focus()
-            {
+            if widget.is_visible() && widget.is_sensitive() && widget.is_focusable() && {
+                gtk::prelude::RootExt::set_focus(&focus_root, Some(widget));
+                widget.grab_focus() && widget.has_focus()
+            } {
                 return gtk::glib::Propagation::Stop;
             }
             next += step;
