@@ -1567,10 +1567,17 @@ fn refresh_active_provider_label(bindings: &UiBindings, state: &AppState) {
             "Connecting {} ({pending_mode}).",
             pending.display_name(),
         )),
-        (Some(active), None) => bindings.active_provider.set_label(&format!(
-            "Active provider: {} ({active_mode})",
-            active.display_name(),
-        )),
+        (Some(active), None) => {
+            let template = localization::text(
+                state.locale(),
+                "provider.active",
+                "Active provider: {provider}",
+            );
+            let active_label = template.replace("{provider}", active.display_name());
+            bindings.active_provider.set_label(&format!(
+                "{active_label} ({active_mode})"
+            ));
+        }
         (None, None) if !state.saved_profiles().is_empty() => {
             bindings.active_provider.set_label(
                 "Saved non-secret profiles were restored. Choose one, enter its credential if required, then connect.",
@@ -1742,6 +1749,19 @@ fn refresh_localized_widgets(bindings: &UiBindings, locale: UiLocale) {
         )));
 }
 
+fn localized_status_label(locale: UiLocale, status: AppStatus) -> String {
+    match status {
+        AppStatus::Ready => localization::text(locale, "status.ready", "Ready"),
+        AppStatus::Translating => localization::text(locale, "status.translating", "Translating…"),
+        AppStatus::Cancelled => localization::text(
+            locale,
+            "status.cancelled",
+            "Translation cancelled. Partial output was kept.",
+        ),
+        _ => status.label().to_owned(),
+    }
+}
+
 #[allow(clippy::too_many_lines)]
 fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     refresh_localized_actions(bindings, state.locale());
@@ -1755,15 +1775,15 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         });
     bindings.output.set_text(state.output());
     let status_label = if state.worker_unavailable() {
-        "Unavailable"
+        "Unavailable".to_owned()
     } else if !state.worker_ready() {
-        "Starting"
+        "Starting".to_owned()
     } else if state.pending_profile_deletion().is_some() {
-        "Removing saved profile"
+        "Removing saved profile".to_owned()
     } else if state.pending_model_selection().is_some() {
-        "Selecting model"
+        "Selecting model".to_owned()
     } else {
-        state.status().label()
+        localized_status_label(state.locale(), state.status())
     };
     bindings
         .status
