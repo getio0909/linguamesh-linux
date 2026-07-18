@@ -3334,13 +3334,17 @@ fn show_history_dialog(
             header.append(&metadata);
             header.append(&delete);
             row.append(&header);
-            let source = gtk::Label::new(Some(&format!("Source: {}", entry.source_text)));
+            let source_prefix = localization::text(locale, "field.source_text", "Source text");
+            let source = gtk::Label::new(Some(&format!("{source_prefix}: {}", entry.source_text)));
             source.set_xalign(0.0);
             source.set_wrap(true);
             source.set_selectable(true);
             row.append(&source);
-            let translated =
-                gtk::Label::new(Some(&format!("Translation: {}", entry.translated_text)));
+            let translation_prefix = localization::text(locale, "field.translation", "Translation");
+            let translated = gtk::Label::new(Some(&format!(
+                "{translation_prefix}: {}",
+                entry.translated_text
+            )));
             translated.set_xalign(0.0);
             translated.set_wrap(true);
             translated.set_selectable(true);
@@ -3549,13 +3553,17 @@ fn show_memory_dialog(
             header.append(&metadata);
             header.append(&delete);
             row.append(&header);
-            let source = gtk::Label::new(Some(&format!("Source: {}", entry.source_text)));
+            let source_prefix = localization::text(locale, "field.source_text", "Source text");
+            let source = gtk::Label::new(Some(&format!("{source_prefix}: {}", entry.source_text)));
             source.set_xalign(0.0);
             source.set_wrap(true);
             source.set_selectable(true);
             row.append(&source);
-            let translated =
-                gtk::Label::new(Some(&format!("Translation: {}", entry.translated_text)));
+            let translation_prefix = localization::text(locale, "field.translation", "Translation");
+            let translated = gtk::Label::new(Some(&format!(
+                "{translation_prefix}: {}",
+                entry.translated_text
+            )));
             translated.set_xalign(0.0);
             translated.set_wrap(true);
             translated.set_selectable(true);
