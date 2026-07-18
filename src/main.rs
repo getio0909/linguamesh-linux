@@ -766,7 +766,7 @@ fn install_keyboard_focus_probe(
             let _ = log.flush();
             ready_logged.set(true);
         }
-        let focused = initial_focus.grab_focus();
+        let focused = initial_focus.grab_focus() && initial_focus.has_focus();
         if focused || Instant::now() >= focus_deadline {
             glib::ControlFlow::Break
         } else {
