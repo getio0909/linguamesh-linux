@@ -7,8 +7,9 @@ Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903
 Assumption: canonical generated PO resources are synchronized and format-validated. The GTK host
 now parses all twelve pinned official Linux catalogs at runtime, exposes BCP 47 locale choices,
 switches the root direction for Arabic, and preserves the source editor buffer during a locale
-switch; status summaries, partial-output markers, and text-file import controls now use the same
-catalogs; complete UI coverage, plural handling, and visual locale/RTL review remain open.
+switch; status summaries, partial-output markers, text-file import controls, provider-profile
+controls, and source/target language options now use the same catalogs; complete UI coverage,
+plural handling, and visual locale/RTL review remain open.
 
 Assumption: the existing first-party `linguamesh-storage` crate and the already-reviewed GTK/GIO
 dependency closure are the approved persistence contract for this Linux slice. The Secret Service
@@ -95,7 +96,7 @@ older distributions and future Flatpak runtimes require separate packaging valid
   provider name, endpoint, optional session credential, explicit non-secret remember/remove
   choices, connection and model selection, saved/session status, language controls, source/output
   views, Translate/Stop, typed errors, partial-result display, appearance, runtime catalog-backed
-  action, workspace-widget, active-provider, status summary/partial-output, text-file import, and theme-option labels with an explicit
+  action, workspace-widget, active-provider, status summary/partial-output, text-file import, provider-profile, source/target language, and theme-option labels with an explicit
   fallback notice, a generic completion desktop notification that
   excludes source and translated content, bounded native UTF-8 TXT/Markdown import through GTK
   `FileDialog`/GIO, keyboard mnemonics, and redacted diagnostics. An
@@ -115,18 +116,18 @@ older distributions and future Flatpak runtimes require separate packaging valid
 - The Linux host now uses existing GIO D-Bus bindings for Secret Service `OpenSession`, item search,
   create/update, and `GetSecret` resolution. Persistent profiles retain only a SecretRef; the
   one-shot credential is passed through the existing typed broker and is never written to SQLite.
-- Fourteen canonical official/pseudo PO catalogs pinned to l10n revision
-  `14a4d6bcd556d735dee2d7ed022650fbcc8593b8`. Sync rejects a different revision, dirty generated
+- Fourteen canonical official/pseudo PO catalogs containing 80 messages pinned to l10n revision
+  `b583fbf63dc5ced27136ca1d8a87816593929379`. Sync rejects a different revision, dirty generated
   source artifacts, stale copies, and unexpected catalog counts. The GTK locale selector exposes
   the twelve official packs, runtime action, workspace-widget, active-provider, status summary,
-  partial-output, text-file import, and
+  partial-output, text-file import, provider-profile, source/target language, and
   System/Light/Dark theme labels switch without losing state, preserves source text while moving
   from Simplified Chinese to Arabic, and applies right-to-left root direction; uncovered UI strings
   still use explicit English fallbacks.
 - Foundation and native workflow sources use immutable Node 24-compatible action commits and
   disable persisted checkout credentials. Native CI pins reviewed Core revision
   `fbf3e9b5927049dccaa19f8c36013495ffebba12` and localization revision
-  `14a4d6bcd556d735dee2d7ed022650fbcc8593b8`. The revised native gate retains serialized all-target,
+  `b583fbf63dc5ced27136ca1d8a87816593929379`. The revised native gate retains serialized all-target,
   all-feature X11/Xvfb tests, runs the exact ignored storage-fault test in a private user/mount
   namespace when available, then runs the existing GTK binary test under forced Wayland and
   headless Weston before building the application. On restricted Ubuntu hosts, only the private
@@ -229,6 +230,11 @@ Validated on 2026-07-18 with Rust 1.93.0:
 - The text-import localization slice passed the same source-level checks and adds localized **Open
   text file**, tooltip, file-filter, and native chooser labels; the GTK fixture continues to verify
   the asynchronous UTF-8 import callback and drag/drop path in the remote native gate.
+- The provider-profile localization slice passed `cargo fmt`, all-target all-feature locked check and
+  Clippy, 45 no-default tests, 4 localization tests, and `bash tools/sync-l10n.sh --check`. It adds
+  23 Linux-only provider-card, tooltip, action, and source/target language messages; the GTK test
+  asserts Simplified Chinese provider controls and language options while preserving the existing
+  Arabic RTL/source-buffer checks.
 - Linux revision `7a8526f7a1a0e3cfe068e3dd20934cf3e11d18ca` adds a GTK regression that sets source
   text in Simplified Chinese, switches to Arabic, verifies RTL direction, and asserts the source
   buffer is unchanged. Native run `29623544194` (job `88023275325`), Foundation run `29623544187`,
@@ -238,6 +244,11 @@ Validated on 2026-07-18 with Rust 1.93.0:
 - The Linux localization unit suite parsed all twelve official catalogs and verified non-empty
   application/action entries, unique BCP 47 tags, and Arabic RTL metadata. `cargo test --features
   gui --lib localization::tests --locked` passed 4 tests; the portable model suite passed 45 tests.
+- Linux evidence revision `c074c2d1f8f9446559f23a72d224c48e2e612947` passed Native Linux run
+  `29625778212` (job `88029765419`), Foundation run `29625778196`, and Flatpak run `29625778180`;
+  the native gate covered the 80-message pinned catalog, localized provider controls, source/target
+  language labels, and the existing X11/Wayland, storage, Secret Service, portal, notification,
+  drag/drop, and accessibility fixtures.
 - The checkout, Rust-toolchain, and Rust-cache action SHAs resolved through the GitHub commits API;
   their action metadata uses Node 24 or a composite action.
 

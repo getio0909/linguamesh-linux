@@ -269,7 +269,14 @@ The GitHub Actions native workflow pins Core revision
 `fbf3e9b5927049dccaa19f8c36013495ffebba12`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
-namespace test through the unprivileged path. Runtime-storage functional revision
+namespace test through the unprivileged path.
+The current provider-profile localization revision `c074c2d1f8f9446559f23a72d224c48e2e612947`
+passed Native Linux run `29625778212` (job `88029765419`), Foundation run `29625778196`, and
+Flatpak run `29625778180`; the native job validated the pinned 80-message catalog and GTK
+Simplified Chinese provider-card/source-target assertions in addition to the existing storage,
+Secret Service, portal, notification, drag/drop, X11, and forced-Wayland gates. The workflow
+checks out l10n revision `b583fbf63dc5ced27136ca1d8a87816593929379`.
+Runtime-storage functional revision
 `c37702c76c3b1a2f9cec805cf9e219721ef7b5ce` passed Native Linux run `29586532049` (job
 `87904787338`): strict all-feature Clippy, 66 ordinary library tests with one intentional ignore,
 the real GTK binary test under X11/Xvfb, the exact storage-fault test with 1 pass and 0 ignored via
@@ -330,6 +337,6 @@ Broader GTK component/UI automation, AT-SPI/Orca and physical-keyboard accessibi
 physical-compositor and GPU-backed Wayland coverage, a broader X11/desktop matrix, prompted
 interactive Secret Service flows, broader XDG and portal tests, third-party
 local-server interoperability, Flatpak smoke tests, runtime localization behavior beyond the
-currently catalog-backed action, workspace-widget, active-provider, status summary/partial-output, text-file import, and theme-option labels, runtime database
+currently catalog-backed action, workspace-widget, active-provider, status summary/partial-output, text-file import, provider-profile, source/target language, and theme-option labels, runtime database
 faults beyond the implemented Linux `ENOSPC` transaction boundary, dependency/license automation,
 and release builds remain required before a supported release.
