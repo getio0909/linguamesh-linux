@@ -198,6 +198,8 @@ mod tests {
             assert!(!text(locale, "section.provider_profiles", "").is_empty());
             assert!(!text(locale, "action.connect", "").is_empty());
             assert!(!text(locale, "option.source.auto", "").is_empty());
+            assert!(!text(locale, "onboarding.stage.starting", "").is_empty());
+            assert!(!text(locale, "onboarding.detail.ready", "").is_empty());
         }
     }
 

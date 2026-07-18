@@ -657,6 +657,20 @@ fn localized_mnemonic(locale: UiLocale, key: &str, fallback: &str) -> String {
     format!("_{}", localization::text(locale, key, fallback))
 }
 
+// 替换本地化模板中的非敏感运行时占位符。
+fn localized_template(
+    locale: UiLocale,
+    key: &str,
+    fallback: &str,
+    replacements: &[(&str, &str)],
+) -> String {
+    let mut value = localization::text(locale, key, fallback);
+    for (placeholder, replacement) in replacements {
+        value = value.replace(placeholder, replacement);
+    }
+    value
+}
+
 fn refresh_dropdown_labels(dropdown: &gtk::DropDown, labels: &[String]) {
     if let Some(model) = dropdown
         .model()
@@ -1660,70 +1674,131 @@ fn refresh_active_provider_label(bindings: &UiBindings, state: &AppState) {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn refresh_onboarding(bindings: &UiBindings, state: &AppState) {
     let onboarding_phase = state.onboarding_stage();
     let (title, mut detail) = match onboarding_phase {
         OnboardingStage::Starting => (
-            "Provider setup · Starting",
-            "Checking profile storage and starting the local validation provider. No provider connection is made automatically."
-                .to_owned(),
+            localization::text(
+                state.locale(),
+                "onboarding.stage.starting",
+                "Provider setup · Starting",
+            ),
+            localization::text(
+                state.locale(),
+                "onboarding.detail.starting",
+                "Checking profile storage and starting the local validation provider. No provider connection is made automatically.",
+            ),
         ),
         OnboardingStage::Unavailable => (
-            "Provider setup · Unavailable",
-            "The core worker is unavailable. Restart the application and review any error below; no provider request can be sent."
-                .to_owned(),
+            localization::text(
+                state.locale(),
+                "onboarding.stage.unavailable",
+                "Provider setup · Unavailable",
+            ),
+            localization::text(
+                state.locale(),
+                "onboarding.detail.unavailable",
+                "The core worker is unavailable. Restart the application and review any error below; no provider request can be sent.",
+            ),
         ),
         OnboardingStage::ConfigureProvider => {
             let detail = if state.profile_storage_status() == ProfileStorageStatus::Unavailable {
-                "Saved profile storage is unavailable. Configure a provider below and leave Remember off; credentials stay in memory for this session only."
+                localization::text(
+                    state.locale(),
+                    "onboarding.detail.storage_unavailable",
+                    "Saved profile storage is unavailable. Configure a provider below and leave Remember off; credentials stay in memory for this session only.",
+                )
             } else if state.saved_profiles().is_empty() {
-                "Create a provider profile below, enter a credential only if required, then choose Connect. Remembering uses Secret Service; otherwise the credential remains in memory for this session only."
+                localization::text(
+                    state.locale(),
+                    "onboarding.detail.configure_empty",
+                    "Create a provider profile below, enter a credential only if required, then choose Connect. Remembering uses Secret Service; otherwise the credential remains in memory for this session only.",
+                )
             } else {
-                "Choose a saved profile below, re-enter its credential if required, then choose Connect. Restored profiles never connect automatically."
+                localization::text(
+                    state.locale(),
+                    "onboarding.detail.configure_saved",
+                    "Choose a saved profile below, re-enter its credential if required, then choose Connect. Restored profiles never connect automatically.",
+                )
             };
-            ("Provider setup · Step 1 of 2", detail.to_owned())
+            (
+                localization::text(
+                    state.locale(),
+                    "onboarding.stage.configure",
+                    "Provider setup · Step 1 of 2",
+                ),
+                detail,
+            )
         }
         OnboardingStage::Connecting => {
             let detail = state.pending_provider().map_or_else(
-                || {
-                    "Validating the provider and discovering models. The previous active provider remains unchanged until this succeeds."
-                        .to_owned()
-                },
+                || localization::text(
+                    state.locale(),
+                    "onboarding.detail.connecting_generic",
+                    "Validating the provider and discovering models. The previous active provider remains unchanged until this succeeds.",
+                ),
                 |profile| {
-                    format!(
-                        "Validating {} [{}] and discovering models. The previous active provider remains unchanged until this succeeds.",
-                        profile.display_name(),
-                        profile.id().as_str()
+                    localized_template(
+                        state.locale(),
+                        "onboarding.detail.connecting",
+                        "Validating {provider} [{profile_id}] and discovering models. The previous active provider remains unchanged until this succeeds.",
+                        &[
+                            ("{provider}", profile.display_name()),
+                            ("{profile_id}", profile.id().as_str()),
+                        ],
                     )
                 },
             );
-            ("Provider setup · Connecting", detail)
+            (
+                localization::text(
+                    state.locale(),
+                    "onboarding.stage.connecting",
+                    "Provider setup · Connecting",
+                ),
+                detail,
+            )
         }
         OnboardingStage::SelectModel => {
             let detail = state.pending_model_selection().map_or_else(
-                || {
-                    "Choose a discovered model. Translation remains disabled until the selection is confirmed."
-                        .to_owned()
-                },
-                |model| {
-                    format!(
-                        "Confirming model {model}. Translation remains disabled until this selection is committed."
-                    )
-                },
+                || localization::text(
+                    state.locale(),
+                    "onboarding.detail.select_model",
+                    "Choose a discovered model. Translation remains disabled until the selection is confirmed.",
+                ),
+                |model| localized_template(
+                    state.locale(),
+                    "onboarding.detail.confirm_model",
+                    "Confirming model {model}. Translation remains disabled until this selection is committed.",
+                    &[("{model}", model)],
+                ),
             );
-            ("Provider setup · Step 2 of 2", detail)
+            (
+                localization::text(
+                    state.locale(),
+                    "onboarding.stage.select_model",
+                    "Provider setup · Step 2 of 2",
+                ),
+                detail,
+            )
         }
         OnboardingStage::Ready => {
-            let provider = state
-                .active_provider()
-                .map_or_else(|| "Unavailable".to_owned(), |profile| {
-                    format!("{} [{}]", profile.display_name(), profile.id().as_str())
-                });
+            let provider = state.active_provider().map_or_else(
+                || "Unavailable".to_owned(),
+                |profile| format!("{} [{}]", profile.display_name(), profile.id().as_str()),
+            );
             let model = state.selected_model().unwrap_or("Unavailable");
             (
-                "Provider setup · Ready",
-                format!(
-                    "Next request: {provider} · {model}. Use the saved-profile list and Connect to switch deliberately."
+                localization::text(
+                    state.locale(),
+                    "onboarding.stage.ready",
+                    "Provider setup · Ready",
+                ),
+                localized_template(
+                    state.locale(),
+                    "onboarding.detail.ready",
+                    "Next request: {provider} · {model}. Use the saved-profile list and Connect to switch deliberately.",
+                    &[("{provider}", &provider), ("{model}", model)],
                 ),
             )
         }
@@ -1731,12 +1806,15 @@ fn refresh_onboarding(bindings: &UiBindings, state: &AppState) {
     if state.profile_storage_status() == ProfileStorageStatus::Unavailable
         && onboarding_phase != OnboardingStage::ConfigureProvider
     {
-        detail.push_str(
-            " Saved profile storage is unavailable; profile persistence is disabled, Remember stays off, and credentials remain session only.",
-        );
+        detail.push(' ');
+        detail.push_str(&localization::text(
+            state.locale(),
+            "onboarding.detail.persistence_warning",
+            "Saved profile storage is unavailable; profile persistence is disabled, Remember stays off, and credentials remain session only.",
+        ));
     }
     bindings.onboarding.set_visible(true);
-    bindings.onboarding_title.set_label(title);
+    bindings.onboarding_title.set_label(&title);
     bindings.onboarding_detail.set_label(&detail);
 }
 

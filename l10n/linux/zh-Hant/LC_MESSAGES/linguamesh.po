@@ -505,3 +505,105 @@ msgstr "英文"
 msgctxt "option.target.japanese"
 msgid "Japanese"
 msgstr "日文"
+
+#. Linux provider-setup stage title while the worker starts.
+#, fuzzy
+msgctxt "onboarding.stage.starting"
+msgid "Provider setup · Starting"
+msgstr "提供者設定 · 正在啟動"
+
+#. Linux provider-setup stage title when the worker is unavailable.
+#, fuzzy
+msgctxt "onboarding.stage.unavailable"
+msgid "Provider setup · Unavailable"
+msgstr "提供者設定 · 無法使用"
+
+#. Linux provider-setup stage title while the user configures a profile.
+#, fuzzy
+msgctxt "onboarding.stage.configure"
+msgid "Provider setup · Step 1 of 2"
+msgstr "提供者設定 · 第 1 步，共 2 步"
+
+#. Linux provider-setup stage title while a provider connects.
+#, fuzzy
+msgctxt "onboarding.stage.connecting"
+msgid "Provider setup · Connecting"
+msgstr "提供者設定 · 正在連線"
+
+#. Linux provider-setup stage title while a model is selected.
+#, fuzzy
+msgctxt "onboarding.stage.select_model"
+msgid "Provider setup · Step 2 of 2"
+msgstr "提供者設定 · 第 2 步，共 2 步"
+
+#. Linux provider-setup stage title after provider and model readiness.
+#, fuzzy
+msgctxt "onboarding.stage.ready"
+msgid "Provider setup · Ready"
+msgstr "提供者設定 · 已就緒"
+
+#. Linux provider-setup explanation while startup checks run.
+#, fuzzy
+msgctxt "onboarding.detail.starting"
+msgid "Checking profile storage and starting the local validation provider. No provider connection is made automatically."
+msgstr "正在檢查設定儲存並啟動本機驗證提供者。不會自動連線提供者。"
+
+#. Linux provider-setup explanation when the worker is unavailable.
+#, fuzzy
+msgctxt "onboarding.detail.unavailable"
+msgid "The core worker is unavailable. Restart the application and review any error below; no provider request can be sent."
+msgstr "核心工作執行緒無法使用。請重新啟動應用程式並查看下方錯誤；無法傳送提供者要求。"
+
+#. Linux provider-setup warning when saved profile storage is unavailable.
+#, fuzzy
+msgctxt "onboarding.detail.storage_unavailable"
+msgid "Saved profile storage is unavailable. Configure a provider below and leave Remember off; credentials stay in memory for this session only."
+msgstr "已儲存設定儲存無法使用。請在下方設定提供者並關閉「記住」；憑證僅保留在本次工作階段。"
+
+#. Linux provider-setup explanation when no saved profile exists.
+#, fuzzy
+msgctxt "onboarding.detail.configure_empty"
+msgid "Create a provider profile below, enter a credential only if required, then choose Connect. Remembering uses Secret Service; otherwise the credential remains in memory for this session only."
+msgstr "在下方建立提供者設定；僅在需要時輸入憑證，然後選取「連線」。記住設定會使用 Secret Service，否則憑證僅保留在本次工作階段。"
+
+#. Linux provider-setup explanation when saved profiles exist.
+#, fuzzy
+msgctxt "onboarding.detail.configure_saved"
+msgid "Choose a saved profile below, re-enter its credential if required, then choose Connect. Restored profiles never connect automatically."
+msgstr "在下方選取已儲存設定；需要時重新輸入憑證，然後選取「連線」。還原的設定不會自動連線。"
+
+#. Linux provider-setup explanation while a named provider connects.
+#, fuzzy, python-brace-format
+msgctxt "onboarding.detail.connecting"
+msgid "Validating {provider} [{profile_id}] and discovering models. The previous active provider remains unchanged until this succeeds."
+msgstr "正在驗證 {provider} [{profile_id}] 並探索模型。成功前會保持先前的作用中提供者不變。"
+
+#. Linux provider-setup explanation while model discovery completes.
+#, fuzzy
+msgctxt "onboarding.detail.connecting_generic"
+msgid "Validating the provider and discovering models. The previous active provider remains unchanged until this succeeds."
+msgstr "正在驗證提供者並探索模型。成功前會保持先前的作用中提供者不變。"
+
+#. Linux provider-setup explanation before a discovered model is confirmed.
+#, fuzzy
+msgctxt "onboarding.detail.select_model"
+msgid "Choose a discovered model. Translation remains disabled until the selection is confirmed."
+msgstr "請選取已探索的模型。確認選取前無法翻譯。"
+
+#. Linux provider-setup explanation while a named model is committed.
+#, fuzzy, python-brace-format
+msgctxt "onboarding.detail.confirm_model"
+msgid "Confirming model {model}. Translation remains disabled until this selection is committed."
+msgstr "正在確認模型 {model}。提交此選取前無法翻譯。"
+
+#. Linux provider-setup summary naming the next provider and model.
+#, fuzzy, python-brace-format
+msgctxt "onboarding.detail.ready"
+msgid "Next request: {provider} · {model}. Use the saved-profile list and Connect to switch deliberately."
+msgstr "下一個要求：{provider} · {model}。使用已儲存設定清單和「連線」來有意切換。"
+
+#. Linux provider-setup warning appended when persistence is unavailable.
+#, fuzzy
+msgctxt "onboarding.detail.persistence_warning"
+msgid "Saved profile storage is unavailable; profile persistence is disabled, Remember stays off, and credentials remain session only."
+msgstr "已儲存設定儲存無法使用；設定持久性已停用，「記住」保持關閉，憑證僅保留在本次工作階段。"

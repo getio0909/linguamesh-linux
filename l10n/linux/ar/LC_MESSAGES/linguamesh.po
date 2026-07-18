@@ -515,3 +515,105 @@ msgstr "الإنجليزية"
 msgctxt "option.target.japanese"
 msgid "Japanese"
 msgstr "اليابانية"
+
+#. Linux provider-setup stage title while the worker starts.
+#, fuzzy
+msgctxt "onboarding.stage.starting"
+msgid "Provider setup · Starting"
+msgstr "إعداد المزوّد · بدء التشغيل"
+
+#. Linux provider-setup stage title when the worker is unavailable.
+#, fuzzy
+msgctxt "onboarding.stage.unavailable"
+msgid "Provider setup · Unavailable"
+msgstr "إعداد المزوّد · غير متاح"
+
+#. Linux provider-setup stage title while the user configures a profile.
+#, fuzzy
+msgctxt "onboarding.stage.configure"
+msgid "Provider setup · Step 1 of 2"
+msgstr "إعداد المزوّد · الخطوة 1 من 2"
+
+#. Linux provider-setup stage title while a provider connects.
+#, fuzzy
+msgctxt "onboarding.stage.connecting"
+msgid "Provider setup · Connecting"
+msgstr "إعداد المزوّد · جارٍ الاتصال"
+
+#. Linux provider-setup stage title while a model is selected.
+#, fuzzy
+msgctxt "onboarding.stage.select_model"
+msgid "Provider setup · Step 2 of 2"
+msgstr "إعداد المزوّد · الخطوة 2 من 2"
+
+#. Linux provider-setup stage title after provider and model readiness.
+#, fuzzy
+msgctxt "onboarding.stage.ready"
+msgid "Provider setup · Ready"
+msgstr "إعداد المزوّد · جاهز"
+
+#. Linux provider-setup explanation while startup checks run.
+#, fuzzy
+msgctxt "onboarding.detail.starting"
+msgid "Checking profile storage and starting the local validation provider. No provider connection is made automatically."
+msgstr "يجري فحص تخزين الملفات وبدء مزوّد التحقق المحلي. لا يتم الاتصال بأي مزوّد تلقائياً."
+
+#. Linux provider-setup explanation when the worker is unavailable.
+#, fuzzy
+msgctxt "onboarding.detail.unavailable"
+msgid "The core worker is unavailable. Restart the application and review any error below; no provider request can be sent."
+msgstr "العامل الأساسي غير متاح. أعد تشغيل التطبيق وراجع الخطأ أدناه؛ لا يمكن إرسال طلب إلى المزوّد."
+
+#. Linux provider-setup warning when saved profile storage is unavailable.
+#, fuzzy
+msgctxt "onboarding.detail.storage_unavailable"
+msgid "Saved profile storage is unavailable. Configure a provider below and leave Remember off; credentials stay in memory for this session only."
+msgstr "تخزين الملفات المحفوظة غير متاح. اضبط مزوّداً أدناه واترك التذكر متوقفاً؛ تبقى بيانات الاعتماد في هذه الجلسة فقط."
+
+#. Linux provider-setup explanation when no saved profile exists.
+#, fuzzy
+msgctxt "onboarding.detail.configure_empty"
+msgid "Create a provider profile below, enter a credential only if required, then choose Connect. Remembering uses Secret Service; otherwise the credential remains in memory for this session only."
+msgstr "أنشئ ملف مزوّد أدناه، وأدخل بيانات الاعتماد عند الحاجة فقط، ثم اختر «اتصال». يستخدم التذكر Secret Service؛ وإلا تبقى بيانات الاعتماد في هذه الجلسة فقط."
+
+#. Linux provider-setup explanation when saved profiles exist.
+#, fuzzy
+msgctxt "onboarding.detail.configure_saved"
+msgid "Choose a saved profile below, re-enter its credential if required, then choose Connect. Restored profiles never connect automatically."
+msgstr "اختر ملفاً محفوظاً أدناه وأعد إدخال بيانات الاعتماد عند الحاجة، ثم اختر «اتصال». لا تتصل الملفات المستعادة تلقائياً."
+
+#. Linux provider-setup explanation while a named provider connects.
+#, fuzzy, python-brace-format
+msgctxt "onboarding.detail.connecting"
+msgid "Validating {provider} [{profile_id}] and discovering models. The previous active provider remains unchanged until this succeeds."
+msgstr "جارٍ التحقق من {provider} [{profile_id}] واكتشاف النماذج. يبقى المزوّد النشط السابق كما هو حتى ينجح ذلك."
+
+#. Linux provider-setup explanation while model discovery completes.
+#, fuzzy
+msgctxt "onboarding.detail.connecting_generic"
+msgid "Validating the provider and discovering models. The previous active provider remains unchanged until this succeeds."
+msgstr "جارٍ التحقق من المزوّد واكتشاف النماذج. يبقى المزوّد النشط السابق كما هو حتى ينجح ذلك."
+
+#. Linux provider-setup explanation before a discovered model is confirmed.
+#, fuzzy
+msgctxt "onboarding.detail.select_model"
+msgid "Choose a discovered model. Translation remains disabled until the selection is confirmed."
+msgstr "اختر نموذجاً مكتشفاً. تبقى الترجمة معطلة حتى تأكيد الاختيار."
+
+#. Linux provider-setup explanation while a named model is committed.
+#, fuzzy, python-brace-format
+msgctxt "onboarding.detail.confirm_model"
+msgid "Confirming model {model}. Translation remains disabled until this selection is committed."
+msgstr "جارٍ تأكيد النموذج {model}. تبقى الترجمة معطلة حتى تثبيت هذا الاختيار."
+
+#. Linux provider-setup summary naming the next provider and model.
+#, fuzzy, python-brace-format
+msgctxt "onboarding.detail.ready"
+msgid "Next request: {provider} · {model}. Use the saved-profile list and Connect to switch deliberately."
+msgstr "الطلب التالي: {provider} · {model}. استخدم قائمة الملفات المحفوظة و«اتصال» للتبديل المقصود."
+
+#. Linux provider-setup warning appended when persistence is unavailable.
+#, fuzzy
+msgctxt "onboarding.detail.persistence_warning"
+msgid "Saved profile storage is unavailable; profile persistence is disabled, Remember stays off, and credentials remain session only."
+msgstr "تخزين الملفات المحفوظة غير متاح؛ تم تعطيل الاستمرارية، ويبقى التذكر متوقفاً، وتبقى بيانات الاعتماد للجلسة فقط."

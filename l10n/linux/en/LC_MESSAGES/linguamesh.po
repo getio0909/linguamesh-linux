@@ -435,3 +435,91 @@ msgstr "English"
 msgctxt "option.target.japanese"
 msgid "Japanese"
 msgstr "Japanese"
+
+#. Linux provider-setup stage title while the worker starts.
+msgctxt "onboarding.stage.starting"
+msgid "Provider setup · Starting"
+msgstr "Provider setup · Starting"
+
+#. Linux provider-setup stage title when the worker is unavailable.
+msgctxt "onboarding.stage.unavailable"
+msgid "Provider setup · Unavailable"
+msgstr "Provider setup · Unavailable"
+
+#. Linux provider-setup stage title while the user configures a profile.
+msgctxt "onboarding.stage.configure"
+msgid "Provider setup · Step 1 of 2"
+msgstr "Provider setup · Step 1 of 2"
+
+#. Linux provider-setup stage title while a provider connects.
+msgctxt "onboarding.stage.connecting"
+msgid "Provider setup · Connecting"
+msgstr "Provider setup · Connecting"
+
+#. Linux provider-setup stage title while a model is selected.
+msgctxt "onboarding.stage.select_model"
+msgid "Provider setup · Step 2 of 2"
+msgstr "Provider setup · Step 2 of 2"
+
+#. Linux provider-setup stage title after provider and model readiness.
+msgctxt "onboarding.stage.ready"
+msgid "Provider setup · Ready"
+msgstr "Provider setup · Ready"
+
+#. Linux provider-setup explanation while startup checks run.
+msgctxt "onboarding.detail.starting"
+msgid "Checking profile storage and starting the local validation provider. No provider connection is made automatically."
+msgstr "Checking profile storage and starting the local validation provider. No provider connection is made automatically."
+
+#. Linux provider-setup explanation when the worker is unavailable.
+msgctxt "onboarding.detail.unavailable"
+msgid "The core worker is unavailable. Restart the application and review any error below; no provider request can be sent."
+msgstr "The core worker is unavailable. Restart the application and review any error below; no provider request can be sent."
+
+#. Linux provider-setup warning when saved profile storage is unavailable.
+msgctxt "onboarding.detail.storage_unavailable"
+msgid "Saved profile storage is unavailable. Configure a provider below and leave Remember off; credentials stay in memory for this session only."
+msgstr "Saved profile storage is unavailable. Configure a provider below and leave Remember off; credentials stay in memory for this session only."
+
+#. Linux provider-setup explanation when no saved profile exists.
+msgctxt "onboarding.detail.configure_empty"
+msgid "Create a provider profile below, enter a credential only if required, then choose Connect. Remembering uses Secret Service; otherwise the credential remains in memory for this session only."
+msgstr "Create a provider profile below, enter a credential only if required, then choose Connect. Remembering uses Secret Service; otherwise the credential remains in memory for this session only."
+
+#. Linux provider-setup explanation when saved profiles exist.
+msgctxt "onboarding.detail.configure_saved"
+msgid "Choose a saved profile below, re-enter its credential if required, then choose Connect. Restored profiles never connect automatically."
+msgstr "Choose a saved profile below, re-enter its credential if required, then choose Connect. Restored profiles never connect automatically."
+
+#. Linux provider-setup explanation while a named provider connects.
+#, python-brace-format
+msgctxt "onboarding.detail.connecting"
+msgid "Validating {provider} [{profile_id}] and discovering models. The previous active provider remains unchanged until this succeeds."
+msgstr "Validating {provider} [{profile_id}] and discovering models. The previous active provider remains unchanged until this succeeds."
+
+#. Linux provider-setup explanation while model discovery completes.
+msgctxt "onboarding.detail.connecting_generic"
+msgid "Validating the provider and discovering models. The previous active provider remains unchanged until this succeeds."
+msgstr "Validating the provider and discovering models. The previous active provider remains unchanged until this succeeds."
+
+#. Linux provider-setup explanation before a discovered model is confirmed.
+msgctxt "onboarding.detail.select_model"
+msgid "Choose a discovered model. Translation remains disabled until the selection is confirmed."
+msgstr "Choose a discovered model. Translation remains disabled until the selection is confirmed."
+
+#. Linux provider-setup explanation while a named model is committed.
+#, python-brace-format
+msgctxt "onboarding.detail.confirm_model"
+msgid "Confirming model {model}. Translation remains disabled until this selection is committed."
+msgstr "Confirming model {model}. Translation remains disabled until this selection is committed."
+
+#. Linux provider-setup summary naming the next provider and model.
+#, python-brace-format
+msgctxt "onboarding.detail.ready"
+msgid "Next request: {provider} · {model}. Use the saved-profile list and Connect to switch deliberately."
+msgstr "Next request: {provider} · {model}. Use the saved-profile list and Connect to switch deliberately."
+
+#. Linux provider-setup warning appended when persistence is unavailable.
+msgctxt "onboarding.detail.persistence_warning"
+msgid "Saved profile storage is unavailable; profile persistence is disabled, Remember stays off, and credentials remain session only."
+msgstr "Saved profile storage is unavailable; profile persistence is disabled, Remember stays off, and credentials remain session only."
