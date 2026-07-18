@@ -1607,3 +1607,15 @@ msgstr "⁧⟦The translation completed, but local translation memory could not 
 msgctxt "error.memory_export"
 msgid "The translation memory could not be saved."
 msgstr "⁧⟦The translation memory could not be saved.⟧⁩"
+
+#. Cue numbers and the configured per-line character limit for subtitle readability guidance.
+#, fuzzy, python-brace-format
+msgctxt "warning.subtitle_line_length"
+msgid "Subtitle cue(s) {cues} exceed the {limit}-character line guidance."
+msgstr "⁧⟦Subtitle cue(s) {cues} exceed the {limit}-character line guidance.⟧⁩"
+
+#. Cue numbers and the configured reading-speed character limit for subtitle readability guidance.
+#, fuzzy, python-brace-format
+msgctxt "warning.subtitle_reading_speed"
+msgid "Subtitle cue(s) {cues} exceed the {limit}-character-per-second reading-speed guidance."
+msgstr "⁧⟦Subtitle cue(s) {cues} exceed the {limit}-character-per-second reading-speed guidance.⟧⁩"

@@ -1599,3 +1599,15 @@ msgstr "［Ŧħë ŧŕåñšŀåŧïøñ çøṁþŀëŧëð, ƀûŧ ŀøçåŀ 
 msgctxt "error.memory_export"
 msgid "The translation memory could not be saved."
 msgstr "［Ŧħë ŧŕåñšŀåŧïøñ ṁëṁøŕÿ çøûŀð ñøŧ ƀë šåṽëð.~~~~~~~~~~~~~~］"
+
+#. Cue numbers and the configured per-line character limit for subtitle readability guidance.
+#, fuzzy, python-brace-format
+msgctxt "warning.subtitle_line_length"
+msgid "Subtitle cue(s) {cues} exceed the {limit}-character line guidance."
+msgstr "［Šûƀŧïŧŀë çûë(š) {cues} ëẋçëëð ŧħë {limit}-çħåŕåçŧëŕ ŀïñë ĝûïðåñçë.~~~~~~~~~~~~~~~~~~~~~~］"
+
+#. Cue numbers and the configured reading-speed character limit for subtitle readability guidance.
+#, fuzzy, python-brace-format
+msgctxt "warning.subtitle_reading_speed"
+msgid "Subtitle cue(s) {cues} exceed the {limit}-character-per-second reading-speed guidance."
+msgstr "［Šûƀŧïŧŀë çûë(š) {cues} ëẋçëëð ŧħë {limit}-çħåŕåçŧëŕ-þëŕ-šëçøñð ŕëåðïñĝ-šþëëð ĝûïðåñçë.~~~~~~~~~~~~~~~~~~~~~~~~~~~~］"
