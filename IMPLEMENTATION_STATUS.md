@@ -6,8 +6,8 @@ Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903
 
 Assumption: canonical generated PO resources are synchronized and format-validated. The GTK host
 now parses all twelve pinned official Linux catalogs at runtime, exposes BCP 47 locale choices,
-and switches the root direction for Arabic; complete UI coverage, plural handling, and visual
-locale/RTL review remain open.
+switches the root direction for Arabic, and preserves the source editor buffer during a locale
+switch; complete UI coverage, plural handling, and visual locale/RTL review remain open.
 
 Assumption: the existing first-party `linguamesh-storage` crate and the already-reviewed GTK/GIO
 dependency closure are the approved persistence contract for this Linux slice. The Secret Service
@@ -118,8 +118,9 @@ older distributions and future Flatpak runtimes require separate packaging valid
   `52e73ea2a6cc7e6e7409b2b6eb0d02db35576a49`. Sync rejects a different revision, dirty generated
   source artifacts, stale copies, and unexpected catalog counts. The GTK locale selector exposes
   the twelve official packs, runtime action, workspace-widget, active-provider, status, and
-  System/Light/Dark theme labels switch without losing state, and Arabic applies right-to-left root
-  direction; uncovered UI strings still use explicit English fallbacks.
+  System/Light/Dark theme labels switch without losing state, preserves source text while moving
+  from Simplified Chinese to Arabic, and applies right-to-left root direction; uncovered UI strings
+  still use explicit English fallbacks.
 - Foundation and native workflow sources use immutable Node 24-compatible action commits and
   disable persisted checkout credentials. Native CI pins reviewed Core revision
   `fbf3e9b5927049dccaa19f8c36013495ffebba12` and localization revision
@@ -218,6 +219,10 @@ Validated on 2026-07-17 with Rust 1.93.0:
   expected missing-Weston and early-compositor-exit failure paths without leaving a temporary
   runtime directory; both workflow files parsed as YAML. Its actual GTK run requires the remote
   native environment.
+- Linux revision `7a8526f7a1a0e3cfe068e3dd20934cf3e11d18ca` adds a GTK regression that sets source
+  text in Simplified Chinese, switches to Arabic, verifies RTL direction, and asserts the source
+  buffer is unchanged. Native run `29623544194` (job `88023275325`), Foundation run `29623544187`,
+  and Flatpak run `29623544225` passed.
 - `bash tools/sync-l10n.sh --check` passed against the exact clean l10n checkout, and all 14 PO
   catalogs passed `msgfmt --check --check-format`.
 - The Linux localization unit suite parsed all twelve official catalogs and verified non-empty
