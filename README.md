@@ -126,7 +126,7 @@ functional revision above; an arbitrary default branch is not compatibility evid
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
 `40f3914e1b28fddd8f38d287fa121010f5192f1c` and validated with `msgfmt`; the 244-message bundle
-checksum is `746d38fe80a07013b78d7b1e5efae91af6354f4c702add9dceb6b16f6bc2b7c3`. The locale selector
+checksum is `f3e49113ed85e7e4fadeef6b872ccfe5a2e4fa67548028db5f4524479aedeeb4`. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
 active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, and construction-stage provider/default-control copy without replacing active source text;
 Arabic also switches the GTK workspace root to right-to-left direction. Stable Linux worker startup,

@@ -603,7 +603,7 @@ Implemented:
   changes, and preservation of existing rows.
 - Pinned Core `fb00f3dd6b62a8a3a47350acc85831e60e266929` and l10n
   `40f3914e1b28fddd8f38d287fa121010f5192f1c`, with 244 generated messages and bundle checksum
-  `746d38fe80a07013b78d7b1e5efae91af6354f4c702add9dceb6b16f6bc2b7c3`.
+  `f3e49113ed85e7e4fadeef6b872ccfe5a2e4fa67548028db5f4524479aedeeb4`.
 
 Validated locally:
 
