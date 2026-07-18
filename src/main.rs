@@ -66,6 +66,9 @@ struct UiBindings {
     memory_enabled: gtk::CheckButton,
     memory: gtk::Button,
     clear_memory: gtk::Button,
+    fallback_enabled: gtk::CheckButton,
+    fallback_profile_label: gtk::Label,
+    fallback_profile: gtk::DropDown,
     theme: gtk::DropDown,
     locale: gtk::DropDown,
     source: gtk::TextBuffer,
@@ -93,12 +96,14 @@ struct UiBindings {
     draft_profile_id: Rc<RefCell<Option<ProviderProfileId>>>,
     source_uri: Rc<RefCell<Option<String>>>,
     output_uri: Rc<RefCell<Option<String>>>,
+    fallback_profile_ids: Rc<RefCell<Vec<Option<ProviderProfileId>>>>,
     document_job_id: Rc<RefCell<Option<String>>>,
     document_job_guard: Rc<Cell<bool>>,
     document_job_state: Rc<Cell<Option<DocumentJobState>>>,
     document_progress: Rc<Cell<Option<(usize, usize)>>>,
     document_warnings: Rc<RefCell<Vec<DocumentWarning>>>,
     export_notice: Rc<Cell<bool>>,
+    fallback_notice: Rc<Cell<bool>>,
     glossary_notice: Rc<Cell<bool>>,
     glossary_from_csv: Rc<Cell<bool>>,
     history_notice: Rc<Cell<bool>>,
@@ -379,6 +384,37 @@ fn create_window(
         .add_controller(source_drop_target.clone());
     root.append(&editor_bindings.editors);
 
+    let fallback_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let fallback_enabled = gtk::CheckButton::with_mnemonic(&localized_mnemonic(
+        display_locale,
+        "action.enable_fallback",
+        "Allow approved fallback",
+    ));
+    fallback_enabled.set_focusable(true);
+    fallback_enabled.set_tooltip_text(Some(&localization::text(
+        display_locale,
+        "tooltip.fallback",
+        "Retry only retryable network failures with this saved provider; document jobs, cancellation, and credential failures never fall back",
+    )));
+    let fallback_profile_label = gtk::Label::new(Some(&localized_mnemonic(
+        display_locale,
+        "label.fallback_profile",
+        "Fallback provider",
+    )));
+    fallback_profile_label.set_xalign(0.0);
+    let fallback_profile = gtk::DropDown::from_strings(&[&localization::text(
+        display_locale,
+        "option.fallback.none",
+        "No fallback",
+    )]);
+    fallback_profile.set_focusable(true);
+    fallback_profile.set_sensitive(false);
+    fallback_profile.set_hexpand(true);
+    fallback_row.append(&fallback_enabled);
+    fallback_row.append(&fallback_profile_label);
+    fallback_row.append(&fallback_profile);
+    root.append(&fallback_row);
+
     let action_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     let open_source = gtk::Button::with_mnemonic(&localized_mnemonic(
         display_locale,
@@ -536,6 +572,9 @@ fn create_window(
             memory_enabled,
             memory,
             clear_memory,
+            fallback_enabled,
+            fallback_profile_label,
+            fallback_profile,
             theme: theme.clone(),
             locale: locale.clone(),
             source: editor_bindings.source,
@@ -563,12 +602,14 @@ fn create_window(
             draft_profile_id: Rc::new(RefCell::new(None)),
             source_uri: Rc::new(RefCell::new(None)),
             output_uri: Rc::new(RefCell::new(None)),
+            fallback_profile_ids: Rc::new(RefCell::new(vec![None])),
             document_job_id: Rc::new(RefCell::new(None)),
             document_job_guard: Rc::new(Cell::new(false)),
             document_job_state: Rc::new(Cell::new(None)),
             document_progress: Rc::new(Cell::new(None)),
             document_warnings: Rc::new(RefCell::new(Vec::new())),
             export_notice: Rc::new(Cell::new(false)),
+            fallback_notice: Rc::new(Cell::new(false)),
             glossary_notice: Rc::new(Cell::new(false)),
             glossary_from_csv: Rc::new(Cell::new(false)),
             history_notice: Rc::new(Cell::new(false)),
@@ -1327,6 +1368,51 @@ fn rebuild_saved_profile_dropdown(bindings: &UiBindings, state: &AppState) {
     bindings.profile_selection_guard.set(false);
 }
 
+// 重建回退配置列表，仅保留本地已保存且不同于当前主配置的候选项。
+fn rebuild_fallback_profile_dropdown(bindings: &UiBindings, state: &AppState) {
+    let selected_id = bindings
+        .fallback_profile_ids
+        .borrow()
+        .get(usize::try_from(bindings.fallback_profile.selected()).unwrap_or(0))
+        .cloned()
+        .flatten();
+    let mut labels = vec![localization::text(
+        state.locale(),
+        "option.fallback.none",
+        "No fallback",
+    )];
+    let mut profile_ids = vec![None];
+    for profile in state.saved_profiles() {
+        if state.active_saved_profile_id() != Some(profile.id()) {
+            labels.push(profile_dropdown_label(profile));
+            profile_ids.push(Some(profile.id().clone()));
+        }
+    }
+    let selected = selected_id
+        .as_ref()
+        .and_then(|id| {
+            profile_ids
+                .iter()
+                .position(|candidate| candidate.as_ref() == Some(id))
+        })
+        .and_then(|index| u32::try_from(index).ok())
+        .unwrap_or(0);
+    let label_refs = labels.iter().map(String::as_str).collect::<Vec<_>>();
+    let profile_list = gtk::StringList::new(&label_refs);
+    bindings.fallback_profile.set_model(Some(&profile_list));
+    bindings.fallback_profile.set_selected(selected);
+    bindings.fallback_profile_ids.replace(profile_ids);
+}
+
+fn selected_fallback_profile_id(bindings: &UiBindings) -> Option<ProviderProfileId> {
+    bindings
+        .fallback_profile_ids
+        .borrow()
+        .get(usize::try_from(bindings.fallback_profile.selected()).ok()?)
+        .cloned()
+        .flatten()
+}
+
 fn show_saved_profile_in_form(bindings: &UiBindings, profile: &ProviderProfile) {
     bindings.provider_name.set_text(profile.display_name());
     bindings.provider_endpoint.set_text(profile.base_endpoint());
@@ -1975,6 +2061,7 @@ fn connect_action_handlers(
     let translate_worker = Rc::clone(worker);
     bindings.translate.connect_clicked(move |_| {
         translate_bindings.export_notice.set(false);
+        translate_bindings.fallback_notice.set(false);
         *translate_bindings.output_uri.borrow_mut() = None;
         let source = translate_bindings.source.text(
             &translate_bindings.source.start_iter(),
@@ -1986,6 +2073,12 @@ fn connect_action_handlers(
         match current_document_options(&translate_bindings, &mut state) {
             Ok((source_locale, target_locale, glossary)) => {
                 let document_job_id = translate_bindings.document_job_id.borrow().clone();
+                let fallback_enabled = translate_bindings.fallback_enabled.is_active();
+                let fallback_profile_id = if fallback_enabled {
+                    selected_fallback_profile_id(&translate_bindings)
+                } else {
+                    None
+                };
                 if let Some(job_id) = document_job_id {
                     if state.is_incognito() {
                         state.record_client_error(
@@ -2013,12 +2106,24 @@ fn connect_action_handlers(
                             Err(error) => state.record_client_error(error.to_string()),
                         }
                     }
+                } else if fallback_enabled && fallback_profile_id.is_none() {
+                    let message = localization::text(
+                        state.locale(),
+                        "error.fallback_profile_required",
+                        "Choose an approved saved fallback provider or turn fallback off.",
+                    );
+                    state.record_client_error(message);
                 } else {
                     match state.begin_translation() {
                         Ok(request) => {
-                            if let Err(error) =
-                                translate_worker.try_send(WorkerCommand::Translate(request))
-                            {
+                            let command = fallback_profile_id.map_or(
+                                WorkerCommand::Translate(request.clone()),
+                                |fallback_profile_id| WorkerCommand::TranslateWithFallback {
+                                    request,
+                                    fallback_profile_id,
+                                },
+                            );
+                            if let Err(error) = translate_worker.try_send(command) {
                                 state.record_client_error(error.to_string());
                             }
                         }
@@ -3680,6 +3785,9 @@ fn apply_worker_event(
                 send_translation_notification(bindings, state.borrow().locale());
             }
         }
+        WorkerEvent::FallbackSelected { .. } => {
+            bindings.fallback_notice.set(true);
+        }
         WorkerEvent::OperationFailed(error) | WorkerEvent::TranslationRejected(error) => {
             state.borrow_mut().record_operation_failure(error);
         }
@@ -3979,6 +4087,13 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     let memory = localization::text(locale, "action.view_memory", "View translation memory");
     let clear_memory =
         localization::text(locale, "action.clear_memory", "Clear translation memory");
+    let fallback_action =
+        localization::text(locale, "action.enable_fallback", "Allow approved fallback");
+    let fallback_tooltip = localization::text(
+        locale,
+        "tooltip.fallback",
+        "Retry only retryable network failures with this saved provider; document jobs, cancellation, and credential failures never fall back",
+    );
     let translate_label = format!("_{translate}");
     let stop_label = format!("_{stop}");
     bindings.open_source.set_label(&open_source_label);
@@ -4036,6 +4151,12 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
         .set_label(Some(&format!("_{memory_enabled}")));
     bindings.memory.set_label(&format!("_{memory}"));
     bindings.clear_memory.set_label(&format!("_{clear_memory}"));
+    bindings
+        .fallback_enabled
+        .set_label(Some(&format!("_{fallback_action}")));
+    bindings
+        .fallback_enabled
+        .set_tooltip_text(Some(&fallback_tooltip));
     bindings
         .import_glossary
         .set_tooltip_text(Some(&localization::text(
@@ -4206,6 +4327,13 @@ fn refresh_localized_widgets(bindings: &UiBindings, locale: UiLocale) {
         bindings.saved_profile.upcast_ref(),
         &localized_mnemonic(locale, "label.saved_profile", "Saved profile"),
     );
+    bindings
+        .fallback_profile_label
+        .set_label(&localized_mnemonic(
+            locale,
+            "label.fallback_profile",
+            "Fallback provider",
+        ));
     set_labeled_control_label(
         bindings.source_locale.upcast_ref(),
         &localized_mnemonic(locale, "label.source_language", "Source language"),
@@ -4393,6 +4521,7 @@ fn warning_cues(warnings: &[DocumentWarning], kind: &DocumentWarningKind) -> Str
 fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     refresh_localized_actions(bindings, state.locale());
     refresh_localized_widgets(bindings, state.locale());
+    rebuild_fallback_profile_dropdown(bindings, state);
     bindings
         .workspace
         .set_direction(if state.locale().is_rtl() {
@@ -4454,7 +4583,13 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     }
     let document_warning_text =
         localized_document_warnings(state.locale(), &bindings.document_warnings.borrow());
-    let locale_note = if bindings.export_notice.get() {
+    let locale_note = if bindings.fallback_notice.get() {
+        localization::text(
+            state.locale(),
+            "status.fallback_selected",
+            "The approved fallback provider was selected; content may be sent there.",
+        )
+    } else if bindings.export_notice.get() {
         localization::text(
             state.locale(),
             "status.exported",
@@ -4583,6 +4718,7 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             AppStatus::Connecting | AppStatus::Translating | AppStatus::Cancelling
         );
     let provider_controls_enabled = state.worker_ready() && !blocked;
+    let document_job_available = bindings.document_job_id.borrow().is_some();
     refresh_onboarding(bindings, state);
     refresh_active_provider_label(bindings, state);
     bindings
@@ -4609,7 +4745,22 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     bindings
         .translate
         .set_sensitive(state.worker_ready() && !blocked && state.selected_model().is_some());
-    let document_job_available = bindings.document_job_id.borrow().is_some();
+    let fallback_available = state.worker_ready()
+        && !blocked
+        && !document_job_available
+        && !state.is_incognito()
+        && state.profile_storage_available()
+        && state
+            .saved_profiles()
+            .iter()
+            .any(|profile| state.active_saved_profile_id() != Some(profile.id()));
+    if !fallback_available && bindings.fallback_enabled.is_active() {
+        bindings.fallback_enabled.set_active(false);
+    }
+    bindings.fallback_enabled.set_sensitive(fallback_available);
+    bindings
+        .fallback_profile
+        .set_sensitive(fallback_available && bindings.fallback_enabled.is_active());
     bindings.pause_document.set_sensitive(
         document_job_available
             && state.worker_ready()
@@ -5007,6 +5158,12 @@ mod tests {
             bindings.remember_profile.label().as_deref(),
             Some("通过 Secret Service 记住配置、模型和凭据")
         );
+        assert_eq!(
+            bindings.fallback_enabled.label().as_deref(),
+            Some("_允许使用已批准的回退")
+        );
+        assert!(!bindings.fallback_enabled.is_sensitive());
+        assert_eq!(bindings.fallback_profile_label.label(), "回退提供商");
         let source_language_model = bindings
             .source_locale
             .model()
@@ -5091,6 +5248,8 @@ mod tests {
             assert!(button.is_focusable());
         }
         assert!(bindings.remember_profile.is_focusable());
+        assert!(bindings.fallback_enabled.is_focusable());
+        assert!(bindings.fallback_profile.is_focusable());
         assert!(bindings.source_view.is_focusable());
         assert!(bindings.output_view.is_focusable());
         assert!(gtk::test_accessible_has_role(

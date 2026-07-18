@@ -1707,3 +1707,39 @@ msgstr "［Øþëñ ŧħë ṁøšŧ ŕëçëñŧŀÿ ëẋþøŕŧëð ŧŕåñ
 msgctxt "error.output_open"
 msgid "The exported output could not be opened."
 msgstr "［Ŧħë ëẋþøŕŧëð øûŧþûŧ çøûŀð ñøŧ ƀë øþëñëð.~~~~~~~~~~~~~］"
+
+#. Explicit opt-in for retrying a normal text translation with an approved fallback provider.
+#, fuzzy
+msgctxt "action.enable_fallback"
+msgid "Allow approved fallback"
+msgstr "［Åŀŀøŵ åþþŕøṽëð ƒåŀŀƀåçķ~~~~~~~］"
+
+#. Label for the saved provider selected as an explicit translation fallback.
+#, fuzzy
+msgctxt "label.fallback_profile"
+msgid "Fallback provider"
+msgstr "［Ƒåŀŀƀåçķ þŕøṽïðëŕ~~~~~］"
+
+#. Placeholder meaning that no fallback provider is approved.
+#, fuzzy
+msgctxt "option.fallback.none"
+msgid "No fallback"
+msgstr "［Ñø ƒåŀŀƀåçķ~~~］"
+
+#. Explains the explicit fallback policy and its limits.
+#, fuzzy
+msgctxt "tooltip.fallback"
+msgid "Retry only retryable network failures with this saved provider; document jobs, cancellation, and credential failures never fall back"
+msgstr "［Ŕëŧŕÿ øñŀÿ ŕëŧŕÿåƀŀë ñëŧŵøŕķ ƒåïŀûŕëš ŵïŧħ ŧħïš šåṽëð þŕøṽïðëŕ; ðøçûṁëñŧ ĵøƀš, çåñçëŀŀåŧïøñ, åñð çŕëðëñŧïåŀ ƒåïŀûŕëš ñëṽëŕ ƒåŀŀ ƀåçķ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~］"
+
+#. Status notice when the approved fallback provider starts receiving a request.
+#, fuzzy
+msgctxt "status.fallback_selected"
+msgid "The approved fallback provider was selected; content may be sent there."
+msgstr "［Ŧħë åþþŕøṽëð ƒåŀŀƀåçķ þŕøṽïðëŕ ŵåš šëŀëçŧëð; çøñŧëñŧ ṁåÿ ƀë šëñŧ ŧħëŕë.~~~~~~~~~~~~~~~~~~~~~~~］"
+
+#. Error shown when fallback is enabled without an approved saved provider.
+#, fuzzy
+msgctxt "error.fallback_profile_required"
+msgid "Choose an approved saved fallback provider or turn fallback off."
+msgstr "［Çħøøšë åñ åþþŕøṽëð šåṽëð ƒåŀŀƀåçķ þŕøṽïðëŕ øŕ ŧûŕñ ƒåŀŀƀåçķ øƒƒ.~~~~~~~~~~~~~~~~~~~~~］"

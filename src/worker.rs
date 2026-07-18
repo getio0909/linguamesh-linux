@@ -1,5 +1,7 @@
 use crate::model::{ProviderProfile, ProviderProfileId};
-use linguamesh_application::{HostSecretRequests, ProviderManager, host_secret_channel};
+use linguamesh_application::{
+    HostSecretBroker, HostSecretRequests, ProviderManager, host_secret_channel,
+};
 use linguamesh_document::{DocumentError, DocumentJob, DocumentJobState};
 use linguamesh_domain::{
     CompatibilityRequirements, CoreCompatibility, ErrorKind, Glossary, ModelDescriptor,
@@ -160,6 +162,13 @@ pub enum WorkerCommand {
     },
     /// 开始翻译请求。
     Translate(TranslationRequest),
+    /// 仅在普通文本请求中使用一个已批准的保存配置进行显式回退。
+    TranslateWithFallback {
+        /// 主提供商请求。
+        request: TranslationRequest,
+        /// 用户明确批准的保存配置标识。
+        fallback_profile_id: ProviderProfileId,
+    },
     /// 取消当前连接或翻译。
     Cancel,
     /// 停止工作线程和本地提供商。
@@ -329,6 +338,13 @@ pub enum WorkerEvent {
     },
     /// 共享核心产生翻译事件。
     Translation(TranslationEvent),
+    /// 主提供商发生可重试失败后已选择获准回退配置。
+    FallbackSelected {
+        /// 发生失败的主配置标识。
+        primary_profile_id: ProviderProfileId,
+        /// 接收后续请求的获准回退配置标识。
+        fallback_profile_id: ProviderProfileId,
+    },
     /// 核心事件流在没有终止事件时异常结束。
     OperationFailed(TranslationError),
     /// 翻译命令在创建核心操作之前被拒绝。
@@ -485,6 +501,10 @@ enum QueuedCommand {
         job_id: String,
     },
     Translate(TranslationRequest),
+    TranslateWithFallback {
+        request: TranslationRequest,
+        fallback_profile_id: ProviderProfileId,
+    },
     Cancel,
     Shutdown,
 }
@@ -706,6 +726,16 @@ impl CoreWorker {
                 .commands
                 .try_send(QueuedCommand::Translate(request))
                 .map_err(|_| WorkerSendError),
+            WorkerCommand::TranslateWithFallback {
+                request,
+                fallback_profile_id,
+            } => self
+                .commands
+                .try_send(QueuedCommand::TranslateWithFallback {
+                    request,
+                    fallback_profile_id,
+                })
+                .map_err(|_| WorkerSendError),
             WorkerCommand::Shutdown => {
                 let result = self.commands.try_send(QueuedCommand::Shutdown);
                 self.shutdown_cancellation.cancel();
@@ -758,6 +788,11 @@ struct ActiveTranslation {
     operation: TranslationOperation,
     request: TranslationRequest,
     output: String,
+    fallback_profile_id: Option<ProviderProfileId>,
+    fallback_model: Option<String>,
+    fallback_attempted: bool,
+    suppress_fallback_started: bool,
+    next_sequence: u64,
 }
 
 struct ActiveDocumentTranslation {
@@ -942,6 +977,8 @@ async fn run_worker(
     }
 
     let mut manager = ProviderManager::new(secret_broker.clone());
+    let mut fallback_manager: Option<ProviderManager> = None;
+    let mut fallback_profile: Option<ProviderProfile> = None;
     let mut active_profile: Option<ProviderProfile> = None;
     let mut active_saved_profile: Option<ProviderProfile> = None;
     let mut selected_model: Option<String> = None;
@@ -1067,7 +1104,9 @@ async fn run_worker(
                         ),
                     ));
                 }
-                ActiveStep::Command(Some(QueuedCommand::Translate(_))) => {
+                ActiveStep::Command(Some(
+                    QueuedCommand::Translate(_) | QueuedCommand::TranslateWithFallback { .. },
+                )) => {
                     let _ = events.send(WorkerEvent::Rejected(TranslationError::new(
                         ErrorKind::InvalidConfiguration,
                         "A translation is already running.",
@@ -1079,6 +1118,79 @@ async fn run_worker(
                     stop_after_active = true;
                 }
                 ActiveStep::Event(Some(event)) => {
+                    if let TranslationEvent::Failed { sequence, error } = &event
+                        && !active_translation.fallback_attempted
+                        && active_translation
+                            .fallback_profile_id
+                            .as_ref()
+                            .is_some_and(|_| is_retryable_fallback(error))
+                        && let Some(fallback_id) = active_translation.fallback_profile_id.clone()
+                    {
+                        let primary_id =
+                            active_profile.as_ref().map(|profile| profile.id().clone());
+                        let next_translation = if let (Some(profile), Some(manager)) =
+                            (fallback_profile.as_ref(), fallback_manager.as_ref())
+                        {
+                            let fallback_request = active_translation
+                                .request
+                                .clone()
+                                .with_provider_identity(format!(
+                                    "{}@{}",
+                                    fallback_id.as_str(),
+                                    profile.base_endpoint()
+                                ));
+                            begin_translation(
+                                manager,
+                                active_translation.fallback_model.as_deref(),
+                                fallback_request,
+                            )
+                            .ok()
+                        } else {
+                            None
+                        };
+                        if let Some(next_translation) = next_translation {
+                            active_translation.operation = next_translation.operation;
+                            active_translation.request = next_translation.request;
+                            active_translation.fallback_attempted = true;
+                            active_translation.suppress_fallback_started = true;
+                            active_translation.next_sequence = *sequence;
+                            set_active_cancellation(
+                                &active_cancellation,
+                                ActiveCancellation::Translation(
+                                    active_translation.operation.cancellation_handle(),
+                                ),
+                            );
+                            if let Some(primary_id) = primary_id
+                                && events
+                                    .send(WorkerEvent::FallbackSelected {
+                                        primary_profile_id: primary_id,
+                                        fallback_profile_id: fallback_id,
+                                    })
+                                    .is_err()
+                            {
+                                shutting_down = true;
+                            }
+                            continue;
+                        }
+                        active_translation.fallback_attempted = true;
+                        active_translation.fallback_profile_id = None;
+                        fallback_manager = None;
+                        fallback_profile = None;
+                    }
+                    if active_translation.suppress_fallback_started
+                        && matches!(&event, TranslationEvent::Started { .. })
+                    {
+                        active_translation.suppress_fallback_started = false;
+                        continue;
+                    }
+                    let event = if active_translation.fallback_attempted {
+                        let sequence = active_translation.next_sequence;
+                        active_translation.next_sequence = sequence.saturating_add(1);
+                        remap_translation_event(event, sequence)
+                    } else {
+                        active_translation.next_sequence = event.sequence().saturating_add(1);
+                        event
+                    };
                     if let TranslationEvent::TextDelta { text, .. } = &event {
                         active_translation.output.push_str(text);
                     }
@@ -1147,6 +1259,8 @@ async fn run_worker(
                     if terminal {
                         clear_active_cancellation(&active_cancellation);
                         active = None;
+                        fallback_manager = None;
+                        fallback_profile = None;
                         if stop_after_active {
                             shutting_down = true;
                         }
@@ -2249,7 +2363,18 @@ async fn run_worker(
                     }
                 }
             }
-            Some(QueuedCommand::Translate(request)) => {
+            Some(
+                command @ (QueuedCommand::Translate(_)
+                | QueuedCommand::TranslateWithFallback { .. }),
+            ) => {
+                let (request, fallback_profile_id) = match command {
+                    QueuedCommand::Translate(request) => (request, None),
+                    QueuedCommand::TranslateWithFallback {
+                        request,
+                        fallback_profile_id,
+                    } => (request, Some(fallback_profile_id)),
+                    _ => unreachable!(),
+                };
                 let request = active_profile.as_ref().map_or(request.clone(), |profile| {
                     request.clone().with_provider_identity(format!(
                         "{}@{}",
@@ -2327,8 +2452,63 @@ async fn run_worker(
                         }
                     }
                 }
+                if let Some(mut previous) = fallback_manager.take() {
+                    previous.disconnect();
+                    fallback_profile = None;
+                }
+                let mut fallback_model = None;
+                if let Some(fallback_id) = fallback_profile_id.as_ref() {
+                    if active_profile
+                        .as_ref()
+                        .is_some_and(|profile| profile.id() == fallback_id)
+                    {
+                        let error = TranslationError::new(
+                            ErrorKind::InvalidConfiguration,
+                            "The fallback profile must differ from the active provider.",
+                        );
+                        if events
+                            .send(WorkerEvent::TranslationRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                        continue;
+                    }
+                    let cancellation = shutdown_cancellation.child_token();
+                    set_active_cancellation(
+                        &active_cancellation,
+                        ActiveCancellation::Connection(cancellation.clone()),
+                    );
+                    let result = connect_fallback_candidate(
+                        secret_broker.clone(),
+                        storage.as_mut(),
+                        fallback_id,
+                        &cancellation,
+                        &mut secret_requests,
+                    )
+                    .await;
+                    clear_active_cancellation(&active_cancellation);
+                    match result {
+                        Ok((candidate, profile, model)) => {
+                            fallback_manager = Some(candidate);
+                            fallback_profile = Some(profile);
+                            fallback_model = Some(model);
+                        }
+                        Err(error) => {
+                            if events
+                                .send(WorkerEvent::TranslationRejected(error))
+                                .is_err()
+                            {
+                                shutting_down = true;
+                            }
+                            continue;
+                        }
+                    }
+                }
                 match begin_translation(&manager, selected_model.as_deref(), request) {
-                    Ok(active_translation) => {
+                    Ok(mut active_translation) => {
+                        active_translation.fallback_profile_id = fallback_profile_id;
+                        active_translation.fallback_model = fallback_model;
                         set_active_cancellation(
                             &active_cancellation,
                             ActiveCancellation::Translation(
@@ -2358,6 +2538,9 @@ async fn run_worker(
     reject_queued_commands_for_shutdown(&mut commands, &events);
     clear_active_cancellation(&active_cancellation);
     manager.disconnect();
+    if let Some(mut fallback_manager) = fallback_manager {
+        fallback_manager.disconnect();
+    }
     server.shutdown().await;
     drop(storage);
     let _ = events.send(WorkerEvent::Stopped);
@@ -2418,9 +2601,10 @@ fn reject_queued_commands_for_shutdown(
             | QueuedCommand::CancelDocumentJob { .. } => events.send(
                 WorkerEvent::DocumentJobActionRejected(TranslationError::cancelled()),
             ),
-            QueuedCommand::Translate(_) => events.send(WorkerEvent::TranslationRejected(
-                TranslationError::cancelled(),
-            )),
+            QueuedCommand::Translate(_) | QueuedCommand::TranslateWithFallback { .. } => events
+                .send(WorkerEvent::TranslationRejected(
+                    TranslationError::cancelled(),
+                )),
             QueuedCommand::Cancel | QueuedCommand::Shutdown => continue,
         };
         if result.is_err() {
@@ -2845,6 +3029,46 @@ async fn connect_candidate(
     }
 }
 
+// 只从本地保存配置建立获准回退连接，并重新发现其模型。
+async fn connect_fallback_candidate(
+    secret_broker: HostSecretBroker,
+    storage: Option<&mut Storage>,
+    profile_id: &ProviderProfileId,
+    cancellation: &CancellationToken,
+    requests: &mut HostSecretRequests,
+) -> Result<(ProviderManager, ProviderProfile, String), TranslationError> {
+    let profile = storage
+        .ok_or_else(|| {
+            TranslationError::new(
+                ErrorKind::InvalidConfiguration,
+                "Saved fallback profiles are unavailable.",
+            )
+        })?
+        .provider_profile(profile_id)?
+        .ok_or_else(|| {
+            TranslationError::new(
+                ErrorKind::InvalidConfiguration,
+                "The selected fallback profile is no longer saved.",
+            )
+        })?;
+    let model = profile.selected_model().map(str::to_owned).ok_or_else(|| {
+        TranslationError::new(
+            ErrorKind::ModelUnavailable,
+            "Select a model for the approved fallback profile before translating.",
+        )
+    })?;
+    let mut manager = ProviderManager::new(secret_broker);
+    let models = connect_candidate(&mut manager, &profile, None, cancellation, requests).await?;
+    if !models.iter().any(|candidate| candidate.id == model) {
+        manager.disconnect();
+        return Err(TranslationError::new(
+            ErrorKind::ModelUnavailable,
+            "The selected model is not available from the approved fallback provider.",
+        ));
+    }
+    Ok((manager, profile, model))
+}
+
 fn select_model(
     manager: &ProviderManager,
     requested_profile_id: &ProviderProfileId,
@@ -2898,7 +3122,28 @@ fn begin_translation(
         operation: engine.translate(request.clone()),
         request,
         output: String::new(),
+        fallback_profile_id: None,
+        fallback_model: None,
+        fallback_attempted: false,
+        suppress_fallback_started: false,
+        next_sequence: 0,
     })
+}
+
+// 仅允许网络或超时错误触发用户明确批准的回退配置。
+fn is_retryable_fallback(error: &TranslationError) -> bool {
+    matches!(error.kind, ErrorKind::Network | ErrorKind::Timeout)
+}
+
+// 将回退操作序号接续到主操作之后，保留已收到的部分输出。
+fn remap_translation_event(event: TranslationEvent, sequence: u64) -> TranslationEvent {
+    match event {
+        TranslationEvent::Started { .. } => TranslationEvent::Started { sequence },
+        TranslationEvent::TextDelta { text, .. } => TranslationEvent::TextDelta { sequence, text },
+        TranslationEvent::Completed { .. } => TranslationEvent::Completed { sequence },
+        TranslationEvent::Cancelled { .. } => TranslationEvent::Cancelled { sequence },
+        TranslationEvent::Failed { error, .. } => TranslationEvent::Failed { sequence, error },
+    }
 }
 
 fn begin_document_segment(
@@ -5076,6 +5321,75 @@ mod tests {
         assert_eq!(restored_b.selected_model(), Some("fake-slow-translator"));
         shutdown(&restarted);
         database.assert_absent_from_files(&forbidden_storage_values);
+    }
+
+    #[test]
+    fn approved_fallback_retries_only_after_retryable_primary_failure() {
+        let primary = ExternalFakeProvider::start(FakeMode::Standard);
+        let fallback = ExternalFakeProvider::start(FakeMode::Standard);
+        let database = TestDatabase::new();
+        let (worker, _, _) = started_worker_with_database(database.path());
+        connect(
+            &worker,
+            profile("approved-fallback", &fallback.endpoint, None, None),
+            None,
+            PersistenceIntent::Persistent,
+        )
+        .expect("fallback profile connection");
+        select(&worker, "approved-fallback", "fake-translator");
+        connect(
+            &worker,
+            profile("primary-network", &primary.endpoint, None, None),
+            None,
+            PersistenceIntent::SessionOnly,
+        )
+        .expect("primary session connection");
+        select(&worker, "primary-network", "fake-translator");
+        drop(primary);
+
+        worker
+            .try_send(WorkerCommand::TranslateWithFallback {
+                request: TranslationRequest::new("Hello", "zh-CN", "fake-translator"),
+                fallback_profile_id: ProviderProfileId::parse("approved-fallback")
+                    .expect("fallback profile ID"),
+            })
+            .expect("fallback translation command");
+        let deadline = Instant::now() + Duration::from_secs(10);
+        let mut output = String::new();
+        let mut fallback_selected = false;
+        let terminal = loop {
+            assert!(Instant::now() < deadline, "fallback translation timed out");
+            let event = match worker.events.recv_timeout(Duration::from_millis(500)) {
+                Ok(event) => event,
+                Err(mpsc::RecvTimeoutError::Timeout) => continue,
+                Err(mpsc::RecvTimeoutError::Disconnected) => {
+                    panic!("fallback translation event channel disconnected")
+                }
+            };
+            match event {
+                WorkerEvent::FallbackSelected {
+                    primary_profile_id,
+                    fallback_profile_id,
+                } => {
+                    assert_eq!(primary_profile_id.as_str(), "primary-network");
+                    assert_eq!(fallback_profile_id.as_str(), "approved-fallback");
+                    fallback_selected = true;
+                }
+                WorkerEvent::Translation(TranslationEvent::TextDelta { text, .. }) => {
+                    output.push_str(&text);
+                }
+                WorkerEvent::Translation(event) if event.is_terminal() => break event,
+                WorkerEvent::Translation(_)
+                | WorkerEvent::TranslationHistoryUpdated { .. }
+                | WorkerEvent::TranslationHistoryPersistenceFailed(_) => {}
+                _ => panic!("unexpected fallback event"),
+            }
+        };
+        assert!(fallback_selected);
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        assert_eq!(fallback.chat_requests.load(Ordering::SeqCst), 1);
+        shutdown(&worker);
     }
 
     #[test]

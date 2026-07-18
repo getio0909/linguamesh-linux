@@ -1705,3 +1705,39 @@ msgstr "打开最近导出的翻译输出"
 msgctxt "error.output_open"
 msgid "The exported output could not be opened."
 msgstr "无法打开已导出的输出。"
+
+#. Explicit opt-in for retrying a normal text translation with an approved fallback provider.
+#, fuzzy
+msgctxt "action.enable_fallback"
+msgid "Allow approved fallback"
+msgstr "允许使用已批准的回退"
+
+#. Label for the saved provider selected as an explicit translation fallback.
+#, fuzzy
+msgctxt "label.fallback_profile"
+msgid "Fallback provider"
+msgstr "回退提供商"
+
+#. Placeholder meaning that no fallback provider is approved.
+#, fuzzy
+msgctxt "option.fallback.none"
+msgid "No fallback"
+msgstr "不使用回退"
+
+#. Explains the explicit fallback policy and its limits.
+#, fuzzy
+msgctxt "tooltip.fallback"
+msgid "Retry only retryable network failures with this saved provider; document jobs, cancellation, and credential failures never fall back"
+msgstr "仅在可重试的网络失败时使用此已保存提供商；文档任务、取消和凭据失败不会回退"
+
+#. Status notice when the approved fallback provider starts receiving a request.
+#, fuzzy
+msgctxt "status.fallback_selected"
+msgid "The approved fallback provider was selected; content may be sent there."
+msgstr "已选择批准的回退提供商；内容可能会发送到该提供商。"
+
+#. Error shown when fallback is enabled without an approved saved provider.
+#, fuzzy
+msgctxt "error.fallback_profile_required"
+msgid "Choose an approved saved fallback provider or turn fallback off."
+msgstr "请选择已批准的已保存回退提供商，或关闭回退。"

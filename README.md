@@ -157,8 +157,8 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`4be0401a09ce26e65c8fd3c921e333d6011e8706` and validated with `msgfmt`; the 280-message bundle
-checksum is `61fe261fb62e996b637745913bb89e5a5e0c0a16a82c5d2fe536a254cf61b6ee`. The locale selector
+`273be8a4e9c3b1084f393ce0086cdf2c42fcd4e9` and validated with `msgfmt`; the 286-message bundle
+checksum is `ee7c269571beca22cdbd7bea971ae266975b8004490b02ead4b71305e3a93872`. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
 active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, and construction-stage provider/default-control copy without replacing active source text;
 Arabic also switches the GTK workspace root to right-to-left direction. Document-job actions,
@@ -171,6 +171,13 @@ The text workspace accepts bounded semicolon-separated glossary rules such as
 `LinguaMesh => 凌瓦网; Acme Product => Acme Product`. Rules are request-scoped and remain in memory;
 Core validates conflicts, protects matching terms with opaque markers, restores required target terms
 across streamed output, and rejects credential-shaped entries without persisting glossary content.
+
+Linux standard text translation also exposes an explicit **Allow approved fallback** control. The user
+must choose a different saved provider; only network or timeout failures from the confirmed primary
+provider can select it. The UI records the selection and warns that content may be sent there. Fallback
+is unavailable for document jobs, incognito requests, cancellation, authentication failures, model
+errors, and unapproved or session-only profiles; partial primary output is retained across the switch.
+
 Long source text is split at paragraph, sentence, or whitespace boundaries using a conservative
 16 KiB byte estimate when no tokenizer is available; opaque protected markers remain whole and
 chunks stream sequentially with cancellation preserved.
