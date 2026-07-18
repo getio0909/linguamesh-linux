@@ -2827,7 +2827,7 @@ fn begin_document_segment(
             "Select a model before translating a document job.",
         )
     })?;
-    // 将 CSV 的引号字段解码后再提交给翻译提供方。
+    // 将 CSV 或 JSON 的结构化字符串字段解码后再提交给翻译提供方。
     let source_text = job
         .translation_source_text(segment.index)
         .map_err(|error| {

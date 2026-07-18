@@ -20,11 +20,11 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `5feaa3700764e3f174a69a4b490ae67b2d5cd8c9`, which adds
+reviewed Core functional revision `ae8e437ff51fb045a6961604db6a19ebe488e0ba`, which adds
 `SQLITE_OPEN_NOFOLLOW` to file-backed storage, protected-span and request-level glossary
 restoration, bounded semantic chunking for long streamed text, bounded translation history, and
 optional translation-memory storage with versioned request identity, and the bounded TXT/Markdown/
-SRT/WebVTT/CSV document contract with preserved line endings, verbatim Markdown fences, and validated
+SRT/WebVTT/CSV/JSON document contract with preserved line endings, verbatim Markdown fences, and validated
 subtitle timing, plus schema-9 document job snapshots that survive worker restart without persisting source paths or credentials, plus
 validated non-secret provider/model/glossary options reused by Resume and Retry after restart.
 
@@ -60,7 +60,7 @@ is shown as unavailable with request controls disabled. The card is derived from
 writes no completion flag. A user-supplied OpenAI-compatible base endpoint such as
 `http://127.0.0.1:11434/v1/` follows the same flow.
 
-Use **Open text file** to load a UTF-8 TXT, Markdown, CSV, SRT, or WebVTT file into the source editor. The native
+Use **Open text file** to load a UTF-8 TXT, Markdown, CSV, JSON, SRT, or WebVTT file into the source editor. The native
 GTK file dialog and asynchronous GIO partial read enforce a 4 MiB limit, strip a UTF-8 BOM, reject
 invalid UTF-8, and never place the selected path or file contents in diagnostics. Dropping one GIO
 file onto the source editor reuses the same bounded import path. Native CI verifies the real XDG
@@ -68,7 +68,7 @@ document-portal lease lifecycle, drives the real GTK portal FileChooser backend 
 the application-level GTK FileDialog callback, and performs a real XTest drag through the source
 editor. Prompted desktop flows and physical shell rendering remain separate follow-up work.
 
-Each successful TXT, Markdown, CSV, SRT, or WebVTT import is also stored as a bounded Core document job.
+Each successful TXT, Markdown, CSV, JSON, SRT, or WebVTT import is also stored as a bounded Core document job.
 **Translate**
 then sends pending prose segments sequentially through the confirmed provider, emits segment events,
 persists each completed segment, and saves only validated non-secret source/target locale,
@@ -79,7 +79,8 @@ rejects new document jobs because their progress must be persisted. Subtitle tim
 remain unchanged; cue text is translated without automatic timing or line-length rewriting. CSV
 delimiters, quoted fields, variable-width rows, and line endings remain unchanged; the Linux chooser
 translates eligible text fields by default, skips common identifier and numeric columns, and uses
-Core's selected-column contract for hosts that provide explicit column selection.
+Core's selected-column contract for hosts that provide explicit column selection. JSON keys, numbers,
+booleans, nulls, whitespace, and escaping remain unchanged; string values are translated by default.
 
 After a translation completes, **Export translation** opens a native GTK save dialog and writes the
 output asynchronously as UTF-8. Export remains disabled without output, reports a localized success

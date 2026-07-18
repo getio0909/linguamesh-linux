@@ -26,9 +26,9 @@ The external-provider path is tested only with LinguaMesh's loopback fake provid
 secret references use the Linux GIO Secret Service adapter and fail closed when the desktop keyring
 is unavailable or requires an interactive prompt. The native workflow
 pins reviewed Core functional revision
-`5feaa3700764e3f174a69a4b490ae67b2d5cd8c9`, whose storage delta adds
+`ae8e437ff51fb045a6961604db6a19ebe488e0ba`, whose storage delta adds
 `SQLITE_OPEN_NOFOLLOW` and whose text path adds protected-span, request-level glossary, and
-bounded long-text restoration, and the bounded SRT/WebVTT/CSV document contract, rather than checking
+bounded long-text restoration, and the bounded SRT/WebVTT/CSV/JSON document contract, rather than checking
 out a floating branch. Functional revision
 `7d7eba9960b657f0460fb0daaaaebaaa609f39b1` passed Native Linux run `29604269568` (job
 `87963611054`) and repository-foundation run `29604269516`; it includes the no-credential
@@ -41,12 +41,12 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `5feaa3700764e3f174a69a4b490ae67b2d5cd8c9` and l10n
+The current Linux gate consumes Core `ae8e437ff51fb045a6961604db6a19ebe488e0ba` and l10n
 `d64d4085fb3c1cc69c9f7965bd97ffca54ca1995`. Request-level glossary rules, bounded CSV,
 interchange are implemented in the Linux slice; persistent glossary libraries and TBX import
 remain outside the release claim.
 
-The Linux document slice now persists bounded TXT/Markdown/CSV/SRT/WebVTT jobs, translates pending prose segments
+The Linux document slice now persists bounded TXT/Markdown/CSV/JSON/SRT/WebVTT jobs, translates pending prose segments
 sequentially, and restores completed or cancelled snapshots into the editor. Validated non-secret
 provider/model/glossary options are persisted and reused by Resume and Retry after restart only when
 the active runtime matches. This is not yet a release-ready multi-job queue: archive workflows and

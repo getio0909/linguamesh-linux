@@ -2098,6 +2098,8 @@ fn begin_source_file_open(
     filter.add_suffix("vtt");
     filter.add_mime_type("text/csv");
     filter.add_suffix("csv");
+    filter.add_mime_type("application/json");
+    filter.add_suffix("json");
     let filters = gtk::gio::ListStore::new::<gtk::FileFilter>();
     filters.append(&filter);
     let dialog_title = localization::text(locale, "dialog.open_text_file", "Open text file");

@@ -120,6 +120,14 @@ mod tests {
             decode_document_contents("table.csv", b"id,name\n1,\"bad\n"),
             Err(TextImportError::InvalidStructure)
         );
+        assert_eq!(
+            decode_document_contents("payload.json", br#"{"name":"Alice","count":2}"#),
+            Ok(r#"{"name":"Alice","count":2}"#.to_owned())
+        );
+        assert_eq!(
+            decode_document_contents("payload.json", br#"{"name":"bad\q"}"#),
+            Err(TextImportError::InvalidStructure)
+        );
     }
 
     #[test]
@@ -150,5 +158,17 @@ mod tests {
             .position(|segment| segment.source_text.starts_with("\"Hello"))
             .expect("quoted field");
         assert_eq!(job.translation_source_text(index).unwrap(), "Hello, world");
+    }
+
+    #[test]
+    fn returns_json_jobs_with_decoded_translation_source() {
+        let job = decode_document_job("payload.json", br#"{"name":"Alice","count":2}"#)
+            .expect("json job");
+        let index = job
+            .segments
+            .iter()
+            .position(|segment| segment.source_text == "\"Alice\"")
+            .expect("json value");
+        assert_eq!(job.translation_source_text(index).unwrap(), "Alice");
     }
 }
