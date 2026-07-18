@@ -290,8 +290,11 @@ visible-label relations and mnemonics, focusability, explicit Stop name, hidden-
 behavior, and Busy-state reset. The test also switches the runtime locale to Simplified Chinese and
 verifies the catalog-backed Translate and Stop labels, then switches to Arabic and verifies RTL
 direction without replacing the source editor buffer before restoring English. GTK's helpers prove
-semantic presence and reset behavior; they do not prove AT-SPI export, Orca speech, physical keyboard traversal, RTL/high-contrast presentation,
-a physical compositor, or GPU rendering.
+semantic presence and reset behavior. The dedicated `tools/run-gtk-keyboard-focus-test.sh` also runs
+the real binary under Xvfb and `xfwm4`, injects Tab/Shift+Tab events, and asserts focus events for
+the tested onboarding and workspace controls. It records provider fields as enabled, mapped, and
+focusable; those fields are not yet in the default Tab chain. The fixture does not prove AT-SPI
+export, Orca speech, physical-compositor behavior, RTL/high-contrast presentation, or GPU rendering.
 
 The GitHub Actions native workflow pins Core revision
 `fbf3e9b5927049dccaa19f8c36013495ffebba12`, installs the headers plus D-Bus, Xvfb, test-only
@@ -392,7 +395,7 @@ asserts Simplified Chinese translations while preserving safe dynamic diagnostic
 
 ## Unimplemented validation
 
-Broader GTK component/UI automation, AT-SPI/Orca and physical-keyboard accessibility coverage,
+Broader GTK component/UI automation, AT-SPI/Orca, provider-form Tab-chain and broader physical-keyboard coverage,
 physical-compositor and GPU-backed Wayland coverage, a broader X11/desktop matrix, prompted
 interactive Secret Service flows, broader XDG and portal tests, third-party
 local-server interoperability, Flatpak smoke tests, runtime localization behavior beyond the

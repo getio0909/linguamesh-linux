@@ -139,8 +139,10 @@ Native CI executes this same GTK binary flow first through serialized X11/Xvfb a
 separate private D-Bus session with `GDK_BACKEND=wayland`. The Wayland runner starts headless Weston
 inside a private `0700` `XDG_RUNTIME_DIR`, waits a bounded time for its dedicated socket, removes
 `DISPLAY` to prevent X11 fallback, and always terminates the compositor and removes the runtime
-directory. This is a headless protocol/backend gate, not a claim about physical compositors, GPU
-rendering, desktop integration, or assistive technology.
+directory. The X11 path also runs `tools/run-gtk-keyboard-focus-test.sh` under `xfwm4` to exercise
+Tab/Shift+Tab traversal for the tested controls and record provider-field focusability. This is a
+headless protocol/backend gate, not a claim about physical compositors, GPU rendering, desktop
+integration, provider-form default Tab-chain completeness, or assistive technology.
 
 The user-facing endpoint example is loopback. Under its shared endpoint policy, Core accepts
 loopback HTTP and also accepts HTTPS endpoints; the Linux client does not duplicate URL parsing.

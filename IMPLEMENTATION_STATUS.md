@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF document-job translation with sequential segment persistence, bounded DOCX/PPTX/XLSX/EPUB package reconstruction and resource retention, page-aware text-PDF reconstruction with structured HTML fallback, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; end-user prompt acceptance, multi-job GUI queue presentation, OCR, and release artifacts remain open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, a headless GTK keyboard traversal fixture for tested controls, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF document-job translation with sequential segment persistence, bounded DOCX/PPTX/XLSX/EPUB package reconstruction and resource retention, page-aware text-PDF reconstruction with structured HTML fallback, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; provider-form default Tab-chain coverage, AT-SPI/Orca narration, end-user prompt acceptance, multi-job GUI queue presentation, OCR, and release artifacts remain open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -139,7 +139,8 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
   label-to-control `LabelledBy` and mnemonic relations; focusable editor and action controls; an
   explicit `Stop translation` accessible name; output `Busy` state during translation with terminal
   reset; and an accessibility-hidden empty error label. These are semantic wiring guarantees, not
-  AT-SPI/Orca, physical-keyboard, RTL, high-contrast, or full desktop accessibility evidence.
+  AT-SPI/Orca, provider-form default Tab-chain, RTL, high-contrast, or full desktop accessibility
+  evidence. A CI-only focus probe records widget focus events without changing normal runtime behavior.
 - The Linux host now uses existing GIO D-Bus bindings for Secret Service `OpenSession`, item search,
   create/update, and `GetSecret` resolution. Persistent profiles retain only a SecretRef; the
   one-shot credential is passed through the existing typed broker and is never written to SQLite.
@@ -543,7 +544,7 @@ UI and Xvfb test were added.
 This host has no `gtk4.pc`, `libadwaita-1.pc`, `graphene-gobject-1.0.pc`, or `weston`. After clearing the
 source-only `graphene-sys` cache, a normal `cargo check --all-targets --all-features --locked`
 correctly stopped at missing `graphene-gobject-1.0`. No local GUI link, launch, screenshot,
-display-server, AT-SPI/Orca, physical-keyboard, or GTK button-test result is claimed. In particular, the Wayland
+display-server, AT-SPI/Orca, physical-keyboard, or GTK button-test result is claimed locally. In particular, the Wayland
 runner was not executed against a local compositor. With the GTK binary test
 present, `DOCS_RS=1 cargo test --all-targets --all-features --locked --no-run` reaches native
 linking and failed on unavailable GTK symbols; it is not a valid header-free substitute.
@@ -564,7 +565,7 @@ in the GitHub Actions evidence above, but those native checks remain unavailable
   including read-only media, corruption, power loss, and broader SQLite VFS failures.
 - XDG portals beyond the implemented user-data path, document-portal lease lifecycle, and direct
   FileChooser backend fixture; application-level GTK file-dialog and drag-and-drop gestures,
-  physical desktop-shell notification rendering, AT-SPI/Orca and physical-keyboard accessibility coverage,
+  physical desktop-shell notification rendering, AT-SPI/Orca, provider-form Tab-chain and broader physical-keyboard coverage,
   physical-compositor/GPU Wayland coverage, broader X11/desktop coverage, Flatpak portal/notification
   delivery, and release artifacts.
 - Directory-descriptor or `openat2` hardening against a concurrent same-UID path replacement during
@@ -886,11 +887,30 @@ Validated locally:
 The checkpoint remains unreleased; OCR, remaining archive formats, complete acceptance scenarios,
 non-Linux clients, and stable-release evidence remain open.
 
+## 2026-07-18 — Linux keyboard traversal fixture checkpoint
+
+Assumption: the first automated keyboard slice should exercise the real GTK window under Xvfb with
+an actual lightweight window manager, while documenting controls that remain outside the default Tab
+chain rather than masking the gap.
+
+- Linux `ee23ca4` adds a runtime-only focus probe and `tools/run-gtk-keyboard-focus-test.sh`.
+  The fixture starts `xfwm4`, injects Tab and Shift+Tab events, and asserts traversal for the tested
+  onboarding/workspace controls. Provider fields are also asserted visible, enabled, mapped, and
+  focusable; their omission from the default Tab chain remains an explicit follow-up.
+- Native Linux run `29661016843` (job `88123562296`) and Repository Foundation run `29661016844`
+  passed. Flatpak run `29661016848` is the matching packaging gate for this head.
+- Local `cargo fmt`, all-target/all-feature `cargo check`, `bash -n tools/run-gtk-keyboard-focus-test.sh`,
+  and `git diff --check` passed. The GUI fixture itself requires the CI GTK/portal environment.
+
+The checkpoint remains unreleased; provider-form Tab-chain repair, screen-reader narration, and
+physical desktop review remain open.
+
 ## 2026-07-18 — Linux document queue keyboard reachability regression
 
 Assumption: queue actions must remain keyboard reachable while the Linux client continues to defer
-other native clients. The existing GTK accessibility gate is the authoritative semantic check;
-physical keyboard traversal and screen-reader narration still require manual desktop review.
+other native clients. The existing GTK accessibility gate and the new headless traversal fixture are
+the automated checks; provider-form Tab-chain coverage and screen-reader narration still require
+manual desktop review.
 
 - Extended the real GTK lifecycle test to assert focusability for Document jobs, Pause document,
   Resume document, and Retry document alongside the existing primary actions.
