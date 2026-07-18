@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           repository: ${{ github.repository_owner }}/linguamesh-l10n
-          ref: 08118b498646ebf56cbb072b937d95fceb34b75c
+          ref: 0b906034784a1b5e81a879649abbfda001fa9e67
           path: linguamesh-l10n
           persist-credentials: false
       - name: Install native development headers
@@ -85,6 +85,9 @@ jobs:
           bash tools/sync-l10n.sh --check
           for file in l10n/linux/*/LC_MESSAGES/linguamesh.po; do
             msgfmt --check --check-format -o /dev/null "$file"
+          done
+          for file in l10n/linux/*/LC_MESSAGES/linguamesh.mo; do
+            msgunfmt "$file" >/dev/null
           done
       - name: Check formatting
         working-directory: linguamesh-linux
