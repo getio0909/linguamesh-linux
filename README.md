@@ -20,7 +20,7 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `ce2b2ab6afa32cb6bbdd45c716fcad8baae00d29`, which adds
+reviewed Core functional revision `7adc9cdf6c8243243d42136f8b80fe3ee19f0af1`, which adds
 `SQLITE_OPEN_NOFOLLOW` to file-backed storage, protected-span and request-level glossary
 restoration, and bounded semantic chunking for long streamed text.
 
@@ -125,7 +125,7 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`2e5e3033f453aa2882cf71217f9514dce8501269` and validated with `msgfmt`. The locale selector
+`8fd778a5869c8b8c91610c22241883fff2e41c99` and validated with `msgfmt`. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
 active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, and construction-stage provider/default-control copy without replacing active source text;
 Arabic also switches the GTK workspace root to right-to-left direction. Stable Linux worker startup,
@@ -139,6 +139,12 @@ across streamed output, and rejects credential-shaped entries without persisting
 Long source text is split at paragraph, sentence, or whitespace boundaries using a conservative
 16 KiB byte estimate when no tokenizer is available; opaque protected markers remain whole and
 chunks stream sequentially with cancellation preserved.
+
+The glossary controls also support bounded UTF-8 CSV interchange. **Import glossary** reads a
+4 MiB-or-smaller CSV through the native file dialog, validates the fixed schema and up to 256
+rules in Core, and keeps the imported rules request-scoped in memory. **Export glossary** writes
+the deterministic Core CSV schema to a user-selected file without persisting credentials or
+glossary content in provider profiles or SQLite.
 
 When a translation completes, the registered Linux application sends a desktop notification with
 localized generic copy only; source and translated content are never included in notification

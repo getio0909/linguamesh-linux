@@ -1291,3 +1291,69 @@ msgstr "source => target; Product Name => Product Name"
 msgctxt "tooltip.glossary"
 msgid "Optional semicolon-separated source => target glossary rules; entries stay in memory for this translation."
 msgstr "Optional semicolon-separated source => target glossary rules; entries stay in memory for this translation."
+
+#. Import glossary action in the Linux text workspace.
+#, fuzzy
+msgctxt "action.import_glossary"
+msgid "Import glossary"
+msgstr "匯入詞彙表"
+
+#. Export glossary action in the Linux text workspace.
+#, fuzzy
+msgctxt "action.export_glossary"
+msgid "Export glossary"
+msgstr "匯出詞彙表"
+
+#. Accessible tooltip for importing a glossary CSV.
+#, fuzzy
+msgctxt "tooltip.import_glossary"
+msgid "Load glossary rules from a UTF-8 CSV file"
+msgstr "從 UTF-8 CSV 檔案載入詞彙表規則"
+
+#. Accessible tooltip for exporting a glossary CSV.
+#, fuzzy
+msgctxt "tooltip.export_glossary"
+msgid "Save the current glossary rules as a UTF-8 CSV file"
+msgstr "將目前詞彙表規則儲存為 UTF-8 CSV 檔案"
+
+#. Native file dialog title for importing a glossary CSV.
+#, fuzzy
+msgctxt "dialog.open_glossary"
+msgid "Import glossary"
+msgstr "匯入詞彙表"
+
+#. Native file dialog title for exporting a glossary CSV.
+#, fuzzy
+msgctxt "dialog.export_glossary"
+msgid "Export glossary"
+msgstr "匯出詞彙表"
+
+#. Native file chooser filter for glossary CSV files.
+#, fuzzy
+msgctxt "file.filter.csv"
+msgid "CSV glossary files"
+msgstr "CSV 詞彙表檔案"
+
+#. Safe error shown when a glossary CSV cannot be read or validated.
+#, fuzzy
+msgctxt "error.glossary_import"
+msgid "The glossary CSV could not be imported."
+msgstr "無法匯入詞彙表 CSV。"
+
+#. Safe error shown when a glossary CSV cannot be written.
+#, fuzzy
+msgctxt "error.glossary_export"
+msgid "The glossary CSV could not be saved."
+msgstr "無法儲存詞彙表 CSV。"
+
+#. Validation message shown when no glossary rules are available to export.
+#, fuzzy
+msgctxt "error.glossary_export_empty"
+msgid "Enter or import glossary rules before exporting."
+msgstr "請先輸入或匯入詞彙表規則。"
+
+#. Status note shown after glossary CSV import or export.
+#, fuzzy
+msgctxt "status.glossary_ready"
+msgid "Glossary CSV is ready."
+msgstr "詞彙表 CSV 已就緒。"

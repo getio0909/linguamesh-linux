@@ -33,15 +33,15 @@ package. Ubuntu 24.04 native CI is the compatibility gate for this GTK 4.10-or-n
 older distributions and future Flatpak runtimes require separate packaging validation.
 
 Assumption: Core automatic protected-span scanning covers common URLs, email addresses, Markdown
-code, and placeholder forms. Linux now adds a bounded request-level glossary for product terms and
-conservative semantic long-text chunking; CSV/TBX import, persistent glossary libraries, tokenizer-
-derived model budgets, and provider-specific syntax remain later work.
+code, and placeholder forms. Linux now adds a bounded request-level glossary for product terms,
+deterministic CSV import/export, and conservative semantic long-text chunking; TBX import, persistent
+glossary libraries, tokenizer-derived model budgets, and provider-specific syntax remain later work.
 
 ## Implemented
 
 - Rust 1.93.0 Cargo package at `0.1.0-alpha.2`, with locked Core alpha.2 path dependencies and
   optional `demo-provider`/`gui` features. Native CI pins Core functional revision
-  `ce2b2ab6afa32cb6bbdd45c716fcad8baae00d29`.
+  `7adc9cdf6c8243243d42136f8b80fe3ee19f0af1`.
 - Startup rejects any Core other than semantic version `0.1.0-alpha.2`, ABI 1, protocol 1, provider
   catalog `0.1.0`, with the required cancellation, compatibility, typed Rust host-secret broker,
   model-discovery, protected-span, streaming-text, and text-translation features.
@@ -52,9 +52,10 @@ derived model budgets, and provider-specific syntax remain later work.
   whitespace boundaries without cutting opaque markers, streams chunks in source order, and keeps
   cancellation between chunks; the default 16 KiB limit is explicitly an approximate byte budget.
 - Linux accepts bounded semicolon-separated `source => target` glossary rules per translation
-  request. Core validates conflicts and credential-shaped values, protects matching terms before
-  provider prompt construction, and restores required target terms or immutable names across
-  streamed fragments without writing glossary content to profiles or SQLite.
+  request and imports/exports a fixed-schema UTF-8 CSV through native GTK file dialogs. Core
+  validates CSV size, row count, quoting, conflicts, and credential-shaped values, protects matching
+  terms before provider prompt construction, and restores required target terms or immutable names
+  across streamed fragments without writing glossary content to profiles or SQLite.
 - Toolkit-independent state starts disconnected and uses canonical Core `ProviderProfile` and
   `ProviderProfileId` values. It atomically restores a sorted multi-profile snapshot, keeps the
   selected form row, persisted default, connected saved row, and pending deletion distinct, and
@@ -131,8 +132,8 @@ derived model budgets, and provider-specific syntax remain later work.
 - The Linux host now uses existing GIO D-Bus bindings for Secret Service `OpenSession`, item search,
   create/update, and `GetSecret` resolution. Persistent profiles retain only a SecretRef; the
   one-shot credential is passed through the existing typed broker and is never written to SQLite.
-- Fourteen canonical official/pseudo PO/MO catalog pairs containing 211 messages pinned to l10n revision
-  `2e5e3033f453aa2882cf71217f9514dce8501269`. Sync rejects a different revision, dirty generated
+- Fourteen canonical official/pseudo PO/MO catalog pairs containing 222 messages pinned to l10n revision
+  `8fd778a5869c8b8c91610c22241883fff2e41c99`. Sync rejects a different revision, dirty generated
   source artifacts, stale copies, and unexpected catalog counts. The GTK locale selector exposes
   the twelve official packs, runtime action, workspace-widget, active-provider, status summary,
   partial-output, text-file import/export, provider-profile, source/target language, onboarding stage/detail,
@@ -143,8 +144,8 @@ derived model budgets, and provider-specific syntax remain later work.
   diagnostic detail remains an explicit English fallback.
 - Foundation and native workflow sources use immutable Node 24-compatible action commits and
   disable persisted checkout credentials. Native CI pins reviewed Core revision
-  `3f96de03eb4ff04add09473fc1473c2c49d67a51` and localization revision
-  `2e5e3033f453aa2882cf71217f9514dce8501269`. The revised native gate retains serialized all-target,
+  `7adc9cdf6c8243243d42136f8b80fe3ee19f0af1` and localization revision
+  `8fd778a5869c8b8c91610c22241883fff2e41c99`. The revised native gate retains serialized all-target,
   all-feature X11/Xvfb tests, runs the exact ignored storage-fault test in a private user/mount
   namespace when available, then runs the existing GTK binary test under forced Wayland and
   headless Weston before building the application. On restricted Ubuntu hosts, only the private
@@ -159,7 +160,7 @@ derived model budgets, and provider-specific syntax remain later work.
 Validated on 2026-07-18 with Rust 1.93.0:
 
 - The pinned global-goal SHA-256 matched the sibling authoritative file.
-- Core functional revision `ce2b2ab6afa32cb6bbdd45c716fcad8baae00d29` is the reviewed source
+- Core functional revision `7adc9cdf6c8243243d42136f8b80fe3ee19f0af1` is the reviewed source
   pin, and every direct Core dependency is constrained to `=0.1.0-alpha.2`.
 - `cargo fmt --all --check`, the locked demo-provider check, strict Clippy, both locked test suites,
   the demo-provider build, `DOCS_RS=1` check and Clippy, `bash tools/sync-l10n.sh --check`, all 14

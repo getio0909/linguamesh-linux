@@ -1,8 +1,8 @@
 use adw::prelude::*;
 use gtk::glib;
 use linguamesh_domain::{
-    ErrorKind, Glossary, GlossaryEntry, ProviderProfileId, SecretRef, SecretRefNamespace,
-    SecretValue, TranslationError, TranslationEvent,
+    ErrorKind, Glossary, GlossaryEntry, MAX_GLOSSARY_CSV_BYTES, ProviderProfileId, SecretRef,
+    SecretRefNamespace, SecretValue, TranslationError, TranslationEvent,
 };
 use linguamesh_linux::file_import;
 use linguamesh_linux::localization;
@@ -49,6 +49,8 @@ struct UiBindings {
     source_locale: gtk::DropDown,
     target_locale: gtk::DropDown,
     glossary: gtk::Entry,
+    import_glossary: gtk::Button,
+    export_glossary: gtk::Button,
     theme: gtk::DropDown,
     locale: gtk::DropDown,
     source: gtk::TextBuffer,
@@ -71,6 +73,8 @@ struct UiBindings {
     draft_profile_id: Rc<RefCell<Option<ProviderProfileId>>>,
     source_uri: Rc<RefCell<Option<String>>>,
     export_notice: Rc<Cell<bool>>,
+    glossary_notice: Rc<Cell<bool>>,
+    glossary_from_csv: Rc<Cell<bool>>,
     source_drop_target: gtk::DropTarget,
 }
 
@@ -286,8 +290,17 @@ fn create_window(
         provider_note,
     ) = create_provider_session();
     root.append(&provider_session);
-    let (controls, model, source_locale, target_locale, glossary, theme, locale) =
-        create_controls();
+    let (
+        controls,
+        model,
+        source_locale,
+        target_locale,
+        glossary,
+        import_glossary,
+        export_glossary,
+        theme,
+        locale,
+    ) = create_controls();
     root.append(&controls);
 
     let editor_bindings = create_editors();
@@ -423,6 +436,8 @@ fn create_window(
             source_locale,
             target_locale,
             glossary,
+            import_glossary,
+            export_glossary,
             theme: theme.clone(),
             locale: locale.clone(),
             source: editor_bindings.source,
@@ -445,6 +460,8 @@ fn create_window(
             draft_profile_id: Rc::new(RefCell::new(None)),
             source_uri: Rc::new(RefCell::new(None)),
             export_notice: Rc::new(Cell::new(false)),
+            glossary_notice: Rc::new(Cell::new(false)),
+            glossary_from_csv: Rc::new(Cell::new(false)),
             source_drop_target,
         },
         theme,
@@ -701,6 +718,8 @@ fn create_controls() -> (
     gtk::DropDown,
     gtk::DropDown,
     gtk::Entry,
+    gtk::Button,
+    gtk::Button,
     gtk::DropDown,
     gtk::DropDown,
 ) {
@@ -745,6 +764,28 @@ fn create_controls() -> (
         locale,
         "tooltip.glossary",
         "Optional semicolon-separated source => target glossary rules; entries stay in memory for this translation.",
+    )));
+    let import_glossary = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.import_glossary",
+        "Import glossary",
+    ));
+    import_glossary.set_focusable(true);
+    import_glossary.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.import_glossary",
+        "Load glossary rules from a UTF-8 CSV file",
+    )));
+    let export_glossary = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.export_glossary",
+        "Export glossary",
+    ));
+    export_glossary.set_focusable(true);
+    export_glossary.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.export_glossary",
+        "Save the current glossary rules as a UTF-8 CSV file",
     )));
     let theme_options = [
         localization::text(locale, "theme.system", "System"),
@@ -797,12 +838,16 @@ fn create_controls() -> (
     ] {
         controls.append(&labeled_control(&label, control));
     }
+    controls.append(&import_glossary);
+    controls.append(&export_glossary);
     (
         controls,
         model,
         source_locale,
         target_locale,
         glossary,
+        import_glossary,
+        export_glossary,
         theme,
         locale,
     )
@@ -1270,6 +1315,23 @@ fn connect_action_handlers(
     state: &Rc<RefCell<AppState>>,
     worker: &Rc<CoreWorker>,
 ) {
+    let glossary_edit_state = Rc::clone(&bindings.glossary_from_csv);
+    bindings.glossary.connect_changed(move |_| {
+        glossary_edit_state.set(false);
+    });
+
+    let import_bindings = bindings.clone();
+    let import_state = Rc::clone(state);
+    bindings.import_glossary.connect_clicked(move |_| {
+        begin_glossary_import(&import_bindings, &import_state);
+    });
+
+    let export_bindings = bindings.clone();
+    let export_state = Rc::clone(state);
+    bindings.export_glossary.connect_clicked(move |_| {
+        begin_glossary_export(&export_bindings, &export_state);
+    });
+
     let open_bindings = bindings.clone();
     let open_state = Rc::clone(state);
     bindings.open_source.connect_clicked(move |_| {
@@ -1489,11 +1551,25 @@ fn connect_action_handlers(
         let target_locale = TARGET_LOCALES[translate_bindings.target_locale.selected() as usize];
         state.set_source_locale(source_locale.clone());
         state.set_target_locale(target_locale);
-        match parse_glossary(
-            translate_bindings.glossary.text().as_str(),
-            source_locale.as_deref(),
-            target_locale,
-        ) {
+        let parsed_glossary = if translate_bindings.glossary_from_csv.get() {
+            state.glossary().cloned().map(Some).ok_or_else(|| {
+                TranslationError::new(
+                    ErrorKind::InvalidConfiguration,
+                    localization::text(
+                        state.locale(),
+                        "error.glossary_import",
+                        "The imported glossary is no longer available.",
+                    ),
+                )
+            })
+        } else {
+            parse_glossary(
+                translate_bindings.glossary.text().as_str(),
+                source_locale.as_deref(),
+                target_locale,
+            )
+        };
+        match parsed_glossary {
             Ok(glossary) => {
                 state.set_glossary(glossary);
                 match state.begin_translation() {
@@ -1574,6 +1650,228 @@ fn begin_source_file_open(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) 
                     open_state.borrow().locale(),
                     "error.file_open",
                     "The selected text file could not be opened.",
+                ),
+            ),
+        },
+    );
+}
+
+// 通过 GTK 原生文件对话框选择受限的 UTF-8 词汇表 CSV 文件。
+fn begin_glossary_import(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
+    let locale = state.borrow().locale();
+    let filter_name = localization::text(locale, "file.filter.csv", "CSV glossary files");
+    let filter = gtk::FileFilter::new();
+    filter.set_name(Some(&filter_name));
+    filter.add_mime_type("text/csv");
+    filter.add_suffix("csv");
+    let filters = gtk::gio::ListStore::new::<gtk::FileFilter>();
+    filters.append(&filter);
+    let dialog_title = localization::text(locale, "dialog.open_glossary", "Import glossary");
+    let dialog_accept = localization::text(locale, "dialog.open", "Open");
+    let dialog = gtk::FileDialog::builder()
+        .title(&dialog_title)
+        .accept_label(&dialog_accept)
+        .modal(true)
+        .build();
+    dialog.set_filters(Some(&filters));
+    let import_bindings = bindings.clone();
+    let import_state = Rc::clone(state);
+    dialog.open(
+        Some(&bindings.window),
+        None::<&gtk::gio::Cancellable>,
+        move |result| match result {
+            Ok(file) => load_glossary_file(&file, &import_bindings, &import_state),
+            Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
+            Err(_) => show_file_import_error(
+                &import_bindings,
+                &localization::text(
+                    import_state.borrow().locale(),
+                    "error.glossary_import",
+                    "The glossary CSV could not be imported.",
+                ),
+            ),
+        },
+    );
+}
+
+// 将词汇表 CSV 读取限制在领域层上限内，并只把安全的错误文本反馈给界面。
+#[allow(clippy::single_match_else)]
+fn load_glossary_file(file: &gtk::gio::File, bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
+    let bytes_read = Rc::new(Cell::new(0_usize));
+    let too_large = Rc::new(Cell::new(false));
+    let read_bytes = Rc::clone(&bytes_read);
+    let read_too_large = Rc::clone(&too_large);
+    let load_bindings = bindings.clone();
+    let load_state = Rc::clone(state);
+    file.load_partial_contents_async(
+        None::<&gtk::gio::Cancellable>,
+        move |chunk| {
+            let next = read_bytes.get().saturating_add(chunk.len());
+            if next > MAX_GLOSSARY_CSV_BYTES {
+                read_too_large.set(true);
+                false
+            } else {
+                read_bytes.set(next);
+                true
+            }
+        },
+        move |result| {
+            if too_large.get() {
+                show_file_import_error(
+                    &load_bindings,
+                    &localization::text(
+                        load_state.borrow().locale(),
+                        "error.glossary_import",
+                        "The glossary CSV could not be imported.",
+                    ),
+                );
+                return;
+            }
+            let glossary = match result {
+                Ok((contents, _)) => {
+                    let bytes = contents.as_ref();
+                    let bytes = bytes.strip_prefix(b"\xef\xbb\xbf").unwrap_or(bytes);
+                    let Ok(text) = std::str::from_utf8(bytes) else {
+                        show_file_import_error(
+                            &load_bindings,
+                            &localization::text(
+                                load_state.borrow().locale(),
+                                "error.glossary_import",
+                                "The glossary CSV could not be imported.",
+                            ),
+                        );
+                        return;
+                    };
+                    match Glossary::from_csv(text) {
+                        Ok(glossary) => glossary,
+                        Err(_) => {
+                            show_file_import_error(
+                                &load_bindings,
+                                &localization::text(
+                                    load_state.borrow().locale(),
+                                    "error.glossary_import",
+                                    "The glossary CSV could not be imported.",
+                                ),
+                            );
+                            return;
+                        }
+                    }
+                }
+                Err(_) => {
+                    show_file_import_error(
+                        &load_bindings,
+                        &localization::text(
+                            load_state.borrow().locale(),
+                            "error.glossary_import",
+                            "The glossary CSV could not be imported.",
+                        ),
+                    );
+                    return;
+                }
+            };
+            let summary = glossary
+                .entries()
+                .iter()
+                .map(|entry| format!("{} => {}", entry.source_term, entry.target_term))
+                .collect::<Vec<_>>()
+                .join("; ");
+            load_bindings.glossary.set_text(&summary);
+            load_bindings.glossary_from_csv.set(true);
+            load_bindings.glossary_notice.set(true);
+            load_state.borrow_mut().set_glossary(Some(glossary));
+            load_bindings.error.set_label("");
+            load_bindings.error.set_visible(false);
+            refresh_ui(&load_bindings, &load_state.borrow());
+        },
+    );
+}
+
+// 将当前内存中的词汇表以确定性 UTF-8 CSV 写入用户选择的新文件。
+#[allow(clippy::single_match_else)]
+fn begin_glossary_export(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
+    let locale = state.borrow().locale();
+    let source_locale = SOURCE_LOCALES[bindings.source_locale.selected() as usize];
+    let target_locale = TARGET_LOCALES[bindings.target_locale.selected() as usize];
+    let glossary = if bindings.glossary_from_csv.get() {
+        state.borrow().glossary().cloned()
+    } else {
+        match parse_glossary(
+            bindings.glossary.text().as_str(),
+            source_locale,
+            target_locale,
+        ) {
+            Ok(glossary) => glossary,
+            Err(_) => {
+                show_file_export_error(
+                    bindings,
+                    &localization::text(
+                        locale,
+                        "error.glossary_export",
+                        "The glossary CSV could not be saved.",
+                    ),
+                );
+                return;
+            }
+        }
+    };
+    let Some(glossary) = glossary else {
+        show_file_export_error(
+            bindings,
+            &localization::text(
+                locale,
+                "error.glossary_export_empty",
+                "Enter or import glossary rules before exporting.",
+            ),
+        );
+        return;
+    };
+    let contents = glib::Bytes::from_owned(glossary.to_csv().into_bytes());
+    let dialog_title = localization::text(locale, "dialog.export_glossary", "Export glossary");
+    let dialog_accept = localization::text(locale, "dialog.save", "Save");
+    let dialog = gtk::FileDialog::builder()
+        .title(&dialog_title)
+        .accept_label(&dialog_accept)
+        .modal(true)
+        .build();
+    dialog.set_initial_name(Some("linguamesh-glossary.csv"));
+    let export_bindings = bindings.clone();
+    let export_state = Rc::clone(state);
+    dialog.save(
+        Some(&bindings.window),
+        None::<&gtk::gio::Cancellable>,
+        move |result| match result {
+            Ok(file) => {
+                let callback_bindings = export_bindings.clone();
+                let callback_state = Rc::clone(&export_state);
+                file.replace_contents_bytes_async(
+                    &contents,
+                    None,
+                    false,
+                    gtk::gio::FileCreateFlags::NONE,
+                    None::<&gtk::gio::Cancellable>,
+                    move |write_result| match write_result {
+                        Ok(_) => {
+                            callback_bindings.glossary_notice.set(true);
+                            refresh_ui(&callback_bindings, &callback_state.borrow());
+                        }
+                        Err(_) => show_file_export_error(
+                            &callback_bindings,
+                            &localization::text(
+                                callback_state.borrow().locale(),
+                                "error.glossary_export",
+                                "The glossary CSV could not be saved.",
+                            ),
+                        ),
+                    },
+                );
+            }
+            Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
+            Err(_) => show_file_export_error(
+                &export_bindings,
+                &localization::text(
+                    export_state.borrow().locale(),
+                    "error.glossary_export",
+                    "The glossary CSV could not be saved.",
                 ),
             ),
         },
@@ -2231,6 +2529,7 @@ fn refresh_onboarding(bindings: &UiBindings, state: &AppState) {
     bindings.onboarding_detail.set_label(&detail);
 }
 
+#[allow(clippy::too_many_lines)]
 fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     let open_source = localization::text(locale, "action.open_source", "Open text file");
     let open_source_label = format!("_{open_source}");
@@ -2250,6 +2549,8 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
         "option.remember_profile",
         "Remember profile, model, and credential in Secret Service",
     );
+    let import_glossary = localization::text(locale, "action.import_glossary", "Import glossary");
+    let export_glossary = localization::text(locale, "action.export_glossary", "Export glossary");
     let translate_label = format!("_{translate}");
     let stop_label = format!("_{stop}");
     bindings.open_source.set_label(&open_source_label);
@@ -2269,6 +2570,26 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     bindings.connect.set_label(&format!("_{connect}"));
     bindings.remove_saved_profile.set_label(&remove_profile);
     bindings.remember_profile.set_label(Some(&remember_profile));
+    bindings
+        .import_glossary
+        .set_label(&format!("_{import_glossary}"));
+    bindings
+        .export_glossary
+        .set_label(&format!("_{export_glossary}"));
+    bindings
+        .import_glossary
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.import_glossary",
+            "Load glossary rules from a UTF-8 CSV file",
+        )));
+    bindings
+        .export_glossary
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.export_glossary",
+            "Save the current glossary rules as a UTF-8 CSV file",
+        )));
     bindings
         .remove_saved_profile
         .set_tooltip_text(Some(&localization::text(
@@ -2532,6 +2853,12 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             "status.exported",
             "Translation saved to the selected file.",
         )
+    } else if bindings.glossary_notice.get() {
+        localization::text(
+            state.locale(),
+            "status.glossary_ready",
+            "Glossary CSV is ready.",
+        )
     } else {
         localization::text(
             state.locale(),
@@ -2595,6 +2922,10 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     bindings
         .open_source
         .set_sensitive(source_import_allowed(state));
+    bindings.import_glossary.set_sensitive(!blocked);
+    bindings.export_glossary.set_sensitive(
+        !blocked && (!bindings.glossary.text().trim().is_empty() || state.glossary().is_some()),
+    );
     bindings.stop.set_sensitive(
         state.worker_ready()
             && matches!(

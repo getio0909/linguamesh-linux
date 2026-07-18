@@ -1101,3 +1101,58 @@ msgstr "source => target; Product Name => Product Name"
 msgctxt "tooltip.glossary"
 msgid "Optional semicolon-separated source => target glossary rules; entries stay in memory for this translation."
 msgstr "Optional semicolon-separated source => target glossary rules; entries stay in memory for this translation."
+
+#. Import glossary action in the Linux text workspace.
+msgctxt "action.import_glossary"
+msgid "Import glossary"
+msgstr "Import glossary"
+
+#. Export glossary action in the Linux text workspace.
+msgctxt "action.export_glossary"
+msgid "Export glossary"
+msgstr "Export glossary"
+
+#. Accessible tooltip for importing a glossary CSV.
+msgctxt "tooltip.import_glossary"
+msgid "Load glossary rules from a UTF-8 CSV file"
+msgstr "Load glossary rules from a UTF-8 CSV file"
+
+#. Accessible tooltip for exporting a glossary CSV.
+msgctxt "tooltip.export_glossary"
+msgid "Save the current glossary rules as a UTF-8 CSV file"
+msgstr "Save the current glossary rules as a UTF-8 CSV file"
+
+#. Native file dialog title for importing a glossary CSV.
+msgctxt "dialog.open_glossary"
+msgid "Import glossary"
+msgstr "Import glossary"
+
+#. Native file dialog title for exporting a glossary CSV.
+msgctxt "dialog.export_glossary"
+msgid "Export glossary"
+msgstr "Export glossary"
+
+#. Native file chooser filter for glossary CSV files.
+msgctxt "file.filter.csv"
+msgid "CSV glossary files"
+msgstr "CSV glossary files"
+
+#. Safe error shown when a glossary CSV cannot be read or validated.
+msgctxt "error.glossary_import"
+msgid "The glossary CSV could not be imported."
+msgstr "The glossary CSV could not be imported."
+
+#. Safe error shown when a glossary CSV cannot be written.
+msgctxt "error.glossary_export"
+msgid "The glossary CSV could not be saved."
+msgstr "The glossary CSV could not be saved."
+
+#. Validation message shown when no glossary rules are available to export.
+msgctxt "error.glossary_export_empty"
+msgid "Enter or import glossary rules before exporting."
+msgstr "Enter or import glossary rules before exporting."
+
+#. Status note shown after glossary CSV import or export.
+msgctxt "status.glossary_ready"
+msgid "Glossary CSV is ready."
+msgstr "Glossary CSV is ready."

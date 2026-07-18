@@ -26,7 +26,7 @@ The external-provider path is tested only with LinguaMesh's loopback fake provid
 secret references use the Linux GIO Secret Service adapter and fail closed when the desktop keyring
 is unavailable or requires an interactive prompt. The native workflow
 pins reviewed Core functional revision
-`ce2b2ab6afa32cb6bbdd45c716fcad8baae00d29`, whose storage delta adds
+`7adc9cdf6c8243243d42136f8b80fe3ee19f0af1`, whose storage delta adds
 `SQLITE_OPEN_NOFOLLOW` and whose text path adds protected-span, request-level glossary, and
 bounded long-text restoration, rather than checking
 out a floating branch. Functional revision
@@ -41,9 +41,10 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `ce2b2ab6afa32cb6bbdd45c716fcad8baae00d29` and l10n
-`2e5e3033f453aa2882cf71217f9514dce8501269`. Request-level glossary rules are bounded and
-in-memory; persistent glossary libraries and CSV/TBX import formats are not release claims.
+The current Linux gate consumes Core `7adc9cdf6c8243243d42136f8b80fe3ee19f0af1` and l10n
+`8fd778a5869c8b8c91610c22241883fff2e41c99`. Request-level glossary rules and bounded CSV
+interchange are implemented in the Linux slice; persistent glossary libraries and TBX import
+remain outside the release claim.
 
 The current native gate also includes a real post-startup `ENOSPC` regression for persistent model
 updates, profile deletion, and provider switching. Runtime-storage functional revision

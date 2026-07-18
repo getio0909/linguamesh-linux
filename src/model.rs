@@ -1031,6 +1031,12 @@ impl AppState {
         self.glossary = glossary;
     }
 
+    /// 返回当前请求级词汇表的只读视图。
+    #[must_use]
+    pub fn glossary(&self) -> Option<&Glossary> {
+        self.glossary.as_ref()
+    }
+
     /// 更新外观偏好。
     pub const fn set_theme(&mut self, theme: ThemePreference) {
         self.theme = theme;
