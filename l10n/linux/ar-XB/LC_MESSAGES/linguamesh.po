@@ -1187,3 +1187,9 @@ msgstr "⁧⟦Choose a different file so the source remains unchanged.⟧⁩"
 msgctxt "error.file_export"
 msgid "The translated output could not be saved."
 msgstr "⁧⟦The translated output could not be saved.⟧⁩"
+
+#. Default display name for the built-in Linux OpenAI-compatible provider profile.
+#, fuzzy
+msgctxt "profile.default_name"
+msgid "Local OpenAI-compatible provider"
+msgstr "⁧⟦Local OpenAI-compatible provider⟧⁩"

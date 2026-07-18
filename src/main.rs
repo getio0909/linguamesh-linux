@@ -253,9 +253,14 @@ fn create_window(
     gtk::DropDown,
     gtk::DropDown,
 ) {
+    let display_locale = UiLocale::default();
     let window = adw::ApplicationWindow::builder()
         .application(application)
-        .title("LinguaMesh")
+        .title(localization::text(
+            display_locale,
+            "app.title",
+            "LinguaMesh",
+        ))
         .default_width(1080)
         .default_height(720)
         .build();
@@ -311,19 +316,47 @@ fn create_window(
     root.append(&editor_bindings.editors);
 
     let action_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-    let open_source = gtk::Button::with_mnemonic("_Open text file");
+    let open_source = gtk::Button::with_mnemonic(&localized_mnemonic(
+        display_locale,
+        "action.open_source",
+        "Open text file",
+    ));
     open_source.set_focusable(true);
-    open_source.set_tooltip_text(Some("Load a UTF-8 text file into the source editor"));
-    let translate = gtk::Button::with_mnemonic("_Translate");
+    open_source.set_tooltip_text(Some(&localization::text(
+        display_locale,
+        "tooltip.open_source",
+        "Load a UTF-8 text file into the source editor",
+    )));
+    let translate = gtk::Button::with_mnemonic(&localized_mnemonic(
+        display_locale,
+        "action.translate",
+        "Translate",
+    ));
     translate.add_css_class("suggested-action");
     translate.set_focusable(true);
-    let export_output = gtk::Button::with_mnemonic("_Export translation");
+    let export_output = gtk::Button::with_mnemonic(&localized_mnemonic(
+        display_locale,
+        "action.export_output",
+        "Export translation",
+    ));
     export_output.set_focusable(true);
-    export_output.set_tooltip_text(Some("Save the translated output to a new file"));
-    let stop = gtk::Button::with_mnemonic("_Stop");
+    export_output.set_tooltip_text(Some(&localization::text(
+        display_locale,
+        "tooltip.export_output",
+        "Save the translated output to a new file",
+    )));
+    let stop = gtk::Button::with_mnemonic(&localized_mnemonic(
+        display_locale,
+        "accessibility.stop_translation",
+        "Stop translation",
+    ));
     stop.add_css_class("destructive-action");
     stop.set_focusable(true);
-    stop.update_property(&[gtk::accessible::Property::Label("Stop translation")]);
+    stop.update_property(&[gtk::accessible::Property::Label(&localization::text(
+        display_locale,
+        "accessibility.stop_translation",
+        "Stop translation",
+    ))]);
     action_row.append(&open_source);
     action_row.append(&translate);
     action_row.append(&export_output);
@@ -353,7 +386,11 @@ fn create_window(
     diagnostics.set_xalign(0.0);
     diagnostics.set_selectable(true);
     let diagnostics_panel = gtk::Expander::builder()
-        .label("Diagnostics")
+        .label(localization::text(
+            display_locale,
+            "diagnostics.title",
+            "Diagnostics",
+        ))
         .child(&diagnostics)
         .build();
     root.append(&diagnostics_panel);
@@ -443,6 +480,7 @@ fn create_root() -> gtk::Box {
 }
 
 fn create_editors() -> EditorBindings {
+    let locale = UiLocale::default();
     let source = gtk::TextBuffer::new(None::<&gtk::TextTagTable>);
     let source_view = gtk::TextView::builder()
         .buffer(&source)
@@ -454,8 +492,10 @@ fn create_editors() -> EditorBindings {
         .build();
     source_view.set_accessible_role(gtk::AccessibleRole::TextBox);
     source_view.set_focusable(true);
+    let source_accessible =
+        localization::text(locale, "accessibility.source_content", "Text to translate");
     source_view.update_property(&[
-        gtk::accessible::Property::Label("Source text"),
+        gtk::accessible::Property::Label(&source_accessible),
         gtk::accessible::Property::MultiLine(true),
         gtk::accessible::Property::ReadOnly(false),
     ]);
@@ -472,15 +512,22 @@ fn create_editors() -> EditorBindings {
         .build();
     output_view.set_accessible_role(gtk::AccessibleRole::TextBox);
     output_view.set_focusable(true);
+    let output_accessible = localization::text(
+        locale,
+        "accessibility.translation_output",
+        "Streamed translation output",
+    );
     output_view.update_property(&[
-        gtk::accessible::Property::Label("Streamed translation"),
+        gtk::accessible::Property::Label(&output_accessible),
         gtk::accessible::Property::MultiLine(true),
         gtk::accessible::Property::ReadOnly(true),
     ]);
     let editors = gtk::Paned::new(gtk::Orientation::Horizontal);
     editors.set_wide_handle(true);
-    let (source_panel, source_label) = editor_panel("Source te_xt", &source_view);
-    let (output_panel, output_label) = editor_panel("Streamed translatio_n", &output_view);
+    let source_label = localized_mnemonic(locale, "field.source_text", "Source text");
+    let output_label = localized_mnemonic(locale, "field.translation", "Translation");
+    let (source_panel, source_label) = editor_panel(&source_label, &source_view);
+    let (output_panel, output_label) = editor_panel(&output_label, &output_view);
     editors.set_start_child(Some(&source_panel));
     editors.set_end_child(Some(&output_panel));
     editors.set_vexpand(true);
@@ -495,6 +542,7 @@ fn create_editors() -> EditorBindings {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn create_provider_session() -> (
     gtk::Box,
     gtk::DropDown,
@@ -508,78 +556,116 @@ fn create_provider_session() -> (
     gtk::Label,
     gtk::Label,
 ) {
+    let locale = UiLocale::default();
     let section = gtk::Box::new(gtk::Orientation::Vertical, 6);
-    let title = gtk::Label::new(Some("Provider profiles"));
+    let title_text = localization::text(locale, "section.provider_profiles", "Provider profiles");
+    let title = gtk::Label::new(Some(&title_text));
     title.set_accessible_role(gtk::AccessibleRole::Heading);
     title.set_xalign(0.0);
     title.add_css_class("heading");
     section.append(&title);
 
-    let note = gtk::Label::new(Some(
+    let note_text = localization::text(
+        locale,
+        "profile.storage_note",
         "Names, endpoints, model preferences, and credentials can be remembered through Secret Service. Credentials are cleared from this form immediately and remain session-only when secure storage is unavailable. Removing a saved profile does not disconnect its current session.",
-    ));
+    );
+    let note = gtk::Label::new(Some(&note_text));
     note.set_xalign(0.0);
     note.set_wrap(true);
     note.add_css_class("dim-label");
     section.append(&note);
 
     let profile_actions = gtk::Box::new(gtk::Orientation::Horizontal, 12);
-    let saved_profile = gtk::DropDown::from_strings(&["New profile..."]);
+    let new_profile = localization::text(locale, "profile.new", "New profile...");
+    let saved_profile = gtk::DropDown::from_strings(&[new_profile.as_str()]);
     saved_profile.set_hexpand(true);
-    saved_profile.set_tooltip_text(Some(
+    saved_profile.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.saved_profile",
         "Choose a saved non-secret profile or create a new profile",
+    )));
+    let remove_saved_profile = gtk::Button::with_label(&localization::text(
+        locale,
+        "action.remove_profile",
+        "Remove saved profile",
     ));
-    let remove_saved_profile = gtk::Button::with_label("Remove saved profile");
     remove_saved_profile.set_focusable(true);
     remove_saved_profile.add_css_class("destructive-action");
-    remove_saved_profile.set_tooltip_text(Some(
+    remove_saved_profile.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.remove_profile",
         "Remove the selected saved profile without disconnecting its current session",
-    ));
+    )));
     profile_actions.append(&labeled_control(
-        "Sa_ved profile",
+        &localized_mnemonic(locale, "label.saved_profile", "Saved profile"),
         saved_profile.upcast_ref::<gtk::Widget>(),
     ));
     profile_actions.append(&remove_saved_profile);
     section.append(&profile_actions);
 
     let fields = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+    let default_provider_name =
+        localization::text(locale, "profile.default_name", DEFAULT_PROVIDER_NAME);
     let provider_name = gtk::Entry::builder()
-        .text(DEFAULT_PROVIDER_NAME)
+        .text(&default_provider_name)
         .hexpand(true)
         .build();
-    provider_name.set_tooltip_text(Some("Session-only provider display name"));
+    provider_name.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_name",
+        "Session-only provider display name",
+    )));
     let provider_endpoint = gtk::Entry::builder()
         .text(DEFAULT_PROVIDER_ENDPOINT)
         .hexpand(true)
         .build();
-    provider_endpoint.set_tooltip_text(Some(
+    provider_endpoint.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.endpoint",
         "HTTPS or loopback HTTP OpenAI-compatible base endpoint",
-    ));
+    )));
     let provider_credential = gtk::PasswordEntry::builder()
         .show_peek_icon(true)
         .hexpand(true)
         .build();
-    provider_credential.set_tooltip_text(Some(
+    provider_credential.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.credential",
         "Optional credential; it is kept in memory unless remembered through Secret Service",
+    )));
+    let remember_profile = gtk::CheckButton::with_label(&localization::text(
+        locale,
+        "option.remember_profile",
+        "Remember profile, model, and credential in Secret Service",
     ));
-    let remember_profile =
-        gtk::CheckButton::with_label("Remember profile, model, and credential in Secret Service");
     remember_profile.set_focusable(true);
-    remember_profile.set_tooltip_text(Some(
+    remember_profile.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.remember_profile",
         "Save non-secret profile data and the credential through Secret Service",
-    ));
-    let connect = gtk::Button::with_mnemonic("_Connect");
+    )));
+    let connect =
+        gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.connect", "Connect"));
     connect.set_focusable(true);
     fields.append(&labeled_control(
-        "_Provider name",
+        &localized_mnemonic(locale, "provider.name", "Provider name"),
         provider_name.upcast_ref::<gtk::Widget>(),
     ));
     fields.append(&labeled_control(
-        "_Endpoint (loopback example)",
+        &localized_mnemonic(
+            locale,
+            "label.endpoint_loopback",
+            "Endpoint (loopback example)",
+        ),
         provider_endpoint.upcast_ref::<gtk::Widget>(),
     ));
     fields.append(&labeled_control(
-        "C_redential (optional; secure when remembered)",
+        &localized_mnemonic(
+            locale,
+            "label.credential",
+            "Credential (optional; secure when remembered)",
+        ),
         provider_credential.upcast_ref::<gtk::Widget>(),
     ));
     fields.append(&connect);
@@ -613,28 +699,82 @@ fn create_controls() -> (
     gtk::DropDown,
     gtk::DropDown,
 ) {
+    let locale = UiLocale::default();
     let controls = gtk::Box::new(gtk::Orientation::Horizontal, 12);
-    let model = gtk::DropDown::from_strings(&["Select a model..."]);
-    let source_locale = gtk::DropDown::from_strings(&["Auto", "English", "Chinese"]);
-    let target_locale =
-        gtk::DropDown::from_strings(&["Chinese (Simplified)", "English", "Japanese"]);
-    let theme = gtk::DropDown::from_strings(&["System", "Light", "Dark"]);
-    let locale_labels = UiLocale::ALL.map(UiLocale::label);
-    let locale = gtk::DropDown::from_strings(&locale_labels);
+    let model_placeholder = localization::text(locale, "option.model.select", "Select a model...");
+    let model = gtk::DropDown::from_strings(&[model_placeholder.as_str()]);
+    let source_options = [
+        localization::text(locale, "option.source.auto", "Auto"),
+        localization::text(locale, "option.source.english", "English"),
+        localization::text(locale, "option.source.chinese", "Chinese"),
+    ];
+    let source_locale = gtk::DropDown::from_strings(
+        &source_options
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>(),
+    );
+    let target_options = [
+        localization::text(
+            locale,
+            "option.target.chinese_simplified",
+            "Chinese (Simplified)",
+        ),
+        localization::text(locale, "option.target.english", "English"),
+        localization::text(locale, "option.target.japanese", "Japanese"),
+    ];
+    let target_locale = gtk::DropDown::from_strings(
+        &target_options
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>(),
+    );
+    let theme_options = [
+        localization::text(locale, "theme.system", "System"),
+        localization::text(locale, "theme.light", "Light"),
+        localization::text(locale, "theme.dark", "Dark"),
+    ];
+    let theme =
+        gtk::DropDown::from_strings(&theme_options.iter().map(String::as_str).collect::<Vec<_>>());
+    let locale_labels =
+        UiLocale::ALL.map(|displayed_locale| localized_locale_name(locale, displayed_locale));
+    let locale =
+        gtk::DropDown::from_strings(&locale_labels.iter().map(String::as_str).collect::<Vec<_>>());
     for (label, control) in [
-        ("_Model", model.upcast_ref::<gtk::Widget>()),
         (
-            "Source _language",
+            localized_mnemonic(UiLocale::default(), "field.model", "Model"),
+            model.upcast_ref::<gtk::Widget>(),
+        ),
+        (
+            localized_mnemonic(
+                UiLocale::default(),
+                "label.source_language",
+                "Source language",
+            ),
             source_locale.upcast_ref::<gtk::Widget>(),
         ),
         (
-            "Target l_anguage",
+            localized_mnemonic(
+                UiLocale::default(),
+                "settings.target_language",
+                "Target language",
+            ),
             target_locale.upcast_ref::<gtk::Widget>(),
         ),
-        ("T_heme", theme.upcast_ref::<gtk::Widget>()),
-        ("_UI locale", locale.upcast_ref::<gtk::Widget>()),
+        (
+            localization::text(UiLocale::default(), "settings.theme", "Theme"),
+            theme.upcast_ref::<gtk::Widget>(),
+        ),
+        (
+            localization::text(
+                UiLocale::default(),
+                "settings.ui_language",
+                "Interface language",
+            ),
+            locale.upcast_ref::<gtk::Widget>(),
+        ),
     ] {
-        controls.append(&labeled_control(label, control));
+        controls.append(&labeled_control(&label, control));
     }
     (controls, model, source_locale, target_locale, theme, locale)
 }
