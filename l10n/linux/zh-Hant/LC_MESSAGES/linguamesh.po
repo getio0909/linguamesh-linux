@@ -607,3 +607,63 @@ msgstr "下一個要求：{provider} · {model}。使用已儲存設定清單和
 msgctxt "onboarding.detail.persistence_warning"
 msgid "Saved profile storage is unavailable; profile persistence is disabled, Remember stays off, and credentials remain session only."
 msgstr "已儲存設定儲存無法使用；設定持久性已停用，「記住」保持關閉，憑證僅保留在本次工作階段。"
+
+#. Announced below the locale selector while draft translations are active.
+#, fuzzy
+msgctxt "locale.note.drafts"
+msgid "Simplified Chinese resources are loaded from the pinned runtime catalog; translations remain unreviewed drafts."
+msgstr "簡體中文資源已從固定的執行時期目錄載入；翻譯仍是未經審核的草稿。"
+
+#. Notification body shown when a translation completes.
+#, fuzzy
+msgctxt "notification.body"
+msgid "The translated output is ready in LinguaMesh."
+msgstr "LinguaMesh 中的譯文已準備就緒。"
+
+#. Notification title shown when a translation completes.
+#, fuzzy
+msgctxt "notification.title"
+msgid "Translation complete"
+msgstr "翻譯完成"
+
+#. Active and pending provider summary with persistence modes.
+#, fuzzy, python-brace-format
+msgctxt "provider.active_pending"
+msgid "Active provider remains {active} ({active_mode}); connecting {pending} ({pending_mode})."
+msgstr "目前提供者仍為 {active}（{active_mode}）；正在連線 {pending}（{pending_mode}）。"
+
+#. Pending provider connection summary.
+#, fuzzy, python-brace-format
+msgctxt "provider.connecting"
+msgid "Connecting {provider} ({mode})."
+msgstr "正在連線 {provider}（{mode}）。"
+
+#. No-provider summary explaining session-only credential behavior.
+#, fuzzy
+msgctxt "provider.disconnected"
+msgid "No provider connected. Credentials stay session-only unless remembered through Secret Service."
+msgstr "未連線提供者。除非透過 Secret Service 記住，否則憑證僅保留在本次工作階段。"
+
+#. Persistence mode shown for a pending provider that will be remembered.
+#, fuzzy
+msgctxt "provider.mode.pending_saved"
+msgid "will be saved with Secret Service credential protection when supplied"
+msgstr "提供憑證時將透過 Secret Service 儲存"
+
+#. Persistence mode shown for an active saved provider.
+#, fuzzy
+msgctxt "provider.mode.saved"
+msgid "saved"
+msgstr "已儲存"
+
+#. Persistence mode shown for a session-only provider.
+#, fuzzy
+msgctxt "provider.mode.session"
+msgid "session only"
+msgstr "僅本次工作階段"
+
+#. Restored profile summary prompting deliberate connection.
+#, fuzzy
+msgctxt "provider.saved_restored"
+msgid "Saved non-secret profiles were restored. Choose one, enter its credential if required, then connect."
+msgstr "已還原非敏感的已儲存設定。請選擇一個設定；如有需要輸入憑證，然後連線。"

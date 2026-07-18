@@ -523,3 +523,55 @@ msgstr "Next request: {provider} · {model}. Use the saved-profile list and Conn
 msgctxt "onboarding.detail.persistence_warning"
 msgid "Saved profile storage is unavailable; profile persistence is disabled, Remember stays off, and credentials remain session only."
 msgstr "Saved profile storage is unavailable; profile persistence is disabled, Remember stays off, and credentials remain session only."
+
+#. Announced below the locale selector while draft translations are active.
+msgctxt "locale.note.drafts"
+msgid "Simplified Chinese resources are loaded from the pinned runtime catalog; translations remain unreviewed drafts."
+msgstr "Simplified Chinese resources are loaded from the pinned runtime catalog; translations remain unreviewed drafts."
+
+#. Notification body shown when a translation completes.
+msgctxt "notification.body"
+msgid "The translated output is ready in LinguaMesh."
+msgstr "The translated output is ready in LinguaMesh."
+
+#. Notification title shown when a translation completes.
+msgctxt "notification.title"
+msgid "Translation complete"
+msgstr "Translation complete"
+
+#. Active and pending provider summary with persistence modes.
+#, python-brace-format
+msgctxt "provider.active_pending"
+msgid "Active provider remains {active} ({active_mode}); connecting {pending} ({pending_mode})."
+msgstr "Active provider remains {active} ({active_mode}); connecting {pending} ({pending_mode})."
+
+#. Pending provider connection summary.
+#, python-brace-format
+msgctxt "provider.connecting"
+msgid "Connecting {provider} ({mode})."
+msgstr "Connecting {provider} ({mode})."
+
+#. No-provider summary explaining session-only credential behavior.
+msgctxt "provider.disconnected"
+msgid "No provider connected. Credentials stay session-only unless remembered through Secret Service."
+msgstr "No provider connected. Credentials stay session-only unless remembered through Secret Service."
+
+#. Persistence mode shown for a pending provider that will be remembered.
+msgctxt "provider.mode.pending_saved"
+msgid "will be saved with Secret Service credential protection when supplied"
+msgstr "will be saved with Secret Service credential protection when supplied"
+
+#. Persistence mode shown for an active saved provider.
+msgctxt "provider.mode.saved"
+msgid "saved"
+msgstr "saved"
+
+#. Persistence mode shown for a session-only provider.
+msgctxt "provider.mode.session"
+msgid "session only"
+msgstr "session only"
+
+#. Restored profile summary prompting deliberate connection.
+msgctxt "provider.saved_restored"
+msgid "Saved non-secret profiles were restored. Choose one, enter its credential if required, then connect."
+msgstr "Saved non-secret profiles were restored. Choose one, enter its credential if required, then connect."

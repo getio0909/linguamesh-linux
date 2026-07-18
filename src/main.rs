@@ -1583,7 +1583,7 @@ fn apply_worker_event(
                     state.borrow_mut().record_client_error(error.to_string());
                 }
             } else if completed && state.borrow().status() == AppStatus::Completed {
-                send_translation_notification(bindings);
+                send_translation_notification(bindings, state.borrow().locale());
             }
         }
         WorkerEvent::OperationFailed(error) | WorkerEvent::TranslationRejected(error) => {
@@ -1616,9 +1616,17 @@ fn apply_worker_event(
 }
 
 // 翻译完成时只发送不含源文和译文的桌面通知，避免通知服务保存敏感内容。
-fn send_translation_notification(bindings: &UiBindings) {
-    let notification = gtk::gio::Notification::new("Translation complete");
-    notification.set_body(Some("The translated output is ready in LinguaMesh."));
+fn send_translation_notification(bindings: &UiBindings, locale: UiLocale) {
+    let notification = gtk::gio::Notification::new(&localization::text(
+        locale,
+        "notification.title",
+        "Translation complete",
+    ));
+    notification.set_body(Some(&localization::text(
+        locale,
+        "notification.body",
+        "The translated output is ready in LinguaMesh.",
+    )));
     bindings
         .application
         .send_notification(Some("translation-complete"), &notification);
@@ -1633,24 +1641,36 @@ const fn operation_is_terminal(status: AppStatus) -> bool {
 
 fn refresh_active_provider_label(bindings: &UiBindings, state: &AppState) {
     let active_mode = if state.active_provider_is_saved() {
-        "saved"
+        localization::text(state.locale(), "provider.mode.saved", "saved")
     } else {
-        "session only"
+        localization::text(state.locale(), "provider.mode.session", "session only")
     };
     let pending_mode = if state.pending_provider_will_be_saved() {
-        "will be saved with Secret Service credential protection when supplied"
+        localization::text(
+            state.locale(),
+            "provider.mode.pending_saved",
+            "will be saved with Secret Service credential protection when supplied",
+        )
     } else {
-        "session only"
+        localization::text(state.locale(), "provider.mode.session", "session only")
     };
     match (state.active_provider(), state.pending_provider()) {
-        (Some(active), Some(pending)) => bindings.active_provider.set_label(&format!(
-            "Active provider remains {} ({active_mode}); connecting {} ({pending_mode}).",
-            active.display_name(),
-            pending.display_name()
+        (Some(active), Some(pending)) => bindings.active_provider.set_label(&localized_template(
+            state.locale(),
+            "provider.active_pending",
+            "Active provider remains {active} ({active_mode}); connecting {pending} ({pending_mode}).",
+            &[
+                ("{active}", active.display_name()),
+                ("{active_mode}", &active_mode),
+                ("{pending}", pending.display_name()),
+                ("{pending_mode}", &pending_mode),
+            ],
         )),
-        (None, Some(pending)) => bindings.active_provider.set_label(&format!(
-            "Connecting {} ({pending_mode}).",
-            pending.display_name(),
+        (None, Some(pending)) => bindings.active_provider.set_label(&localized_template(
+            state.locale(),
+            "provider.connecting",
+            "Connecting {provider} ({mode}).",
+            &[("{provider}", pending.display_name()), ("{mode}", &pending_mode)],
         )),
         (Some(active), None) => {
             let template = localization::text(
@@ -1659,18 +1679,22 @@ fn refresh_active_provider_label(bindings: &UiBindings, state: &AppState) {
                 "Active provider: {provider}",
             );
             let active_label = template.replace("{provider}", active.display_name());
-            bindings.active_provider.set_label(&format!(
-                "{active_label} ({active_mode})"
-            ));
+            bindings
+                .active_provider
+                .set_label(&format!("{active_label} ({active_mode})"));
         }
         (None, None) if !state.saved_profiles().is_empty() => {
-            bindings.active_provider.set_label(
+            bindings.active_provider.set_label(&localization::text(
+                state.locale(),
+                "provider.saved_restored",
                 "Saved non-secret profiles were restored. Choose one, enter its credential if required, then connect.",
-            );
+            ));
         }
-        (None, None) => bindings.active_provider.set_label(
+        (None, None) => bindings.active_provider.set_label(&localization::text(
+            state.locale(),
+            "provider.disconnected",
             "No provider connected. Credentials stay session-only unless remembered through Secret Service.",
-        ),
+        )),
     }
 }
 
@@ -2084,13 +2108,11 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             .error
             .update_state(&[gtk::accessible::State::Hidden(true)]);
     }
-    bindings
-        .locale_note
-        .set_label(if state.locale() == UiLocale::SimplifiedChinese {
-            "Simplified Chinese resources are loaded from the pinned runtime catalog; translations remain unreviewed drafts."
-        } else {
-            ""
-        });
+    bindings.locale_note.set_label(&localization::text(
+        state.locale(),
+        "locale.note.drafts",
+        "Simplified Chinese resources are loaded from the pinned runtime catalog; translations remain unreviewed drafts.",
+    ));
     bindings.diagnostics.set_label(&state.diagnostics_text());
     let translation_busy = matches!(
         state.status(),
