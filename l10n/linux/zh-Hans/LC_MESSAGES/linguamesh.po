@@ -667,3 +667,63 @@ msgstr "仅本次会话"
 msgctxt "provider.saved_restored"
 msgid "Saved non-secret profiles were restored. Choose one, enter its credential if required, then connect."
 msgstr "已恢复非敏感的已保存配置。请选择一个配置；如有需要输入凭据，然后连接。"
+
+#. The active provider ID is unavailable.
+#, fuzzy
+msgctxt "error.active_provider_unavailable"
+msgid "The active provider ID is unavailable."
+msgstr "当前提供商 ID 不可用。"
+
+#. The selected text file could not be opened.
+#, fuzzy
+msgctxt "error.file_open"
+msgid "The selected text file could not be opened."
+msgstr "无法打开所选文本文件。"
+
+#. The selected text file could not be read.
+#, fuzzy
+msgctxt "error.file_read"
+msgid "The selected text file could not be read."
+msgstr "无法读取所选文本文件。"
+
+#. The selected text file exceeds the 4 MiB limit.
+#, fuzzy
+msgctxt "error.file_too_large"
+msgid "The selected text file exceeds the 4 MiB limit."
+msgstr "所选文本文件超过 4 MiB 限制。"
+
+#. The selected provider profile is disabled.
+#, fuzzy
+msgctxt "error.profile_disabled"
+msgid "The selected provider profile is disabled."
+msgstr "所选提供商配置已禁用。"
+
+#. The selected saved profile is unavailable.
+#, fuzzy
+msgctxt "error.profile_unavailable"
+msgid "The selected saved profile is unavailable."
+msgstr "所选已保存配置不可用。"
+
+#. Enter a provider endpoint.
+#, fuzzy
+msgctxt "error.provider_endpoint_required"
+msgid "Enter a provider endpoint."
+msgstr "请输入提供商端点。"
+
+#. Enter a provider name.
+#, fuzzy
+msgctxt "error.provider_name_required"
+msgid "Enter a provider name."
+msgstr "请输入提供商名称。"
+
+#. The core worker disconnected.
+#, fuzzy
+msgctxt "error.worker_disconnected"
+msgid "The core worker disconnected."
+msgstr "核心 worker 已断开连接。"
+
+#. The core worker stopped.
+#, fuzzy
+msgctxt "error.worker_stopped"
+msgid "The core worker stopped."
+msgstr "核心 worker 已停止。"

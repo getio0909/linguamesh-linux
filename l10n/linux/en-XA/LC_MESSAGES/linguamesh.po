@@ -669,3 +669,63 @@ msgstr "［šëššïøñ øñŀÿ~~~~］"
 msgctxt "provider.saved_restored"
 msgid "Saved non-secret profiles were restored. Choose one, enter its credential if required, then connect."
 msgstr "［Šåṽëð ñøñ-šëçŕëŧ þŕøƒïŀëš ŵëŕë ŕëšŧøŕëð. Çħøøšë øñë, ëñŧëŕ ïŧš çŕëðëñŧïåŀ ïƒ ŕëǫûïŕëð, ŧħëñ çøññëçŧ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~］"
+
+#. The active provider ID is unavailable.
+#, fuzzy
+msgctxt "error.active_provider_unavailable"
+msgid "The active provider ID is unavailable."
+msgstr "［Ŧħë åçŧïṽë þŕøṽïðëŕ ÏÐ ïš ûñåṽåïŀåƀŀë.~~~~~~~~~~~~］"
+
+#. The selected text file could not be opened.
+#, fuzzy
+msgctxt "error.file_open"
+msgid "The selected text file could not be opened."
+msgstr "［Ŧħë šëŀëçŧëð ŧëẋŧ ƒïŀë çøûŀð ñøŧ ƀë øþëñëð.~~~~~~~~~~~~~~］"
+
+#. The selected text file could not be read.
+#, fuzzy
+msgctxt "error.file_read"
+msgid "The selected text file could not be read."
+msgstr "［Ŧħë šëŀëçŧëð ŧëẋŧ ƒïŀë çøûŀð ñøŧ ƀë ŕëåð.~~~~~~~~~~~~~］"
+
+#. The selected text file exceeds the 4 MiB limit.
+#, fuzzy
+msgctxt "error.file_too_large"
+msgid "The selected text file exceeds the 4 MiB limit."
+msgstr "［Ŧħë šëŀëçŧëð ŧëẋŧ ƒïŀë ëẋçëëðš ŧħë 4 ṀïƁ ŀïṁïŧ.~~~~~~~~~~~~~~~］"
+
+#. The selected provider profile is disabled.
+#, fuzzy
+msgctxt "error.profile_disabled"
+msgid "The selected provider profile is disabled."
+msgstr "［Ŧħë šëŀëçŧëð þŕøṽïðëŕ þŕøƒïŀë ïš ðïšåƀŀëð.~~~~~~~~~~~~~~］"
+
+#. The selected saved profile is unavailable.
+#, fuzzy
+msgctxt "error.profile_unavailable"
+msgid "The selected saved profile is unavailable."
+msgstr "［Ŧħë šëŀëçŧëð šåṽëð þŕøƒïŀë ïš ûñåṽåïŀåƀŀë.~~~~~~~~~~~~~~］"
+
+#. Enter a provider endpoint.
+#, fuzzy
+msgctxt "error.provider_endpoint_required"
+msgid "Enter a provider endpoint."
+msgstr "［Ëñŧëŕ å þŕøṽïðëŕ ëñðþøïñŧ.~~~~~~~~］"
+
+#. Enter a provider name.
+#, fuzzy
+msgctxt "error.provider_name_required"
+msgid "Enter a provider name."
+msgstr "［Ëñŧëŕ å þŕøṽïðëŕ ñåṁë.~~~~~~~］"
+
+#. The core worker disconnected.
+#, fuzzy
+msgctxt "error.worker_disconnected"
+msgid "The core worker disconnected."
+msgstr "［Ŧħë çøŕë ŵøŕķëŕ ðïšçøññëçŧëð.~~~~~~~~~］"
+
+#. The core worker stopped.
+#, fuzzy
+msgctxt "error.worker_stopped"
+msgid "The core worker stopped."
+msgstr "［Ŧħë çøŕë ŵøŕķëŕ šŧøþþëð.~~~~~~~~］"

@@ -200,6 +200,9 @@ mod tests {
             assert!(!text(locale, "option.source.auto", "").is_empty());
             assert!(!text(locale, "onboarding.stage.starting", "").is_empty());
             assert!(!text(locale, "onboarding.detail.ready", "").is_empty());
+            assert!(!text(locale, "error.provider_name_required", "").is_empty());
+            assert!(!text(locale, "error.file_too_large", "").is_empty());
+            assert!(!text(locale, "error.worker_disconnected", "").is_empty());
         }
     }
 

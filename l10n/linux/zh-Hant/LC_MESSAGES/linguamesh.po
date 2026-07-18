@@ -667,3 +667,63 @@ msgstr "僅本次工作階段"
 msgctxt "provider.saved_restored"
 msgid "Saved non-secret profiles were restored. Choose one, enter its credential if required, then connect."
 msgstr "已還原非敏感的已儲存設定。請選擇一個設定；如有需要輸入憑證，然後連線。"
+
+#. The active provider ID is unavailable.
+#, fuzzy
+msgctxt "error.active_provider_unavailable"
+msgid "The active provider ID is unavailable."
+msgstr "目前提供者 ID 不可用。"
+
+#. The selected text file could not be opened.
+#, fuzzy
+msgctxt "error.file_open"
+msgid "The selected text file could not be opened."
+msgstr "無法開啟所選文字檔案。"
+
+#. The selected text file could not be read.
+#, fuzzy
+msgctxt "error.file_read"
+msgid "The selected text file could not be read."
+msgstr "無法讀取所選文字檔案。"
+
+#. The selected text file exceeds the 4 MiB limit.
+#, fuzzy
+msgctxt "error.file_too_large"
+msgid "The selected text file exceeds the 4 MiB limit."
+msgstr "所選文字檔案超過 4 MiB 限制。"
+
+#. The selected provider profile is disabled.
+#, fuzzy
+msgctxt "error.profile_disabled"
+msgid "The selected provider profile is disabled."
+msgstr "所選提供者設定檔已停用。"
+
+#. The selected saved profile is unavailable.
+#, fuzzy
+msgctxt "error.profile_unavailable"
+msgid "The selected saved profile is unavailable."
+msgstr "所選已儲存設定檔不可用。"
+
+#. Enter a provider endpoint.
+#, fuzzy
+msgctxt "error.provider_endpoint_required"
+msgid "Enter a provider endpoint."
+msgstr "請輸入提供者端點。"
+
+#. Enter a provider name.
+#, fuzzy
+msgctxt "error.provider_name_required"
+msgid "Enter a provider name."
+msgstr "請輸入提供者名稱。"
+
+#. The core worker disconnected.
+#, fuzzy
+msgctxt "error.worker_disconnected"
+msgid "The core worker disconnected."
+msgstr "核心 worker 已中斷連線。"
+
+#. The core worker stopped.
+#, fuzzy
+msgctxt "error.worker_stopped"
+msgid "The core worker stopped."
+msgstr "核心 worker 已停止。"

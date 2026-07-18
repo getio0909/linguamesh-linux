@@ -671,3 +671,63 @@ msgstr "session only"
 msgctxt "provider.saved_restored"
 msgid "Saved non-secret profiles were restored. Choose one, enter its credential if required, then connect."
 msgstr "Saved non-secret profiles were restored. Choose one, enter its credential if required, then connect."
+
+#. The active provider ID is unavailable.
+#, fuzzy
+msgctxt "error.active_provider_unavailable"
+msgid "The active provider ID is unavailable."
+msgstr "The active provider ID is unavailable."
+
+#. The selected text file could not be opened.
+#, fuzzy
+msgctxt "error.file_open"
+msgid "The selected text file could not be opened."
+msgstr "The selected text file could not be opened."
+
+#. The selected text file could not be read.
+#, fuzzy
+msgctxt "error.file_read"
+msgid "The selected text file could not be read."
+msgstr "The selected text file could not be read."
+
+#. The selected text file exceeds the 4 MiB limit.
+#, fuzzy
+msgctxt "error.file_too_large"
+msgid "The selected text file exceeds the 4 MiB limit."
+msgstr "The selected text file exceeds the 4 MiB limit."
+
+#. The selected provider profile is disabled.
+#, fuzzy
+msgctxt "error.profile_disabled"
+msgid "The selected provider profile is disabled."
+msgstr "The selected provider profile is disabled."
+
+#. The selected saved profile is unavailable.
+#, fuzzy
+msgctxt "error.profile_unavailable"
+msgid "The selected saved profile is unavailable."
+msgstr "The selected saved profile is unavailable."
+
+#. Enter a provider endpoint.
+#, fuzzy
+msgctxt "error.provider_endpoint_required"
+msgid "Enter a provider endpoint."
+msgstr "Enter a provider endpoint."
+
+#. Enter a provider name.
+#, fuzzy
+msgctxt "error.provider_name_required"
+msgid "Enter a provider name."
+msgstr "Enter a provider name."
+
+#. The core worker disconnected.
+#, fuzzy
+msgctxt "error.worker_disconnected"
+msgid "The core worker disconnected."
+msgstr "The core worker disconnected."
+
+#. The core worker stopped.
+#, fuzzy
+msgctxt "error.worker_stopped"
+msgid "The core worker stopped."
+msgstr "The core worker stopped."

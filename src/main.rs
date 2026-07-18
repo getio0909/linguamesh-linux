@@ -907,7 +907,11 @@ fn connect_profile_selection_handler(bindings: &UiBindings, state: &Rc<RefCell<A
                         }
                         None => Err(TranslationError::new(
                             ErrorKind::Internal,
-                            "The selected saved profile is unavailable.",
+                            localization::text(
+                                profile_state.borrow().locale(),
+                                "error.profile_unavailable",
+                                "The selected saved profile is unavailable.",
+                            ),
                         )),
                     }
                 }
@@ -973,7 +977,11 @@ fn connect_selection_handlers(
                         .map(|error| TranslationError::new(ErrorKind::Internal, error.to_string())),
                     None => Some(TranslationError::new(
                         ErrorKind::Internal,
-                        "The active provider ID is unavailable.",
+                        localization::text(
+                            model_state.borrow().locale(),
+                            "error.active_provider_unavailable",
+                            "The active provider ID is unavailable.",
+                        ),
                     )),
                 };
                 let restore_selection = worker_error.is_some();
@@ -1079,18 +1087,22 @@ fn connect_action_handlers(
         drop(credential_text);
         let mut state = connect_state.borrow_mut();
         if display_name.is_empty() {
-            state.provider_failed(TranslationError::new(
-                ErrorKind::InvalidEndpoint,
+            let message = localization::text(
+                state.locale(),
+                "error.provider_name_required",
                 "Enter a provider name.",
-            ));
+            );
+            state.provider_failed(TranslationError::new(ErrorKind::InvalidEndpoint, message));
             refresh_ui(&connect_bindings, &state);
             return;
         }
         if endpoint.is_empty() {
-            state.provider_failed(TranslationError::new(
-                ErrorKind::InvalidEndpoint,
+            let message = localization::text(
+                state.locale(),
+                "error.provider_endpoint_required",
                 "Enter a provider endpoint.",
-            ));
+            );
+            state.provider_failed(TranslationError::new(ErrorKind::InvalidEndpoint, message));
             refresh_ui(&connect_bindings, &state);
             return;
         }
@@ -1180,9 +1192,14 @@ fn connect_action_handlers(
                 refresh_ui(&connect_bindings, &state);
             }
             Err(StateError::InvalidProfile) => {
+                let message = localization::text(
+                    state.locale(),
+                    "error.profile_disabled",
+                    "The selected provider profile is disabled.",
+                );
                 state.provider_failed(TranslationError::new(
                     ErrorKind::InvalidConfiguration,
-                    "The selected provider profile is disabled.",
+                    message,
                 ));
                 refresh_ui(&connect_bindings, &state);
             }
@@ -1301,7 +1318,11 @@ fn begin_source_file_open(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) 
             Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
             Err(_) => show_file_import_error(
                 &open_bindings,
-                "The selected text file could not be opened.",
+                &localization::text(
+                    open_state.borrow().locale(),
+                    "error.file_open",
+                    "The selected text file could not be opened.",
+                ),
             ),
         },
     );
@@ -1331,7 +1352,11 @@ fn load_source_file(file: &gtk::gio::File, bindings: &UiBindings, state: &Rc<Ref
             if too_large.get() {
                 show_file_import_error(
                     &load_bindings,
-                    "The selected text file exceeds the 4 MiB limit.",
+                    &localization::text(
+                        load_state.borrow().locale(),
+                        "error.file_too_large",
+                        "The selected text file exceeds the 4 MiB limit.",
+                    ),
                 );
                 return;
             }
@@ -1349,7 +1374,11 @@ fn load_source_file(file: &gtk::gio::File, bindings: &UiBindings, state: &Rc<Ref
                 },
                 Err(_) => show_file_import_error(
                     &load_bindings,
-                    "The selected text file could not be read.",
+                    &localization::text(
+                        load_state.borrow().locale(),
+                        "error.file_read",
+                        "The selected text file could not be read.",
+                    ),
                 ),
             }
             refresh_ui(&load_bindings, &load_state.borrow());
@@ -1397,7 +1426,12 @@ fn start_event_pump(bindings: &UiBindings, state: &Rc<RefCell<AppState>>, worker
                         let mut state = event_state.borrow_mut();
                         state.mark_worker_unavailable();
                         if !worker_reported_stopped {
-                            state.record_client_error("The core worker disconnected.");
+                            let message = localization::text(
+                                state.locale(),
+                                "error.worker_disconnected",
+                                "The core worker disconnected.",
+                            );
+                            state.record_client_error(message);
                         }
                     }
                     refresh_ui(&event_bindings, &event_state.borrow());
@@ -1609,7 +1643,12 @@ fn apply_worker_event(
             let mut state = state.borrow_mut();
             state.mark_worker_unavailable();
             if !is_terminal {
-                state.record_client_error("The core worker stopped.");
+                let message = localization::text(
+                    state.locale(),
+                    "error.worker_stopped",
+                    "The core worker stopped.",
+                );
+                state.record_client_error(message);
             }
         }
     }

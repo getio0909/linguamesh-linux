@@ -677,3 +677,63 @@ msgstr "للجلسة فقط"
 msgctxt "provider.saved_restored"
 msgid "Saved non-secret profiles were restored. Choose one, enter its credential if required, then connect."
 msgstr "تمت استعادة ملفات التعريف المحفوظة غير السرية. اختر واحداً وأعد إدخال بيانات الاعتماد عند الحاجة ثم اتصل."
+
+#. The active provider ID is unavailable.
+#, fuzzy
+msgctxt "error.active_provider_unavailable"
+msgid "The active provider ID is unavailable."
+msgstr "معرّف المزوّد النشط غير متاح."
+
+#. The selected text file could not be opened.
+#, fuzzy
+msgctxt "error.file_open"
+msgid "The selected text file could not be opened."
+msgstr "تعذر فتح الملف النصي المحدد."
+
+#. The selected text file could not be read.
+#, fuzzy
+msgctxt "error.file_read"
+msgid "The selected text file could not be read."
+msgstr "تعذر قراءة الملف النصي المحدد."
+
+#. The selected text file exceeds the 4 MiB limit.
+#, fuzzy
+msgctxt "error.file_too_large"
+msgid "The selected text file exceeds the 4 MiB limit."
+msgstr "يتجاوز الملف النصي المحدد حد 4 MiB."
+
+#. The selected provider profile is disabled.
+#, fuzzy
+msgctxt "error.profile_disabled"
+msgid "The selected provider profile is disabled."
+msgstr "ملف تعريف المزوّد المحدد معطل."
+
+#. The selected saved profile is unavailable.
+#, fuzzy
+msgctxt "error.profile_unavailable"
+msgid "The selected saved profile is unavailable."
+msgstr "ملف التعريف المحفوظ المحدد غير متاح."
+
+#. Enter a provider endpoint.
+#, fuzzy
+msgctxt "error.provider_endpoint_required"
+msgid "Enter a provider endpoint."
+msgstr "أدخل نقطة نهاية المزوّد."
+
+#. Enter a provider name.
+#, fuzzy
+msgctxt "error.provider_name_required"
+msgid "Enter a provider name."
+msgstr "أدخل اسم المزوّد."
+
+#. The core worker disconnected.
+#, fuzzy
+msgctxt "error.worker_disconnected"
+msgid "The core worker disconnected."
+msgstr "انقطع اتصال العامل الأساسي."
+
+#. The core worker stopped.
+#, fuzzy
+msgctxt "error.worker_stopped"
+msgid "The core worker stopped."
+msgstr "توقف العامل الأساسي."
