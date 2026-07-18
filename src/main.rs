@@ -817,6 +817,7 @@ fn install_keyboard_focus_probe(
         }
         if focus_deadline.is_none() {
             focus_deadline = Some(Instant::now() + Duration::from_secs(5));
+            focus_window.present();
         }
         gtk::prelude::GtkWindowExt::set_focus(&focus_window, Some(&initial_focus));
         let grabbed = initial_focus.grab_focus();
