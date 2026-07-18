@@ -859,6 +859,33 @@ Validated locally:
 - Native linking remains CI-only because this host lacks the GTK 4.10 symbols required by the
   current system libraries.
 
+## 2026-07-18 — Linux document queue localization follow-up
+
+Assumption: the Linux-first scope keeps all other clients deferred. Document queue actions,
+dialogues, empty/paused/progress states, and queue tooltips must resolve through the canonical
+l10n catalog; non-English packs remain explicitly unreviewed drafts with English source fallback.
+
+Implemented:
+
+- Pinned l10n `0ef4fb9b6878655e46e2b8ca5bbed9562f97b0f0`, a 277-message bundle with generated
+  PO/MO resources for all twelve official locale packs and the document queue control keys.
+- Added catalog coverage assertions for queue actions, dialog, empty/paused/progress statuses,
+  and tooltip keys, while retaining the existing PDF and subtitle warning checks.
+- Updated the Linux workflow, synchronization guard, README, and release notes to the immutable
+  l10n revision and bundle checksum `e26da1a391369ed84c0f57f5fd5d440f50ed56dcbc8f069abd4d6d27db7dd9c1`.
+
+Validated locally:
+
+- `bash tools/sync-l10n.sh --write` and `--check` passed.
+- `cargo fmt --all -- --check`, all-target/all-feature `cargo check`, strict Clippy, and
+  `cargo test --no-default-features --locked` passed (61 tests).
+- `cargo test --features demo-provider --locked` passed (98 tests, 1 existing
+  environment-dependent ignore).
+- Native Linux `29656549651`, Foundation `29656549644`, and Flatpak `29656549677` passed.
+
+The checkpoint remains unreleased; OCR, remaining archive formats, complete acceptance scenarios,
+non-Linux clients, and stable-release evidence remain open.
+
 ## 2026-07-18 — Linux document job recovery
 
 Assumption: the first recoverable queue slice persists only an opaque job ID, source basename,
