@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX document-job translation with sequential segment persistence, bounded DOCX/PPTX/XLSX package reconstruction and resource retention, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; end-user prompt acceptance, multi-job GUI queue presentation, and release artifacts remain open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB document-job translation with sequential segment persistence, bounded DOCX/PPTX/XLSX/EPUB package reconstruction and resource retention, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; end-user prompt acceptance, multi-job GUI queue presentation, and release artifacts remain open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -41,7 +41,7 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
 
 - Rust 1.93.0 Cargo package at `0.1.0-alpha.2`, with locked Core alpha.2 path dependencies and
   optional `demo-provider`/`gui` features. Native CI pins Core functional revision
-  `36f256637236636889b0933cc5fe6a70bffff02c`.
+  `554c09521b57de45be154a99edfbf24aa2fc6538`.
 - Startup rejects any Core other than semantic version `0.1.0-alpha.2`, ABI 1, protocol 1, provider
   catalog `0.1.0`, with the required cancellation, compatibility, typed Rust host-secret broker,
   model-discovery, protected-span, streaming-text, and text-translation features.
@@ -123,11 +123,11 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
   fields. Profile/remember/remove controls fail closed when storage is unavailable, all conflicting
   controls are blocked during connection, model selection, translation, or deletion, and event
   processing is capped per main-context tick.
-- Imported TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX files are converted into Core `DocumentJob` snapshots before the source
+- Imported TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB files are converted into Core `DocumentJob` snapshots before the source
   editor is populated. The existing Translate action starts a sequential worker pipeline for pending
   prose segments, forwards the request glossary and privacy policy, and writes each completed segment
-  back to schema-11 storage. Document terminal snapshots reconstruct safely into the output editor;
-  DOCX/PPTX packages retain non-text resources and rewrite supported OOXML text parts under bounded
+  back to schema-13 storage. Document terminal snapshots reconstruct safely into the output editor;
+  DOCX/PPTX/XLSX/EPUB packages retain non-text resources and rewrite supported text parts under bounded
   archive/path/XML checks; binary export uses the original extension and rejects malformed or incomplete jobs.
   Stop persists cancellation, and Incognito rejects new document jobs rather than creating durable
   progress. The GTK surface still lacks a dedicated multi-job queue.
@@ -152,7 +152,7 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
   diagnostic detail remains an explicit English fallback.
 - Foundation and native workflow sources use immutable Node 24-compatible action commits and
   disable persisted checkout credentials. Native CI pins reviewed Core revision
-  `36f256637236636889b0933cc5fe6a70bffff02c` and localization revision
+  `554c09521b57de45be154a99edfbf24aa2fc6538` and localization revision
   `d64d4085fb3c1cc69c9f7965bd97ffca54ca1995`. The revised native gate retains serialized all-target,
   all-feature X11/Xvfb tests, runs the exact ignored storage-fault test in a private user/mount
   namespace when available, then runs the existing GTK binary test under forced Wayland and
@@ -168,7 +168,7 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
 Validated on 2026-07-18 with Rust 1.93.0:
 
 - The pinned global-goal SHA-256 matched the sibling authoritative file.
-- Core functional revision `36f256637236636889b0933cc5fe6a70bffff02c` is the reviewed source
+- Core functional revision `554c09521b57de45be154a99edfbf24aa2fc6538` is the reviewed source
   pin, and every direct Core dependency is constrained to `=0.1.0-alpha.2`.
 - `cargo fmt --all --check`, the locked demo-provider check, strict Clippy, both locked test suites,
   the demo-provider build, `DOCS_RS=1` check and Clippy, `bash tools/sync-l10n.sh --check`, all 14
@@ -755,7 +755,7 @@ Assumption: XLSX support reuses the bounded OOXML ZIP/XML contract: packages are
 styles, formulas, numbers, and media resources remain unchanged. Encrypted, traversal, duplicate,
 malformed, DTD-bearing, oversized, and incomplete packages are rejected.
 
-Implemented Core `36f256637236636889b0933cc5fe6a70bffff02c` XLSX shared-string/worksheet inspection
+Implemented Core `c21a7df193d73568875315c94153f458d7f905ce` XLSX shared-string/worksheet inspection
 and reconstruction with schema-12 format migration. Linux's chooser accepts XLSX and reuses the
 worker's binary export; the persisted package bytes never contain source paths or credentials.
 
@@ -765,6 +765,26 @@ Validated locally:
   package reopen/reconstruction.
 - Linux fmt, all-target/all-feature check, strict Clippy, 61-test library suite, and diff checks
   passed. Full GTK binary linking remains a CI-only boundary on this host.
+
+## 2026-07-18 — Linux EPUB package checkpoint
+
+Assumption: EPUB support is bounded to 4 MiB and 512 ZIP entries, requires the first uncompressed
+`mimetype` entry plus `META-INF/container.xml`, an OPF package document, and at least one XHTML/HTML
+content document. Container and OPF XML reject DTDs and malformed structure; traversal, duplicate,
+encrypted, symlink, oversized, and invalid-UTF-8 entries are rejected. Visible XHTML/HTML text is
+segmented while tags, scripts, styles, navigation, CSS, and binary resources remain verbatim.
+
+Implemented Core `554c09521b57de45be154a99edfbf24aa2fc6538` EPUB inspection/reconstruction and
+schema-13 format migration. Export updates an existing OPF `dc:language` value from the persisted
+target locale. Linux's chooser accepts EPUB and the worker reuses the binary export path; package
+resources remain unchanged and source paths or credentials are never persisted.
+
+Validated locally:
+
+- Core document tests: 22 passed; storage tests: 28 passed, including schema-13 migration and EPUB
+  package reopen/reconstruction.
+- Linux format, all-target/all-feature check, worker export integration, and file-import regression
+  checks passed locally; remote native, foundation, and Flatpak gates remain required.
 
 ## 2026-07-18 — Linux CSV document checkpoint
 

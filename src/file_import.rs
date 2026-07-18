@@ -148,6 +148,10 @@ mod tests {
             decode_document_contents("workbook.xlsx", b"not a ZIP package"),
             Err(TextImportError::InvalidStructure)
         );
+        assert_eq!(
+            decode_document_contents("book.epub", b"not a ZIP package"),
+            Err(TextImportError::InvalidStructure)
+        );
     }
 
     #[test]

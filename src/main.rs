@@ -2136,6 +2136,8 @@ fn begin_source_file_open(
     filter.add_suffix("pptx");
     filter.add_mime_type("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     filter.add_suffix("xlsx");
+    filter.add_mime_type("application/epub+zip");
+    filter.add_suffix("epub");
     let filters = gtk::gio::ListStore::new::<gtk::FileFilter>();
     filters.append(&filter);
     let dialog_title = localization::text(locale, "dialog.open_text_file", "Open text file");

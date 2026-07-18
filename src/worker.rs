@@ -2007,12 +2007,20 @@ async fn run_worker(
                                 "The document job was not found.",
                             )
                         })?;
-                        let contents = snapshot.job.reconstruct_bytes().map_err(|error| {
-                            TranslationError::new(
-                                ErrorKind::InvalidConfiguration,
-                                error.to_string(),
+                        let contents = snapshot
+                            .job
+                            .reconstruct_bytes_with_target_locale(
+                                snapshot
+                                    .options
+                                    .as_ref()
+                                    .map(|options| options.target_locale.as_str()),
                             )
-                        })?;
+                            .map_err(|error| {
+                                TranslationError::new(
+                                    ErrorKind::InvalidConfiguration,
+                                    error.to_string(),
+                                )
+                            })?;
                         Ok((snapshot.job.source_name, contents))
                     });
                 match result {

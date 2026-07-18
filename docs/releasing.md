@@ -26,7 +26,7 @@ The external-provider path is tested only with LinguaMesh's loopback fake provid
 secret references use the Linux GIO Secret Service adapter and fail closed when the desktop keyring
 is unavailable or requires an interactive prompt. The native workflow
 pins reviewed Core functional revision
-`36f256637236636889b0933cc5fe6a70bffff02c`, whose storage delta adds
+`554c09521b57de45be154a99edfbf24aa2fc6538`, whose storage delta adds
 `SQLITE_OPEN_NOFOLLOW` and whose text path adds protected-span, request-level glossary, and
 bounded long-text restoration, and the bounded SRT/WebVTT/CSV/JSON/HTML document contract, rather than checking
 out a floating branch. Functional revision
@@ -41,18 +41,19 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `36f256637236636889b0933cc5fe6a70bffff02c` and l10n
+The current Linux gate consumes Core `554c09521b57de45be154a99edfbf24aa2fc6538` and l10n
 `d64d4085fb3c1cc69c9f7965bd97ffca54ca1995`. Request-level glossary rules, bounded CSV,
 interchange are implemented in the Linux slice; persistent glossary libraries and TBX import
 remain outside the release claim.
 
-The Linux document slice now persists bounded TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX jobs, translates pending prose segments
+The Linux document slice now persists bounded TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB jobs, translates pending prose segments
 sequentially, and restores completed or cancelled snapshots into the editor. Validated non-secret
 provider/model/glossary options are persisted and reused by Resume and Retry after restart only when
 the active runtime matches. This is not yet a release-ready multi-job queue: archive workflows and
-the document-job execution path still require the native Linux validation gate below. DOCX/PPTX/XLSX export preserves
+the document-job execution path still require the native Linux validation gate below. DOCX/PPTX/XLSX/EPUB export preserves
 non-text package resources and rewrites only supported OOXML text parts; malformed, encrypted, traversal,
-DTD-bearing, or over-limit packages are rejected.
+DTD-bearing, or over-limit packages are rejected. EPUB also requires a first `mimetype` entry,
+preserves navigation and resources, translates XHTML/HTML text, and updates OPF language metadata.
 
 The current native gate also includes a real post-startup `ENOSPC` regression for persistent model
 updates, profile deletion, and provider switching. Runtime-storage functional revision
