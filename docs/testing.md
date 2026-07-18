@@ -270,12 +270,12 @@ The GitHub Actions native workflow pins Core revision
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
 namespace test through the unprivileged path.
-The current provider-profile localization revision `c074c2d1f8f9446559f23a72d224c48e2e612947`
-passed Native Linux run `29625778212` (job `88029765419`), Foundation run `29625778196`, and
-Flatpak run `29625778180`; the native job validated the pinned 80-message catalog and GTK
+The current onboarding localization revision `029e7f21322f3d0f3619a8f3a0158e7157972e30`
+passed Native Linux run `29626461099`, Foundation run `29626461122`, and
+Flatpak run `29626461131`; the native job validated the pinned 97-message catalog and GTK
 Simplified Chinese provider-card/source-target assertions in addition to the existing storage,
 Secret Service, portal, notification, drag/drop, X11, and forced-Wayland gates. The workflow
-checks out l10n revision `b583fbf63dc5ced27136ca1d8a87816593929379`.
+checks out l10n revision `5c2e5756f02fbc29ba1ca311958b6bf7d26027bf`.
 Runtime-storage functional revision
 `c37702c76c3b1a2f9cec805cf9e219721ef7b5ce` passed Native Linux run `29586532049` (job
 `87904787338`): strict all-feature Clippy, 66 ordinary library tests with one intentional ignore,
@@ -337,6 +337,6 @@ Broader GTK component/UI automation, AT-SPI/Orca and physical-keyboard accessibi
 physical-compositor and GPU-backed Wayland coverage, a broader X11/desktop matrix, prompted
 interactive Secret Service flows, broader XDG and portal tests, third-party
 local-server interoperability, Flatpak smoke tests, runtime localization behavior beyond the
-currently catalog-backed action, workspace-widget, active-provider, status summary/partial-output, text-file import, provider-profile, source/target language, and theme-option labels, runtime database
+currently catalog-backed action, workspace-widget, active-provider, status summary/partial-output, text-file import, provider-profile, source/target language, onboarding stage/detail, and theme-option labels, runtime database
 faults beyond the implemented Linux `ENOSPC` transaction boundary, dependency/license automation,
 and release builds remain required before a supported release.

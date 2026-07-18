@@ -116,18 +116,18 @@ older distributions and future Flatpak runtimes require separate packaging valid
 - The Linux host now uses existing GIO D-Bus bindings for Secret Service `OpenSession`, item search,
   create/update, and `GetSecret` resolution. Persistent profiles retain only a SecretRef; the
   one-shot credential is passed through the existing typed broker and is never written to SQLite.
-- Fourteen canonical official/pseudo PO catalogs containing 80 messages pinned to l10n revision
-  `b583fbf63dc5ced27136ca1d8a87816593929379`. Sync rejects a different revision, dirty generated
+- Fourteen canonical official/pseudo PO catalogs containing 97 messages pinned to l10n revision
+  `5c2e5756f02fbc29ba1ca311958b6bf7d26027bf`. Sync rejects a different revision, dirty generated
   source artifacts, stale copies, and unexpected catalog counts. The GTK locale selector exposes
   the twelve official packs, runtime action, workspace-widget, active-provider, status summary,
-  partial-output, text-file import, provider-profile, source/target language, and
+  partial-output, text-file import, provider-profile, source/target language, onboarding stage/detail, and
   System/Light/Dark theme labels switch without losing state, preserves source text while moving
   from Simplified Chinese to Arabic, and applies right-to-left root direction; uncovered UI strings
   still use explicit English fallbacks.
 - Foundation and native workflow sources use immutable Node 24-compatible action commits and
   disable persisted checkout credentials. Native CI pins reviewed Core revision
   `fbf3e9b5927049dccaa19f8c36013495ffebba12` and localization revision
-  `b583fbf63dc5ced27136ca1d8a87816593929379`. The revised native gate retains serialized all-target,
+  `5c2e5756f02fbc29ba1ca311958b6bf7d26027bf`. The revised native gate retains serialized all-target,
   all-feature X11/Xvfb tests, runs the exact ignored storage-fault test in a private user/mount
   namespace when available, then runs the existing GTK binary test under forced Wayland and
   headless Weston before building the application. On restricted Ubuntu hosts, only the private
@@ -235,6 +235,9 @@ Validated on 2026-07-18 with Rust 1.93.0:
   23 Linux-only provider-card, tooltip, action, and source/target language messages; the GTK test
   asserts Simplified Chinese provider controls and language options while preserving the existing
   Arabic RTL/source-buffer checks.
+- The onboarding localization slice passed the same source-level checks and adds 17 Linux-only
+  stage/detail messages with `{provider}`, `{profile_id}`, and `{model}` runtime substitutions;
+  the GTK onboarding card now localizes every derived stage and persistence warning.
 - Linux revision `7a8526f7a1a0e3cfe068e3dd20934cf3e11d18ca` adds a GTK regression that sets source
   text in Simplified Chinese, switches to Arabic, verifies RTL direction, and asserts the source
   buffer is unchanged. Native run `29623544194` (job `88023275325`), Foundation run `29623544187`,
@@ -244,9 +247,10 @@ Validated on 2026-07-18 with Rust 1.93.0:
 - The Linux localization unit suite parsed all twelve official catalogs and verified non-empty
   application/action entries, unique BCP 47 tags, and Arabic RTL metadata. `cargo test --features
   gui --lib localization::tests --locked` passed 4 tests; the portable model suite passed 45 tests.
-- Linux evidence revision `c074c2d1f8f9446559f23a72d224c48e2e612947` passed Native Linux run
-  `29625778212` (job `88029765419`), Foundation run `29625778196`, and Flatpak run `29625778180`;
-  the native gate covered the 80-message pinned catalog, localized provider controls, source/target
+- Linux evidence revision `029e7f21322f3d0f3619a8f3a0158e7157972e30` passed Native Linux run
+  `29626461099`, Foundation run `29626461122`, and Flatpak run `29626461131`;
+  the native gate covered the 97-message pinned catalog, localized provider controls, source/target
+  language and onboarding stage/detail guidance,
   language labels, and the existing X11/Wayland, storage, Secret Service, portal, notification,
   drag/drop, and accessibility fixtures.
 - The checkout, Rust-toolchain, and Rust-cache action SHAs resolved through the GitHub commits API;
