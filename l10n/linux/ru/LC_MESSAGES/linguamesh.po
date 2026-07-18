@@ -371,3 +371,141 @@ msgstr "Текстовые файлы"
 msgctxt "tooltip.open_source"
 msgid "Load a UTF-8 text file into the source editor"
 msgstr "Загрузить текстовый файл UTF-8 в редактор исходного текста"
+
+#. Heading for the Linux provider-profile configuration card.
+#, fuzzy
+msgctxt "section.provider_profiles"
+msgid "Provider profiles"
+msgstr "Provider profiles"
+
+#. Privacy and persistence note shown in the Linux provider-profile card.
+#, fuzzy
+msgctxt "profile.storage_note"
+msgid "Names, endpoints, model preferences, and credentials can be remembered through Secret Service. Credentials are cleared from this form immediately and remain session-only when secure storage is unavailable. Removing a saved profile does not disconnect its current session."
+msgstr "Names, endpoints, model preferences, and credentials can be remembered through Secret Service. Credentials are cleared from this form immediately and remain session-only when secure storage is unavailable. Removing a saved profile does not disconnect its current session."
+
+#. Placeholder entry for creating a new Linux provider profile.
+#, fuzzy
+msgctxt "profile.new"
+msgid "New profile..."
+msgstr "New profile..."
+
+#. Action that removes a saved Linux provider profile.
+#, fuzzy
+msgctxt "action.remove_profile"
+msgid "Remove saved profile"
+msgstr "Remove saved profile"
+
+#. Tooltip for choosing a saved Linux provider profile.
+#, fuzzy
+msgctxt "tooltip.saved_profile"
+msgid "Choose a saved non-secret profile or create a new profile"
+msgstr "Choose a saved non-secret profile or create a new profile"
+
+#. Tooltip for removing the selected Linux provider profile.
+#, fuzzy
+msgctxt "tooltip.remove_profile"
+msgid "Remove the selected saved profile without disconnecting its current session"
+msgstr "Remove the selected saved profile without disconnecting its current session"
+
+#. Tooltip for the Linux provider display-name field.
+#, fuzzy
+msgctxt "tooltip.provider_name"
+msgid "Session-only provider display name"
+msgstr "Session-only provider display name"
+
+#. Tooltip for the Linux OpenAI-compatible endpoint field.
+#, fuzzy
+msgctxt "tooltip.endpoint"
+msgid "HTTPS or loopback HTTP OpenAI-compatible base endpoint"
+msgstr "HTTPS or loopback HTTP OpenAI-compatible base endpoint"
+
+#. Tooltip for the Linux provider credential field.
+#, fuzzy
+msgctxt "tooltip.credential"
+msgid "Optional credential; it is kept in memory unless remembered through Secret Service"
+msgstr "Optional credential; it is kept in memory unless remembered through Secret Service"
+
+#. Label for remembering a Linux provider profile in Secret Service.
+#, fuzzy
+msgctxt "option.remember_profile"
+msgid "Remember profile, model, and credential in Secret Service"
+msgstr "Remember profile, model, and credential in Secret Service"
+
+#. Tooltip for remembering a Linux provider profile.
+#, fuzzy
+msgctxt "tooltip.remember_profile"
+msgid "Save non-secret profile data and the credential through Secret Service"
+msgstr "Save non-secret profile data and the credential through Secret Service"
+
+#. Action that validates and connects a Linux provider profile.
+#, fuzzy
+msgctxt "action.connect"
+msgid "Connect"
+msgstr "Connect"
+
+#. Label for the saved Linux provider-profile selector.
+#, fuzzy
+msgctxt "label.saved_profile"
+msgid "Saved profile"
+msgstr "Saved profile"
+
+#. Label for the Linux source-language selector.
+#, fuzzy
+msgctxt "label.source_language"
+msgid "Source language"
+msgstr "Source language"
+
+#. Label for the Linux provider credential field.
+#, fuzzy
+msgctxt "label.credential"
+msgid "Credential (optional; secure when remembered)"
+msgstr "Credential (optional; secure when remembered)"
+
+#. Label for the Linux loopback provider endpoint field.
+#, fuzzy
+msgctxt "label.endpoint_loopback"
+msgid "Endpoint (loopback example)"
+msgstr "Endpoint (loopback example)"
+
+#. Placeholder entry shown before a Linux model is selected.
+#, fuzzy
+msgctxt "option.model.select"
+msgid "Select a model..."
+msgstr "Select a model..."
+
+#. Automatic source-language option for Linux translation.
+#, fuzzy
+msgctxt "option.source.auto"
+msgid "Auto"
+msgstr "Auto"
+
+#. English source-language option for Linux translation.
+#, fuzzy
+msgctxt "option.source.english"
+msgid "English"
+msgstr "English"
+
+#. Chinese source-language option for Linux translation.
+#, fuzzy
+msgctxt "option.source.chinese"
+msgid "Chinese"
+msgstr "Chinese"
+
+#. Simplified Chinese target-language option for Linux translation.
+#, fuzzy
+msgctxt "option.target.chinese_simplified"
+msgid "Chinese (Simplified)"
+msgstr "Chinese (Simplified)"
+
+#. English target-language option for Linux translation.
+#, fuzzy
+msgctxt "option.target.english"
+msgid "English"
+msgstr "English"
+
+#. Japanese target-language option for Linux translation.
+#, fuzzy
+msgctxt "option.target.japanese"
+msgid "Japanese"
+msgstr "Japanese"

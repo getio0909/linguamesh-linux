@@ -367,3 +367,141 @@ msgstr "文字檔案"
 msgctxt "tooltip.open_source"
 msgid "Load a UTF-8 text file into the source editor"
 msgstr "將 UTF-8 文字檔案載入來源編輯器"
+
+#. Heading for the Linux provider-profile configuration card.
+#, fuzzy
+msgctxt "section.provider_profiles"
+msgid "Provider profiles"
+msgstr "提供者設定"
+
+#. Privacy and persistence note shown in the Linux provider-profile card.
+#, fuzzy
+msgctxt "profile.storage_note"
+msgid "Names, endpoints, model preferences, and credentials can be remembered through Secret Service. Credentials are cleared from this form immediately and remain session-only when secure storage is unavailable. Removing a saved profile does not disconnect its current session."
+msgstr "名稱、端點、模型偏好和憑證可透過 Secret Service 記住。憑證會立即從此表單清除；安全儲存不可用時僅保留在本次工作階段。移除已儲存的設定不會中斷目前工作階段。"
+
+#. Placeholder entry for creating a new Linux provider profile.
+#, fuzzy
+msgctxt "profile.new"
+msgid "New profile..."
+msgstr "新增設定..."
+
+#. Action that removes a saved Linux provider profile.
+#, fuzzy
+msgctxt "action.remove_profile"
+msgid "Remove saved profile"
+msgstr "移除已儲存設定"
+
+#. Tooltip for choosing a saved Linux provider profile.
+#, fuzzy
+msgctxt "tooltip.saved_profile"
+msgid "Choose a saved non-secret profile or create a new profile"
+msgstr "選擇不含秘密的已儲存設定，或新增設定"
+
+#. Tooltip for removing the selected Linux provider profile.
+#, fuzzy
+msgctxt "tooltip.remove_profile"
+msgid "Remove the selected saved profile without disconnecting its current session"
+msgstr "移除選取的已儲存設定，但不會中斷目前工作階段"
+
+#. Tooltip for the Linux provider display-name field.
+#, fuzzy
+msgctxt "tooltip.provider_name"
+msgid "Session-only provider display name"
+msgstr "僅用於本次工作階段的提供者顯示名稱"
+
+#. Tooltip for the Linux OpenAI-compatible endpoint field.
+#, fuzzy
+msgctxt "tooltip.endpoint"
+msgid "HTTPS or loopback HTTP OpenAI-compatible base endpoint"
+msgstr "HTTPS 或回環 HTTP OpenAI 相容基礎端點"
+
+#. Tooltip for the Linux provider credential field.
+#, fuzzy
+msgctxt "tooltip.credential"
+msgid "Optional credential; it is kept in memory unless remembered through Secret Service"
+msgstr "選用憑證；除非透過 Secret Service 記住，否則只保留在記憶體中"
+
+#. Label for remembering a Linux provider profile in Secret Service.
+#, fuzzy
+msgctxt "option.remember_profile"
+msgid "Remember profile, model, and credential in Secret Service"
+msgstr "透過 Secret Service 記住設定、模型和憑證"
+
+#. Tooltip for remembering a Linux provider profile.
+#, fuzzy
+msgctxt "tooltip.remember_profile"
+msgid "Save non-secret profile data and the credential through Secret Service"
+msgstr "透過 Secret Service 儲存非秘密設定資料和憑證"
+
+#. Action that validates and connects a Linux provider profile.
+#, fuzzy
+msgctxt "action.connect"
+msgid "Connect"
+msgstr "連線"
+
+#. Label for the saved Linux provider-profile selector.
+#, fuzzy
+msgctxt "label.saved_profile"
+msgid "Saved profile"
+msgstr "已儲存設定"
+
+#. Label for the Linux source-language selector.
+#, fuzzy
+msgctxt "label.source_language"
+msgid "Source language"
+msgstr "來源語言"
+
+#. Label for the Linux provider credential field.
+#, fuzzy
+msgctxt "label.credential"
+msgid "Credential (optional; secure when remembered)"
+msgstr "憑證（選用；記住時安全儲存）"
+
+#. Label for the Linux loopback provider endpoint field.
+#, fuzzy
+msgctxt "label.endpoint_loopback"
+msgid "Endpoint (loopback example)"
+msgstr "端點（回環範例）"
+
+#. Placeholder entry shown before a Linux model is selected.
+#, fuzzy
+msgctxt "option.model.select"
+msgid "Select a model..."
+msgstr "選取模型..."
+
+#. Automatic source-language option for Linux translation.
+#, fuzzy
+msgctxt "option.source.auto"
+msgid "Auto"
+msgstr "自動"
+
+#. English source-language option for Linux translation.
+#, fuzzy
+msgctxt "option.source.english"
+msgid "English"
+msgstr "英文"
+
+#. Chinese source-language option for Linux translation.
+#, fuzzy
+msgctxt "option.source.chinese"
+msgid "Chinese"
+msgstr "中文"
+
+#. Simplified Chinese target-language option for Linux translation.
+#, fuzzy
+msgctxt "option.target.chinese_simplified"
+msgid "Chinese (Simplified)"
+msgstr "簡體中文"
+
+#. English target-language option for Linux translation.
+#, fuzzy
+msgctxt "option.target.english"
+msgid "English"
+msgstr "英文"
+
+#. Japanese target-language option for Linux translation.
+#, fuzzy
+msgctxt "option.target.japanese"
+msgid "Japanese"
+msgstr "日文"

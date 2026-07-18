@@ -369,3 +369,141 @@ msgstr "［Ŧëẋŧ ƒïŀëš~~~］"
 msgctxt "tooltip.open_source"
 msgid "Load a UTF-8 text file into the source editor"
 msgstr "［Ŀøåð å ÛŦƑ-8 ŧëẋŧ ƒïŀë ïñŧø ŧħë šøûŕçë ëðïŧøŕ~~~~~~~~~~~~~~~］"
+
+#. Heading for the Linux provider-profile configuration card.
+#, fuzzy
+msgctxt "section.provider_profiles"
+msgid "Provider profiles"
+msgstr "［Þŕøṽïðëŕ þŕøƒïŀëš~~~~~］"
+
+#. Privacy and persistence note shown in the Linux provider-profile card.
+#, fuzzy
+msgctxt "profile.storage_note"
+msgid "Names, endpoints, model preferences, and credentials can be remembered through Secret Service. Credentials are cleared from this form immediately and remain session-only when secure storage is unavailable. Removing a saved profile does not disconnect its current session."
+msgstr "［Ñåṁëš, ëñðþøïñŧš, ṁøðëŀ þŕëƒëŕëñçëš, åñð çŕëðëñŧïåŀš çåñ ƀë ŕëṁëṁƀëŕëð ŧħŕøûĝħ Šëçŕëŧ Šëŕṽïçë. Çŕëðëñŧïåŀš åŕë çŀëåŕëð ƒŕøṁ ŧħïš ƒøŕṁ ïṁṁëðïåŧëŀÿ åñð ŕëṁåïñ šëššïøñ-øñŀÿ ŵħëñ šëçûŕë šŧøŕåĝë ïš ûñåṽåïŀåƀŀë. Ŕëṁøṽïñĝ å šåṽëð þŕøƒïŀë ðøëš ñøŧ ðïšçøññëçŧ ïŧš çûŕŕëñŧ šëššïøñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~］"
+
+#. Placeholder entry for creating a new Linux provider profile.
+#, fuzzy
+msgctxt "profile.new"
+msgid "New profile..."
+msgstr "［Ñëŵ þŕøƒïŀë...~~~~］"
+
+#. Action that removes a saved Linux provider profile.
+#, fuzzy
+msgctxt "action.remove_profile"
+msgid "Remove saved profile"
+msgstr "［Ŕëṁøṽë šåṽëð þŕøƒïŀë~~~~~~］"
+
+#. Tooltip for choosing a saved Linux provider profile.
+#, fuzzy
+msgctxt "tooltip.saved_profile"
+msgid "Choose a saved non-secret profile or create a new profile"
+msgstr "［Çħøøšë å šåṽëð ñøñ-šëçŕëŧ þŕøƒïŀë øŕ çŕëåŧë å ñëŵ þŕøƒïŀë~~~~~~~~~~~~~~~~~~~］"
+
+#. Tooltip for removing the selected Linux provider profile.
+#, fuzzy
+msgctxt "tooltip.remove_profile"
+msgid "Remove the selected saved profile without disconnecting its current session"
+msgstr "［Ŕëṁøṽë ŧħë šëŀëçŧëð šåṽëð þŕøƒïŀë ŵïŧħøûŧ ðïšçøññëçŧïñĝ ïŧš çûŕŕëñŧ šëššïøñ~~~~~~~~~~~~~~~~~~~~~~~~~］"
+
+#. Tooltip for the Linux provider display-name field.
+#, fuzzy
+msgctxt "tooltip.provider_name"
+msgid "Session-only provider display name"
+msgstr "［Šëššïøñ-øñŀÿ þŕøṽïðëŕ ðïšþŀåÿ ñåṁë~~~~~~~~~~~］"
+
+#. Tooltip for the Linux OpenAI-compatible endpoint field.
+#, fuzzy
+msgctxt "tooltip.endpoint"
+msgid "HTTPS or loopback HTTP OpenAI-compatible base endpoint"
+msgstr "［ĦŦŦÞŠ øŕ ŀøøþƀåçķ ĦŦŦÞ ØþëñÅÏ-çøṁþåŧïƀŀë ƀåšë ëñðþøïñŧ~~~~~~~~~~~~~~~~~~］"
+
+#. Tooltip for the Linux provider credential field.
+#, fuzzy
+msgctxt "tooltip.credential"
+msgid "Optional credential; it is kept in memory unless remembered through Secret Service"
+msgstr "［Øþŧïøñåŀ çŕëðëñŧïåŀ; ïŧ ïš ķëþŧ ïñ ṁëṁøŕÿ ûñŀëšš ŕëṁëṁƀëŕëð ŧħŕøûĝħ Šëçŕëŧ Šëŕṽïçë~~~~~~~~~~~~~~~~~~~~~~~~~~~］"
+
+#. Label for remembering a Linux provider profile in Secret Service.
+#, fuzzy
+msgctxt "option.remember_profile"
+msgid "Remember profile, model, and credential in Secret Service"
+msgstr "［Ŕëṁëṁƀëŕ þŕøƒïŀë, ṁøðëŀ, åñð çŕëðëñŧïåŀ ïñ Šëçŕëŧ Šëŕṽïçë~~~~~~~~~~~~~~~~~~~］"
+
+#. Tooltip for remembering a Linux provider profile.
+#, fuzzy
+msgctxt "tooltip.remember_profile"
+msgid "Save non-secret profile data and the credential through Secret Service"
+msgstr "［Šåṽë ñøñ-šëçŕëŧ þŕøƒïŀë ðåŧå åñð ŧħë çŕëðëñŧïåŀ ŧħŕøûĝħ Šëçŕëŧ Šëŕṽïçë~~~~~~~~~~~~~~~~~~~~~~~］"
+
+#. Action that validates and connects a Linux provider profile.
+#, fuzzy
+msgctxt "action.connect"
+msgid "Connect"
+msgstr "［Çøññëçŧ~~］"
+
+#. Label for the saved Linux provider-profile selector.
+#, fuzzy
+msgctxt "label.saved_profile"
+msgid "Saved profile"
+msgstr "［Šåṽëð þŕøƒïŀë~~~~］"
+
+#. Label for the Linux source-language selector.
+#, fuzzy
+msgctxt "label.source_language"
+msgid "Source language"
+msgstr "［Šøûŕçë ŀåñĝûåĝë~~~~~］"
+
+#. Label for the Linux provider credential field.
+#, fuzzy
+msgctxt "label.credential"
+msgid "Credential (optional; secure when remembered)"
+msgstr "［Çŕëðëñŧïåŀ (øþŧïøñåŀ; šëçûŕë ŵħëñ ŕëṁëṁƀëŕëð)~~~~~~~~~~~~~~~］"
+
+#. Label for the Linux loopback provider endpoint field.
+#, fuzzy
+msgctxt "label.endpoint_loopback"
+msgid "Endpoint (loopback example)"
+msgstr "［Ëñðþøïñŧ (ŀøøþƀåçķ ëẋåṁþŀë)~~~~~~~~~］"
+
+#. Placeholder entry shown before a Linux model is selected.
+#, fuzzy
+msgctxt "option.model.select"
+msgid "Select a model..."
+msgstr "［Šëŀëçŧ å ṁøðëŀ...~~~~~］"
+
+#. Automatic source-language option for Linux translation.
+#, fuzzy
+msgctxt "option.source.auto"
+msgid "Auto"
+msgstr "［Åûŧø~~］"
+
+#. English source-language option for Linux translation.
+#, fuzzy
+msgctxt "option.source.english"
+msgid "English"
+msgstr "［Ëñĝŀïšħ~~］"
+
+#. Chinese source-language option for Linux translation.
+#, fuzzy
+msgctxt "option.source.chinese"
+msgid "Chinese"
+msgstr "［Çħïñëšë~~］"
+
+#. Simplified Chinese target-language option for Linux translation.
+#, fuzzy
+msgctxt "option.target.chinese_simplified"
+msgid "Chinese (Simplified)"
+msgstr "［Çħïñëšë (Šïṁþŀïƒïëð)~~~~~~］"
+
+#. English target-language option for Linux translation.
+#, fuzzy
+msgctxt "option.target.english"
+msgid "English"
+msgstr "［Ëñĝŀïšħ~~］"
+
+#. Japanese target-language option for Linux translation.
+#, fuzzy
+msgctxt "option.target.japanese"
+msgid "Japanese"
+msgstr "［Ĵåþåñëšë~~］"

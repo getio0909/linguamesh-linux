@@ -35,6 +35,8 @@ struct UiBindings {
     onboarding: gtk::Box,
     onboarding_title: gtk::Label,
     onboarding_detail: gtk::Label,
+    provider_title: gtk::Label,
+    provider_note: gtk::Label,
     saved_profile: gtk::DropDown,
     provider_name: gtk::Entry,
     provider_endpoint: gtk::Entry,
@@ -271,6 +273,8 @@ fn create_window(
         remove_saved_profile,
         connect,
         active_provider,
+        provider_title,
+        provider_note,
     ) = create_provider_session();
     root.append(&provider_session);
     let (controls, model, source_locale, target_locale, theme, locale) = create_controls();
@@ -359,6 +363,8 @@ fn create_window(
             onboarding,
             onboarding_title,
             onboarding_detail,
+            provider_title,
+            provider_note,
             saved_profile,
             provider_name,
             provider_endpoint,
@@ -489,6 +495,8 @@ fn create_provider_session() -> (
     gtk::Button,
     gtk::Button,
     gtk::Label,
+    gtk::Label,
+    gtk::Label,
 ) {
     let section = gtk::Box::new(gtk::Orientation::Vertical, 6);
     let title = gtk::Label::new(Some("Provider profiles"));
@@ -582,6 +590,8 @@ fn create_provider_session() -> (
         remove_saved_profile,
         connect,
         active_provider,
+        title,
+        note,
     )
 }
 
@@ -642,6 +652,11 @@ fn set_labeled_control_label(control: &gtk::Widget, text: &str) {
     }
 }
 
+// 为本地化标签保留 GTK 助记符入口。
+fn localized_mnemonic(locale: UiLocale, key: &str, fallback: &str) -> String {
+    format!("_{}", localization::text(locale, key, fallback))
+}
+
 fn refresh_dropdown_labels(dropdown: &gtk::DropDown, labels: &[String]) {
     if let Some(model) = dropdown
         .model()
@@ -650,6 +665,44 @@ fn refresh_dropdown_labels(dropdown: &gtk::DropDown, labels: &[String]) {
         let replacements = labels.iter().map(String::as_str).collect::<Vec<_>>();
         model.splice(0, model.n_items(), &replacements);
     }
+}
+
+// 刷新动态模型列表的占位项，同时保留核心返回的模型名称。
+fn refresh_model_placeholder(dropdown: &gtk::DropDown, locale: UiLocale) {
+    let Some(model) = dropdown
+        .model()
+        .and_then(|model| model.downcast::<gtk::StringList>().ok())
+    else {
+        return;
+    };
+    if model.n_items() == 0 {
+        return;
+    }
+    let mut labels = (0..model.n_items())
+        .filter_map(|index| model.string(index))
+        .map(|value| value.to_string())
+        .collect::<Vec<_>>();
+    labels[0] = localization::text(locale, "option.model.select", "Select a model...");
+    refresh_dropdown_labels(dropdown, &labels);
+}
+
+// 刷新保存配置列表的新增占位项，同时保留用户配置名称。
+fn refresh_profile_placeholder(dropdown: &gtk::DropDown, locale: UiLocale) {
+    let Some(model) = dropdown
+        .model()
+        .and_then(|model| model.downcast::<gtk::StringList>().ok())
+    else {
+        return;
+    };
+    if model.n_items() == 0 {
+        return;
+    }
+    let mut labels = (0..model.n_items())
+        .filter_map(|index| model.string(index))
+        .map(|value| value.to_string())
+        .collect::<Vec<_>>();
+    labels[0] = localization::text(locale, "profile.new", "New profile...");
+    refresh_dropdown_labels(dropdown, &labels);
 }
 
 fn generate_custom_provider_id(
@@ -693,7 +746,11 @@ fn profile_dropdown_label(profile: &ProviderProfile) -> String {
 }
 
 fn rebuild_saved_profile_dropdown(bindings: &UiBindings, state: &AppState) {
-    let mut labels = vec!["New profile...".to_owned()];
+    let mut labels = vec![localization::text(
+        state.locale(),
+        "profile.new",
+        "New profile...",
+    )];
     labels.extend(state.saved_profiles().iter().map(profile_dropdown_label));
     let label_refs = labels.iter().map(String::as_str).collect::<Vec<_>>();
     let selected = state
@@ -1693,6 +1750,14 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     );
     let translate = localization::text(locale, "action.translate", "Translate");
     let stop = localization::text(locale, "accessibility.stop_translation", "Stop translation");
+    let connect = localization::text(locale, "action.connect", "Connect");
+    let remove_profile =
+        localization::text(locale, "action.remove_profile", "Remove saved profile");
+    let remember_profile = localization::text(
+        locale,
+        "option.remember_profile",
+        "Remember profile, model, and credential in Secret Service",
+    );
     let translate_label = format!("_{translate}");
     let stop_label = format!("_{stop}");
     bindings.open_source.set_label(&open_source_label);
@@ -1701,6 +1766,51 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
         .set_tooltip_text(Some(&open_source_tooltip));
     bindings.translate.set_label(&translate_label);
     bindings.stop.set_label(&stop_label);
+    bindings.connect.set_label(&format!("_{connect}"));
+    bindings.remove_saved_profile.set_label(&remove_profile);
+    bindings.remember_profile.set_label(Some(&remember_profile));
+    bindings
+        .remove_saved_profile
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.remove_profile",
+            "Remove the selected saved profile without disconnecting its current session",
+        )));
+    bindings
+        .remember_profile
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.remember_profile",
+            "Save non-secret profile data and the credential through Secret Service",
+        )));
+    bindings
+        .saved_profile
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.saved_profile",
+            "Choose a saved non-secret profile or create a new profile",
+        )));
+    bindings
+        .provider_name
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.provider_name",
+            "Session-only provider display name",
+        )));
+    bindings
+        .provider_endpoint
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.endpoint",
+            "HTTPS or loopback HTTP OpenAI-compatible base endpoint",
+        )));
+    bindings
+        .provider_credential
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.credential",
+            "Optional credential; it is kept in memory unless remembered through Secret Service",
+        )));
     bindings
         .stop
         .update_property(&[gtk::accessible::Property::Label(&stop)]);
@@ -1710,6 +1820,16 @@ fn refresh_localized_widgets(bindings: &UiBindings, locale: UiLocale) {
     bindings
         .window
         .set_title(Some(&localization::text(locale, "app.title", "LinguaMesh")));
+    bindings.provider_title.set_label(&localization::text(
+        locale,
+        "section.provider_profiles",
+        "Provider profiles",
+    ));
+    bindings.provider_note.set_label(&localization::text(
+        locale,
+        "profile.storage_note",
+        "Names, endpoints, model preferences, and credentials can be remembered through Secret Service. Credentials are cleared from this form immediately and remain session-only when secure storage is unavailable. Removing a saved profile does not disconnect its current session.",
+    ));
     bindings.source_label.set_label(&localization::text(
         locale,
         "field.source_text",
@@ -1735,27 +1855,39 @@ fn refresh_localized_widgets(bindings: &UiBindings, locale: UiLocale) {
         .update_property(&[gtk::accessible::Property::Label(&output_accessible)]);
     set_labeled_control_label(
         bindings.provider_name.upcast_ref(),
-        &localization::text(locale, "provider.name", "Provider name"),
+        &localized_mnemonic(locale, "provider.name", "Provider name"),
     );
     set_labeled_control_label(
         bindings.provider_endpoint.upcast_ref(),
-        &localization::text(locale, "field.endpoint", "Endpoint"),
+        &localized_mnemonic(
+            locale,
+            "label.endpoint_loopback",
+            "Endpoint (loopback example)",
+        ),
     );
     set_labeled_control_label(
         bindings.provider_credential.upcast_ref(),
-        &localization::text(
+        &localized_mnemonic(
             locale,
-            "field.api_key",
-            "API key (optional for local providers)",
+            "label.credential",
+            "Credential (optional; secure when remembered)",
         ),
     );
     set_labeled_control_label(
         bindings.model.upcast_ref(),
-        &localization::text(locale, "field.model", "Model"),
+        &localized_mnemonic(locale, "field.model", "Model"),
+    );
+    set_labeled_control_label(
+        bindings.saved_profile.upcast_ref(),
+        &localized_mnemonic(locale, "label.saved_profile", "Saved profile"),
+    );
+    set_labeled_control_label(
+        bindings.source_locale.upcast_ref(),
+        &localized_mnemonic(locale, "label.source_language", "Source language"),
     );
     set_labeled_control_label(
         bindings.target_locale.upcast_ref(),
-        &localization::text(locale, "settings.target_language", "Target language"),
+        &localized_mnemonic(locale, "settings.target_language", "Target language"),
     );
     set_labeled_control_label(
         bindings.theme.upcast_ref(),
@@ -1773,6 +1905,28 @@ fn refresh_localized_widgets(bindings: &UiBindings, locale: UiLocale) {
             localization::text(locale, "theme.dark", "Dark"),
         ],
     );
+    refresh_dropdown_labels(
+        &bindings.source_locale,
+        &[
+            localization::text(locale, "option.source.auto", "Auto"),
+            localization::text(locale, "option.source.english", "English"),
+            localization::text(locale, "option.source.chinese", "Chinese"),
+        ],
+    );
+    refresh_dropdown_labels(
+        &bindings.target_locale,
+        &[
+            localization::text(
+                locale,
+                "option.target.chinese_simplified",
+                "Chinese (Simplified)",
+            ),
+            localization::text(locale, "option.target.english", "English"),
+            localization::text(locale, "option.target.japanese", "Japanese"),
+        ],
+    );
+    refresh_model_placeholder(&bindings.model, locale);
+    refresh_profile_placeholder(&bindings.saved_profile, locale);
     bindings
         .diagnostics_panel
         .set_label(Some(&localization::text(
@@ -2166,6 +2320,28 @@ mod tests {
             bindings.open_source.label().as_deref(),
             Some("_打开文本文件")
         );
+        assert_eq!(bindings.provider_title.label(), "提供商配置");
+        assert_eq!(bindings.connect.label().as_deref(), Some("_连接"));
+        assert_eq!(
+            bindings.remove_saved_profile.label().as_deref(),
+            Some("移除已保存配置")
+        );
+        assert_eq!(
+            bindings.remember_profile.label().as_deref(),
+            Some("通过 Secret Service 记住配置、模型和凭据")
+        );
+        let source_language_model = bindings
+            .source_locale
+            .model()
+            .and_then(|model| model.downcast::<gtk::StringList>().ok())
+            .expect("source language labels");
+        assert_eq!(source_language_model.string(0).as_deref(), Some("自动"));
+        let target_language_model = bindings
+            .target_locale
+            .model()
+            .and_then(|model| model.downcast::<gtk::StringList>().ok())
+            .expect("target language labels");
+        assert_eq!(target_language_model.string(0).as_deref(), Some("简体中文"));
         let theme_model = bindings
             .theme
             .model()

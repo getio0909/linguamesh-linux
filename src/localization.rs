@@ -195,6 +195,9 @@ mod tests {
             assert!(!text(locale, "status.label", "").is_empty());
             assert!(!text(locale, "action.open_source", "").is_empty());
             assert!(!text(locale, "dialog.open", "").is_empty());
+            assert!(!text(locale, "section.provider_profiles", "").is_empty());
+            assert!(!text(locale, "action.connect", "").is_empty());
+            assert!(!text(locale, "option.source.auto", "").is_empty());
         }
     }
 
