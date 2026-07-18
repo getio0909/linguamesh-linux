@@ -835,7 +835,7 @@ fn install_keyboard_focus_probe(
             focus_window.present();
         }
         gtk::prelude::GtkWindowExt::set_focus(&focus_window, Some(&initial_focus));
-        let grabbed = initial_focus.grab_focus();
+        let grabbed = initial_focus.grab_focus_without_selecting();
         let focused = grabbed && initial_focus.has_focus();
         if !focus_attempt_logged.get() {
             let mut log = ready_log.borrow_mut();
