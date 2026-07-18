@@ -26,12 +26,13 @@ const REVIEWED_CORE_VERSION: &str = "0.1.0-alpha.2";
 const REVIEWED_ABI_MAJOR: u32 = 1;
 const REVIEWED_PROTOCOL_VERSION: u32 = 1;
 const REVIEWED_PROVIDER_CATALOG_VERSION: &str = "0.1.0";
-const REQUIRED_CORE_FEATURES: [&str; 7] = [
+const REQUIRED_CORE_FEATURES: [&str; 8] = [
     "cancellation_v1",
     "compatibility_negotiation_v1",
     "typed_rust_host_secret_broker_v1",
     "model_discovery_v1",
     "protected_spans_v1",
+    "long_text_chunking_v1",
     "streaming_text_v1",
     "text_translation_v1",
 ];

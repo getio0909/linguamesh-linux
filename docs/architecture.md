@@ -65,6 +65,11 @@ rules and credential-shaped terms, selects only locale-matching entries, protect
 and restores required target terms after streaming; glossary content is not part of saved provider
 profiles or SQLite persistence.
 
+Core also performs bounded long-text chunking before provider calls. It prefers paragraph, sentence,
+and whitespace boundaries, treats protected markers as indivisible, streams chunks in source order,
+and stops before starting another chunk when cancellation is requested. The 16 KiB default is a
+conservative byte estimate, not a tokenizer-derived model capacity claim.
+
 With `gui`, `src/main.rs` binds this state and worker to GTK 4/libadwaita widgets. GTK objects remain
 on the main context, which processes at most 64 queued events per timer tick without performing
 network work. The shell exposes a saved-profile dropdown, provider name, endpoint, optional session

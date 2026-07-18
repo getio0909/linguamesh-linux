@@ -26,9 +26,9 @@ The external-provider path is tested only with LinguaMesh's loopback fake provid
 secret references use the Linux GIO Secret Service adapter and fail closed when the desktop keyring
 is unavailable or requires an interactive prompt. The native workflow
 pins reviewed Core functional revision
-`3f96de03eb4ff04add09473fc1473c2c49d67a51`, whose storage delta adds
-`SQLITE_OPEN_NOFOLLOW` and whose text path adds protected-span and request-level glossary
-restoration, rather than checking
+`ce2b2ab6afa32cb6bbdd45c716fcad8baae00d29`, whose storage delta adds
+`SQLITE_OPEN_NOFOLLOW` and whose text path adds protected-span, request-level glossary, and
+bounded long-text restoration, rather than checking
 out a floating branch. Functional revision
 `7d7eba9960b657f0460fb0daaaaebaaa609f39b1` passed Native Linux run `29604269568` (job
 `87963611054`) and repository-foundation run `29604269516`; it includes the no-credential
@@ -41,7 +41,7 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `3f96de03eb4ff04add09473fc1473c2c49d67a51` and l10n
+The current Linux gate consumes Core `ce2b2ab6afa32cb6bbdd45c716fcad8baae00d29` and l10n
 `2e5e3033f453aa2882cf71217f9514dce8501269`. Request-level glossary rules are bounded and
 in-memory; persistent glossary libraries and CSV/TBX import formats are not release claims.
 

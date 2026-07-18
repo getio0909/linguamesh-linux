@@ -5,17 +5,17 @@
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`3f96de03eb4ff04add09473fc1473c2c49d67a51`. This revision changes file-backed Core storage to add
-SQLite's `SQLITE_OPEN_NOFOLLOW` flag, adds protected-span restoration for streamed text, and adds
-request-level glossary protection. On
+`ce2b2ab6afa32cb6bbdd45c716fcad8baae00d29`. This revision changes file-backed Core storage to add
+SQLite's `SQLITE_OPEN_NOFOLLOW` flag, adds protected-span restoration and request-level glossary
+protection for streamed text, and adds bounded semantic chunking. On
 Linux's default Unix VFS, any symbolic-link path component is rejected. A clean documentation-only
 descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 3f96de03eb4ff04add09473fc1473c2c49d67a51^{commit}
+git -C ../linguamesh-core cat-file -e ce2b2ab6afa32cb6bbdd45c716fcad8baae00d29^{commit}
 git -C ../linguamesh-core diff --quiet \
-  3f96de03eb4ff04add09473fc1473c2c49d67a51..HEAD -- \
+  ce2b2ab6afa32cb6bbdd45c716fcad8baae00d29..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -59,7 +59,7 @@ and diagnostics that omit content, endpoints, IDs, model IDs, and secret referen
 
 The ordinary `demo-provider` run passes 80 tests and reports one intentionally ignored namespace
 test. Its worker tests validate the exact Core
-compatibility contract, prove that fake-service readiness does not auto-connect, require explicit
+compatibility contract including `long_text_chunking_v1`, prove that fake-service readiness does not auto-connect, require explicit
 Connect and model selection, exercise real loopback HTTP/SSE streaming, consume an authenticated
 session secret through the bounded typed host-secret broker, and fail closed for unavailable
 session or persistent secrets. Persistence coverage creates two profiles with independent models,

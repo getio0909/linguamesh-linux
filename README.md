@@ -20,9 +20,9 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `3f96de03eb4ff04add09473fc1473c2c49d67a51`, which adds
-`SQLITE_OPEN_NOFOLLOW` to file-backed storage plus protected-span and request-level glossary
-restoration for streamed text.
+reviewed Core functional revision `ce2b2ab6afa32cb6bbdd45c716fcad8baae00d29`, which adds
+`SQLITE_OPEN_NOFOLLOW` to file-backed storage, protected-span and request-level glossary
+restoration, and bounded semantic chunking for long streamed text.
 
 ## Native stack
 
@@ -136,6 +136,9 @@ The text workspace accepts bounded semicolon-separated glossary rules such as
 `LinguaMesh => 凌瓦网; Acme Product => Acme Product`. Rules are request-scoped and remain in memory;
 Core validates conflicts, protects matching terms with opaque markers, restores required target terms
 across streamed output, and rejects credential-shaped entries without persisting glossary content.
+Long source text is split at paragraph, sentence, or whitespace boundaries using a conservative
+16 KiB byte estimate when no tokenizer is available; opaque protected markers remain whole and
+chunks stream sequentially with cancellation preserved.
 
 When a translation completes, the registered Linux application sends a desktop notification with
 localized generic copy only; source and translated content are never included in notification
