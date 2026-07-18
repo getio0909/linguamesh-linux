@@ -1953,8 +1953,13 @@ fn connect_action_handlers(
                                     glossary,
                                     privacy_mode: state.privacy_mode(),
                                 };
-                                if let Err(error) = translate_worker.try_send(command) {
-                                    state.record_client_error(error.to_string());
+                                match translate_worker.try_send(command) {
+                                    Ok(()) => {
+                                        translate_bindings
+                                            .document_job_state
+                                            .set(Some(DocumentJobState::Running));
+                                    }
+                                    Err(error) => state.record_client_error(error.to_string()),
                                 }
                             }
                             Err(error) => state.record_client_error(error.to_string()),
@@ -2013,7 +2018,9 @@ fn connect_action_handlers(
                     .map_err(|error| TranslationError::new(ErrorKind::Internal, error.to_string()))
             },
         ) {
-            Ok(()) => {}
+            Ok(()) => resume_bindings
+                .document_job_state
+                .set(Some(DocumentJobState::Running)),
             Err(error) => state.record_client_error(error.message),
         }
         refresh_ui(&resume_bindings, &state);
@@ -2043,7 +2050,9 @@ fn connect_action_handlers(
                     .map_err(|error| TranslationError::new(ErrorKind::Internal, error.to_string()))
             },
         ) {
-            Ok(()) => {}
+            Ok(()) => retry_bindings
+                .document_job_state
+                .set(Some(DocumentJobState::Running)),
             Err(error) => state.record_client_error(error.message),
         }
         refresh_ui(&retry_bindings, &state);
