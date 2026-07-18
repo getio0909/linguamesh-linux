@@ -256,6 +256,11 @@ Validated on 2026-07-18 with Rust 1.93.0:
   PO syntax checks, and `bash tools/sync-l10n.sh --check` against l10n
   `dc9a9d48a38dfeb8f6b2020417960023678d8252`. The deterministic l10n bundle checksum is
   `a8c5535b23eb27f02ff5fd3bb4c4c1c6948718f1233321305c173b1741b27e6f`.
+- The same runtime/storage-error localization revision passed the remote Linux gates: Foundation
+  run `29631662275` (job `88046380379`), Native run `29631662278` (job `88046380380`), and Flatpak
+  run `29631662280` (job `88046380350`). Native validation covered the real GTK X11 and forced
+  Wayland paths, storage-fault, Secret Service, portal, notification, drag/drop, catalog, and
+  MO/PO checks; Flatpak completed the GNOME 49 SDK build and bounded sandbox smoke.
 - Linux MO integration revision `daa19923d5dfd4f8d00801f067569daf78a98ab0` adds deterministic
   GNU MO companions for all 14 PO catalogs, switches the runtime parser to MO tables, and
   validates the generated Simplified Chinese state-error translation. Local validation passed
