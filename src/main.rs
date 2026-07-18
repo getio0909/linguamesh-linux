@@ -2202,6 +2202,11 @@ fn apply_worker_event(
         WorkerEvent::TranslationHistoryRestored { count } => {
             state.borrow_mut().restore_translation_history_count(count);
         }
+        WorkerEvent::TranslationHistoryUpdated { count } => {
+            state.borrow_mut().restore_translation_history_count(count);
+            bindings.history_warning.set(false);
+            bindings.history_notice.set(false);
+        }
         WorkerEvent::TranslationHistoryCleared => {
             state.borrow_mut().clear_translation_history_count();
             bindings.history_clear_pending.set(false);

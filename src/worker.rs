@@ -100,6 +100,11 @@ pub enum WorkerEvent {
         /// 当前数据库中的历史记录数量。
         count: usize,
     },
+    /// 本地翻译历史已写入并返回最新数量。
+    TranslationHistoryUpdated {
+        /// 当前数据库中的历史记录数量。
+        count: usize,
+    },
     /// 本地翻译历史已清空。
     TranslationHistoryCleared,
     /// 清空本地翻译历史被拒绝。
@@ -545,22 +550,31 @@ async fn run_worker(
                     }
                     let terminal = event.is_terminal();
                     let completed = matches!(&event, TranslationEvent::Completed { .. });
+                    if terminal
+                        && completed
+                        && !active_translation.request.is_incognito()
+                        && let Some(storage) = storage.as_mut()
+                    {
+                        let history_event = match storage.record_translation_history(
+                            &active_translation.request,
+                            &active_translation.output,
+                        ) {
+                            Ok(()) => match storage.translation_history_count() {
+                                Ok(count) => WorkerEvent::TranslationHistoryUpdated { count },
+                                Err(error) => {
+                                    WorkerEvent::TranslationHistoryPersistenceFailed(error)
+                                }
+                            },
+                            Err(error) => WorkerEvent::TranslationHistoryPersistenceFailed(error),
+                        };
+                        if events.send(history_event).is_err() {
+                            shutting_down = true;
+                        }
+                    }
                     if events.send(WorkerEvent::Translation(event)).is_err() {
                         shutting_down = true;
                     }
                     if terminal {
-                        if completed
-                            && let Some(storage) = storage.as_mut()
-                            && let Err(error) = storage.record_translation_history(
-                                &active_translation.request,
-                                &active_translation.output,
-                            )
-                            && events
-                                .send(WorkerEvent::TranslationHistoryPersistenceFailed(error))
-                                .is_err()
-                        {
-                            shutting_down = true;
-                        }
                         clear_active_cancellation(&active_cancellation);
                         active = None;
                         if stop_after_active {
@@ -3095,7 +3109,9 @@ mod tests {
                     assert!(matches!(event, TranslationEvent::Completed { .. }));
                     translation_completed = true;
                 }
-                WorkerEvent::Translation(_) => {}
+                WorkerEvent::Translation(_)
+                | WorkerEvent::TranslationHistoryUpdated { .. }
+                | WorkerEvent::TranslationHistoryPersistenceFailed(_) => {}
                 _ => panic!("unexpected busy operation event"),
             }
         }
