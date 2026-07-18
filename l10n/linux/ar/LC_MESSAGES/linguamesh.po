@@ -923,3 +923,147 @@ msgstr "أنتج تدفق النواة حدثًا خارج الترتيب."
 msgctxt "error.state.event_after_terminal"
 msgid "The core stream produced an event after termination."
 msgstr "أنتج تدفق النواة حدثًا بعد الإنهاء."
+
+#. State error shown when a provider change is attempted during translation.
+#, fuzzy
+msgctxt "error.state.provider_change_busy"
+msgid "A provider cannot be changed while a translation is running."
+msgstr "لا يمكن تغيير موفر الخدمة أثناء تشغيل الترجمة."
+
+#. State error shown when a model change is attempted during translation.
+#, fuzzy
+msgctxt "error.state.model_change_busy"
+msgid "A model cannot be changed while a translation is running."
+msgstr "لا يمكن تغيير النموذج أثناء تشغيل الترجمة."
+
+#. State error shown when a saved profile is removed during translation.
+#, fuzzy
+msgctxt "error.state.profile_removal_busy"
+msgid "A saved profile cannot be removed while a translation is running."
+msgstr "لا يمكن إزالة ملف التعريف المحفوظ أثناء الترجمة."
+
+#. State error shown when the core stream ends without a terminal event.
+#, fuzzy
+msgctxt "error.state.stream_missing_terminal"
+msgid "The core event stream ended without a terminal event."
+msgstr "انتهى تدفق النواة دون حدث إنهاء."
+
+#. Storage warning shown when Secret Service cleanup fails after profile removal.
+#, fuzzy
+msgctxt "error.storage.cleanup_failed"
+msgid "Secret Service cleanup failed after profile removal."
+msgstr "فشل تنظيف Secret Service بعد إزالة ملف التعريف."
+
+#. Storage error shown when secure credential storage is unavailable.
+#, fuzzy
+msgctxt "error.storage.secure_unavailable"
+msgid "Secure credential storage is unavailable."
+msgstr "تخزين بيانات الاعتماد الآمن غير متاح."
+
+#. Storage guidance shown when only session-only mode is available.
+#, fuzzy
+msgctxt "error.storage.session_only"
+msgid "Profile storage is unavailable; use session-only mode."
+msgstr "تخزين ملفات التعريف غير متاح؛ استخدم وضع الجلسة فقط."
+
+#. Storage error shown after profile storage becomes unavailable.
+#, fuzzy
+msgctxt "error.storage.became_unavailable"
+msgid "Profile storage became unavailable."
+msgstr "أصبح تخزين ملفات التعريف غير متاح."
+
+#. Storage error shown when no saved profile was removed.
+#, fuzzy
+msgctxt "error.storage.remove_failed"
+msgid "Profile storage is unavailable; no saved profile was removed."
+msgstr "تخزين ملفات التعريف غير متاح؛ لم تتم إزالة أي ملف محفوظ."
+
+#. Provider profile error shown when a saved profile no longer exists.
+#, fuzzy
+msgctxt "error.profile.not_found"
+msgid "The saved provider profile no longer exists."
+msgstr "ملف موفر الخدمة المحفوظ لم يعد موجودًا."
+
+#. Provider error shown when model selection is attempted without a connection.
+#, fuzzy
+msgctxt "error.provider.select_model_requires_connection"
+msgid "Connect a provider before selecting a model."
+msgstr "اتصل بموفر خدمة قبل اختيار نموذج."
+
+#. Provider error shown for a model selection belonging to a stale provider.
+#, fuzzy
+msgctxt "error.provider.stale_model_selection"
+msgid "The model selection belongs to a stale provider."
+msgstr "ينتمي اختيار النموذج إلى موفر خدمة قديم."
+
+#. Provider error shown when the selected model is unavailable from the active provider.
+#, fuzzy
+msgctxt "error.provider.model_unavailable"
+msgid "The selected model is not available from the active provider."
+msgstr "النموذج المحدد غير متاح من موفر الخدمة النشط."
+
+#. Provider error shown when a request does not use the confirmed model.
+#, fuzzy
+msgctxt "error.provider.unconfirmed_model"
+msgid "The translation request does not use the confirmed model selection."
+msgstr "لا يستخدم طلب الترجمة اختيار النموذج المؤكد."
+
+#. Worker error shown when the core command queue cannot accept work.
+#, fuzzy
+msgctxt "error.worker.command_queue_unavailable"
+msgid "The core command queue is unavailable or full."
+msgstr "قائمة أوامر النواة غير متاحة أو ممتلئة."
+
+#. File-import error shown when a selected file is not valid UTF-8 text.
+#, fuzzy
+msgctxt "error.file.invalid_utf8"
+msgid "The selected file is not valid UTF-8 text."
+msgstr "الملف المحدد ليس نص UTF-8 صالحًا."
+
+#. Provider profile error with a safe validation detail.
+#, fuzzy, python-brace-format
+msgctxt "error.profile.invalid_with_detail"
+msgid "The provider profile is invalid: {error}"
+msgstr "ملف موفر الخدمة غير صالح: {error}"
+
+#. Provider profile error with a generated identifier validation detail.
+#, fuzzy, python-brace-format
+msgctxt "error.profile.id_invalid"
+msgid "The generated provider profile ID is invalid: {error}"
+msgstr "معرّف ملف موفر الخدمة المُنشأ غير صالح: {error}"
+
+#. Provider profile error shown when a unique generated identifier cannot be found.
+#, fuzzy
+msgctxt "error.profile.id_generation_failed"
+msgid "A unique provider profile ID could not be generated."
+msgstr "تعذر إنشاء معرّف فريد لملف موفر الخدمة."
+
+#. Provider profile error shown when a saved model cannot be updated.
+#, fuzzy
+msgctxt "error.profile.saved_model_update_failed"
+msgid "The saved model could not be updated."
+msgstr "تعذر تحديث النموذج المحفوظ."
+
+#. Core compatibility error with a safe compatibility detail.
+#, fuzzy, python-brace-format
+msgctxt "error.core.contract_incompatible"
+msgid "The shared Core contract is incompatible: {error}"
+msgstr "عقد Core المشترك غير متوافق: {error}"
+
+#. Secret Service error shown when the host request channel closes.
+#, fuzzy
+msgctxt "error.secret.request_channel_closed"
+msgid "The host secret request channel closed."
+msgstr "أُغلقت قناة طلب السر المضيف."
+
+#. Secret Service error shown when a host request is no longer active.
+#, fuzzy
+msgctxt "error.secret.request_inactive"
+msgid "The Core secret request was no longer active."
+msgstr "لم يعد طلب السر من Core نشطًا."
+
+#. Provider error shown when session credentials lack an explicit secret reference.
+#, fuzzy
+msgctxt "error.provider.session_ref_required"
+msgid "A session credential requires an explicit session secret reference."
+msgstr "تتطلب بيانات اعتماد الجلسة مرجع سر جلسة صريحًا."

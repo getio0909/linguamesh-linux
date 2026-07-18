@@ -116,8 +116,8 @@ older distributions and future Flatpak runtimes require separate packaging valid
 - The Linux host now uses existing GIO D-Bus bindings for Secret Service `OpenSession`, item search,
   create/update, and `GetSecret` resolution. Persistent profiles retain only a SecretRef; the
   one-shot credential is passed through the existing typed broker and is never written to SQLite.
-- Fourteen canonical official/pseudo PO/MO catalog pairs containing 148 messages pinned to l10n revision
-  `0b906034784a1b5e81a879649abbfda001fa9e67`. Sync rejects a different revision, dirty generated
+- Fourteen canonical official/pseudo PO/MO catalog pairs containing 172 messages pinned to l10n revision
+  `cc841103c3480ece237baa088bbb5881a321cf0a`. Sync rejects a different revision, dirty generated
   source artifacts, stale copies, and unexpected catalog counts. The GTK locale selector exposes
   the twelve official packs, runtime action, workspace-widget, active-provider, status summary,
   partial-output, text-file import, provider-profile, source/target language, onboarding stage/detail,
@@ -128,7 +128,7 @@ older distributions and future Flatpak runtimes require separate packaging valid
 - Foundation and native workflow sources use immutable Node 24-compatible action commits and
   disable persisted checkout credentials. Native CI pins reviewed Core revision
   `fbf3e9b5927049dccaa19f8c36013495ffebba12` and localization revision
-  `0b906034784a1b5e81a879649abbfda001fa9e67`. The revised native gate retains serialized all-target,
+  `cc841103c3480ece237baa088bbb5881a321cf0a`. The revised native gate retains serialized all-target,
   all-feature X11/Xvfb tests, runs the exact ignored storage-fault test in a private user/mount
   namespace when available, then runs the existing GTK binary test under forced Wayland and
   headless Weston before building the application. On restricted Ubuntu hosts, only the private
@@ -253,6 +253,12 @@ Validated on 2026-07-18 with Rust 1.93.0:
   validates the generated Simplified Chinese state-error translation. Local validation passed
   locked all-target check, strict Clippy, 51 no-default tests, 5 localization tests, and sync
   validation against l10n `0b906034784a1b5e81a879649abbfda001fa9e67`.
+- Linux worker/file/storage/provider error coverage adds 24 fixed and detail-bearing message keys,
+  including invalid UTF-8 import, storage fallback, provider/model state, secret-channel, and
+  profile validation failures. Local validation passed `cargo test --locked` (51 tests),
+  `cargo test --features gui --lib localization::tests --locked` (5 tests), all-target locked
+  check, strict all-feature Clippy, and `bash tools/sync-l10n.sh --check` against l10n
+  `cc841103c3480ece237baa088bbb5881a321cf0a`.
 - Linux revision `7a8526f7a1a0e3cfe068e3dd20934cf3e11d18ca` adds a GTK regression that sets source
   text in Simplified Chinese, switches to Arabic, verifies RTL direction, and asserts the source
   buffer is unchanged. Native run `29623544194` (job `88023275325`), Foundation run `29623544187`,
@@ -273,6 +279,11 @@ Validated on 2026-07-18 with Rust 1.93.0:
   the native gate covered the 148-message pinned catalog, localized fixed reducer errors and
   category prefixes, and the existing X11/Wayland, storage, Secret Service, portal, notification,
   drag/drop, and accessibility fixtures.
+- Linux MO integration revision `6c5bfb305967d0f01488ad09ade6e5b88eebbdb0` passed Native Linux
+  run `29628986188`, Foundation run `29628986160`, and Flatpak run `29628986187`; the native gate
+  validated all 14 PO catalogs with `msgfmt`, all 14 MO catalogs with `msgunfmt`, and runtime MO
+  lookup through the existing locale, error, RTL, storage, portal, notification, and accessibility
+  fixtures. The workflow pins l10n revision `0b906034784a1b5e81a879649abbfda001fa9e67`.
 - The checkout, Rust-toolchain, and Rust-cache action SHAs resolved through the GitHub commits API;
   their action metadata uses Node 24 or a composite action.
 

@@ -913,3 +913,147 @@ msgstr "The core stream produced an out-of-order event."
 msgctxt "error.state.event_after_terminal"
 msgid "The core stream produced an event after termination."
 msgstr "The core stream produced an event after termination."
+
+#. State error shown when a provider change is attempted during translation.
+#, fuzzy
+msgctxt "error.state.provider_change_busy"
+msgid "A provider cannot be changed while a translation is running."
+msgstr "A provider cannot be changed while a translation is running."
+
+#. State error shown when a model change is attempted during translation.
+#, fuzzy
+msgctxt "error.state.model_change_busy"
+msgid "A model cannot be changed while a translation is running."
+msgstr "A model cannot be changed while a translation is running."
+
+#. State error shown when a saved profile is removed during translation.
+#, fuzzy
+msgctxt "error.state.profile_removal_busy"
+msgid "A saved profile cannot be removed while a translation is running."
+msgstr "A saved profile cannot be removed while a translation is running."
+
+#. State error shown when the core stream ends without a terminal event.
+#, fuzzy
+msgctxt "error.state.stream_missing_terminal"
+msgid "The core event stream ended without a terminal event."
+msgstr "The core event stream ended without a terminal event."
+
+#. Storage warning shown when Secret Service cleanup fails after profile removal.
+#, fuzzy
+msgctxt "error.storage.cleanup_failed"
+msgid "Secret Service cleanup failed after profile removal."
+msgstr "Secret Service cleanup failed after profile removal."
+
+#. Storage error shown when secure credential storage is unavailable.
+#, fuzzy
+msgctxt "error.storage.secure_unavailable"
+msgid "Secure credential storage is unavailable."
+msgstr "Secure credential storage is unavailable."
+
+#. Storage guidance shown when only session-only mode is available.
+#, fuzzy
+msgctxt "error.storage.session_only"
+msgid "Profile storage is unavailable; use session-only mode."
+msgstr "Profile storage is unavailable; use session-only mode."
+
+#. Storage error shown after profile storage becomes unavailable.
+#, fuzzy
+msgctxt "error.storage.became_unavailable"
+msgid "Profile storage became unavailable."
+msgstr "Profile storage became unavailable."
+
+#. Storage error shown when no saved profile was removed.
+#, fuzzy
+msgctxt "error.storage.remove_failed"
+msgid "Profile storage is unavailable; no saved profile was removed."
+msgstr "Profile storage is unavailable; no saved profile was removed."
+
+#. Provider profile error shown when a saved profile no longer exists.
+#, fuzzy
+msgctxt "error.profile.not_found"
+msgid "The saved provider profile no longer exists."
+msgstr "The saved provider profile no longer exists."
+
+#. Provider error shown when model selection is attempted without a connection.
+#, fuzzy
+msgctxt "error.provider.select_model_requires_connection"
+msgid "Connect a provider before selecting a model."
+msgstr "Connect a provider before selecting a model."
+
+#. Provider error shown for a model selection belonging to a stale provider.
+#, fuzzy
+msgctxt "error.provider.stale_model_selection"
+msgid "The model selection belongs to a stale provider."
+msgstr "The model selection belongs to a stale provider."
+
+#. Provider error shown when the selected model is unavailable from the active provider.
+#, fuzzy
+msgctxt "error.provider.model_unavailable"
+msgid "The selected model is not available from the active provider."
+msgstr "The selected model is not available from the active provider."
+
+#. Provider error shown when a request does not use the confirmed model.
+#, fuzzy
+msgctxt "error.provider.unconfirmed_model"
+msgid "The translation request does not use the confirmed model selection."
+msgstr "The translation request does not use the confirmed model selection."
+
+#. Worker error shown when the core command queue cannot accept work.
+#, fuzzy
+msgctxt "error.worker.command_queue_unavailable"
+msgid "The core command queue is unavailable or full."
+msgstr "The core command queue is unavailable or full."
+
+#. File-import error shown when a selected file is not valid UTF-8 text.
+#, fuzzy
+msgctxt "error.file.invalid_utf8"
+msgid "The selected file is not valid UTF-8 text."
+msgstr "The selected file is not valid UTF-8 text."
+
+#. Provider profile error with a safe validation detail.
+#, fuzzy, python-brace-format
+msgctxt "error.profile.invalid_with_detail"
+msgid "The provider profile is invalid: {error}"
+msgstr "The provider profile is invalid: {error}"
+
+#. Provider profile error with a generated identifier validation detail.
+#, fuzzy, python-brace-format
+msgctxt "error.profile.id_invalid"
+msgid "The generated provider profile ID is invalid: {error}"
+msgstr "The generated provider profile ID is invalid: {error}"
+
+#. Provider profile error shown when a unique generated identifier cannot be found.
+#, fuzzy
+msgctxt "error.profile.id_generation_failed"
+msgid "A unique provider profile ID could not be generated."
+msgstr "A unique provider profile ID could not be generated."
+
+#. Provider profile error shown when a saved model cannot be updated.
+#, fuzzy
+msgctxt "error.profile.saved_model_update_failed"
+msgid "The saved model could not be updated."
+msgstr "The saved model could not be updated."
+
+#. Core compatibility error with a safe compatibility detail.
+#, fuzzy, python-brace-format
+msgctxt "error.core.contract_incompatible"
+msgid "The shared Core contract is incompatible: {error}"
+msgstr "The shared Core contract is incompatible: {error}"
+
+#. Secret Service error shown when the host request channel closes.
+#, fuzzy
+msgctxt "error.secret.request_channel_closed"
+msgid "The host secret request channel closed."
+msgstr "The host secret request channel closed."
+
+#. Secret Service error shown when a host request is no longer active.
+#, fuzzy
+msgctxt "error.secret.request_inactive"
+msgid "The Core secret request was no longer active."
+msgstr "The Core secret request was no longer active."
+
+#. Provider error shown when session credentials lack an explicit secret reference.
+#, fuzzy
+msgctxt "error.provider.session_ref_required"
+msgid "A session credential requires an explicit session secret reference."
+msgstr "A session credential requires an explicit session secret reference."

@@ -1174,10 +1174,7 @@ impl AppState {
         self.error.as_ref().map(|error| {
             let (category_key, category_fallback) = error_category(error.kind);
             let category = localization::text(locale, category_key, category_fallback);
-            let message = state_error_message(&error.message).map_or_else(
-                || error.message.clone(),
-                |(key, fallback)| localization::text(locale, key, fallback),
-            );
+            let message = localized_error_message(locale, &error.message);
             format!("{category}: {message}")
         })
     }
@@ -1317,8 +1314,128 @@ fn state_error_message(message: &str) -> Option<(&'static str, &'static str)> {
             "error.state.event_after_terminal",
             "The core stream produced an event after termination.",
         ),
+        _ => return additional_state_error_message(message),
+    })
+}
+
+fn additional_state_error_message(message: &str) -> Option<(&'static str, &'static str)> {
+    Some(match message {
+        "A provider cannot be changed while a translation is running." => (
+            "error.state.provider_change_busy",
+            "A provider cannot be changed while a translation is running.",
+        ),
+        "A model cannot be changed while a translation is running." => (
+            "error.state.model_change_busy",
+            "A model cannot be changed while a translation is running.",
+        ),
+        "A saved profile cannot be removed while a translation is running." => (
+            "error.state.profile_removal_busy",
+            "A saved profile cannot be removed while a translation is running.",
+        ),
+        "The core event stream ended without a terminal event." => (
+            "error.state.stream_missing_terminal",
+            "The core event stream ended without a terminal event.",
+        ),
+        "Secret Service cleanup failed after profile removal." => (
+            "error.storage.cleanup_failed",
+            "Secret Service cleanup failed after profile removal.",
+        ),
+        "Secure credential storage is unavailable." => (
+            "error.storage.secure_unavailable",
+            "Secure credential storage is unavailable.",
+        ),
+        "Profile storage is unavailable; use session-only mode." => (
+            "error.storage.session_only",
+            "Profile storage is unavailable; use session-only mode.",
+        ),
+        "Profile storage became unavailable." => (
+            "error.storage.became_unavailable",
+            "Profile storage became unavailable.",
+        ),
+        "Profile storage is unavailable; no saved profile was removed." => (
+            "error.storage.remove_failed",
+            "Profile storage is unavailable; no saved profile was removed.",
+        ),
+        "The saved provider profile no longer exists." => (
+            "error.profile.not_found",
+            "The saved provider profile no longer exists.",
+        ),
+        "Connect a provider before selecting a model." => (
+            "error.provider.select_model_requires_connection",
+            "Connect a provider before selecting a model.",
+        ),
+        "The model selection belongs to a stale provider." => (
+            "error.provider.stale_model_selection",
+            "The model selection belongs to a stale provider.",
+        ),
+        "The selected model is not available from the active provider." => (
+            "error.provider.model_unavailable",
+            "The selected model is not available from the active provider.",
+        ),
+        "The translation request does not use the confirmed model selection." => (
+            "error.provider.unconfirmed_model",
+            "The translation request does not use the confirmed model selection.",
+        ),
+        "The core command queue is unavailable or full." => (
+            "error.worker.command_queue_unavailable",
+            "The core command queue is unavailable or full.",
+        ),
+        "The selected file is not valid UTF-8 text." => (
+            "error.file.invalid_utf8",
+            "The selected file is not valid UTF-8 text.",
+        ),
+        "A unique provider profile ID could not be generated." => (
+            "error.profile.id_generation_failed",
+            "A unique provider profile ID could not be generated.",
+        ),
+        "The saved model could not be updated." => (
+            "error.profile.saved_model_update_failed",
+            "The saved model could not be updated.",
+        ),
+        "The host secret request channel closed." => (
+            "error.secret.request_channel_closed",
+            "The host secret request channel closed.",
+        ),
+        "The Core secret request was no longer active." => (
+            "error.secret.request_inactive",
+            "The Core secret request was no longer active.",
+        ),
+        "A session credential requires an explicit session secret reference." => (
+            "error.provider.session_ref_required",
+            "A session credential requires an explicit session secret reference.",
+        ),
         _ => return None,
     })
+}
+
+fn localized_error_message(locale: UiLocale, message: &str) -> String {
+    if let Some((key, fallback)) = state_error_message(message) {
+        return localization::text(locale, key, fallback);
+    }
+
+    for (prefix, key, fallback) in [
+        (
+            "The provider profile is invalid: ",
+            "error.profile.invalid_with_detail",
+            "The provider profile is invalid: {error}",
+        ),
+        (
+            "The generated provider profile ID is invalid: ",
+            "error.profile.id_invalid",
+            "The generated provider profile ID is invalid: {error}",
+        ),
+        (
+            "The shared Core contract is incompatible: ",
+            "error.core.contract_incompatible",
+            "The shared Core contract is incompatible: {error}",
+        ),
+    ] {
+        if let Some(detail) = message.strip_prefix(prefix) {
+            return localization::text(locale, key, fallback).replace("{error}", detail);
+        }
+    }
+
+    message.to_owned()
 }
 
 fn saved_profile_by_id<'a>(
@@ -1450,6 +1567,22 @@ mod tests {
                 .localized_error_text(UiLocale::SimplifiedChinese)
                 .as_deref(),
             Some("网络: The provider could not be reached.")
+        );
+
+        state.record_client_error("The selected file is not valid UTF-8 text.");
+        assert_eq!(
+            state
+                .localized_error_text(UiLocale::SimplifiedChinese)
+                .as_deref(),
+            Some("内部错误: 所选文件不是有效的 UTF-8 文本。")
+        );
+
+        state.record_client_error("The provider profile is invalid: invalid endpoint");
+        assert_eq!(
+            state
+                .localized_error_text(UiLocale::SimplifiedChinese)
+                .as_deref(),
+            Some("内部错误: 提供商配置无效：invalid endpoint")
         );
     }
 
