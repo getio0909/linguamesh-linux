@@ -2140,6 +2140,7 @@ mod tests {
             .and_then(|model| model.downcast::<gtk::StringList>().ok())
             .expect("theme labels");
         assert_eq!(theme_model.string(1).as_deref(), Some("浅色"));
+        bindings.source.set_text("保留源文本");
         assert_eq!(
             bindings.open_source.label().as_deref(),
             Some("_Open text file")
@@ -2147,6 +2148,12 @@ mod tests {
         state.borrow_mut().set_locale(UiLocale::Arabic);
         refresh_ui(&bindings, &state.borrow());
         assert_eq!(bindings.workspace.direction(), gtk::TextDirection::Rtl);
+        let source_text = bindings.source.text(
+            &bindings.source.start_iter(),
+            &bindings.source.end_iter(),
+            true,
+        );
+        assert_eq!(source_text.as_str(), "保留源文本");
         state.borrow_mut().set_locale(UiLocale::English);
         refresh_ui(&bindings, &state.borrow());
 
