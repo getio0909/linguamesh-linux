@@ -1022,3 +1022,20 @@ message keys or locale-pack changes are needed for this bounded UI-copy cleanup.
 Other dynamic dialog metadata (`Job`, `Identity`) and complete visible-string gettext coverage
 remain open alongside Orca speech, physical desktop review, OCR, other clients, and stable-release
 evidence.
+
+## 2026-07-18 — Linux dialog metadata localization checkpoint
+
+Assumption: the existing catalog titles `dialog.document_jobs` and `dialog.memory` are the
+canonical Linux labels for the corresponding job and translation-memory metadata rows. Reusing
+those keys keeps this slice limited to runtime UI copy and avoids inventing untranslated catalog
+entries while the broader visible-string audit remains open.
+
+- Document-job rows now render their identifier prefix through the active catalog.
+- Translation-memory rows now render their identity prefix through the active catalog; stored
+  identifiers and translated content remain unchanged.
+- Local `cargo fmt --all -- --check`, strict all-target/all-feature Clippy, the locked no-default
+  61-test suite, and `git diff --check` passed.
+
+Native, Foundation, and Flatpak CI gates remain required for the pushed revision. Complete
+visible-string gettext coverage, Orca speech, physical desktop review, OCR, other clients, and
+stable-release evidence remain open.

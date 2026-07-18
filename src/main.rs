@@ -3224,7 +3224,8 @@ fn show_document_jobs_dialog(
             header.append(&metadata);
             header.append(&select);
             row.append(&header);
-            let id = gtk::Label::new(Some(&format!("Job: {}", snapshot.job_id)));
+            let job_prefix = localization::text(locale, "dialog.document_jobs", "Document jobs");
+            let id = gtk::Label::new(Some(&format!("{job_prefix}: {}", snapshot.job_id)));
             id.set_xalign(0.0);
             id.add_css_class("dim-label");
             row.append(&id);
@@ -3568,7 +3569,9 @@ fn show_memory_dialog(
             translated.set_wrap(true);
             translated.set_selectable(true);
             row.append(&translated);
-            let identity = gtk::Label::new(Some(&format!("Identity: {}", entry.identity_json)));
+            let identity_prefix = localization::text(locale, "dialog.memory", "Translation memory");
+            let identity =
+                gtk::Label::new(Some(&format!("{identity_prefix}: {}", entry.identity_json)));
             identity.set_xalign(0.0);
             identity.set_wrap(true);
             identity.set_selectable(true);
