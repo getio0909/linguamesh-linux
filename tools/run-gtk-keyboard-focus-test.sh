@@ -57,7 +57,7 @@ XDG_CACHE_HOME="$workspace/cache" \
       printf "%s\n" "GTK keyboard fixture did not reach the enabled provider form." >&2
       exit 1
     fi
-    xdotool key --window "$app_window" alt+p
+    xdotool key --window "$app_window" F12
     sleep 0.1
     for _ in {1..8}; do
       xdotool key --window "$app_window" Shift+Tab
