@@ -22,6 +22,7 @@ use linguamesh_linux::worker::{
 use linguamesh_storage::{DocumentJobSnapshot, TranslationHistoryEntry, TranslationMemoryEntry};
 use std::cell::{Cell, RefCell};
 use std::fs;
+use std::io::Write;
 use std::rc::Rc;
 use std::sync::mpsc::TryRecvError;
 use std::time::{Duration, Instant};
@@ -540,97 +541,231 @@ fn create_window(
     toolbar.set_content(Some(&root));
     window.set_content(Some(&toolbar));
     let window_binding = window.clone();
-    (
-        window,
-        UiBindings {
-            application: application.clone(),
-            window: window_binding,
-            workspace: root,
-            onboarding,
-            onboarding_title,
-            onboarding_detail,
-            provider_title,
-            provider_note,
-            saved_profile,
-            provider_name,
-            provider_endpoint,
-            provider_credential,
-            remember_profile,
-            remove_saved_profile,
-            connect,
-            active_provider,
-            model,
-            source_locale,
-            target_locale,
-            glossary,
-            import_glossary,
-            export_glossary,
-            incognito,
-            history_enabled,
-            history,
-            clear_history,
-            memory_enabled,
-            memory,
-            clear_memory,
-            fallback_enabled,
-            fallback_profile_label,
-            fallback_profile,
-            theme: theme.clone(),
-            locale: locale.clone(),
-            source: editor_bindings.source,
-            output: editor_bindings.output,
-            source_view: editor_bindings.source_view,
-            output_view: editor_bindings.output_view,
-            source_label: editor_bindings.source_label,
-            output_label: editor_bindings.output_label,
-            translate,
-            export_output,
-            open_output,
-            open_source,
-            document_jobs,
-            stop,
-            pause_document,
-            resume_document,
-            retry_document,
-            status,
-            partial,
-            error,
-            locale_note,
-            diagnostics_panel,
-            diagnostics,
-            profile_selection_guard: Rc::new(Cell::new(false)),
-            draft_profile_id: Rc::new(RefCell::new(None)),
-            source_uri: Rc::new(RefCell::new(None)),
-            output_uri: Rc::new(RefCell::new(None)),
-            fallback_profile_ids: Rc::new(RefCell::new(vec![None])),
-            document_job_id: Rc::new(RefCell::new(None)),
-            document_job_guard: Rc::new(Cell::new(false)),
-            document_job_state: Rc::new(Cell::new(None)),
-            document_progress: Rc::new(Cell::new(None)),
-            document_warnings: Rc::new(RefCell::new(Vec::new())),
-            export_notice: Rc::new(Cell::new(false)),
-            fallback_notice: Rc::new(Cell::new(false)),
-            glossary_notice: Rc::new(Cell::new(false)),
-            glossary_from_csv: Rc::new(Cell::new(false)),
-            history_notice: Rc::new(Cell::new(false)),
-            history_export_notice: Rc::new(Cell::new(false)),
-            history_warning: Rc::new(Cell::new(false)),
-            history_clear_pending: Rc::new(Cell::new(false)),
-            history_policy_guard: Rc::new(Cell::new(false)),
-            history_policy_pending: Rc::new(Cell::new(false)),
-            history_policy_notice: Rc::new(Cell::new(None)),
-            memory_notice: Rc::new(Cell::new(false)),
-            memory_export_notice: Rc::new(Cell::new(false)),
-            memory_warning: Rc::new(Cell::new(false)),
-            memory_clear_pending: Rc::new(Cell::new(false)),
-            memory_policy_guard: Rc::new(Cell::new(false)),
-            memory_policy_pending: Rc::new(Cell::new(false)),
-            memory_policy_notice: Rc::new(Cell::new(None)),
-            source_drop_target,
-        },
-        theme,
-        locale,
-    )
+    let bindings = UiBindings {
+        application: application.clone(),
+        window: window_binding,
+        workspace: root,
+        onboarding,
+        onboarding_title,
+        onboarding_detail,
+        provider_title,
+        provider_note,
+        saved_profile,
+        provider_name,
+        provider_endpoint,
+        provider_credential,
+        remember_profile,
+        remove_saved_profile,
+        connect,
+        active_provider,
+        model,
+        source_locale,
+        target_locale,
+        glossary,
+        import_glossary,
+        export_glossary,
+        incognito,
+        history_enabled,
+        history,
+        clear_history,
+        memory_enabled,
+        memory,
+        clear_memory,
+        fallback_enabled,
+        fallback_profile_label,
+        fallback_profile,
+        theme: theme.clone(),
+        locale: locale.clone(),
+        source: editor_bindings.source,
+        output: editor_bindings.output,
+        source_view: editor_bindings.source_view,
+        output_view: editor_bindings.output_view,
+        source_label: editor_bindings.source_label,
+        output_label: editor_bindings.output_label,
+        translate,
+        export_output,
+        open_output,
+        open_source,
+        document_jobs,
+        stop,
+        pause_document,
+        resume_document,
+        retry_document,
+        status,
+        partial,
+        error,
+        locale_note,
+        diagnostics_panel,
+        diagnostics,
+        profile_selection_guard: Rc::new(Cell::new(false)),
+        draft_profile_id: Rc::new(RefCell::new(None)),
+        source_uri: Rc::new(RefCell::new(None)),
+        output_uri: Rc::new(RefCell::new(None)),
+        fallback_profile_ids: Rc::new(RefCell::new(vec![None])),
+        document_job_id: Rc::new(RefCell::new(None)),
+        document_job_guard: Rc::new(Cell::new(false)),
+        document_job_state: Rc::new(Cell::new(None)),
+        document_progress: Rc::new(Cell::new(None)),
+        document_warnings: Rc::new(RefCell::new(Vec::new())),
+        export_notice: Rc::new(Cell::new(false)),
+        fallback_notice: Rc::new(Cell::new(false)),
+        glossary_notice: Rc::new(Cell::new(false)),
+        glossary_from_csv: Rc::new(Cell::new(false)),
+        history_notice: Rc::new(Cell::new(false)),
+        history_export_notice: Rc::new(Cell::new(false)),
+        history_warning: Rc::new(Cell::new(false)),
+        history_clear_pending: Rc::new(Cell::new(false)),
+        history_policy_guard: Rc::new(Cell::new(false)),
+        history_policy_pending: Rc::new(Cell::new(false)),
+        history_policy_notice: Rc::new(Cell::new(None)),
+        memory_notice: Rc::new(Cell::new(false)),
+        memory_export_notice: Rc::new(Cell::new(false)),
+        memory_warning: Rc::new(Cell::new(false)),
+        memory_clear_pending: Rc::new(Cell::new(false)),
+        memory_policy_guard: Rc::new(Cell::new(false)),
+        memory_policy_pending: Rc::new(Cell::new(false)),
+        memory_policy_notice: Rc::new(Cell::new(None)),
+        source_drop_target,
+    };
+    install_keyboard_focus_probe(&window, &bindings, &theme, &locale);
+    (window, bindings, theme, locale)
+}
+
+#[allow(clippy::too_many_lines)]
+fn install_keyboard_focus_probe(
+    window: &adw::ApplicationWindow,
+    bindings: &UiBindings,
+    theme: &gtk::DropDown,
+    locale: &gtk::DropDown,
+) {
+    let Ok(log_path) = std::env::var("LINGUAMESH_KEYBOARD_FOCUS_LOG") else {
+        return;
+    };
+    let Ok(file) = fs::File::create(&log_path) else {
+        eprintln!("Keyboard focus fixture could not create the focus log.");
+        return;
+    };
+    let log = Rc::new(RefCell::new(std::io::BufWriter::new(file)));
+    let widgets = [
+        (
+            "saved_profile",
+            bindings.saved_profile.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_name",
+            bindings.provider_name.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_endpoint",
+            bindings.provider_endpoint.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_credential",
+            bindings.provider_credential.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "remember_profile",
+            bindings.remember_profile.clone().upcast::<gtk::Widget>(),
+        ),
+        ("connect", bindings.connect.clone().upcast::<gtk::Widget>()),
+        ("model", bindings.model.clone().upcast::<gtk::Widget>()),
+        (
+            "source_locale",
+            bindings.source_locale.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "target_locale",
+            bindings.target_locale.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "glossary",
+            bindings.glossary.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "import_glossary",
+            bindings.import_glossary.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "export_glossary",
+            bindings.export_glossary.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "incognito",
+            bindings.incognito.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "history_enabled",
+            bindings.history_enabled.clone().upcast::<gtk::Widget>(),
+        ),
+        ("history", bindings.history.clone().upcast::<gtk::Widget>()),
+        (
+            "clear_history",
+            bindings.clear_history.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "memory_enabled",
+            bindings.memory_enabled.clone().upcast::<gtk::Widget>(),
+        ),
+        ("memory", bindings.memory.clone().upcast::<gtk::Widget>()),
+        (
+            "clear_memory",
+            bindings.clear_memory.clone().upcast::<gtk::Widget>(),
+        ),
+        ("theme", theme.clone().upcast::<gtk::Widget>()),
+        ("locale", locale.clone().upcast::<gtk::Widget>()),
+        (
+            "source_editor",
+            bindings.source_view.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "output_editor",
+            bindings.output_view.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "open_source",
+            bindings.open_source.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "document_jobs",
+            bindings.document_jobs.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "translate",
+            bindings.translate.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "export_output",
+            bindings.export_output.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "open_output",
+            bindings.open_output.clone().upcast::<gtk::Widget>(),
+        ),
+        ("stop", bindings.stop.clone().upcast::<gtk::Widget>()),
+    ];
+    for (name, widget) in widgets {
+        widget.set_widget_name(name);
+        let name = name.to_owned();
+        let log = Rc::clone(&log);
+        widget.connect_has_focus_notify(move |current| {
+            if current.has_focus() {
+                let mut log = log.borrow_mut();
+                let _ = writeln!(log, "{name}");
+                let _ = log.flush();
+            }
+        });
+    }
+    let initial_focus = bindings.provider_name.clone();
+    let focus_deadline = Instant::now() + Duration::from_secs(5);
+    glib::timeout_add_local(Duration::from_millis(50), move || {
+        let focused = initial_focus.grab_focus();
+        if focused || Instant::now() >= focus_deadline {
+            glib::ControlFlow::Break
+        } else {
+            glib::ControlFlow::Continue
+        }
+    });
+    gtk::prelude::GtkWindowExt::set_focus(window, Some(&bindings.provider_name));
 }
 
 fn create_onboarding() -> (gtk::Box, gtk::Label, gtk::Label) {

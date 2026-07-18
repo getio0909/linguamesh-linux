@@ -131,6 +131,9 @@ jobs:
       - name: Run GTK drag-and-drop fixture
         working-directory: linguamesh-linux
         run: bash tools/run-gtk-drag-and-drop-test.sh
+      - name: Run GTK keyboard focus fixture
+        working-directory: linguamesh-linux
+        run: bash tools/run-gtk-keyboard-focus-test.sh
       - name: Run GTK test on Wayland
         working-directory: linguamesh-linux
         run: dbus-run-session -- bash tools/run-wayland-test.sh
