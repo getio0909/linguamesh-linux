@@ -5023,6 +5023,10 @@ mod tests {
             &bindings.translate,
             &bindings.export_output,
             &bindings.stop,
+            &bindings.document_jobs,
+            &bindings.pause_document,
+            &bindings.resume_document,
+            &bindings.retry_document,
         ] {
             assert!(button.is_focusable());
         }

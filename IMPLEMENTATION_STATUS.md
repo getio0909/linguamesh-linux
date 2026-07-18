@@ -886,6 +886,18 @@ Validated locally:
 The checkpoint remains unreleased; OCR, remaining archive formats, complete acceptance scenarios,
 non-Linux clients, and stable-release evidence remain open.
 
+## 2026-07-18 — Linux document queue keyboard reachability regression
+
+Assumption: queue actions must remain keyboard reachable while the Linux client continues to defer
+other native clients. The existing GTK accessibility gate is the authoritative semantic check;
+physical keyboard traversal and screen-reader narration still require manual desktop review.
+
+- Extended the real GTK lifecycle test to assert focusability for Document jobs, Pause document,
+  Resume document, and Retry document alongside the existing primary actions.
+- Local `cargo fmt`, all-target/all-feature check, strict Clippy, no-default 61-test suite, and
+  demo-provider 99-test suite (98 passed, 1 existing environment-dependent ignore) passed.
+- The change is test-only and does not alter persisted data, provider routing, or document output.
+
 ## 2026-07-18 — Linux document job recovery
 
 Assumption: the first recoverable queue slice persists only an opaque job ID, source basename,
