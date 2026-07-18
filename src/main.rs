@@ -74,6 +74,7 @@ struct UiBindings {
     translate: gtk::Button,
     export_output: gtk::Button,
     open_source: gtk::Button,
+    document_jobs: gtk::Button,
     stop: gtk::Button,
     pause_document: gtk::Button,
     resume_document: gtk::Button,
@@ -384,6 +385,17 @@ fn create_window(
         "tooltip.open_source",
         "Load a UTF-8 text file into the source editor",
     )));
+    let document_jobs = gtk::Button::with_mnemonic(&localized_mnemonic(
+        display_locale,
+        "action.document_jobs",
+        "Document jobs",
+    ));
+    document_jobs.set_focusable(true);
+    document_jobs.set_tooltip_text(Some(&localization::text(
+        display_locale,
+        "tooltip.document_jobs",
+        "View and select persisted document jobs",
+    )));
     let translate = gtk::Button::with_mnemonic(&localized_mnemonic(
         display_locale,
         "action.translate",
@@ -430,6 +442,7 @@ fn create_window(
         "Retry document",
     ));
     action_row.append(&open_source);
+    action_row.append(&document_jobs);
     action_row.append(&translate);
     action_row.append(&export_output);
     action_row.append(&pause_document);
@@ -516,6 +529,7 @@ fn create_window(
             translate,
             export_output,
             open_source,
+            document_jobs,
             stop,
             pause_document,
             resume_document,
@@ -1725,6 +1739,17 @@ fn connect_action_handlers(
     bindings.open_source.connect_clicked(move |_| {
         begin_source_file_open(&open_bindings, &open_state, &open_worker);
     });
+    let jobs_bindings = bindings.clone();
+    let jobs_state = Rc::clone(state);
+    let jobs_worker = Rc::clone(worker);
+    bindings.document_jobs.connect_clicked(move |_| {
+        if let Err(error) = jobs_worker.command_handle().list_document_jobs() {
+            jobs_state
+                .borrow_mut()
+                .record_client_error(error.to_string());
+            refresh_ui(&jobs_bindings, &jobs_state.borrow());
+        }
+    });
     let drop_bindings = bindings.clone();
     let drop_state = Rc::clone(state);
     let drop_worker = Rc::clone(worker);
@@ -2571,6 +2596,105 @@ fn show_file_export_error(bindings: &UiBindings, message: &str) {
     bindings.error.reset_state(gtk::AccessibleState::Hidden);
 }
 
+// 展示持久化文档任务并允许用户选择当前编辑器绑定的任务。
+#[allow(clippy::too_many_lines)]
+fn show_document_jobs_dialog(
+    bindings: &UiBindings,
+    state: &Rc<RefCell<AppState>>,
+    jobs: Vec<DocumentJobSnapshot>,
+) {
+    let locale = state.borrow().locale();
+    let dialog = gtk::Window::builder()
+        .application(&bindings.application)
+        .transient_for(&bindings.window)
+        .modal(true)
+        .title(localization::text(
+            locale,
+            "dialog.document_jobs",
+            "Document jobs",
+        ))
+        .default_width(760)
+        .default_height(520)
+        .build();
+    let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    root.set_margin_top(16);
+    root.set_margin_bottom(16);
+    root.set_margin_start(16);
+    root.set_margin_end(16);
+    let close = gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.close", "Close"));
+    close.set_focusable(true);
+    root.append(&close);
+    let list = gtk::ListBox::new();
+    list.set_selection_mode(gtk::SelectionMode::None);
+    list.set_vexpand(true);
+    if jobs.is_empty() {
+        let empty = gtk::Label::new(Some(&localization::text(
+            locale,
+            "status.document_jobs_empty",
+            "No persisted document jobs are available.",
+        )));
+        empty.set_xalign(0.0);
+        empty.add_css_class("dim-label");
+        list.append(&empty);
+    } else {
+        for snapshot in jobs {
+            let row = gtk::Box::new(gtk::Orientation::Vertical, 6);
+            row.set_margin_top(8);
+            row.set_margin_bottom(8);
+            let header = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+            let (completed, total) = document_progress(&snapshot);
+            let metadata = gtk::Label::new(Some(&format!(
+                "{} · {:?} · {:?} · {completed}/{total}",
+                snapshot.job.source_name, snapshot.job.format, snapshot.state,
+            )));
+            metadata.set_xalign(0.0);
+            metadata.set_hexpand(true);
+            metadata.add_css_class("dim-label");
+            let select = gtk::Button::with_mnemonic(&localized_mnemonic(
+                locale,
+                "action.select_document_job",
+                "Select",
+            ));
+            select.set_focusable(true);
+            let select_dialog = dialog.clone();
+            let select_bindings = bindings.clone();
+            let select_state = Rc::clone(state);
+            let selected = snapshot.clone();
+            select.connect_clicked(move |_| {
+                *select_bindings.document_job_id.borrow_mut() = Some(selected.job_id.clone());
+                select_bindings.document_job_state.set(Some(selected.state));
+                select_bindings
+                    .document_progress
+                    .set(Some(document_progress(&selected)));
+                let source_text = selected.job.source_text();
+                select_bindings.document_job_guard.set(true);
+                select_bindings.source.set_text(&source_text);
+                select_bindings.document_job_guard.set(false);
+                select_state.borrow_mut().set_source_text(&source_text);
+                select_dialog.close();
+                refresh_ui(&select_bindings, &select_state.borrow());
+            });
+            header.append(&metadata);
+            header.append(&select);
+            row.append(&header);
+            let id = gtk::Label::new(Some(&format!("Job: {}", snapshot.job_id)));
+            id.set_xalign(0.0);
+            id.add_css_class("dim-label");
+            row.append(&id);
+            list.append(&row);
+        }
+    }
+    let scroller = gtk::ScrolledWindow::builder()
+        .vexpand(true)
+        .child(&list)
+        .build();
+    root.append(&scroller);
+    dialog.set_child(Some(&root));
+    let close_dialog = dialog.clone();
+    close.connect_clicked(move |_| close_dialog.close());
+    dialog.present();
+}
+
 // 以可读的确定性 TSV 展示本地历史，并把删除操作重新交给核心工作线程。
 #[allow(clippy::too_many_lines)]
 fn show_history_dialog(
@@ -3205,7 +3329,7 @@ fn apply_worker_event(
             bindings.memory_warning.set(true);
             bindings.memory_clear_pending.set(false);
         }
-        WorkerEvent::DocumentJobsRestored { jobs } | WorkerEvent::DocumentJobsListed { jobs } => {
+        WorkerEvent::DocumentJobsRestored { jobs } => {
             if bindings.document_job_id.borrow().is_none()
                 && let Some(snapshot) = jobs.first()
             {
@@ -3219,6 +3343,9 @@ fn apply_worker_event(
                 bindings.source.set_text(&source_text);
                 bindings.document_job_guard.set(false);
             }
+        }
+        WorkerEvent::DocumentJobsListed { jobs } => {
+            show_document_jobs_dialog(bindings, state, jobs);
         }
         WorkerEvent::DocumentJobUpdated(snapshot) => {
             *bindings.document_job_id.borrow_mut() = Some(snapshot.job_id.clone());
@@ -3658,6 +3785,8 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
         "tooltip.open_source",
         "Load a UTF-8 text file into the source editor",
     );
+    let document_jobs = localization::text(locale, "action.document_jobs", "Document jobs");
+    let document_jobs_label = format!("_{document_jobs}");
     let translate = localization::text(locale, "action.translate", "Translate");
     let stop = localization::text(locale, "accessibility.stop_translation", "Stop translation");
     let pause = localization::text(locale, "action.pause_document", "Pause document");
@@ -3690,6 +3819,14 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     bindings
         .open_source
         .set_tooltip_text(Some(&open_source_tooltip));
+    bindings.document_jobs.set_label(&document_jobs_label);
+    bindings
+        .document_jobs
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.document_jobs",
+            "View and select persisted document jobs",
+        )));
     bindings.translate.set_label(&translate_label);
     bindings.export_output.set_label(&format!("_{export}"));
     bindings
@@ -4233,6 +4370,9 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     bindings
         .open_source
         .set_sensitive(source_import_allowed(state));
+    bindings
+        .document_jobs
+        .set_sensitive(state.worker_ready() && !blocked && state.profile_storage_available());
     bindings.import_glossary.set_sensitive(!blocked);
     if bindings.incognito.is_active() != state.is_incognito() {
         bindings.incognito.set_active(state.is_incognito());

@@ -353,6 +353,13 @@ pub struct WorkerCommandHandle {
 }
 
 impl WorkerCommandHandle {
+    /// 非阻塞请求读取本地文档任务队列。
+    pub fn list_document_jobs(&self) -> Result<(), WorkerSendError> {
+        self.commands
+            .try_send(QueuedCommand::ListDocumentJobs)
+            .map_err(|_| WorkerSendError)
+    }
+
     /// 非阻塞请求读取本地翻译历史。
     pub fn list_translation_history(&self) -> Result<(), WorkerSendError> {
         self.commands
