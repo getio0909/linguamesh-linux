@@ -1275,3 +1275,21 @@ msgstr "［Ŧħë þŕøƒïŀë ðåŧåƀåšë þåŧħ çåññøŧ çøñŧ
 msgctxt "error.storage.path_components_inspect"
 msgid "The profile database path components could not be inspected."
 msgstr "［Ŧħë þŕøƒïŀë ðåŧåƀåšë þåŧħ çøṁþøñëñŧš çøûŀð ñøŧ ƀë ïñšþëçŧëð.~~~~~~~~~~~~~~~~~~~~］"
+
+#. Label for the optional request-level glossary input on Linux.
+#, fuzzy
+msgctxt "field.glossary"
+msgid "Glossary"
+msgstr "［Ĝŀøššåŕÿ~~］"
+
+#. Placeholder showing the request-level glossary rule syntax.
+#, fuzzy
+msgctxt "field.glossary.placeholder"
+msgid "source => target; Product Name => Product Name"
+msgstr "［šøûŕçë => ŧåŕĝëŧ; Þŕøðûçŧ Ñåṁë => Þŕøðûçŧ Ñåṁë~~~~~~~~~~~~~~~］"
+
+#. Tooltip explaining the request-level glossary syntax and privacy boundary.
+#, fuzzy
+msgctxt "tooltip.glossary"
+msgid "Optional semicolon-separated source => target glossary rules; entries stay in memory for this translation."
+msgstr "［Øþŧïøñåŀ šëṁïçøŀøñ-šëþåŕåŧëð šøûŕçë => ŧåŕĝëŧ ĝŀøššåŕÿ ŕûŀëš; ëñŧŕïëš šŧåÿ ïñ ṁëṁøŕÿ ƒøŕ ŧħïš ŧŕåñšŀåŧïøñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~］"

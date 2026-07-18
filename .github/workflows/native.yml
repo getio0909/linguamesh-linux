@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 30
     # 固定已审查的 LinguaMesh Core 提交。
     env:
-      CORE_REVISION: 031b20cd6f4ddc7635057d1b2d949db4ac7d1f39
+      CORE_REVISION: 3f96de03eb4ff04add09473fc1473c2c49d67a51
     steps:
       - name: Check out Linux client
         # 固定 actions/checkout v7.0.0。
@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           repository: ${{ github.repository_owner }}/linguamesh-l10n
-          ref: dc9a9d48a38dfeb8f6b2020417960023678d8252
+          ref: 2e5e3033f453aa2882cf71217f9514dce8501269
           path: linguamesh-l10n
           persist-credentials: false
       - name: Install native development headers

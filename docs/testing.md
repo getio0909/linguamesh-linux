@@ -5,16 +5,17 @@
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`031b20cd6f4ddc7635057d1b2d949db4ac7d1f39`. This revision changes file-backed Core storage to add
-SQLite's `SQLITE_OPEN_NOFOLLOW` flag and adds protected-span restoration for streamed text. On
+`3f96de03eb4ff04add09473fc1473c2c49d67a51`. This revision changes file-backed Core storage to add
+SQLite's `SQLITE_OPEN_NOFOLLOW` flag, adds protected-span restoration for streamed text, and adds
+request-level glossary protection. On
 Linux's default Unix VFS, any symbolic-link path component is rejected. A clean documentation-only
 descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 031b20cd6f4ddc7635057d1b2d949db4ac7d1f39^{commit}
+git -C ../linguamesh-core cat-file -e 3f96de03eb4ff04add09473fc1473c2c49d67a51^{commit}
 git -C ../linguamesh-core diff --quiet \
-  031b20cd6f4ddc7635057d1b2d949db4ac7d1f39..HEAD -- \
+  3f96de03eb4ff04add09473fc1473c2c49d67a51..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -43,7 +44,8 @@ cargo build --features demo-provider --locked
 DOCS_RS=1 cargo check --all-targets --all-features --locked
 ```
 
-The no-default suite contains 44 tests. It covers the text-import decoder in addition to the disconnected initial state, atomic
+The no-default suite contains 53 tests. It covers the text-import decoder and request-level glossary
+transport in addition to the disconnected initial state, atomic
 sorted restoration of multiple profiles without activation, duplicate/missing/default/session-ref
 snapshot rejection, form-only selection, exact pending deletion, connected-row removal that keeps
 the runtime session, pending and active canonical profiles, exact stale-result rejection, atomic
@@ -55,7 +57,7 @@ Ready identity, pending-model confirmation that cannot claim Ready, worker-unava
 storage-unavailable fallback, runtime persistence degradation that retains the confirmed session,
 and diagnostics that omit content, endpoints, IDs, model IDs, and secret references.
 
-The ordinary `demo-provider` run passes 71 tests and reports one intentionally ignored namespace
+The ordinary `demo-provider` run passes 80 tests and reports one intentionally ignored namespace
 test. Its worker tests validate the exact Core
 compatibility contract, prove that fake-service readiness does not auto-connect, require explicit
 Connect and model selection, exercise real loopback HTTP/SSE streaming, consume an authenticated

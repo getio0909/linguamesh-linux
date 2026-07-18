@@ -1,6 +1,6 @@
 use crate::localization;
 use linguamesh_domain::{
-    ErrorKind, ModelDescriptor, TranslationError, TranslationEvent, TranslationRequest,
+    ErrorKind, Glossary, ModelDescriptor, TranslationError, TranslationEvent, TranslationRequest,
 };
 pub use linguamesh_domain::{ProviderProfile, ProviderProfileId};
 use linguamesh_protocol::PROTOCOL_VERSION;
@@ -351,6 +351,7 @@ pub struct AppState {
     source_text: String,
     source_locale: Option<String>,
     target_locale: String,
+    glossary: Option<Glossary>,
     output: String,
     partial_output: bool,
     status: AppStatus,
@@ -379,6 +380,7 @@ impl Default for AppState {
             source_text: String::new(),
             source_locale: None,
             target_locale: "zh-CN".to_owned(),
+            glossary: None,
             output: String::new(),
             partial_output: false,
             status: AppStatus::Disconnected,
@@ -1024,6 +1026,11 @@ impl AppState {
         self.target_locale = target_locale.into();
     }
 
+    /// 更新当前请求级词汇表；词汇表只随下一次翻译请求存在于内存中。
+    pub fn set_glossary(&mut self, glossary: Option<Glossary>) {
+        self.glossary = glossary;
+    }
+
     /// 更新外观偏好。
     pub const fn set_theme(&mut self, theme: ThemePreference) {
         self.theme = theme;
@@ -1064,6 +1071,9 @@ impl AppState {
             model_id,
         );
         request.source_locale.clone_from(&self.source_locale);
+        if let Some(glossary) = self.glossary.clone() {
+            request = request.with_glossary(glossary);
+        }
         self.output.clear();
         self.partial_output = false;
         self.status = AppStatus::Translating;
@@ -1551,8 +1561,8 @@ mod tests {
         ProviderProfileId, StateError, ThemePreference, UiLocale,
     };
     use linguamesh_domain::{
-        ErrorKind, ModelDescriptor, ModelSource, SecretRef, SecretRefNamespace, TranslationError,
-        TranslationEvent,
+        ErrorKind, Glossary, GlossaryEntry, ModelDescriptor, ModelSource, SecretRef,
+        SecretRefNamespace, TranslationError, TranslationEvent,
     };
 
     fn profile(
@@ -1609,6 +1619,23 @@ mod tests {
         state.select_model("fake-translator").expect("select model");
         state.set_source_text("Hello");
         state
+    }
+
+    #[test]
+    fn request_carries_request_level_glossary_without_persisting_it() {
+        let mut state = connected_state();
+        state.set_source_locale(Some("en".to_owned()));
+        state.set_target_locale("zh-CN");
+        let entry = GlossaryEntry::new("LinguaMesh", "凌瓦网")
+            .expect("glossary entry")
+            .with_source_locale("en")
+            .with_target_locale("zh-CN");
+        state.set_glossary(Some(Glossary::new(vec![entry]).expect("glossary")));
+        let request = state.begin_translation().expect("request");
+        assert_eq!(
+            request.glossary.as_ref().expect("glossary").entries().len(),
+            1
+        );
     }
 
     #[test]

@@ -33,20 +33,24 @@ package. Ubuntu 24.04 native CI is the compatibility gate for this GTK 4.10-or-n
 older distributions and future Flatpak runtimes require separate packaging validation.
 
 Assumption: Core automatic protected-span scanning covers common URLs, email addresses, Markdown
-code, and placeholder forms. User-managed glossaries, product names, and provider-specific syntax
-remain outside this Linux slice until a versioned configuration contract is specified.
+code, and placeholder forms. Linux now adds a bounded request-level glossary for product terms;
+CSV/TBX import, persistent glossary libraries, and provider-specific syntax remain later work.
 
 ## Implemented
 
 - Rust 1.93.0 Cargo package at `0.1.0-alpha.2`, with locked Core alpha.2 path dependencies and
   optional `demo-provider`/`gui` features. Native CI pins Core functional revision
-  `031b20cd6f4ddc7635057d1b2d949db4ac7d1f39`.
+  `3f96de03eb4ff04add09473fc1473c2c49d67a51`.
 - Startup rejects any Core other than semantic version `0.1.0-alpha.2`, ABI 1, protocol 1, provider
   catalog `0.1.0`, with the required cancellation, compatibility, typed Rust host-secret broker,
   model-discovery, protected-span, streaming-text, and text-translation features.
 - Core's `protected_spans_v1` contract shields common structured spans before provider prompt
   construction, restores them across split streamed deltas, and fails closed on missing, duplicate,
   or changed markers; Linux negotiates the feature before starting provider work.
+- Linux accepts bounded semicolon-separated `source => target` glossary rules per translation
+  request. Core validates conflicts and credential-shaped values, protects matching terms before
+  provider prompt construction, and restores required target terms or immutable names across
+  streamed fragments without writing glossary content to profiles or SQLite.
 - Toolkit-independent state starts disconnected and uses canonical Core `ProviderProfile` and
   `ProviderProfileId` values. It atomically restores a sorted multi-profile snapshot, keeps the
   selected form row, persisted default, connected saved row, and pending deletion distinct, and
@@ -123,20 +127,20 @@ remain outside this Linux slice until a versioned configuration contract is spec
 - The Linux host now uses existing GIO D-Bus bindings for Secret Service `OpenSession`, item search,
   create/update, and `GetSecret` resolution. Persistent profiles retain only a SecretRef; the
   one-shot credential is passed through the existing typed broker and is never written to SQLite.
-- Fourteen canonical official/pseudo PO/MO catalog pairs containing 208 messages pinned to l10n revision
-  `dc9a9d48a38dfeb8f6b2020417960023678d8252`. Sync rejects a different revision, dirty generated
+- Fourteen canonical official/pseudo PO/MO catalog pairs containing 211 messages pinned to l10n revision
+  `2e5e3033f453aa2882cf71217f9514dce8501269`. Sync rejects a different revision, dirty generated
   source artifacts, stale copies, and unexpected catalog counts. The GTK locale selector exposes
   the twelve official packs, runtime action, workspace-widget, active-provider, status summary,
   partial-output, text-file import/export, provider-profile, source/target language, onboarding stage/detail,
-  fixed provider/file/worker, reducer-state/category, translation-export, and construction-stage
-  provider/default-control messages, and
+  fixed provider/file/worker, reducer-state/category, translation-export, construction-stage
+  provider/default-control, and request-level glossary messages, and
   System/Light/Dark theme labels switch without losing state, preserves source text while moving
   from Simplified Chinese to Arabic, and applies right-to-left root direction; arbitrary backend
   diagnostic detail remains an explicit English fallback.
 - Foundation and native workflow sources use immutable Node 24-compatible action commits and
   disable persisted checkout credentials. Native CI pins reviewed Core revision
-  `fbf3e9b5927049dccaa19f8c36013495ffebba12` and localization revision
-  `dc9a9d48a38dfeb8f6b2020417960023678d8252`. The revised native gate retains serialized all-target,
+  `3f96de03eb4ff04add09473fc1473c2c49d67a51` and localization revision
+  `2e5e3033f453aa2882cf71217f9514dce8501269`. The revised native gate retains serialized all-target,
   all-feature X11/Xvfb tests, runs the exact ignored storage-fault test in a private user/mount
   namespace when available, then runs the existing GTK binary test under forced Wayland and
   headless Weston before building the application. On restricted Ubuntu hosts, only the private
@@ -151,16 +155,17 @@ remain outside this Linux slice until a versioned configuration contract is spec
 Validated on 2026-07-18 with Rust 1.93.0:
 
 - The pinned global-goal SHA-256 matched the sibling authoritative file.
-- Core functional revision `031b20cd6f4ddc7635057d1b2d949db4ac7d1f39` is the reviewed source
-  pin, and every direct Core dependency is constrained to `=0.1.0-alpha.2`. The clean local Core
-  HEAD was a documentation-only descendant whose scoped compiled-source diff from that revision
-  was empty.
-- `cargo fmt --all --check`, the locked demo-provider check, strict Clippy, and build passed.
-- `cargo test --no-default-features --locked` passed: 45 tests, 0 failed. Coverage includes the
+- Core functional revision `3f96de03eb4ff04add09473fc1473c2c49d67a51` is the reviewed source
+  pin, and every direct Core dependency is constrained to `=0.1.0-alpha.2`.
+- `cargo fmt --all --check`, the locked demo-provider check, strict Clippy, both locked test suites,
+  the demo-provider build, `DOCS_RS=1` check and Clippy, `bash tools/sync-l10n.sh --check`, all 14
+  PO syntax checks, and `git diff --check` passed.
+- `cargo test --no-default-features --locked` passed: 53 tests, 0 failed. Coverage includes the
+  request-level glossary transport without persistence, in addition to the
   derived onboarding progression, safe stage labels, pending-model confirmation, worker-unavailable
   and storage-unavailable fallbacks, and failed-switch rollback that preserves the confirmed Ready
   identity.
-- `cargo test --features demo-provider --locked` passed: 70 tests, 0 failed, with the dedicated
+- `cargo test --features demo-provider --locked` passed: 80 tests, 0 failed, with one dedicated
   namespace test intentionally ignored in the ordinary suite. Coverage includes
   explicit connection and model selection, exact compatibility rejection, authenticated one-shot
   session secrets, fail-closed persistent references, two-profile create/update/activate/restart,

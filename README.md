@@ -20,8 +20,9 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `031b20cd6f4ddc7635057d1b2d949db4ac7d1f39`, which adds
-`SQLITE_OPEN_NOFOLLOW` to file-backed storage and protected-span restoration for streamed text.
+reviewed Core functional revision `3f96de03eb4ff04add09473fc1473c2c49d67a51`, which adds
+`SQLITE_OPEN_NOFOLLOW` to file-backed storage plus protected-span and request-level glossary
+restoration for streamed text.
 
 ## Native stack
 
@@ -124,12 +125,17 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`dc9a9d48a38dfeb8f6b2020417960023678d8252` and validated with `msgfmt`. The locale selector
+`2e5e3033f453aa2882cf71217f9514dce8501269` and validated with `msgfmt`. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
 active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, and construction-stage provider/default-control copy without replacing active source text;
 Arabic also switches the GTK workspace root to right-to-left direction. Stable Linux worker startup,
 Core compatibility, and profile-storage error sentences now use the same catalog; arbitrary backend
 diagnostic detail remains an explicit English fallback.
+
+The text workspace accepts bounded semicolon-separated glossary rules such as
+`LinguaMesh => 凌瓦网; Acme Product => Acme Product`. Rules are request-scoped and remain in memory;
+Core validates conflicts, protects matching terms with opaque markers, restores required target terms
+across streamed output, and rejects credential-shaped entries without persisting glossary content.
 
 When a translation completes, the registered Linux application sends a desktop notification with
 localized generic copy only; source and translated content are never included in notification

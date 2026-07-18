@@ -1283,3 +1283,21 @@ msgstr "⁧⟦The profile database path cannot contain symbolic links.⟧⁩"
 msgctxt "error.storage.path_components_inspect"
 msgid "The profile database path components could not be inspected."
 msgstr "⁧⟦The profile database path components could not be inspected.⟧⁩"
+
+#. Label for the optional request-level glossary input on Linux.
+#, fuzzy
+msgctxt "field.glossary"
+msgid "Glossary"
+msgstr "⁧⟦Glossary⟧⁩"
+
+#. Placeholder showing the request-level glossary rule syntax.
+#, fuzzy
+msgctxt "field.glossary.placeholder"
+msgid "source => target; Product Name => Product Name"
+msgstr "⁧⟦source => target; Product Name => Product Name⟧⁩"
+
+#. Tooltip explaining the request-level glossary syntax and privacy boundary.
+#, fuzzy
+msgctxt "tooltip.glossary"
+msgid "Optional semicolon-separated source => target glossary rules; entries stay in memory for this translation."
+msgstr "⁧⟦Optional semicolon-separated source => target glossary rules; entries stay in memory for this translation.⟧⁩"

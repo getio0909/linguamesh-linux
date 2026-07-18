@@ -1,8 +1,8 @@
 use adw::prelude::*;
 use gtk::glib;
 use linguamesh_domain::{
-    ErrorKind, ProviderProfileId, SecretRef, SecretRefNamespace, SecretValue, TranslationError,
-    TranslationEvent,
+    ErrorKind, Glossary, GlossaryEntry, ProviderProfileId, SecretRef, SecretRefNamespace,
+    SecretValue, TranslationError, TranslationEvent,
 };
 use linguamesh_linux::file_import;
 use linguamesh_linux::localization;
@@ -48,6 +48,7 @@ struct UiBindings {
     model: gtk::DropDown,
     source_locale: gtk::DropDown,
     target_locale: gtk::DropDown,
+    glossary: gtk::Entry,
     theme: gtk::DropDown,
     locale: gtk::DropDown,
     source: gtk::TextBuffer,
@@ -285,7 +286,8 @@ fn create_window(
         provider_note,
     ) = create_provider_session();
     root.append(&provider_session);
-    let (controls, model, source_locale, target_locale, theme, locale) = create_controls();
+    let (controls, model, source_locale, target_locale, glossary, theme, locale) =
+        create_controls();
     root.append(&controls);
 
     let editor_bindings = create_editors();
@@ -420,6 +422,7 @@ fn create_window(
             model,
             source_locale,
             target_locale,
+            glossary,
             theme: theme.clone(),
             locale: locale.clone(),
             source: editor_bindings.source,
@@ -691,11 +694,13 @@ fn create_provider_session() -> (
     )
 }
 
+#[allow(clippy::too_many_lines)]
 fn create_controls() -> (
     gtk::Box,
     gtk::DropDown,
     gtk::DropDown,
     gtk::DropDown,
+    gtk::Entry,
     gtk::DropDown,
     gtk::DropDown,
 ) {
@@ -729,6 +734,18 @@ fn create_controls() -> (
             .map(String::as_str)
             .collect::<Vec<_>>(),
     );
+    let glossary = gtk::Entry::new();
+    glossary.set_hexpand(true);
+    glossary.set_placeholder_text(Some(&localization::text(
+        locale,
+        "field.glossary.placeholder",
+        "source => target; Product Name => Product Name",
+    )));
+    glossary.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.glossary",
+        "Optional semicolon-separated source => target glossary rules; entries stay in memory for this translation.",
+    )));
     let theme_options = [
         localization::text(locale, "theme.system", "System"),
         localization::text(locale, "theme.light", "Light"),
@@ -762,6 +779,10 @@ fn create_controls() -> (
             target_locale.upcast_ref::<gtk::Widget>(),
         ),
         (
+            localized_mnemonic(UiLocale::default(), "field.glossary", "Glossary"),
+            glossary.upcast_ref::<gtk::Widget>(),
+        ),
+        (
             localization::text(UiLocale::default(), "settings.theme", "Theme"),
             theme.upcast_ref::<gtk::Widget>(),
         ),
@@ -776,7 +797,15 @@ fn create_controls() -> (
     ] {
         controls.append(&labeled_control(&label, control));
     }
-    (controls, model, source_locale, target_locale, theme, locale)
+    (
+        controls,
+        model,
+        source_locale,
+        target_locale,
+        glossary,
+        theme,
+        locale,
+    )
 }
 
 fn labeled_control(label: &str, control: &gtk::Widget) -> gtk::Box {
@@ -819,6 +848,43 @@ fn localized_template(
         value = value.replace(placeholder, replacement);
     }
     value
+}
+
+fn parse_glossary(
+    text: &str,
+    source_locale: Option<&str>,
+    target_locale: &str,
+) -> Result<Option<Glossary>, TranslationError> {
+    if text.trim().is_empty() {
+        return Ok(None);
+    }
+    let mut entries = Vec::new();
+    for rule in text.split(';').filter(|rule| !rule.trim().is_empty()) {
+        let Some((source_term, target_term)) = rule.split_once("=>") else {
+            return Err(TranslationError::new(
+                ErrorKind::InvalidConfiguration,
+                "Glossary entries must use the form source => target.",
+            ));
+        };
+        let mut entry =
+            GlossaryEntry::new(source_term.trim(), target_term.trim()).map_err(|_| {
+                TranslationError::new(
+                    ErrorKind::InvalidConfiguration,
+                    "Glossary entries contain invalid or credential-like data.",
+                )
+            })?;
+        if let Some(source_locale) = source_locale {
+            entry = entry.with_source_locale(source_locale);
+        }
+        entry = entry.with_target_locale(target_locale);
+        entries.push(entry);
+    }
+    Glossary::new(entries).map(Some).map_err(|_| {
+        TranslationError::new(
+            ErrorKind::InvalidConfiguration,
+            "Glossary entries conflict.",
+        )
+    })
 }
 
 fn refresh_dropdown_labels(dropdown: &gtk::DropDown, labels: &[String]) {
@@ -1418,19 +1484,30 @@ fn connect_action_handlers(
         );
         let mut state = translate_state.borrow_mut();
         state.set_source_text(source.as_str());
-        state.set_source_locale(
-            SOURCE_LOCALES[translate_bindings.source_locale.selected() as usize].map(str::to_owned),
-        );
-        state.set_target_locale(
-            TARGET_LOCALES[translate_bindings.target_locale.selected() as usize],
-        );
-        match state.begin_translation() {
-            Ok(request) => {
-                if let Err(error) = translate_worker.try_send(WorkerCommand::Translate(request)) {
-                    state.record_client_error(error.to_string());
+        let source_locale =
+            SOURCE_LOCALES[translate_bindings.source_locale.selected() as usize].map(str::to_owned);
+        let target_locale = TARGET_LOCALES[translate_bindings.target_locale.selected() as usize];
+        state.set_source_locale(source_locale.clone());
+        state.set_target_locale(target_locale);
+        match parse_glossary(
+            translate_bindings.glossary.text().as_str(),
+            source_locale.as_deref(),
+            target_locale,
+        ) {
+            Ok(glossary) => {
+                state.set_glossary(glossary);
+                match state.begin_translation() {
+                    Ok(request) => {
+                        if let Err(error) =
+                            translate_worker.try_send(WorkerCommand::Translate(request))
+                        {
+                            state.record_client_error(error.to_string());
+                        }
+                    }
+                    Err(error) => state.record_client_error(error.to_string()),
                 }
             }
-            Err(error) => state.record_client_error(error.to_string()),
+            Err(error) => state.record_client_error(error.message),
         }
         refresh_ui(&translate_bindings, &state);
     });
@@ -2314,6 +2391,22 @@ fn refresh_localized_widgets(bindings: &UiBindings, locale: UiLocale) {
         &localized_mnemonic(locale, "settings.target_language", "Target language"),
     );
     set_labeled_control_label(
+        bindings.glossary.upcast_ref(),
+        &localized_mnemonic(locale, "field.glossary", "Glossary"),
+    );
+    bindings
+        .glossary
+        .set_placeholder_text(Some(&localization::text(
+            locale,
+            "field.glossary.placeholder",
+            "source => target; Product Name => Product Name",
+        )));
+    bindings.glossary.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.glossary",
+        "Optional semicolon-separated source => target glossary rules; entries stay in memory for this translation.",
+    )));
+    set_labeled_control_label(
         bindings.theme.upcast_ref(),
         &localization::text(locale, "settings.theme", "Theme"),
     );
@@ -2514,6 +2607,7 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         .set_sensitive(state.worker_ready() && !blocked && !state.models().is_empty());
     bindings.source_locale.set_sensitive(!blocked);
     bindings.target_locale.set_sensitive(!blocked);
+    bindings.glossary.set_sensitive(!blocked);
 }
 
 #[cfg(test)]
