@@ -2827,8 +2827,14 @@ fn begin_document_segment(
             "Select a model before translating a document job.",
         )
     })?;
+    // 将 CSV 的引号字段解码后再提交给翻译提供方。
+    let source_text = job
+        .translation_source_text(segment.index)
+        .map_err(|error| {
+            TranslationError::new(ErrorKind::InvalidConfiguration, error.to_string())
+        })?;
     let mut request = TranslationRequest::new(
-        segment.source_text.clone(),
+        source_text.into_owned(),
         options.target_locale.clone(),
         model_id,
     )

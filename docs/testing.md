@@ -5,7 +5,7 @@
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`e4962fc19dd09ca2ef45d4841ffb617cb25a1342`. This revision carries the explicit request-level
+`d7e9b3857cf62f0a6dd24873091cb45dff8d4258`. This revision carries the explicit request-level
 Incognito privacy policy and changes file-backed Core storage to add SQLite's `SQLITE_OPEN_NOFOLLOW`
 flag, adds protected-span restoration and request-level glossary
 protection for streamed text, and adds bounded semantic chunking. On
@@ -14,15 +14,15 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e e4962fc19dd09ca2ef45d4841ffb617cb25a1342^{commit}
+git -C ../linguamesh-core cat-file -e d7e9b3857cf62f0a6dd24873091cb45dff8d4258^{commit}
 git -C ../linguamesh-core diff --quiet \
-  e4962fc19dd09ca2ef45d4841ffb617cb25a1342..HEAD -- \
+  d7e9b3857cf62f0a6dd24873091cb45dff8d4258..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
 
 The same Core pin also negotiates `bounded_text_document_v1`: Linux imports only bounded UTF-8 TXT,
-Markdown, SRT, and WebVTT, preserves line endings, keeps Markdown fenced code and subtitle timing
+Markdown, CSV, SRT, and WebVTT, preserves line endings, keeps Markdown fenced code and subtitle timing
 structure verbatim, and
 persists pending/running/paused document jobs and validated non-secret translation options for worker
 restart recovery. The Linux worker tests also cover

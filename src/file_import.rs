@@ -14,7 +14,7 @@ pub enum TextImportError {
     InvalidUtf8,
     /// 文件后缀不属于当前 Linux 文档切片。
     UnsupportedFormat,
-    /// 字幕文件的时间轴或 cue 结构无效。
+    /// 文档的结构或字段无效。
     InvalidStructure,
 }
 
@@ -29,7 +29,7 @@ impl fmt::Display for TextImportError {
                 formatter.write_str("The selected document format is not supported.")
             }
             Self::InvalidStructure => {
-                formatter.write_str("The selected subtitle structure is invalid.")
+                formatter.write_str("The selected document structure is invalid.")
             }
         }
     }
@@ -44,7 +44,7 @@ pub fn decode_text_contents(contents: &[u8]) -> Result<String, TextImportError> 
     String::from_utf8(contents.to_vec()).map_err(|_| TextImportError::InvalidUtf8)
 }
 
-/// 使用 Core 文档契约检查 TXT/Markdown，并返回保留原始换行的源文本。
+/// 使用 Core 文档契约检查受支持格式，并返回保留原始换行的源文本。
 pub fn decode_document_contents(
     source_name: &str,
     contents: &[u8],
@@ -116,6 +116,10 @@ mod tests {
             decode_document_contents("captions.srt", b"1\nnot a timestamp\nHello"),
             Err(TextImportError::InvalidStructure)
         );
+        assert_eq!(
+            decode_document_contents("table.csv", b"id,name\n1,\"bad\n"),
+            Err(TextImportError::InvalidStructure)
+        );
     }
 
     #[test]
@@ -134,5 +138,17 @@ mod tests {
         .expect("webvtt job");
         assert_eq!(job.pending_count(), 1);
         assert_eq!(job.segments[2].source_text, "00:00.000 --> 00:01.000");
+    }
+
+    #[test]
+    fn returns_csv_jobs_with_decoded_translation_source() {
+        let job = decode_document_job("comments.csv", b"id,comment\n1,\"Hello, world\"\n")
+            .expect("csv job");
+        let index = job
+            .segments
+            .iter()
+            .position(|segment| segment.source_text.starts_with("\"Hello"))
+            .expect("quoted field");
+        assert_eq!(job.translation_source_text(index).unwrap(), "Hello, world");
     }
 }

@@ -2096,6 +2096,8 @@ fn begin_source_file_open(
     filter.add_suffix("markdown");
     filter.add_suffix("srt");
     filter.add_suffix("vtt");
+    filter.add_mime_type("text/csv");
+    filter.add_suffix("csv");
     let filters = gtk::gio::ListStore::new::<gtk::FileFilter>();
     filters.append(&filter);
     let dialog_title = localization::text(locale, "dialog.open_text_file", "Open text file");
@@ -2529,7 +2531,7 @@ fn load_source_file(
                             ),
                             file_import::TextImportError::InvalidStructure => (
                                 "error.file_open",
-                                "The selected subtitle structure is invalid.",
+                                "The selected document structure is invalid.",
                             ),
                         };
                         let message = localization::text(locale, key, fallback);
