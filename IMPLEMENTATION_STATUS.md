@@ -1039,3 +1039,22 @@ entries while the broader visible-string audit remains open.
 Native, Foundation, and Flatpak CI gates remain required for the pushed revision. Complete
 visible-string gettext coverage, Orca speech, physical desktop review, OCR, other clients, and
 stable-release evidence remain open.
+
+## 2026-07-18 — Linux multi-job queue controls checkpoint
+
+Assumption: the existing persisted `DocumentJobSnapshot` list is the source of truth for a
+multi-job GTK queue; queue-row controls must reuse the worker's existing pause, resume, and retry
+commands and must not introduce a second task state machine.
+
+- Added non-blocking `WorkerCommandHandle` methods for pausing, resuming, and retrying a selected
+  document job.
+- Extended each persisted-job row with a catalog-backed action appropriate to its state while
+  retaining Select as the source-editor binding action. The row action first selects the job,
+  then submits the existing worker command; storage schema, segment ordering, and cancellation
+  semantics are unchanged.
+- Local `cargo fmt --all`, strict all-target/all-feature Clippy, the locked no-default 61-test
+  suite, and `git diff --check` passed.
+
+Native, Foundation, and Flatpak CI gates remain required for the pushed revision. Orca speech,
+physical desktop review, OCR, other platform clients, complete visible-string gettext coverage,
+and stable-release evidence remain open.

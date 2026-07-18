@@ -3141,11 +3141,32 @@ fn show_file_export_error(bindings: &UiBindings, message: &str) {
     bindings.error.reset_state(gtk::AccessibleState::Hidden);
 }
 
-// 展示持久化文档任务并允许用户选择当前编辑器绑定的任务。
+// 将队列中的任务选为当前编辑器任务并同步其源文本和状态。
+fn select_document_job(
+    bindings: &UiBindings,
+    state: &Rc<RefCell<AppState>>,
+    selected: &DocumentJobSnapshot,
+) {
+    *bindings.document_job_id.borrow_mut() = Some(selected.job_id.clone());
+    bindings.document_job_state.set(Some(selected.state));
+    bindings
+        .document_progress
+        .set(Some(document_progress(selected)));
+    let source_text = selected.job.source_text();
+    bindings.document_job_guard.set(true);
+    bindings.source.set_text(&source_text);
+    bindings.document_job_guard.set(false);
+    *bindings.document_warnings.borrow_mut() = selected.job.warnings().unwrap_or_default();
+    state.borrow_mut().set_source_text(&source_text);
+    refresh_ui(bindings, &state.borrow());
+}
+
+// 展示持久化文档任务并允许用户选择或控制队列中的任务。
 #[allow(clippy::too_many_lines)]
 fn show_document_jobs_dialog(
     bindings: &UiBindings,
     state: &Rc<RefCell<AppState>>,
+    worker: &WorkerCommandHandle,
     jobs: Vec<DocumentJobSnapshot>,
 ) {
     let locale = state.borrow().locale();
@@ -3201,25 +3222,13 @@ fn show_document_jobs_dialog(
                 "Select",
             ));
             select.set_focusable(true);
+            let selected = snapshot.clone();
             let select_dialog = dialog.clone();
             let select_bindings = bindings.clone();
             let select_state = Rc::clone(state);
-            let selected = snapshot.clone();
             select.connect_clicked(move |_| {
-                *select_bindings.document_job_id.borrow_mut() = Some(selected.job_id.clone());
-                select_bindings.document_job_state.set(Some(selected.state));
-                select_bindings
-                    .document_progress
-                    .set(Some(document_progress(&selected)));
-                let source_text = selected.job.source_text();
-                select_bindings.document_job_guard.set(true);
-                select_bindings.source.set_text(&source_text);
-                select_bindings.document_job_guard.set(false);
-                *select_bindings.document_warnings.borrow_mut() =
-                    selected.job.warnings().unwrap_or_default();
-                select_state.borrow_mut().set_source_text(&source_text);
+                select_document_job(&select_bindings, &select_state, &selected);
                 select_dialog.close();
-                refresh_ui(&select_bindings, &select_state.borrow());
             });
             header.append(&metadata);
             header.append(&select);
@@ -3229,6 +3238,52 @@ fn show_document_jobs_dialog(
             id.set_xalign(0.0);
             id.add_css_class("dim-label");
             row.append(&id);
+            let queue_actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+            let action_spec = match snapshot.state {
+                DocumentJobState::Pending | DocumentJobState::Running => {
+                    Some(("action.pause_document", "Pause document", 0_u8))
+                }
+                DocumentJobState::Paused => {
+                    Some(("action.resume_document", "Resume document", 1_u8))
+                }
+                DocumentJobState::Cancelled | DocumentJobState::Failed => {
+                    Some(("action.retry_document", "Retry document", 2_u8))
+                }
+                DocumentJobState::Completed => None,
+            };
+            if let Some((action_key, action_fallback, action_kind)) = action_spec {
+                let action = gtk::Button::with_mnemonic(&localized_mnemonic(
+                    locale,
+                    action_key,
+                    action_fallback,
+                ));
+                action.set_focusable(true);
+                let action_bindings = bindings.clone();
+                let action_state = Rc::clone(state);
+                let action_worker = worker.clone();
+                let action_selected = snapshot.clone();
+                let action_dialog = dialog.clone();
+                action.connect_clicked(move |_| {
+                    select_document_job(&action_bindings, &action_state, &action_selected);
+                    let job_id = action_selected.job_id.clone();
+                    let result = match action_kind {
+                        0 => action_worker.pause_document_job(job_id),
+                        1 => action_worker.resume_document_job(job_id),
+                        2 => action_worker.retry_document_job(job_id),
+                        _ => Ok(()),
+                    };
+                    if let Err(error) = result {
+                        action_state
+                            .borrow_mut()
+                            .record_client_error(error.to_string());
+                        refresh_ui(&action_bindings, &action_state.borrow());
+                    } else {
+                        action_dialog.close();
+                    }
+                });
+                queue_actions.append(&action);
+            }
+            row.append(&queue_actions);
             list.append(&row);
         }
     }
@@ -3905,7 +3960,8 @@ fn apply_worker_event(
             }
         }
         WorkerEvent::DocumentJobsListed { jobs } => {
-            show_document_jobs_dialog(bindings, state, jobs);
+            let jobs_worker = worker.command_handle();
+            show_document_jobs_dialog(bindings, state, &jobs_worker, jobs);
         }
         WorkerEvent::DocumentJobExported {
             source_name,

@@ -388,6 +388,27 @@ impl WorkerCommandHandle {
             .map_err(|_| WorkerSendError)
     }
 
+    /// 非阻塞请求暂停指定的本地文档任务。
+    pub fn pause_document_job(&self, job_id: String) -> Result<(), WorkerSendError> {
+        self.commands
+            .try_send(QueuedCommand::PauseDocumentJob { job_id })
+            .map_err(|_| WorkerSendError)
+    }
+
+    /// 非阻塞请求恢复指定的本地文档任务。
+    pub fn resume_document_job(&self, job_id: String) -> Result<(), WorkerSendError> {
+        self.commands
+            .try_send(QueuedCommand::ResumeDocumentJob { job_id })
+            .map_err(|_| WorkerSendError)
+    }
+
+    /// 非阻塞请求重试指定的本地文档任务。
+    pub fn retry_document_job(&self, job_id: String) -> Result<(), WorkerSendError> {
+        self.commands
+            .try_send(QueuedCommand::RetryDocumentJob { job_id })
+            .map_err(|_| WorkerSendError)
+    }
+
     /// 非阻塞请求重建本地文档任务输出。
     pub fn export_document_job(&self, job_id: String) -> Result<(), WorkerSendError> {
         self.commands
