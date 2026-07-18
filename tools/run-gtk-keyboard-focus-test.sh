@@ -70,9 +70,7 @@ XDG_CACHE_HOME="$workspace/cache" \
     xdotool windowactivate --sync "$app_window" >/dev/null 2>&1 || true
     xdotool windowfocus --sync "$app_window" >/dev/null 2>&1 || true
     read -r focus_x focus_y focus_width focus_height <"$LINGUAMESH_KEYBOARD_FOCUS_COORDINATES"
-    window_x=$(xdotool getwindowgeometry --shell "$app_window" | grep "^X=" | cut -d= -f2)
-    window_y=$(xdotool getwindowgeometry --shell "$app_window" | grep "^Y=" | cut -d= -f2)
-    xdotool mousemove --sync "$((window_x + focus_x + focus_width / 2))" "$((window_y + focus_y + focus_height / 2))"
+    xdotool mousemove --sync --window "$app_window" "$((focus_x + focus_width / 2))" "$((focus_y + focus_height / 2))"
     xdotool click 1
     : >"$LINGUAMESH_KEYBOARD_FOCUS_START"
     sleep 0.1
