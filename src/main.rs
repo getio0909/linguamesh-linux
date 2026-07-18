@@ -642,6 +642,16 @@ fn set_labeled_control_label(control: &gtk::Widget, text: &str) {
     }
 }
 
+fn refresh_dropdown_labels(dropdown: &gtk::DropDown, labels: &[String]) {
+    if let Some(model) = dropdown
+        .model()
+        .and_then(|model| model.downcast::<gtk::StringList>().ok())
+    {
+        let replacements = labels.iter().map(String::as_str).collect::<Vec<_>>();
+        model.splice(0, model.n_items(), &replacements);
+    }
+}
+
 fn generate_custom_provider_id(
     saved_profiles: &[ProviderProfile],
 ) -> Result<ProviderProfileId, TranslationError> {
@@ -1740,6 +1750,14 @@ fn refresh_localized_widgets(bindings: &UiBindings, locale: UiLocale) {
         bindings.locale.upcast_ref(),
         &localization::text(locale, "settings.ui_language", "Interface language"),
     );
+    refresh_dropdown_labels(
+        &bindings.theme,
+        &[
+            localization::text(locale, "theme.system", "System"),
+            localization::text(locale, "theme.light", "Light"),
+            localization::text(locale, "theme.dark", "Dark"),
+        ],
+    );
     bindings
         .diagnostics_panel
         .set_label(Some(&localization::text(
@@ -2116,6 +2134,12 @@ mod tests {
         assert_eq!(bindings.window.title().as_deref(), Some("LinguaMesh"));
         assert_eq!(bindings.source_label.label(), "源文本");
         assert_eq!(bindings.output_label.label(), "译文");
+        let theme_model = bindings
+            .theme
+            .model()
+            .and_then(|model| model.downcast::<gtk::StringList>().ok())
+            .expect("theme labels");
+        assert_eq!(theme_model.string(1).as_deref(), Some("浅色"));
         assert_eq!(
             bindings.open_source.label().as_deref(),
             Some("_Open text file")
