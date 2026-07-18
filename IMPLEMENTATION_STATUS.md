@@ -41,7 +41,7 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
 
 - Rust 1.93.0 Cargo package at `0.1.0-alpha.2`, with locked Core alpha.2 path dependencies and
   optional `demo-provider`/`gui` features. Native CI pins Core functional revision
-  `7adc9cdf6c8243243d42136f8b80fe3ee19f0af1`.
+  `e207754e064811541312c24dfbd584eae3a4f3a4`.
 - Startup rejects any Core other than semantic version `0.1.0-alpha.2`, ABI 1, protocol 1, provider
   catalog `0.1.0`, with the required cancellation, compatibility, typed Rust host-secret broker,
   model-discovery, protected-span, streaming-text, and text-translation features.
@@ -616,6 +616,31 @@ Validated locally:
 - Native GUI linking remains CI-only because this host lacks the GTK 4.10 symbols required by the
   current system libraries.
 
+## 2026-07-18 — Linux TXT/Markdown document contract
+
+Assumption: Linux keeps the existing bounded native file chooser and editor UX, while Core owns
+format detection, UTF-8/BOM validation, line-ending preservation, Markdown fenced-code protection,
+and reconstruction semantics. This slice does not claim a persistent document queue or archive
+format support.
+
+Implemented:
+
+- Pinned Core `e207754e064811541312c24dfbd584eae3a4f3a4`, which exposes the negotiated
+  `bounded_text_document_v1` feature and the `linguamesh-document` crate.
+- Routed Linux TXT/Markdown file import through the Core document contract. Unsupported formats,
+  oversized data, and invalid UTF-8 are rejected without exposing paths or file contents; existing
+  localized file error keys are used for user-facing failures.
+- Added Linux regression coverage for Markdown selection, BOM/line endings, unsupported formats,
+  UTF-8 failures, and the existing 4 MiB boundary.
+
+Validated locally:
+
+- `cargo fmt --all` passed.
+- `cargo test --lib --offline` passed: 56 tests, 0 failed.
+- `git diff --check` passed.
+- Native linking remains CI-only because this host lacks the GTK 4.10 symbols required by the
+  current system libraries.
+
 ## 2026-07-18 — Linux translation memory controls
 
 Assumption: translation memory is a separate optional local cache from history. Incognito never
@@ -624,7 +649,7 @@ included so same-named models from different confirmed providers cannot cross-re
 
 Implemented:
 
-- Pinned Core `b5fb19cf2123b70587775cd6e4a68515a5790575`, whose schema 5 storage exposes a bounded
+- Pinned Core `e207754e064811541312c24dfbd584eae3a4f3a4`, whose schema 5 storage exposes a bounded
   translation-memory policy, deterministic identity, lookup/write, inspection, export data, exact
   deletion, and clear-all controls.
 - Added Linux worker startup/policy/list/delete/clear events and cache-hit translation flow. A hit

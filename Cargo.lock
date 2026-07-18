@@ -962,6 +962,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "linguamesh-document"
+version = "0.1.0-alpha.2"
+dependencies = [
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "linguamesh-domain"
 version = "0.1.0-alpha.2"
 dependencies = [
@@ -992,6 +1000,7 @@ dependencies = [
  "gtk4",
  "libadwaita",
  "linguamesh-application",
+ "linguamesh-document",
  "linguamesh-domain",
  "linguamesh-engine",
  "linguamesh-protocol",

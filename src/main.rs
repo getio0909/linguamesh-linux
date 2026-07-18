@@ -2274,6 +2274,10 @@ fn load_source_file(file: &gtk::gio::File, bindings: &UiBindings, state: &Rc<Ref
     let bytes_read = Rc::new(Cell::new(0_usize));
     let too_large = Rc::new(Cell::new(false));
     let source_uri = file.uri().to_string();
+    let source_name = file.basename().map_or_else(
+        || "source.txt".to_owned(),
+        |name| name.to_string_lossy().into_owned(),
+    );
     let read_bytes = Rc::clone(&bytes_read);
     let read_too_large = Rc::clone(&too_large);
     let load_bindings = bindings.clone();
@@ -2304,7 +2308,8 @@ fn load_source_file(file: &gtk::gio::File, bindings: &UiBindings, state: &Rc<Ref
                 return;
             }
             match result {
-                Ok((contents, _)) => match file_import::decode_text_contents(contents.as_ref()) {
+                Ok((contents, _)) => {
+                    match file_import::decode_document_contents(&source_name, contents.as_ref()) {
                     Ok(text) => {
                         if std::env::var_os("LINGUAMESH_TEST_FILE_DIALOG").is_some() {
                             println!("GTK file chooser application fixture completed the asynchronous GIO read.");
@@ -2314,8 +2319,27 @@ fn load_source_file(file: &gtk::gio::File, bindings: &UiBindings, state: &Rc<Ref
                         load_bindings.error.set_label("");
                         load_bindings.error.set_visible(false);
                     }
-                    Err(error) => show_file_import_error(&load_bindings, &error.to_string()),
-                },
+                    Err(error) => {
+                        let locale = load_state.borrow().locale();
+                        let (key, fallback) = match error {
+                            file_import::TextImportError::TooLarge => (
+                                "error.file_too_large",
+                                "The selected text file exceeds the 4 MiB limit.",
+                            ),
+                            file_import::TextImportError::InvalidUtf8 => (
+                                "error.file.invalid_utf8",
+                                "The selected file is not valid UTF-8 text.",
+                            ),
+                            file_import::TextImportError::UnsupportedFormat => (
+                                "error.file_open",
+                                "The selected document format is not supported.",
+                            ),
+                        };
+                        let message = localization::text(locale, key, fallback);
+                        show_file_import_error(&load_bindings, &message);
+                    }
+                    }
+                }
                 Err(_) => show_file_import_error(
                     &load_bindings,
                     &localization::text(
