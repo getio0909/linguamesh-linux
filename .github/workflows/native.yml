@@ -69,6 +69,7 @@ jobs:
             xdg-desktop-portal \
             xdg-desktop-portal-gtk \
             xauth \
+            python3-pyatspi \
             xvfb
       - name: Install pinned Rust toolchain
         # 固定 dtolnay/rust-toolchain 当前提交。
@@ -135,6 +136,9 @@ jobs:
       - name: Run GTK keyboard focus fixture
         working-directory: linguamesh-linux
         run: bash tools/run-gtk-keyboard-focus-test.sh
+      - name: Run GTK AT-SPI fixture
+        working-directory: linguamesh-linux
+        run: bash tools/run-gtk-atspi-test.sh
       - name: Run GTK test on Wayland
         working-directory: linguamesh-linux
         run: dbus-run-session -- bash tools/run-wayland-test.sh
