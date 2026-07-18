@@ -41,7 +41,7 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
 
 - Rust 1.93.0 Cargo package at `0.1.0-alpha.2`, with locked Core alpha.2 path dependencies and
   optional `demo-provider`/`gui` features. Native CI pins Core functional revision
-  `6c54f329e9a62ffa1d2f9503087e59d4b9e9d6e9`.
+  `fd797526664b9a9a61ccf0a5a41f489a8e9b4b35`.
 - Startup rejects any Core other than semantic version `0.1.0-alpha.2`, ABI 1, protocol 1, provider
   catalog `0.1.0`, with the required cancellation, compatibility, typed Rust host-secret broker,
   model-discovery, protected-span, streaming-text, and text-translation features.
@@ -620,6 +620,25 @@ Validated locally:
 - `cargo test --features demo-provider --lib --offline` passed: 85 tests, 0 failed, 1 intentional
   ignore.
 - `bash tools/sync-l10n.sh --check` and `git diff --check` passed.
+
+## 2026-07-18 — Linux document pause/resume/retry checkpoint
+
+Assumption: pausing a document job cancels only the active provider operation and commits no
+partial segment; completed segments remain durable and the job becomes `paused`. Resume continues
+pending segments with explicit provider options, while retry accepts cancelled or failed jobs.
+
+Implemented Core schema 7 and Linux worker pause, resume, and retry commands. The GTK surface now
+shows per-job completed/total progress and exposes lifecycle controls for pause, resume, and retry.
+Android, Windows, and macOS remain intentionally out of scope for this Linux-first slice. Automatic
+provider-parameter persistence, archive codecs, and multi-job queue selection remain open.
+
+Validated locally:
+
+- `cargo test --features demo-provider --lib --offline` passed: 92 passed, 0 failed, 1 intentional
+  environment-dependent ignore, including the pause/resume/retry worker regression.
+- `cargo check --all-targets --all-features --offline` and `git diff --check` passed.
+- Full GUI test linking remains CI-only because this host lacks the GTK 4.10 symbols required by
+  the installed system libraries.
 
 ## 2026-07-18 — Linux document-job execution
 

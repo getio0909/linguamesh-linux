@@ -137,6 +137,32 @@ pub enum WorkerCommand {
     ResumeDocumentJob {
         /// 文档任务标识。
         job_id: String,
+        /// 可选的源语言标签。
+        source_locale: Option<String>,
+        /// 目标语言标签。
+        target_locale: String,
+        /// 请求级词汇表。
+        glossary: Option<Glossary>,
+        /// 本地隐私策略。
+        privacy_mode: TranslationPrivacyMode,
+    },
+    /// 重试失败或取消的文档任务。
+    RetryDocumentJob {
+        /// 文档任务标识。
+        job_id: String,
+        /// 可选的源语言标签。
+        source_locale: Option<String>,
+        /// 目标语言标签。
+        target_locale: String,
+        /// 请求级词汇表。
+        glossary: Option<Glossary>,
+        /// 本地隐私策略。
+        privacy_mode: TranslationPrivacyMode,
+    },
+    /// 在当前段边界暂停文档任务。
+    PauseDocumentJob {
+        /// 文档任务标识。
+        job_id: String,
     },
     /// 取消一个文档任务并保留其快照。
     CancelDocumentJob {
@@ -435,6 +461,20 @@ enum QueuedCommand {
     },
     ResumeDocumentJob {
         job_id: String,
+        source_locale: Option<String>,
+        target_locale: String,
+        glossary: Option<Glossary>,
+        privacy_mode: TranslationPrivacyMode,
+    },
+    RetryDocumentJob {
+        job_id: String,
+        source_locale: Option<String>,
+        target_locale: String,
+        glossary: Option<Glossary>,
+        privacy_mode: TranslationPrivacyMode,
+    },
+    PauseDocumentJob {
+        job_id: String,
     },
     CancelDocumentJob {
         job_id: String,
@@ -637,9 +677,41 @@ impl CoreWorker {
                     translated_text,
                 })
                 .map_err(|_| WorkerSendError),
-            WorkerCommand::ResumeDocumentJob { job_id } => self
+            WorkerCommand::ResumeDocumentJob {
+                job_id,
+                source_locale,
+                target_locale,
+                glossary,
+                privacy_mode,
+            } => self
                 .commands
-                .try_send(QueuedCommand::ResumeDocumentJob { job_id })
+                .try_send(QueuedCommand::ResumeDocumentJob {
+                    job_id,
+                    source_locale,
+                    target_locale,
+                    glossary,
+                    privacy_mode,
+                })
+                .map_err(|_| WorkerSendError),
+            WorkerCommand::RetryDocumentJob {
+                job_id,
+                source_locale,
+                target_locale,
+                glossary,
+                privacy_mode,
+            } => self
+                .commands
+                .try_send(QueuedCommand::RetryDocumentJob {
+                    job_id,
+                    source_locale,
+                    target_locale,
+                    glossary,
+                    privacy_mode,
+                })
+                .map_err(|_| WorkerSendError),
+            WorkerCommand::PauseDocumentJob { job_id } => self
+                .commands
+                .try_send(QueuedCommand::PauseDocumentJob { job_id })
                 .map_err(|_| WorkerSendError),
             WorkerCommand::CancelDocumentJob { job_id } => self
                 .commands
@@ -713,6 +785,7 @@ struct ActiveDocumentTranslation {
     operation: TranslationOperation,
     output: String,
     cancel_requested: bool,
+    pause_requested: bool,
     stop_after_active: bool,
 }
 
@@ -997,6 +1070,8 @@ async fn run_worker(
                     | QueuedCommand::ListDocumentJobs
                     | QueuedCommand::UpdateDocumentSegment { .. }
                     | QueuedCommand::ResumeDocumentJob { .. }
+                    | QueuedCommand::RetryDocumentJob { .. }
+                    | QueuedCommand::PauseDocumentJob { .. }
                     | QueuedCommand::CancelDocumentJob { .. },
                 )) => {
                     let _ = events.send(WorkerEvent::DocumentJobActionRejected(
@@ -1126,7 +1201,17 @@ async fn run_worker(
                     document_translation.operation.cancel();
                     active_document = Some(document_translation);
                 }
-                ActiveStep::Command(Some(QueuedCommand::CancelDocumentJob { .. })) => {
+                ActiveStep::Command(Some(QueuedCommand::PauseDocumentJob { job_id }))
+                    if job_id == document_translation.job_id =>
+                {
+                    document_translation.pause_requested = true;
+                    document_translation.operation.cancel();
+                    active_document = Some(document_translation);
+                }
+                ActiveStep::Command(Some(
+                    QueuedCommand::PauseDocumentJob { .. }
+                    | QueuedCommand::CancelDocumentJob { .. },
+                )) => {
                     let _ = events.send(WorkerEvent::DocumentJobActionRejected(
                         TranslationError::new(
                             ErrorKind::InvalidConfiguration,
@@ -1186,6 +1271,23 @@ async fn run_worker(
                                 });
                             match update {
                                 Ok(snapshot) => {
+                                    let snapshot = if document_translation.pause_requested
+                                        && snapshot.state != DocumentJobState::Completed
+                                    {
+                                        storage
+                                            .as_mut()
+                                            .and_then(|storage| {
+                                                storage
+                                                    .set_document_job_state(
+                                                        &document_translation.job_id,
+                                                        DocumentJobState::Paused,
+                                                    )
+                                                    .ok()
+                                            })
+                                            .unwrap_or(snapshot)
+                                    } else {
+                                        snapshot
+                                    };
                                     if events
                                         .send(WorkerEvent::DocumentJobUpdated(snapshot.clone()))
                                         .is_err()
@@ -1193,6 +1295,7 @@ async fn run_worker(
                                         shutting_down = true;
                                     } else if snapshot.state == DocumentJobState::Completed
                                         || document_translation.stop_after_active
+                                        || document_translation.pause_requested
                                     {
                                         shutting_down |= document_translation.stop_after_active;
                                     } else {
@@ -1236,7 +1339,9 @@ async fn run_worker(
                                 }
                             }
                         } else if !document_translation.stop_after_active {
-                            let state = if document_translation.cancel_requested {
+                            let state = if document_translation.pause_requested {
+                                DocumentJobState::Paused
+                            } else if document_translation.cancel_requested {
                                 DocumentJobState::Cancelled
                             } else {
                                 DocumentJobState::Failed
@@ -1921,7 +2026,127 @@ async fn run_worker(
                     }
                 }
             }
-            Some(QueuedCommand::ResumeDocumentJob { job_id }) => {
+            Some(QueuedCommand::ResumeDocumentJob {
+                job_id,
+                source_locale,
+                target_locale,
+                glossary,
+                privacy_mode,
+            }) => {
+                if privacy_mode == TranslationPrivacyMode::Incognito {
+                    let _ = events.send(WorkerEvent::DocumentJobActionRejected(
+                        TranslationError::new(
+                            ErrorKind::InvalidConfiguration,
+                            "Incognito mode cannot persist document job progress.",
+                        ),
+                    ));
+                    continue;
+                }
+                let result = storage
+                    .as_mut()
+                    .ok_or_else(|| {
+                        TranslationError::new(
+                            ErrorKind::Persistence,
+                            "Local document job storage is unavailable.",
+                        )
+                    })
+                    .and_then(|storage| {
+                        start_document_job_translation(
+                            storage,
+                            &manager,
+                            active_profile.as_ref(),
+                            selected_model.as_deref(),
+                            &job_id,
+                            DocumentTranslationOptions {
+                                source_locale,
+                                target_locale,
+                                glossary,
+                                privacy_mode,
+                            },
+                            false,
+                        )
+                    });
+                match result {
+                    Ok(document_translation) => {
+                        set_active_cancellation(
+                            &active_cancellation,
+                            ActiveCancellation::Translation(
+                                document_translation.operation.cancellation_handle(),
+                            ),
+                        );
+                        active_document = Some(document_translation);
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::DocumentJobActionRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
+            Some(QueuedCommand::RetryDocumentJob {
+                job_id,
+                source_locale,
+                target_locale,
+                glossary,
+                privacy_mode,
+            }) => {
+                if privacy_mode == TranslationPrivacyMode::Incognito {
+                    let _ = events.send(WorkerEvent::DocumentJobActionRejected(
+                        TranslationError::new(
+                            ErrorKind::InvalidConfiguration,
+                            "Incognito mode cannot persist document job progress.",
+                        ),
+                    ));
+                    continue;
+                }
+                let result = storage
+                    .as_mut()
+                    .ok_or_else(|| {
+                        TranslationError::new(
+                            ErrorKind::Persistence,
+                            "Local document job storage is unavailable.",
+                        )
+                    })
+                    .and_then(|storage| {
+                        start_document_job_translation(
+                            storage,
+                            &manager,
+                            active_profile.as_ref(),
+                            selected_model.as_deref(),
+                            &job_id,
+                            DocumentTranslationOptions {
+                                source_locale,
+                                target_locale,
+                                glossary,
+                                privacy_mode,
+                            },
+                            true,
+                        )
+                    });
+                match result {
+                    Ok(document_translation) => {
+                        set_active_cancellation(
+                            &active_cancellation,
+                            ActiveCancellation::Translation(
+                                document_translation.operation.cancellation_handle(),
+                            ),
+                        );
+                        active_document = Some(document_translation);
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::DocumentJobActionRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
+            Some(QueuedCommand::PauseDocumentJob { job_id }) => {
                 let result = storage
                     .as_mut()
                     .ok_or_else(|| {
@@ -1937,13 +2162,18 @@ async fn run_worker(
                                 "The document job was not found.",
                             )
                         })?;
-                        if !snapshot.state.is_resumable() {
+                        if !matches!(
+                            snapshot.state,
+                            DocumentJobState::Pending
+                                | DocumentJobState::Running
+                                | DocumentJobState::Paused
+                        ) {
                             return Err(TranslationError::new(
                                 ErrorKind::InvalidConfiguration,
-                                "The document job is not resumable.",
+                                "The document job cannot be paused in its current state.",
                             ));
                         }
-                        storage.set_document_job_state(&job_id, DocumentJobState::Running)
+                        storage.set_document_job_state(&job_id, DocumentJobState::Paused)
                     });
                 match result {
                     Ok(snapshot) => {
@@ -2158,6 +2388,8 @@ fn reject_queued_commands_for_shutdown(
             | QueuedCommand::ListDocumentJobs
             | QueuedCommand::UpdateDocumentSegment { .. }
             | QueuedCommand::ResumeDocumentJob { .. }
+            | QueuedCommand::RetryDocumentJob { .. }
+            | QueuedCommand::PauseDocumentJob { .. }
             | QueuedCommand::CancelDocumentJob { .. } => events.send(
                 WorkerEvent::DocumentJobActionRejected(TranslationError::cancelled()),
             ),
@@ -2701,8 +2933,67 @@ fn begin_document_segment(
         operation: active_translation.operation,
         output: String::new(),
         cancel_requested: false,
+        pause_requested: false,
         stop_after_active: false,
     })
+}
+
+fn prepare_document_job_for_start(
+    storage: &mut Storage,
+    job_id: &str,
+    retry: bool,
+) -> Result<DocumentJobSnapshot, TranslationError> {
+    let snapshot = storage.document_job(job_id)?.ok_or_else(|| {
+        TranslationError::new(
+            ErrorKind::InvalidConfiguration,
+            "The document job was not found.",
+        )
+    })?;
+    let allowed = if retry {
+        matches!(
+            snapshot.state,
+            DocumentJobState::Pending
+                | DocumentJobState::Running
+                | DocumentJobState::Paused
+                | DocumentJobState::Cancelled
+                | DocumentJobState::Failed
+        )
+    } else {
+        snapshot.state.is_resumable()
+    };
+    if !allowed {
+        return Err(TranslationError::new(
+            ErrorKind::InvalidConfiguration,
+            "The document job is not ready to translate.",
+        ));
+    }
+    if snapshot.job.pending_count() == 0 {
+        return Err(TranslationError::new(
+            ErrorKind::InvalidConfiguration,
+            "The document job has no pending segments.",
+        ));
+    }
+    storage.set_document_job_state(job_id, DocumentJobState::Running)
+}
+
+fn start_document_job_translation(
+    storage: &mut Storage,
+    manager: &ProviderManager,
+    active_profile: Option<&ProviderProfile>,
+    selected_model: Option<&str>,
+    job_id: &str,
+    options: DocumentTranslationOptions,
+    retry: bool,
+) -> Result<ActiveDocumentTranslation, TranslationError> {
+    let snapshot = prepare_document_job_for_start(storage, job_id, retry)?;
+    begin_document_segment(
+        manager,
+        active_profile,
+        selected_model,
+        job_id,
+        &snapshot.job,
+        options,
+    )
 }
 
 fn install_connection_cancellation_if_idle(
@@ -3699,6 +3990,95 @@ mod tests {
         };
         assert!(cancel_sent);
         assert!(cancelled.job.pending_count() > 0);
+        shutdown(&worker);
+    }
+
+    #[test]
+    fn document_job_translation_can_pause_resume_and_retry() {
+        let database = TestDatabase::new();
+        let (worker, _, endpoint) = started_worker_with_database(database.path());
+        connect(
+            &worker,
+            profile("document-pause-provider", &endpoint, None, None),
+            None,
+            PersistenceIntent::SessionOnly,
+        )
+        .expect("connection");
+        select(&worker, "document-pause-provider", "fake-slow-translator");
+        worker
+            .try_send(WorkerCommand::CreateDocumentJob {
+                job_id: "document-pause-1".to_owned(),
+                job: DocumentJob::from_text("notes.txt", DocumentFormat::Txt, "one\ntwo"),
+            })
+            .expect("create document job");
+        assert!(matches!(
+            worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("created event"),
+            WorkerEvent::DocumentJobUpdated(snapshot)
+                if snapshot.state == DocumentJobState::Pending
+        ));
+        worker
+            .try_send(WorkerCommand::TranslateDocumentJob {
+                job_id: "document-pause-1".to_owned(),
+                source_locale: Some("en".to_owned()),
+                target_locale: "zh-CN".to_owned(),
+                glossary: None,
+                privacy_mode: TranslationPrivacyMode::Standard,
+            })
+            .expect("translate document job");
+        let mut pause_sent = false;
+        let paused = loop {
+            match worker
+                .events
+                .recv_timeout(Duration::from_secs(10))
+                .expect("document pause event")
+            {
+                WorkerEvent::DocumentJobSegment { event, .. } => {
+                    if matches!(event, TranslationEvent::TextDelta { .. }) && !pause_sent {
+                        worker
+                            .try_send(WorkerCommand::PauseDocumentJob {
+                                job_id: "document-pause-1".to_owned(),
+                            })
+                            .expect("pause document job");
+                        pause_sent = true;
+                    }
+                }
+                WorkerEvent::DocumentJobUpdated(snapshot)
+                    if snapshot.state == DocumentJobState::Paused =>
+                {
+                    break snapshot;
+                }
+                _ => {}
+            }
+        };
+        assert!(pause_sent);
+        assert!(paused.job.pending_count() > 0);
+        worker
+            .try_send(WorkerCommand::ResumeDocumentJob {
+                job_id: "document-pause-1".to_owned(),
+                source_locale: Some("en".to_owned()),
+                target_locale: "zh-CN".to_owned(),
+                glossary: None,
+                privacy_mode: TranslationPrivacyMode::Standard,
+            })
+            .expect("resume document job");
+        let completed = loop {
+            match worker
+                .events
+                .recv_timeout(Duration::from_secs(10))
+                .expect("document resume event")
+            {
+                WorkerEvent::DocumentJobUpdated(snapshot)
+                    if snapshot.state == DocumentJobState::Completed =>
+                {
+                    break snapshot;
+                }
+                _ => {}
+            }
+        };
+        assert_eq!(completed.job.pending_count(), 0);
         shutdown(&worker);
     }
 

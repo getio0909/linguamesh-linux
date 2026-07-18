@@ -1221,6 +1221,26 @@ impl AppState {
         self.status = AppStatus::Cancelled;
     }
 
+    /// 标记文档任务已暂停，并保留已完成段的重建结果。
+    pub fn pause_document_translation(&mut self, output: impl Into<String>) {
+        self.output = output.into();
+        self.partial_output = !self.output.is_empty();
+        self.status = AppStatus::Ready;
+        self.error = None;
+    }
+
+    /// 标记文档任务失败，并保留可安全重建的部分结果。
+    pub fn fail_document_translation(
+        &mut self,
+        output: impl Into<String>,
+        error: TranslationError,
+    ) {
+        self.output = output.into();
+        self.partial_output = !self.output.is_empty();
+        self.status = AppStatus::Failed;
+        self.error = Some(error);
+    }
+
     /// 标记用户已请求取消。
     pub fn request_cancellation(&mut self) -> Result<(), StateError> {
         if self.status != AppStatus::Translating {

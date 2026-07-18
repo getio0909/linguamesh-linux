@@ -16,7 +16,7 @@ use linguamesh_linux::secret_service;
 use linguamesh_linux::worker::{
     CoreWorker, PersistenceIntent, WorkerCommand, WorkerCommandHandle, WorkerEvent,
 };
-use linguamesh_storage::{TranslationHistoryEntry, TranslationMemoryEntry};
+use linguamesh_storage::{DocumentJobSnapshot, TranslationHistoryEntry, TranslationMemoryEntry};
 use std::cell::{Cell, RefCell};
 use std::fs;
 use std::rc::Rc;
@@ -75,6 +75,9 @@ struct UiBindings {
     export_output: gtk::Button,
     open_source: gtk::Button,
     stop: gtk::Button,
+    pause_document: gtk::Button,
+    resume_document: gtk::Button,
+    retry_document: gtk::Button,
     status: gtk::Label,
     partial: gtk::Label,
     error: gtk::Label,
@@ -86,6 +89,8 @@ struct UiBindings {
     source_uri: Rc<RefCell<Option<String>>>,
     document_job_id: Rc<RefCell<Option<String>>>,
     document_job_guard: Rc<Cell<bool>>,
+    document_job_state: Rc<Cell<Option<DocumentJobState>>>,
+    document_progress: Rc<Cell<Option<(usize, usize)>>>,
     export_notice: Rc<Cell<bool>>,
     glossary_notice: Rc<Cell<bool>>,
     glossary_from_csv: Rc<Cell<bool>>,
@@ -409,9 +414,27 @@ fn create_window(
         "accessibility.stop_translation",
         "Stop translation",
     ))]);
+    let pause_document = gtk::Button::with_mnemonic(&localized_mnemonic(
+        display_locale,
+        "action.pause_document",
+        "Pause document",
+    ));
+    let resume_document = gtk::Button::with_mnemonic(&localized_mnemonic(
+        display_locale,
+        "action.resume_document",
+        "Resume document",
+    ));
+    let retry_document = gtk::Button::with_mnemonic(&localized_mnemonic(
+        display_locale,
+        "action.retry_document",
+        "Retry document",
+    ));
     action_row.append(&open_source);
     action_row.append(&translate);
     action_row.append(&export_output);
+    action_row.append(&pause_document);
+    action_row.append(&resume_document);
+    action_row.append(&retry_document);
     action_row.append(&stop);
     let status = gtk::Label::new(None);
     status.set_accessible_role(gtk::AccessibleRole::Status);
@@ -494,6 +517,9 @@ fn create_window(
             export_output,
             open_source,
             stop,
+            pause_document,
+            resume_document,
+            retry_document,
             status,
             partial,
             error,
@@ -505,6 +531,8 @@ fn create_window(
             source_uri: Rc::new(RefCell::new(None)),
             document_job_id: Rc::new(RefCell::new(None)),
             document_job_guard: Rc::new(Cell::new(false)),
+            document_job_state: Rc::new(Cell::new(None)),
+            document_progress: Rc::new(Cell::new(None)),
             export_notice: Rc::new(Cell::new(false)),
             glossary_notice: Rc::new(Cell::new(false)),
             glossary_from_csv: Rc::new(Cell::new(false)),
@@ -1090,6 +1118,47 @@ fn parse_glossary(
             "Glossary entries conflict.",
         )
     })
+}
+
+fn current_document_options(
+    bindings: &UiBindings,
+    state: &mut AppState,
+) -> Result<(Option<String>, String, Option<Glossary>), TranslationError> {
+    let source_locale =
+        SOURCE_LOCALES[bindings.source_locale.selected() as usize].map(str::to_owned);
+    let target_locale = TARGET_LOCALES[bindings.target_locale.selected() as usize].to_owned();
+    let parsed_glossary = if bindings.glossary_from_csv.get() {
+        state.glossary().cloned().map(Some).ok_or_else(|| {
+            TranslationError::new(
+                ErrorKind::InvalidConfiguration,
+                localization::text(
+                    state.locale(),
+                    "error.glossary_import",
+                    "The imported glossary is no longer available.",
+                ),
+            )
+        })
+    } else {
+        parse_glossary(
+            bindings.glossary.text().as_str(),
+            source_locale.as_deref(),
+            &target_locale,
+        )
+    }?;
+    state.set_source_locale(source_locale.clone());
+    state.set_target_locale(&target_locale);
+    state.set_glossary(parsed_glossary.clone());
+    Ok((source_locale, target_locale, parsed_glossary))
+}
+
+fn document_progress(snapshot: &DocumentJobSnapshot) -> (usize, usize) {
+    let total = snapshot
+        .job
+        .segments
+        .iter()
+        .filter(|segment| segment.kind == linguamesh_document::DocumentSegmentKind::Prose)
+        .count();
+    (total.saturating_sub(snapshot.job.pending_count()), total)
 }
 
 fn refresh_dropdown_labels(dropdown: &gtk::DropDown, labels: &[String]) {
@@ -1866,32 +1935,8 @@ fn connect_action_handlers(
         );
         let mut state = translate_state.borrow_mut();
         state.set_source_text(source.as_str());
-        let source_locale =
-            SOURCE_LOCALES[translate_bindings.source_locale.selected() as usize].map(str::to_owned);
-        let target_locale = TARGET_LOCALES[translate_bindings.target_locale.selected() as usize];
-        state.set_source_locale(source_locale.clone());
-        state.set_target_locale(target_locale);
-        let parsed_glossary = if translate_bindings.glossary_from_csv.get() {
-            state.glossary().cloned().map(Some).ok_or_else(|| {
-                TranslationError::new(
-                    ErrorKind::InvalidConfiguration,
-                    localization::text(
-                        state.locale(),
-                        "error.glossary_import",
-                        "The imported glossary is no longer available.",
-                    ),
-                )
-            })
-        } else {
-            parse_glossary(
-                translate_bindings.glossary.text().as_str(),
-                source_locale.as_deref(),
-                target_locale,
-            )
-        };
-        match parsed_glossary {
-            Ok(glossary) => {
-                state.set_glossary(glossary);
+        match current_document_options(&translate_bindings, &mut state) {
+            Ok((source_locale, target_locale, glossary)) => {
                 let document_job_id = translate_bindings.document_job_id.borrow().clone();
                 if let Some(job_id) = document_job_id {
                     if state.is_incognito() {
@@ -1904,8 +1949,8 @@ fn connect_action_handlers(
                                 let command = WorkerCommand::TranslateDocumentJob {
                                     job_id,
                                     source_locale,
-                                    target_locale: target_locale.to_owned(),
-                                    glossary: state.glossary().cloned(),
+                                    target_locale,
+                                    glossary,
                                     privacy_mode: state.privacy_mode(),
                                 };
                                 if let Err(error) = translate_worker.try_send(command) {
@@ -1931,6 +1976,77 @@ fn connect_action_handlers(
             Err(error) => state.record_client_error(error.message),
         }
         refresh_ui(&translate_bindings, &state);
+    });
+
+    let pause_bindings = bindings.clone();
+    let pause_worker = Rc::clone(worker);
+    bindings.pause_document.connect_clicked(move |_| {
+        let Some(job_id) = pause_bindings.document_job_id.borrow().clone() else {
+            return;
+        };
+        if let Err(error) = pause_worker.try_send(WorkerCommand::PauseDocumentJob { job_id }) {
+            pause_bindings.error.set_label(&error.to_string());
+        }
+    });
+
+    let resume_bindings = bindings.clone();
+    let resume_state = Rc::clone(state);
+    let resume_worker = Rc::clone(worker);
+    bindings.resume_document.connect_clicked(move |_| {
+        let Some(job_id) = resume_bindings.document_job_id.borrow().clone() else {
+            return;
+        };
+        let mut state = resume_state.borrow_mut();
+        match current_document_options(&resume_bindings, &mut state).and_then(
+            |(source_locale, target_locale, glossary)| {
+                state.begin_document_translation().map_err(|error| {
+                    TranslationError::new(ErrorKind::InvalidConfiguration, error.to_string())
+                })?;
+                resume_worker
+                    .try_send(WorkerCommand::ResumeDocumentJob {
+                        job_id,
+                        source_locale,
+                        target_locale,
+                        glossary,
+                        privacy_mode: state.privacy_mode(),
+                    })
+                    .map_err(|error| TranslationError::new(ErrorKind::Internal, error.to_string()))
+            },
+        ) {
+            Ok(()) => {}
+            Err(error) => state.record_client_error(error.message),
+        }
+        refresh_ui(&resume_bindings, &state);
+    });
+
+    let retry_bindings = bindings.clone();
+    let retry_state = Rc::clone(state);
+    let retry_worker = Rc::clone(worker);
+    bindings.retry_document.connect_clicked(move |_| {
+        let Some(job_id) = retry_bindings.document_job_id.borrow().clone() else {
+            return;
+        };
+        let mut state = retry_state.borrow_mut();
+        match current_document_options(&retry_bindings, &mut state).and_then(
+            |(source_locale, target_locale, glossary)| {
+                state.begin_document_translation().map_err(|error| {
+                    TranslationError::new(ErrorKind::InvalidConfiguration, error.to_string())
+                })?;
+                retry_worker
+                    .try_send(WorkerCommand::RetryDocumentJob {
+                        job_id,
+                        source_locale,
+                        target_locale,
+                        glossary,
+                        privacy_mode: state.privacy_mode(),
+                    })
+                    .map_err(|error| TranslationError::new(ErrorKind::Internal, error.to_string()))
+            },
+        ) {
+            Ok(()) => {}
+            Err(error) => state.record_client_error(error.message),
+        }
+        refresh_ui(&retry_bindings, &state);
     });
 
     let export_bindings = bindings.clone();
@@ -3082,6 +3198,10 @@ fn apply_worker_event(
                 && let Some(snapshot) = jobs.first()
             {
                 *bindings.document_job_id.borrow_mut() = Some(snapshot.job_id.clone());
+                bindings.document_job_state.set(Some(snapshot.state));
+                bindings
+                    .document_progress
+                    .set(Some(document_progress(snapshot)));
                 bindings.document_job_guard.set(true);
                 let source_text = snapshot.job.source_text();
                 bindings.source.set_text(&source_text);
@@ -3090,20 +3210,30 @@ fn apply_worker_event(
         }
         WorkerEvent::DocumentJobUpdated(snapshot) => {
             *bindings.document_job_id.borrow_mut() = Some(snapshot.job_id.clone());
+            bindings.document_job_state.set(Some(snapshot.state));
+            bindings
+                .document_progress
+                .set(Some(document_progress(&snapshot)));
             if let Ok(output) = snapshot.job.reconstruct() {
                 let mut state = state.borrow_mut();
                 match snapshot.state {
                     DocumentJobState::Completed => state.complete_document_translation(output),
                     DocumentJobState::Cancelled => state.cancel_document_translation(output),
+                    DocumentJobState::Paused => state.pause_document_translation(output),
                     DocumentJobState::Running => {
                         if state.status() != AppStatus::Translating {
                             let _ = state.begin_document_translation();
                         }
                         state.set_document_output(output);
                     }
-                    DocumentJobState::Pending | DocumentJobState::Failed => {
-                        state.set_document_output(output);
-                    }
+                    DocumentJobState::Pending => state.set_document_output(output),
+                    DocumentJobState::Failed => state.fail_document_translation(
+                        output,
+                        TranslationError::new(
+                            ErrorKind::Internal,
+                            "The document job failed. Retry to continue.",
+                        ),
+                    ),
                 }
             }
         }
@@ -3518,6 +3648,9 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     );
     let translate = localization::text(locale, "action.translate", "Translate");
     let stop = localization::text(locale, "accessibility.stop_translation", "Stop translation");
+    let pause = localization::text(locale, "action.pause_document", "Pause document");
+    let resume = localization::text(locale, "action.resume_document", "Resume document");
+    let retry = localization::text(locale, "action.retry_document", "Retry document");
     let export = localization::text(locale, "action.export_output", "Export translation");
     let connect = localization::text(locale, "action.connect", "Connect");
     let remove_profile =
@@ -3555,6 +3688,9 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
             "Save the translated output to a new file",
         )));
     bindings.stop.set_label(&stop_label);
+    bindings.pause_document.set_label(&format!("_{pause}"));
+    bindings.resume_document.set_label(&format!("_{resume}"));
+    bindings.retry_document.set_label(&format!("_{retry}"));
     bindings.connect.set_label(&format!("_{connect}"));
     bindings.remove_saved_profile.set_label(&remove_profile);
     bindings.remember_profile.set_label(Some(&remember_profile));
@@ -3853,6 +3989,7 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             gtk::TextDirection::Ltr
         });
     bindings.output.set_text(state.output());
+    let document_state = bindings.document_job_state.get();
     let status_label = if state.worker_unavailable() {
         localization::text(state.locale(), "status.unavailable", "Unavailable")
     } else if !state.worker_ready() {
@@ -3865,6 +4002,8 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         )
     } else if state.pending_model_selection().is_some() {
         localization::text(state.locale(), "status.selecting_model", "Selecting model")
+    } else if document_state == Some(DocumentJobState::Paused) {
+        localization::text(state.locale(), "status.document_paused", "Document paused")
     } else {
         localized_status_label(state.locale(), state.status())
     };
@@ -3872,7 +4011,17 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         "{}: {status_label}",
         localization::text(state.locale(), "status.label", "Status")
     ));
-    let partial_label = if state.has_partial_output() {
+    let partial_label = if let Some((completed, total)) = bindings.document_progress.get() {
+        localized_template(
+            state.locale(),
+            "status.document_progress",
+            "Document progress: {completed}/{total}",
+            &[
+                ("{completed}", &completed.to_string()),
+                ("{total}", &total.to_string()),
+            ],
+        )
+    } else if state.has_partial_output() {
         localization::text(state.locale(), "status.partial_output", "Partial output")
     } else {
         String::new()
@@ -4044,6 +4193,28 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     bindings
         .translate
         .set_sensitive(state.worker_ready() && !blocked && state.selected_model().is_some());
+    let document_job_available = bindings.document_job_id.borrow().is_some();
+    bindings.pause_document.set_sensitive(
+        document_job_available
+            && state.worker_ready()
+            && state.status() == AppStatus::Translating
+            && document_state == Some(DocumentJobState::Running),
+    );
+    bindings.resume_document.set_sensitive(
+        document_job_available
+            && state.worker_ready()
+            && !blocked
+            && document_state == Some(DocumentJobState::Paused),
+    );
+    bindings.retry_document.set_sensitive(
+        document_job_available
+            && state.worker_ready()
+            && !blocked
+            && matches!(
+                document_state,
+                Some(DocumentJobState::Cancelled | DocumentJobState::Failed)
+            ),
+    );
     bindings
         .export_output
         .set_sensitive(!state.output().is_empty() && !blocked);

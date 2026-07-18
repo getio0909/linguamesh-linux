@@ -5,7 +5,7 @@
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`6c54f329e9a62ffa1d2f9503087e59d4b9e9d6e9`. This revision carries the explicit request-level
+`fd797526664b9a9a61ccf0a5a41f489a8e9b4b35`. This revision carries the explicit request-level
 Incognito privacy policy and changes file-backed Core storage to add SQLite's `SQLITE_OPEN_NOFOLLOW`
 flag, adds protected-span restoration and request-level glossary
 protection for streamed text, and adds bounded semantic chunking. On
@@ -14,18 +14,19 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 6c54f329e9a62ffa1d2f9503087e59d4b9e9d6e9^{commit}
+git -C ../linguamesh-core cat-file -e fd797526664b9a9a61ccf0a5a41f489a8e9b4b35^{commit}
 git -C ../linguamesh-core diff --quiet \
-  6c54f329e9a62ffa1d2f9503087e59d4b9e9d6e9..HEAD -- \
+  fd797526664b9a9a61ccf0a5a41f489a8e9b4b35..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
 
 The same Core pin also negotiates `bounded_text_document_v1`: Linux imports only bounded UTF-8 TXT
 and Markdown, preserves line endings, keeps Markdown fenced code and blank structure verbatim, and
-persists pending/running document jobs for worker restart recovery. The Linux worker tests also cover
+persists pending/running/paused document jobs for worker restart recovery. The Linux worker tests also cover
 sequential prose-segment translation, per-segment persistence, safe reconstruction, and cancellation
-to a persisted cancelled snapshot. GUI queue presentation is not yet part of the validation gate.
+to a persisted cancelled snapshot. The GTK surface now exposes per-job progress and
+pause/resume/retry controls; multi-job selection remains outside the validation gate.
 
 A sibling `../linguamesh-l10n` checkout at the revision pinned by `tools/sync-l10n.sh` is required
 to verify the checked-in PO catalogs.
