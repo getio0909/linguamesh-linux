@@ -20,7 +20,7 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `8cd65c5846a677e70c4828e4b4a5192319d775d5`, which adds
+reviewed Core functional revision `6079138348f3182b19c017f50db768df05da62cb`, which adds
 `SQLITE_OPEN_NOFOLLOW` to file-backed storage, protected-span and request-level glossary
 restoration, bounded semantic chunking for long streamed text, and bounded translation history.
 
@@ -125,7 +125,7 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`4678fc3810b1e21e5ab8c1095e552930b8649687` and validated with `msgfmt`; the 230-message bundle
+`971d1691a4eff396c71216b898e30fcfb23e72fa` and validated with `msgfmt`; the 240-message bundle
 checksum is `03889105a74aec819ae716ee577f78e1da8a235d42be4918aa0fb6f9c5e194b8`. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
 active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, and construction-stage provider/default-control copy without replacing active source text;
@@ -150,9 +150,10 @@ glossary content in provider profiles or SQLite.
 The **Incognito mode** toggle carries an explicit Core privacy policy on the next translation
 request. Standard completed translations now persist in bounded local SQLite history (100 entries,
 with a 4 MiB source/output limit); startup restores only the count and **Clear history** removes all
-entries. Incognito requests skip history writes. History inspection, per-entry deletion/export, and
-translation-memory storage remain future slices. The toggle remains visible in the status note and
-is disabled while a conflicting operation is active.
+entries. Incognito requests skip history writes. **View history** opens a bounded scrollable list,
+supports exact per-entry deletion, and exports the displayed snapshot as escaped UTF-8 TSV.
+Translation-memory storage and history enable/disable policy remain future slices. The toggle remains
+visible in the status note and is disabled while a conflicting operation is active.
 
 When a translation completes, the registered Linux application sends a desktop notification with
 localized generic copy only; source and translated content are never included in notification

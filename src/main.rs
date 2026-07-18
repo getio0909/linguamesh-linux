@@ -11,7 +11,10 @@ use linguamesh_linux::model::{
     ThemePreference, UiLocale,
 };
 use linguamesh_linux::secret_service;
-use linguamesh_linux::worker::{CoreWorker, PersistenceIntent, WorkerCommand, WorkerEvent};
+use linguamesh_linux::worker::{
+    CoreWorker, PersistenceIntent, WorkerCommand, WorkerCommandHandle, WorkerEvent,
+};
+use linguamesh_storage::TranslationHistoryEntry;
 use std::cell::{Cell, RefCell};
 use std::fs;
 use std::rc::Rc;
@@ -52,6 +55,7 @@ struct UiBindings {
     import_glossary: gtk::Button,
     export_glossary: gtk::Button,
     incognito: gtk::CheckButton,
+    history: gtk::Button,
     clear_history: gtk::Button,
     theme: gtk::DropDown,
     locale: gtk::DropDown,
@@ -78,6 +82,7 @@ struct UiBindings {
     glossary_notice: Rc<Cell<bool>>,
     glossary_from_csv: Rc<Cell<bool>>,
     history_notice: Rc<Cell<bool>>,
+    history_export_notice: Rc<Cell<bool>>,
     history_warning: Rc<Cell<bool>>,
     history_clear_pending: Rc<Cell<bool>>,
     source_drop_target: gtk::DropTarget,
@@ -304,6 +309,7 @@ fn create_window(
         import_glossary,
         export_glossary,
         incognito,
+        history,
         clear_history,
         theme,
         locale,
@@ -446,6 +452,7 @@ fn create_window(
             import_glossary,
             export_glossary,
             incognito,
+            history,
             clear_history,
             theme: theme.clone(),
             locale: locale.clone(),
@@ -472,6 +479,7 @@ fn create_window(
             glossary_notice: Rc::new(Cell::new(false)),
             glossary_from_csv: Rc::new(Cell::new(false)),
             history_notice: Rc::new(Cell::new(false)),
+            history_export_notice: Rc::new(Cell::new(false)),
             history_warning: Rc::new(Cell::new(false)),
             history_clear_pending: Rc::new(Cell::new(false)),
             source_drop_target,
@@ -734,6 +742,7 @@ fn create_controls() -> (
     gtk::Button,
     gtk::CheckButton,
     gtk::Button,
+    gtk::Button,
     gtk::DropDown,
     gtk::DropDown,
 ) {
@@ -823,6 +832,17 @@ fn create_controls() -> (
         "tooltip.clear_history",
         "Delete all locally stored translation history",
     )));
+    let history = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.view_history",
+        "View history",
+    ));
+    history.set_focusable(true);
+    history.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.view_history",
+        "Inspect, export, or delete individual local translation history entries",
+    )));
     let theme_options = [
         localization::text(locale, "theme.system", "System"),
         localization::text(locale, "theme.light", "Light"),
@@ -877,6 +897,7 @@ fn create_controls() -> (
     controls.append(&import_glossary);
     controls.append(&export_glossary);
     controls.append(&incognito);
+    controls.append(&history);
     controls.append(&clear_history);
     (
         controls,
@@ -887,6 +908,7 @@ fn create_controls() -> (
         import_glossary,
         export_glossary,
         incognito,
+        history,
         clear_history,
         theme,
         locale,
@@ -1389,6 +1411,21 @@ fn connect_action_handlers(
                 .borrow_mut()
                 .record_client_error(error.to_string());
             refresh_ui(&clear_history_bindings, &clear_history_state.borrow());
+        }
+    });
+
+    let history_bindings = bindings.clone();
+    let history_state = Rc::clone(state);
+    let history_worker = Rc::clone(worker);
+    bindings.history.connect_clicked(move |_| {
+        if !history_state.borrow().profile_storage_available() {
+            return;
+        }
+        if let Err(error) = history_worker.try_send(WorkerCommand::ListTranslationHistory) {
+            history_state
+                .borrow_mut()
+                .record_client_error(error.to_string());
+            refresh_ui(&history_bindings, &history_state.borrow());
         }
     });
 
@@ -2113,6 +2150,222 @@ fn show_file_export_error(bindings: &UiBindings, message: &str) {
     bindings.error.reset_state(gtk::AccessibleState::Hidden);
 }
 
+// 以可读的确定性 TSV 展示本地历史，并把删除操作重新交给核心工作线程。
+#[allow(clippy::too_many_lines)]
+fn show_history_dialog(
+    bindings: &UiBindings,
+    state: &Rc<RefCell<AppState>>,
+    worker: &WorkerCommandHandle,
+    entries: Vec<TranslationHistoryEntry>,
+) {
+    bindings.history_export_notice.set(false);
+    let locale = state.borrow().locale();
+    let dialog = gtk::Window::builder()
+        .application(&bindings.application)
+        .transient_for(&bindings.window)
+        .modal(true)
+        .title(localization::text(
+            locale,
+            "dialog.history",
+            "Translation history",
+        ))
+        .default_width(760)
+        .default_height(520)
+        .build();
+    let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    root.set_margin_top(16);
+    root.set_margin_bottom(16);
+    root.set_margin_start(16);
+    root.set_margin_end(16);
+    let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let export = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.export_history",
+        "Export history",
+    ));
+    export.set_focusable(true);
+    let close = gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.close", "Close"));
+    close.set_focusable(true);
+    actions.append(&export);
+    actions.append(&close);
+    root.append(&actions);
+
+    let list = gtk::ListBox::new();
+    list.set_selection_mode(gtk::SelectionMode::None);
+    list.set_vexpand(true);
+    if entries.is_empty() {
+        let empty = gtk::Label::new(Some(&localization::text(
+            locale,
+            "status.history_empty",
+            "No local translation history is stored.",
+        )));
+        empty.set_xalign(0.0);
+        empty.add_css_class("dim-label");
+        list.append(&empty);
+    } else {
+        for entry in &entries {
+            let row = gtk::Box::new(gtk::Orientation::Vertical, 6);
+            row.set_margin_top(8);
+            row.set_margin_bottom(8);
+            let header = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+            let metadata = gtk::Label::new(Some(&format!(
+                "{} → {} · {} · {}",
+                entry.source_locale.as_deref().unwrap_or("auto"),
+                entry.target_locale,
+                entry.model_id,
+                entry.created_at,
+            )));
+            metadata.set_xalign(0.0);
+            metadata.set_hexpand(true);
+            metadata.add_css_class("dim-label");
+            let delete = gtk::Button::with_mnemonic(&localized_mnemonic(
+                locale,
+                "action.delete_history_entry",
+                "Delete",
+            ));
+            delete.set_focusable(true);
+            delete.add_css_class("destructive-action");
+            let delete_worker = worker.clone();
+            let delete_dialog = dialog.clone();
+            let delete_bindings = bindings.clone();
+            let delete_state = Rc::clone(state);
+            let operation_id = entry.operation_id.clone();
+            delete.connect_clicked(move |_| {
+                delete_dialog.close();
+                if let Err(error) = delete_worker.delete_translation_history(operation_id.clone()) {
+                    delete_state
+                        .borrow_mut()
+                        .record_client_error(error.to_string());
+                    refresh_ui(&delete_bindings, &delete_state.borrow());
+                }
+            });
+            header.append(&metadata);
+            header.append(&delete);
+            row.append(&header);
+            let source = gtk::Label::new(Some(&format!("Source: {}", entry.source_text)));
+            source.set_xalign(0.0);
+            source.set_wrap(true);
+            source.set_selectable(true);
+            row.append(&source);
+            let translated =
+                gtk::Label::new(Some(&format!("Translation: {}", entry.translated_text)));
+            translated.set_xalign(0.0);
+            translated.set_wrap(true);
+            translated.set_selectable(true);
+            row.append(&translated);
+            list.append(&row);
+        }
+    }
+    let scroller = gtk::ScrolledWindow::builder()
+        .vexpand(true)
+        .child(&list)
+        .build();
+    root.append(&scroller);
+    dialog.set_child(Some(&root));
+
+    let export_bindings = bindings.clone();
+    let export_state = Rc::clone(state);
+    let export_entries = entries;
+    export.connect_clicked(move |_| {
+        begin_history_export(&export_bindings, &export_state, &export_entries);
+    });
+    let close_dialog = dialog.clone();
+    close.connect_clicked(move |_| close_dialog.close());
+    dialog.present();
+}
+
+// 将历史字段中的控制字符转义，避免导出内容伪造 TSV 行或列。
+fn history_tsv_field(value: &str) -> String {
+    value
+        .replace('\\', "\\\\")
+        .replace('\t', "\\t")
+        .replace('\r', "\\r")
+        .replace('\n', "\\n")
+}
+
+// 通过 GTK 原生保存对话框异步导出本地翻译历史。
+fn begin_history_export(
+    bindings: &UiBindings,
+    state: &Rc<RefCell<AppState>>,
+    entries: &[TranslationHistoryEntry],
+) {
+    let locale = state.borrow().locale();
+    let mut contents = String::from(
+        "operation_id\tcreated_at\tsource_locale\ttarget_locale\tmodel_id\tsource_text\ttranslated_text\n",
+    );
+    for entry in entries {
+        contents.push_str(&history_tsv_field(&entry.operation_id));
+        contents.push('\t');
+        contents.push_str(&entry.created_at.to_string());
+        contents.push('\t');
+        contents.push_str(&history_tsv_field(
+            entry.source_locale.as_deref().unwrap_or("auto"),
+        ));
+        contents.push('\t');
+        contents.push_str(&history_tsv_field(&entry.target_locale));
+        contents.push('\t');
+        contents.push_str(&history_tsv_field(&entry.model_id));
+        contents.push('\t');
+        contents.push_str(&history_tsv_field(&entry.source_text));
+        contents.push('\t');
+        contents.push_str(&history_tsv_field(&entry.translated_text));
+        contents.push('\n');
+    }
+    let contents = glib::Bytes::from_owned(contents.into_bytes());
+    let dialog = gtk::FileDialog::builder()
+        .title(localization::text(
+            locale,
+            "dialog.export_history",
+            "Export translation history",
+        ))
+        .accept_label(localization::text(locale, "dialog.save", "Save"))
+        .modal(true)
+        .build();
+    dialog.set_initial_name(Some("linguamesh-history.tsv"));
+    let export_bindings = bindings.clone();
+    let export_state = Rc::clone(state);
+    dialog.save(
+        Some(&bindings.window),
+        None::<&gtk::gio::Cancellable>,
+        move |result| match result {
+            Ok(file) => {
+                let callback_bindings = export_bindings.clone();
+                let callback_state = Rc::clone(&export_state);
+                file.replace_contents_bytes_async(
+                    &contents,
+                    None,
+                    false,
+                    gtk::gio::FileCreateFlags::NONE,
+                    None::<&gtk::gio::Cancellable>,
+                    move |write_result| match write_result {
+                        Ok(_) => {
+                            callback_bindings.history_export_notice.set(true);
+                            refresh_ui(&callback_bindings, &callback_state.borrow());
+                        }
+                        Err(_) => show_file_export_error(
+                            &callback_bindings,
+                            &localization::text(
+                                callback_state.borrow().locale(),
+                                "error.history_export",
+                                "The translation history could not be saved.",
+                            ),
+                        ),
+                    },
+                );
+            }
+            Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
+            Err(_) => show_file_export_error(
+                &export_bindings,
+                &localization::text(
+                    export_state.borrow().locale(),
+                    "error.history_export",
+                    "The translation history could not be saved.",
+                ),
+            ),
+        },
+    );
+}
+
 // 拖放和按钮导入共享相同的工作状态边界，避免覆盖正在处理的用户内容。
 fn source_import_allowed(state: &AppState) -> bool {
     !state.worker_unavailable()
@@ -2212,6 +2465,15 @@ fn apply_worker_event(
             bindings.history_clear_pending.set(false);
             bindings.history_warning.set(false);
             bindings.history_notice.set(true);
+        }
+        WorkerEvent::TranslationHistoryListed { entries, count } => {
+            state.borrow_mut().restore_translation_history_count(count);
+            let history_worker = worker.command_handle();
+            show_history_dialog(bindings, state, &history_worker, entries);
+        }
+        WorkerEvent::TranslationHistoryActionRejected(error)
+        | WorkerEvent::SecretCleanupFailed { error, .. } => {
+            state.borrow_mut().record_client_error(error.to_string());
         }
         WorkerEvent::TranslationHistoryClearRejected(error) => {
             bindings.history_clear_pending.set(false);
@@ -2346,9 +2608,6 @@ fn apply_worker_event(
                     .borrow_mut()
                     .profile_deletion_failed(&profile_id, error);
             }
-        }
-        WorkerEvent::SecretCleanupFailed { error, .. } => {
-            state.borrow_mut().record_client_error(error.to_string());
         }
         WorkerEvent::Translation(event) => {
             let completed = matches!(&event, TranslationEvent::Completed { .. });
@@ -2646,6 +2905,7 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     let import_glossary = localization::text(locale, "action.import_glossary", "Import glossary");
     let export_glossary = localization::text(locale, "action.export_glossary", "Export glossary");
     let incognito = localization::text(locale, "settings.incognito", "Incognito mode");
+    let history = localization::text(locale, "action.view_history", "View history");
     let clear_history = localization::text(locale, "action.clear_history", "Clear history");
     let translate_label = format!("_{translate}");
     let stop_label = format!("_{stop}");
@@ -2673,6 +2933,7 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
         .export_glossary
         .set_label(&format!("_{export_glossary}"));
     bindings.incognito.set_label(Some(&format!("_{incognito}")));
+    bindings.history.set_label(&format!("_{history}"));
     bindings
         .clear_history
         .set_label(&format!("_{clear_history}"));
@@ -2704,6 +2965,11 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
             "tooltip.clear_history",
             "Delete all locally stored translation history",
         )));
+    bindings.history.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.view_history",
+        "Inspect, export, or delete individual local translation history entries",
+    )));
     bindings
         .remove_saved_profile
         .set_tooltip_text(Some(&localization::text(
@@ -2973,6 +3239,12 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             "status.history_not_saved",
             "The translation completed, but local history could not be saved.",
         )
+    } else if bindings.history_export_notice.get() {
+        localization::text(
+            state.locale(),
+            "status.history_exported",
+            "Translation history was exported to the selected file.",
+        )
     } else if bindings.history_notice.get() {
         localization::text(
             state.locale(),
@@ -3071,6 +3343,9 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             && !blocked
             && !bindings.history_clear_pending.get()
             && state.translation_history_count() > 0,
+    );
+    bindings.history.set_sensitive(
+        state.profile_storage_available() && !blocked && state.translation_history_count() > 0,
     );
     bindings.export_glossary.set_sensitive(
         !blocked && (!bindings.glossary.text().trim().is_empty() || state.glossary().is_some()),

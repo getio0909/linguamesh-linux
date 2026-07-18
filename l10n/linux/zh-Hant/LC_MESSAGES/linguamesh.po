@@ -1382,6 +1382,66 @@ msgctxt "action.clear_history"
 msgid "Clear history"
 msgstr "清除歷史記錄"
 
+#. Opens the Linux translation history inspection window.
+#, fuzzy
+msgctxt "action.view_history"
+msgid "View history"
+msgstr "檢視歷史"
+
+#. Exports the currently displayed Linux translation history entries.
+#, fuzzy
+msgctxt "action.export_history"
+msgid "Export history"
+msgstr "匯出歷史"
+
+#. Deletes one Linux translation history entry.
+#, fuzzy
+msgctxt "action.delete_history_entry"
+msgid "Delete"
+msgstr "刪除"
+
+#. Closes the Linux translation history window.
+#, fuzzy
+msgctxt "action.close"
+msgid "Close"
+msgstr "關閉"
+
+#. Title of the Linux translation history inspection window.
+#, fuzzy
+msgctxt "dialog.history"
+msgid "Translation history"
+msgstr "翻譯歷史"
+
+#. Title of the Linux translation history export dialog.
+#, fuzzy
+msgctxt "dialog.export_history"
+msgid "Export translation history"
+msgstr "匯出翻譯歷史"
+
+#. Empty-state text for the Linux translation history window.
+#, fuzzy
+msgctxt "status.history_empty"
+msgid "No local translation history is stored."
+msgstr "沒有儲存本地翻譯歷史。"
+
+#. Status note confirming that displayed history was exported.
+#, fuzzy
+msgctxt "status.history_exported"
+msgid "Translation history was exported to the selected file."
+msgstr "翻譯歷史已匯出至所選檔案。"
+
+#. Fixed error text for a failed Linux translation history export.
+#, fuzzy
+msgctxt "error.history_export"
+msgid "The translation history could not be saved."
+msgstr "無法儲存翻譯歷史。"
+
+#. Tooltip for opening Linux translation history controls.
+#, fuzzy
+msgctxt "tooltip.view_history"
+msgid "Inspect, export, or delete individual local translation history entries"
+msgstr "檢視、匯出或刪除單筆本地翻譯歷史"
+
 #. Tooltip for clearing locally stored translation history on Linux.
 #, fuzzy
 msgctxt "tooltip.clear_history"

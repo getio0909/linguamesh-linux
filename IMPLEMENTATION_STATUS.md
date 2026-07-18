@@ -559,3 +559,29 @@ in the GitHub Actions evidence above, but those native checks remain unavailable
 - Directory-descriptor or `openat2` hardening against a concurrent same-UID path replacement during
   Linux host preflight; static components are checked before mutation and Core remains the final
   no-follow open gate.
+
+## 2026-07-18 — History inspection, export, and per-entry deletion
+
+Assumption: the existing bounded Core history table is the authoritative Linux history source; the
+inspection window loads at most 100 entries, exports only the displayed snapshot, and keeps history
+enable/disable policy and translation-memory storage as separate follow-up work.
+
+Implemented:
+
+- Added a localized GTK View history action that opens a scrollable, selectable list of source and
+  translated text with locale, model, timestamp, and a per-entry Delete action.
+- Added an asynchronous UTF-8 TSV export with escaped tabs, newlines, carriage returns, and
+  backslashes so untrusted translated content cannot forge rows or columns.
+- Added worker list/delete commands and typed events; deletions are exact operation-ID requests and
+  refresh the dialog from the Core snapshot after success.
+- Pinned Core `6079138348f3182b19c017f50db768df05da62cb` and l10n
+  `971d1691a4eff396c71216b898e30fcfb23e72fa`, with 240 generated localization messages.
+
+Validated locally:
+
+- `cargo fmt --all` passed.
+- `cargo check --features gui --offline` passed through Rust compilation.
+- `cargo test --features demo-provider --lib --offline` passed: 82 tests, 0 failed, 1 intentional
+  ignore; `cargo test --features gui --all-targets --offline` reached native linking but failed on
+  unavailable GTK 4 symbols in the host libraries, so no local GUI link result is claimed.
+- `bash tools/sync-l10n.sh --check`, `git diff --check`, and l10n schema/generator tests passed.

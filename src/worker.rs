@@ -5,7 +5,7 @@ use linguamesh_domain::{
     TranslationError, TranslationEvent, TranslationRequest,
 };
 use linguamesh_engine::{CancellationHandle, TranslationOperation, core_compatibility};
-use linguamesh_storage::Storage;
+use linguamesh_storage::{MAX_TRANSLATION_HISTORY_ENTRIES, Storage, TranslationHistoryEntry};
 use linguamesh_testkit::FakeProviderServer;
 use std::error::Error;
 use std::fmt;
@@ -71,6 +71,13 @@ pub enum WorkerCommand {
     },
     /// 清空本地翻译历史。
     ClearTranslationHistory,
+    /// 请求按最新顺序读取本地翻译历史。
+    ListTranslationHistory,
+    /// 删除指定操作标识对应的一条本地翻译历史。
+    DeleteTranslationHistory {
+        /// 要删除的稳定操作标识。
+        operation_id: String,
+    },
     /// 开始翻译请求。
     Translate(TranslationRequest),
     /// 取消当前连接或翻译。
@@ -107,6 +114,15 @@ pub enum WorkerEvent {
     },
     /// 本地翻译历史已清空。
     TranslationHistoryCleared,
+    /// 已读取本地翻译历史及当前数量。
+    TranslationHistoryListed {
+        /// 按最新写入顺序排列的有限历史条目。
+        entries: Vec<TranslationHistoryEntry>,
+        /// 当前数据库中的历史记录数量。
+        count: usize,
+    },
+    /// 读取或删除本地翻译历史被拒绝。
+    TranslationHistoryActionRejected(TranslationError),
     /// 清空本地翻译历史被拒绝。
     TranslationHistoryClearRejected(TranslationError),
     /// 本地翻译历史写入失败，但翻译结果仍已完成。
@@ -189,6 +205,28 @@ impl fmt::Display for WorkerSendError {
 
 impl Error for WorkerSendError {}
 
+/// 可克隆的非阻塞命令句柄，供历史窗口等短生命周期界面使用。
+#[derive(Clone)]
+pub struct WorkerCommandHandle {
+    commands: CommandSender<QueuedCommand>,
+}
+
+impl WorkerCommandHandle {
+    /// 非阻塞请求读取本地翻译历史。
+    pub fn list_translation_history(&self) -> Result<(), WorkerSendError> {
+        self.commands
+            .try_send(QueuedCommand::ListTranslationHistory)
+            .map_err(|_| WorkerSendError)
+    }
+
+    /// 非阻塞请求删除一条本地翻译历史。
+    pub fn delete_translation_history(&self, operation_id: String) -> Result<(), WorkerSendError> {
+        self.commands
+            .try_send(QueuedCommand::DeleteTranslationHistory { operation_id })
+            .map_err(|_| WorkerSendError)
+    }
+}
+
 enum QueuedCommand {
     Connect {
         profile: ProviderProfile,
@@ -204,6 +242,10 @@ enum QueuedCommand {
         profile_id: ProviderProfileId,
     },
     ClearTranslationHistory,
+    ListTranslationHistory,
+    DeleteTranslationHistory {
+        operation_id: String,
+    },
     Translate(TranslationRequest),
     Cancel,
     Shutdown,
@@ -337,6 +379,14 @@ impl CoreWorker {
                 .commands
                 .try_send(QueuedCommand::ClearTranslationHistory)
                 .map_err(|_| WorkerSendError),
+            WorkerCommand::ListTranslationHistory => self
+                .commands
+                .try_send(QueuedCommand::ListTranslationHistory)
+                .map_err(|_| WorkerSendError),
+            WorkerCommand::DeleteTranslationHistory { operation_id } => self
+                .commands
+                .try_send(QueuedCommand::DeleteTranslationHistory { operation_id })
+                .map_err(|_| WorkerSendError),
             WorkerCommand::Translate(request) => self
                 .commands
                 .try_send(QueuedCommand::Translate(request))
@@ -347,6 +397,14 @@ impl CoreWorker {
                 cancel_active(&self.active_cancellation);
                 result.map_err(|_| WorkerSendError)
             }
+        }
+    }
+
+    /// 创建一个只用于提交命令的可克隆句柄。
+    #[must_use]
+    pub fn command_handle(&self) -> WorkerCommandHandle {
+        WorkerCommandHandle {
+            commands: self.commands.clone(),
         }
     }
 
@@ -530,6 +588,17 @@ async fn run_worker(
                         TranslationError::new(
                             ErrorKind::InvalidConfiguration,
                             "Translation history cannot be cleared while a translation is running.",
+                        ),
+                    ));
+                }
+                ActiveStep::Command(Some(
+                    QueuedCommand::ListTranslationHistory
+                    | QueuedCommand::DeleteTranslationHistory { .. },
+                )) => {
+                    let _ = events.send(WorkerEvent::TranslationHistoryActionRejected(
+                        TranslationError::new(
+                            ErrorKind::InvalidConfiguration,
+                            "Translation history cannot be changed while a translation is running.",
                         ),
                     ));
                 }
@@ -829,6 +898,75 @@ async fn run_worker(
                     }
                 }
             }
+            Some(QueuedCommand::ListTranslationHistory) => {
+                let result = storage
+                    .as_ref()
+                    .ok_or_else(|| {
+                        TranslationError::new(
+                            ErrorKind::Persistence,
+                            "Local translation history storage is unavailable.",
+                        )
+                    })
+                    .and_then(|storage| {
+                        let entries =
+                            storage.translation_history(MAX_TRANSLATION_HISTORY_ENTRIES)?;
+                        let count = storage.translation_history_count()?;
+                        Ok((entries, count))
+                    });
+                match result {
+                    Ok((entries, count)) => {
+                        if events
+                            .send(WorkerEvent::TranslationHistoryListed { entries, count })
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::TranslationHistoryActionRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
+            Some(QueuedCommand::DeleteTranslationHistory { operation_id }) => {
+                let result = storage
+                    .as_mut()
+                    .ok_or_else(|| {
+                        TranslationError::new(
+                            ErrorKind::Persistence,
+                            "Local translation history storage is unavailable.",
+                        )
+                    })
+                    .and_then(|storage| {
+                        storage.delete_translation_history_entry(operation_id.as_str())?;
+                        let entries =
+                            storage.translation_history(MAX_TRANSLATION_HISTORY_ENTRIES)?;
+                        let count = storage.translation_history_count()?;
+                        Ok((entries, count))
+                    });
+                match result {
+                    Ok((entries, count)) => {
+                        if events
+                            .send(WorkerEvent::TranslationHistoryListed { entries, count })
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::TranslationHistoryActionRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
             Some(QueuedCommand::Translate(request)) => {
                 match begin_translation(&manager, selected_model.as_deref(), request) {
                     Ok(active_translation) => {
@@ -892,6 +1030,10 @@ fn reject_queued_commands_for_shutdown(
             }
             QueuedCommand::ClearTranslationHistory => events.send(
                 WorkerEvent::TranslationHistoryClearRejected(TranslationError::cancelled()),
+            ),
+            QueuedCommand::ListTranslationHistory
+            | QueuedCommand::DeleteTranslationHistory { .. } => events.send(
+                WorkerEvent::TranslationHistoryActionRejected(TranslationError::cancelled()),
             ),
             QueuedCommand::Translate(_) => events.send(WorkerEvent::TranslationRejected(
                 TranslationError::cancelled(),
@@ -2058,6 +2200,56 @@ mod tests {
             storage.translation_history_count().expect("history count"),
             1
         );
+    }
+
+    #[test]
+    fn history_list_and_delete_commands_refresh_the_snapshot() {
+        let database = TestDatabase::new();
+        let (worker, _, endpoint) = started_worker_with_database(database.path());
+        connect(
+            &worker,
+            profile("history-controls", &endpoint, None, None),
+            None,
+            PersistenceIntent::SessionOnly,
+        )
+        .expect("connection");
+        select(&worker, "history-controls", "fake-translator");
+        let (output, terminal) = translate(&worker, "fake-translator");
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+
+        worker
+            .try_send(WorkerCommand::ListTranslationHistory)
+            .expect("list history command");
+        let entry = match worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("history list event")
+        {
+            WorkerEvent::TranslationHistoryListed { entries, count } => {
+                assert_eq!(count, 1);
+                entries.into_iter().next().expect("history entry")
+            }
+            _ => panic!("unexpected history event"),
+        };
+        assert_eq!(entry.source_text, "Hello");
+        worker
+            .try_send(WorkerCommand::DeleteTranslationHistory {
+                operation_id: entry.operation_id,
+            })
+            .expect("delete history command");
+        match worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("history deletion event")
+        {
+            WorkerEvent::TranslationHistoryListed { entries, count } => {
+                assert!(entries.is_empty());
+                assert_eq!(count, 0);
+            }
+            _ => panic!("unexpected deletion event"),
+        }
+        shutdown(&worker);
     }
 
     #[test]

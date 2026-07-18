@@ -5,7 +5,7 @@
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`8cd65c5846a677e70c4828e4b4a5192319d775d5`. This revision carries the explicit request-level
+`6079138348f3182b19c017f50db768df05da62cb`. This revision carries the explicit request-level
 Incognito privacy policy and changes file-backed Core storage to add SQLite's `SQLITE_OPEN_NOFOLLOW`
 flag, adds protected-span restoration and request-level glossary
 protection for streamed text, and adds bounded semantic chunking. On
@@ -14,9 +14,9 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 8cd65c5846a677e70c4828e4b4a5192319d775d5^{commit}
+git -C ../linguamesh-core cat-file -e 6079138348f3182b19c017f50db768df05da62cb^{commit}
 git -C ../linguamesh-core diff --quiet \
-  8cd65c5846a677e70c4828e4b4a5192319d775d5..HEAD -- \
+  6079138348f3182b19c017f50db768df05da62cb..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -341,17 +341,17 @@ both display gates, and the all-target all-feature build. Its predecessor `e483a
 first focusability assertion because GTK dropdowns defaulted to non-focusable; the final revision
 sets every labelled control and action explicitly focusable.
 
-The bounded-history checkpoint is Core `8cd65c5846a677e70c4828e4b4a5192319d775d5`, Linux
-`b968cc21978dd5bea1b4bc6d1c8828bb8ecdc489`, and l10n `4678fc3810b1e21e5ab8c1095e552930b8649687`.
+The history-controls checkpoint is Core `6079138348f3182b19c017f50db768df05da62cb`, Linux
+`b968cc21978dd5bea1b4bc6d1c8828bb8ecdc489`, and l10n `971d1691a4eff396c71216b898e30fcfb23e72fa`.
 Local Core workspace tests, Clippy, offline build, and cargo-deny passed; Linux passed all-target
-Clippy, 54 portable tests, and 82 demo-provider tests with one intentional ignore; l10n `make check`
-passed with 230 messages and bundle checksum `03889105a74aec819ae716ee577f78e1da8a235d42be4918aa0fb6f9c5e194b8`.
+Clippy, 54 portable tests, and 82 demo-provider tests with one intentional ignore; l10n validation
+passed with 240 messages. The Linux GUI test remains CI-linked because the local GTK libraries
+cannot link the current GTK 4.10 symbols.
 Core CI `29636624648`, Native SDK `29636624656`, l10n Localization `29636630359`, l10n Foundation
 `29636630348`, Linux Native `29637270603` (job `88061682829`), Linux Foundation `29637270599`, and
 Flatpak `29637270601` (job `88061682853`) passed bounded standard-history persistence, Incognito
 skip, startup count restoration, immediate post-write count refresh, clear-all wiring, the all-feature Linux binary link, and the real
-GTK/Flatpak gates. History inspection/export, per-entry deletion, and translation-memory storage
-remain open.
+GTK/Flatpak gates. Translation-memory storage and history enable/disable policy remain open.
 
 ## Repository foundation check
 

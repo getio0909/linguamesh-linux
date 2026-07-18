@@ -1384,6 +1384,66 @@ msgctxt "action.clear_history"
 msgid "Clear history"
 msgstr "［Çŀëåŕ ħïšŧøŕÿ~~~~］"
 
+#. Opens the Linux translation history inspection window.
+#, fuzzy
+msgctxt "action.view_history"
+msgid "View history"
+msgstr "［Ṽïëŵ ħïšŧøŕÿ~~~~］"
+
+#. Exports the currently displayed Linux translation history entries.
+#, fuzzy
+msgctxt "action.export_history"
+msgid "Export history"
+msgstr "［Ëẋþøŕŧ ħïšŧøŕÿ~~~~］"
+
+#. Deletes one Linux translation history entry.
+#, fuzzy
+msgctxt "action.delete_history_entry"
+msgid "Delete"
+msgstr "［Ðëŀëŧë~~］"
+
+#. Closes the Linux translation history window.
+#, fuzzy
+msgctxt "action.close"
+msgid "Close"
+msgstr "［Çŀøšë~~］"
+
+#. Title of the Linux translation history inspection window.
+#, fuzzy
+msgctxt "dialog.history"
+msgid "Translation history"
+msgstr "［Ŧŕåñšŀåŧïøñ ħïšŧøŕÿ~~~~~~］"
+
+#. Title of the Linux translation history export dialog.
+#, fuzzy
+msgctxt "dialog.export_history"
+msgid "Export translation history"
+msgstr "［Ëẋþøŕŧ ŧŕåñšŀåŧïøñ ħïšŧøŕÿ~~~~~~~~］"
+
+#. Empty-state text for the Linux translation history window.
+#, fuzzy
+msgctxt "status.history_empty"
+msgid "No local translation history is stored."
+msgstr "［Ñø ŀøçåŀ ŧŕåñšŀåŧïøñ ħïšŧøŕÿ ïš šŧøŕëð.~~~~~~~~~~~~~］"
+
+#. Status note confirming that displayed history was exported.
+#, fuzzy
+msgctxt "status.history_exported"
+msgid "Translation history was exported to the selected file."
+msgstr "［Ŧŕåñšŀåŧïøñ ħïšŧøŕÿ ŵåš ëẋþøŕŧëð ŧø ŧħë šëŀëçŧëð ƒïŀë.~~~~~~~~~~~~~~~~~~］"
+
+#. Fixed error text for a failed Linux translation history export.
+#, fuzzy
+msgctxt "error.history_export"
+msgid "The translation history could not be saved."
+msgstr "［Ŧħë ŧŕåñšŀåŧïøñ ħïšŧøŕÿ çøûŀð ñøŧ ƀë šåṽëð.~~~~~~~~~~~~~~］"
+
+#. Tooltip for opening Linux translation history controls.
+#, fuzzy
+msgctxt "tooltip.view_history"
+msgid "Inspect, export, or delete individual local translation history entries"
+msgstr "［Ïñšþëçŧ, ëẋþøŕŧ, øŕ ðëŀëŧë ïñðïṽïðûåŀ ŀøçåŀ ŧŕåñšŀåŧïøñ ħïšŧøŕÿ ëñŧŕïëš~~~~~~~~~~~~~~~~~~~~~~~］"
+
 #. Tooltip for clearing locally stored translation history on Linux.
 #, fuzzy
 msgctxt "tooltip.clear_history"
