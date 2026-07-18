@@ -41,7 +41,7 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
 
 - Rust 1.93.0 Cargo package at `0.1.0-alpha.2`, with locked Core alpha.2 path dependencies and
   optional `demo-provider`/`gui` features. Native CI pins Core functional revision
-  `e207754e064811541312c24dfbd584eae3a4f3a4`.
+  `e207754a35d9e29b8716420e1d19f755c9e27682`.
 - Startup rejects any Core other than semantic version `0.1.0-alpha.2`, ABI 1, protocol 1, provider
   catalog `0.1.0`, with the required cancellation, compatibility, typed Rust host-secret broker,
   model-discovery, protected-span, streaming-text, and text-translation features.
@@ -625,7 +625,7 @@ format support.
 
 Implemented:
 
-- Pinned Core `e207754e064811541312c24dfbd584eae3a4f3a4`, which exposes the negotiated
+- Pinned Core `e207754a35d9e29b8716420e1d19f755c9e27682`, which exposes the negotiated
   `bounded_text_document_v1` feature and the `linguamesh-document` crate.
 - Routed Linux TXT/Markdown file import through the Core document contract. Unsupported formats,
   oversized data, and invalid UTF-8 are rejected without exposing paths or file contents; existing
@@ -649,7 +649,7 @@ included so same-named models from different confirmed providers cannot cross-re
 
 Implemented:
 
-- Pinned Core `e207754e064811541312c24dfbd584eae3a4f3a4`, whose schema 5 storage exposes a bounded
+- Pinned Core `e207754a35d9e29b8716420e1d19f755c9e27682`, whose schema 5 storage exposes a bounded
   translation-memory policy, deterministic identity, lookup/write, inspection, export data, exact
   deletion, and clear-all controls.
 - Added Linux worker startup/policy/list/delete/clear events and cache-hit translation flow. A hit
