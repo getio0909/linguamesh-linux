@@ -20,7 +20,7 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `d7e9b3857cf62f0a6dd24873091cb45dff8d4258`, which adds
+reviewed Core functional revision `5feaa3700764e3f174a69a4b490ae67b2d5cd8c9`, which adds
 `SQLITE_OPEN_NOFOLLOW` to file-backed storage, protected-span and request-level glossary
 restoration, bounded semantic chunking for long streamed text, bounded translation history, and
 optional translation-memory storage with versioned request identity, and the bounded TXT/Markdown/
@@ -78,8 +78,8 @@ cancels the active document segment and leaves the source unchanged; Incognito m
 rejects new document jobs because their progress must be persisted. Subtitle timestamps and cue IDs
 remain unchanged; cue text is translated without automatic timing or line-length rewriting. CSV
 delimiters, quoted fields, variable-width rows, and line endings remain unchanged; the Linux chooser
-translates every CSV field by default while Core also exposes a selected-column contract for hosts
-that provide column selection.
+translates eligible text fields by default, skips common identifier and numeric columns, and uses
+Core's selected-column contract for hosts that provide explicit column selection.
 
 After a translation completes, **Export translation** opens a native GTK save dialog and writes the
 output asynchronously as UTF-8. Export remains disabled without output, reports a localized success
