@@ -110,7 +110,7 @@ mod tests {
         );
         assert_eq!(
             decode_document_contents("README.docx", b"text"),
-            Err(TextImportError::UnsupportedFormat)
+            Err(TextImportError::InvalidStructure)
         );
         assert_eq!(
             decode_document_contents("captions.srt", b"1\nnot a timestamp\nHello"),
@@ -134,6 +134,10 @@ mod tests {
         );
         assert_eq!(
             decode_document_contents("page.html", b"<p>Hello"),
+            Err(TextImportError::InvalidStructure)
+        );
+        assert_eq!(
+            decode_document_contents("README.docx", b"not a ZIP package"),
             Err(TextImportError::InvalidStructure)
         );
     }

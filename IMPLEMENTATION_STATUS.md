@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT document-job translation with sequential segment persistence, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; end-user prompt acceptance, multi-job GUI queue presentation, and release artifacts remain open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX document-job translation with sequential segment persistence, bounded DOCX package reconstruction and resource retention, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; end-user prompt acceptance, multi-job GUI queue presentation, and release artifacts remain open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -41,7 +41,7 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
 
 - Rust 1.93.0 Cargo package at `0.1.0-alpha.2`, with locked Core alpha.2 path dependencies and
   optional `demo-provider`/`gui` features. Native CI pins Core functional revision
-  `912780f21d8dbb19571c9b991879778a053272f8`.
+  `08eb64c6f8c94e7c7c4d3d0edb1eb37f0e1dcfb0`.
 - Startup rejects any Core other than semantic version `0.1.0-alpha.2`, ABI 1, protocol 1, provider
   catalog `0.1.0`, with the required cancellation, compatibility, typed Rust host-secret broker,
   model-discovery, protected-span, streaming-text, and text-translation features.
@@ -123,10 +123,12 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
   fields. Profile/remember/remove controls fail closed when storage is unavailable, all conflicting
   controls are blocked during connection, model selection, translation, or deletion, and event
   processing is capped per main-context tick.
-- Imported TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT files are converted into Core `DocumentJob` snapshots before the source
+- Imported TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX files are converted into Core `DocumentJob` snapshots before the source
   editor is populated. The existing Translate action starts a sequential worker pipeline for pending
   prose segments, forwards the request glossary and privacy policy, and writes each completed segment
-  back to schema-9 storage. Document terminal snapshots reconstruct safely into the output editor;
+  back to schema-10 storage. Document terminal snapshots reconstruct safely into the output editor;
+  DOCX packages retain non-text resources and rewrite supported OOXML text parts under bounded
+  archive/path/XML checks; binary export uses the original extension and rejects malformed or incomplete jobs.
   Stop persists cancellation, and Incognito rejects new document jobs rather than creating durable
   progress. The GTK surface still lacks a dedicated multi-job queue.
 - The GTK boundary provides baseline accessibility semantics: `Main`, `Heading`, `Status`, and
@@ -150,7 +152,7 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
   diagnostic detail remains an explicit English fallback.
 - Foundation and native workflow sources use immutable Node 24-compatible action commits and
   disable persisted checkout credentials. Native CI pins reviewed Core revision
-  `912780f21d8dbb19571c9b991879778a053272f8` and localization revision
+  `08eb64c6f8c94e7c7c4d3d0edb1eb37f0e1dcfb0` and localization revision
   `d64d4085fb3c1cc69c9f7965bd97ffca54ca1995`. The revised native gate retains serialized all-target,
   all-feature X11/Xvfb tests, runs the exact ignored storage-fault test in a private user/mount
   namespace when available, then runs the existing GTK binary test under forced Wayland and
@@ -166,7 +168,7 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
 Validated on 2026-07-18 with Rust 1.93.0:
 
 - The pinned global-goal SHA-256 matched the sibling authoritative file.
-- Core functional revision `912780f21d8dbb19571c9b991879778a053272f8` is the reviewed source
+- Core functional revision `08eb64c6f8c94e7c7c4d3d0edb1eb37f0e1dcfb0` is the reviewed source
   pin, and every direct Core dependency is constrained to `=0.1.0-alpha.2`.
 - `cargo fmt --all --check`, the locked demo-provider check, strict Clippy, both locked test suites,
   the demo-provider build, `DOCS_RS=1` check and Clippy, `bash tools/sync-l10n.sh --check`, all 14
@@ -707,6 +709,26 @@ Validated locally:
   diff checks passed; the document crate has 7 passing tests.
 - Linux fmt, all-target/all-feature check, strict Clippy, offline library tests (94 passed, 1
   intentional environment-dependent ignore), and diff checks passed.
+
+## 2026-07-18 — Linux DOCX package checkpoint
+
+Assumption: DOCX support is intentionally bounded to OOXML ZIP packages of at most 4 MiB and 512
+entries. Only document, header/footer, footnote, endnote, comment, and glossary XML text nodes are
+translated; package resources are retained. Encrypted, traversal, duplicate, malformed, DTD-bearing,
+oversized, and incomplete packages are rejected, and no source path or credential is persisted.
+
+Implemented Core `08eb64c6f8c94e7c7c4d3d0edb1eb37f0e1dcfb0` DOCX parsing, XML-safe text-node
+reconstruction, binary export, and schema-10 package BLOB persistence. Linux's chooser accepts DOCX,
+the worker reconstructs completed jobs through Core, and the GTK save path writes the binary package
+without allowing source overwrite.
+
+Validated locally:
+
+- Core `cargo test --workspace --all-features --locked`: all workspace tests passed, including 19
+  document and 25 storage tests; strict check, Clippy, format, and diff checks passed.
+- Linux `cargo test --lib`: 61 tests passed; strict all-target/all-feature check, Clippy, format,
+  and diff checks passed. Full GTK test linking remains blocked by missing GTK symbols in the local
+  system libraries; the native CI gate remains authoritative for the GUI binary.
 
 ## 2026-07-18 — Linux CSV document checkpoint
 

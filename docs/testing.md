@@ -5,7 +5,7 @@
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`912780f21d8dbb19571c9b991879778a053272f8`. This revision carries the explicit request-level
+`08eb64c6f8c94e7c7c4d3d0edb1eb37f0e1dcfb0`. This revision carries the explicit request-level
 Incognito privacy policy and changes file-backed Core storage to add SQLite's `SQLITE_OPEN_NOFOLLOW`
 flag, adds protected-span restoration and request-level glossary
 protection for streamed text, and adds bounded semantic chunking. On
@@ -14,19 +14,19 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 912780f21d8dbb19571c9b991879778a053272f8^{commit}
+git -C ../linguamesh-core cat-file -e 08eb64c6f8c94e7c7c4d3d0edb1eb37f0e1dcfb0^{commit}
 git -C ../linguamesh-core diff --quiet \
-  912780f21d8dbb19571c9b991879778a053272f8..HEAD -- \
+  08eb64c6f8c94e7c7c4d3d0edb1eb37f0e1dcfb0..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
 
 The same Core pin also negotiates `bounded_text_document_v1`: Linux imports only bounded UTF-8 TXT,
-Markdown, CSV, JSON, HTML, SRT, and WebVTT, preserves line endings, keeps Markdown fenced code and subtitle timing
+Markdown, CSV, JSON, HTML, SRT, WebVTT, and DOCX packages, preserves line endings, keeps Markdown fenced code and subtitle timing
 structure verbatim, and
 persists pending/running/paused document jobs and validated non-secret translation options for worker
 restart recovery. The Linux worker tests also cover
-sequential prose-segment translation, per-segment persistence, safe reconstruction, and cancellation
+sequential prose-segment translation, per-segment persistence, safe reconstruction (including DOCX package resources), and cancellation
 to a persisted cancelled snapshot. The GTK surface now exposes per-job progress and
 pause/resume/retry controls; multi-job selection remains outside the validation gate.
 

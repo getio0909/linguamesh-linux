@@ -26,7 +26,7 @@ The external-provider path is tested only with LinguaMesh's loopback fake provid
 secret references use the Linux GIO Secret Service adapter and fail closed when the desktop keyring
 is unavailable or requires an interactive prompt. The native workflow
 pins reviewed Core functional revision
-`912780f21d8dbb19571c9b991879778a053272f8`, whose storage delta adds
+`08eb64c6f8c94e7c7c4d3d0edb1eb37f0e1dcfb0`, whose storage delta adds
 `SQLITE_OPEN_NOFOLLOW` and whose text path adds protected-span, request-level glossary, and
 bounded long-text restoration, and the bounded SRT/WebVTT/CSV/JSON/HTML document contract, rather than checking
 out a floating branch. Functional revision
@@ -41,16 +41,18 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `912780f21d8dbb19571c9b991879778a053272f8` and l10n
+The current Linux gate consumes Core `08eb64c6f8c94e7c7c4d3d0edb1eb37f0e1dcfb0` and l10n
 `d64d4085fb3c1cc69c9f7965bd97ffca54ca1995`. Request-level glossary rules, bounded CSV,
 interchange are implemented in the Linux slice; persistent glossary libraries and TBX import
 remain outside the release claim.
 
-The Linux document slice now persists bounded TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT jobs, translates pending prose segments
+The Linux document slice now persists bounded TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX jobs, translates pending prose segments
 sequentially, and restores completed or cancelled snapshots into the editor. Validated non-secret
 provider/model/glossary options are persisted and reused by Resume and Retry after restart only when
 the active runtime matches. This is not yet a release-ready multi-job queue: archive workflows and
-the document-job execution path still require the native Linux validation gate below.
+the document-job execution path still require the native Linux validation gate below. DOCX export preserves
+non-text package resources and rewrites only supported OOXML text parts; malformed, encrypted, traversal,
+DTD-bearing, or over-limit packages are rejected.
 
 The current native gate also includes a real post-startup `ENOSPC` regression for persistent model
 updates, profile deletion, and provider switching. Runtime-storage functional revision

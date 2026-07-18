@@ -106,7 +106,7 @@ pub enum WorkerCommand {
     CreateDocumentJob {
         /// 不包含路径的稳定任务标识。
         job_id: String,
-        /// TXT 或 Markdown 文档快照。
+        /// 受限文档快照。
         job: DocumentJob,
     },
     /// 顺序翻译一个已持久化的文档任务。
@@ -124,6 +124,11 @@ pub enum WorkerCommand {
     },
     /// 按最近更新时间读取本地文档任务。
     ListDocumentJobs,
+    /// 从已持久化的文档任务重建二进制输出。
+    ExportDocumentJob {
+        /// 文档任务标识。
+        job_id: String,
+    },
     /// 更新文档任务中的一个可翻译段。
     UpdateDocumentSegment {
         /// 文档任务标识。
@@ -255,6 +260,13 @@ pub enum WorkerEvent {
     },
     /// 文档任务快照已写入。
     DocumentJobUpdated(DocumentJobSnapshot),
+    /// 文档任务已重建为可写入文件的字节。
+    DocumentJobExported {
+        /// 原始文档文件名，仅用于生成默认扩展名。
+        source_name: String,
+        /// 已通过 Core 结构校验的输出字节。
+        contents: Vec<u8>,
+    },
     /// 文档任务某一段产生了翻译事件。
     DocumentJobSegment {
         /// 文档任务标识。
@@ -360,6 +372,13 @@ impl WorkerCommandHandle {
             .map_err(|_| WorkerSendError)
     }
 
+    /// 非阻塞请求重建本地文档任务输出。
+    pub fn export_document_job(&self, job_id: String) -> Result<(), WorkerSendError> {
+        self.commands
+            .try_send(QueuedCommand::ExportDocumentJob { job_id })
+            .map_err(|_| WorkerSendError)
+    }
+
     /// 非阻塞请求读取本地翻译历史。
     pub fn list_translation_history(&self) -> Result<(), WorkerSendError> {
         self.commands
@@ -445,6 +464,9 @@ enum QueuedCommand {
         privacy_mode: TranslationPrivacyMode,
     },
     ListDocumentJobs,
+    ExportDocumentJob {
+        job_id: String,
+    },
     UpdateDocumentSegment {
         job_id: String,
         index: usize,
@@ -647,6 +669,10 @@ impl CoreWorker {
             WorkerCommand::ListDocumentJobs => self
                 .commands
                 .try_send(QueuedCommand::ListDocumentJobs)
+                .map_err(|_| WorkerSendError),
+            WorkerCommand::ExportDocumentJob { job_id } => self
+                .commands
+                .try_send(QueuedCommand::ExportDocumentJob { job_id })
                 .map_err(|_| WorkerSendError),
             WorkerCommand::UpdateDocumentSegment {
                 job_id,
@@ -1027,6 +1053,7 @@ async fn run_worker(
                     QueuedCommand::CreateDocumentJob { .. }
                     | QueuedCommand::TranslateDocumentJob { .. }
                     | QueuedCommand::ListDocumentJobs
+                    | QueuedCommand::ExportDocumentJob { .. }
                     | QueuedCommand::UpdateDocumentSegment { .. }
                     | QueuedCommand::ResumeDocumentJob { .. }
                     | QueuedCommand::RetryDocumentJob { .. }
@@ -1964,6 +1991,52 @@ async fn run_worker(
                     }
                 }
             }
+            Some(QueuedCommand::ExportDocumentJob { job_id }) => {
+                let result = storage
+                    .as_ref()
+                    .ok_or_else(|| {
+                        TranslationError::new(
+                            ErrorKind::Persistence,
+                            "Local document job storage is unavailable.",
+                        )
+                    })
+                    .and_then(|storage| {
+                        let snapshot = storage.document_job(&job_id)?.ok_or_else(|| {
+                            TranslationError::new(
+                                ErrorKind::InvalidConfiguration,
+                                "The document job was not found.",
+                            )
+                        })?;
+                        let contents = snapshot.job.reconstruct_bytes().map_err(|error| {
+                            TranslationError::new(
+                                ErrorKind::InvalidConfiguration,
+                                error.to_string(),
+                            )
+                        })?;
+                        Ok((snapshot.job.source_name, contents))
+                    });
+                match result {
+                    Ok((source_name, contents)) => {
+                        if events
+                            .send(WorkerEvent::DocumentJobExported {
+                                source_name,
+                                contents,
+                            })
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::DocumentJobActionRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
             Some(QueuedCommand::UpdateDocumentSegment {
                 job_id,
                 index,
@@ -2317,6 +2390,7 @@ fn reject_queued_commands_for_shutdown(
             QueuedCommand::CreateDocumentJob { .. }
             | QueuedCommand::TranslateDocumentJob { .. }
             | QueuedCommand::ListDocumentJobs
+            | QueuedCommand::ExportDocumentJob { .. }
             | QueuedCommand::UpdateDocumentSegment { .. }
             | QueuedCommand::ResumeDocumentJob { .. }
             | QueuedCommand::RetryDocumentJob { .. }

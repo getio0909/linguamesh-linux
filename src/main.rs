@@ -2075,8 +2075,9 @@ fn connect_action_handlers(
 
     let export_bindings = bindings.clone();
     let export_state = Rc::clone(state);
+    let export_worker = Rc::clone(worker);
     bindings.export_output.connect_clicked(move |_| {
-        begin_translation_export(&export_bindings, &export_state);
+        begin_translation_export(&export_bindings, &export_state, &export_worker);
     });
 
     let stop_bindings = bindings.clone();
@@ -2128,6 +2129,8 @@ fn begin_source_file_open(
     filter.add_suffix("csv");
     filter.add_mime_type("application/json");
     filter.add_suffix("json");
+    filter.add_mime_type("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    filter.add_suffix("docx");
     let filters = gtk::gio::ListStore::new::<gtk::FileFilter>();
     filters.append(&filter);
     let dialog_title = localization::text(locale, "dialog.open_text_file", "Open text file");
@@ -2387,8 +2390,19 @@ fn begin_glossary_export(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
 }
 
 // 将译文异步写入用户选择的新文件，并拒绝覆盖已导入的源文件。
-fn begin_translation_export(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
+fn begin_translation_export(
+    bindings: &UiBindings,
+    state: &Rc<RefCell<AppState>>,
+    worker: &Rc<CoreWorker>,
+) {
     let locale = state.borrow().locale();
+    if let Some(job_id) = bindings.document_job_id.borrow().clone() {
+        if let Err(error) = worker.try_send(WorkerCommand::ExportDocumentJob { job_id }) {
+            state.borrow_mut().record_client_error(error.to_string());
+            refresh_ui(bindings, &state.borrow());
+        }
+        return;
+    }
     let output = bindings
         .output
         .text(
@@ -2442,6 +2456,86 @@ fn begin_translation_export(bindings: &UiBindings, state: &Rc<RefCell<AppState>>
                 let callback_state = Rc::clone(&export_state);
                 file.replace_contents_bytes_async(
                     &contents,
+                    None,
+                    false,
+                    gtk::gio::FileCreateFlags::NONE,
+                    None::<&gtk::gio::Cancellable>,
+                    move |write_result| match write_result {
+                        Ok(_) => {
+                            callback_bindings.export_notice.set(true);
+                            refresh_ui(&callback_bindings, &callback_state.borrow());
+                        }
+                        Err(_) => show_file_export_error(
+                            &callback_bindings,
+                            &localization::text(
+                                callback_state.borrow().locale(),
+                                "error.file_export",
+                                "The translated output could not be saved.",
+                            ),
+                        ),
+                    },
+                );
+            }
+            Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
+            Err(_) => show_file_export_error(
+                &export_bindings,
+                &localization::text(
+                    export_state.borrow().locale(),
+                    "error.file_export",
+                    "The translated output could not be saved.",
+                ),
+            ),
+        },
+    );
+}
+
+// 将已完成的二进制文档任务写入新文件，并拒绝覆盖导入源文件。
+fn begin_document_binary_export(
+    bindings: &UiBindings,
+    state: &Rc<RefCell<AppState>>,
+    source_name: &str,
+    contents: Vec<u8>,
+) {
+    let locale = state.borrow().locale();
+    let extension = source_name
+        .rsplit_once('.')
+        .map_or("txt", |(_, extension)| extension);
+    let default_name = format!("linguamesh-translation.{extension}");
+    let dialog = gtk::FileDialog::builder()
+        .title(localization::text(
+            locale,
+            "dialog.export_translation",
+            "Export translation",
+        ))
+        .accept_label(localization::text(locale, "dialog.save", "Save"))
+        .modal(true)
+        .build();
+    dialog.set_initial_name(Some(&default_name));
+    let export_bindings = bindings.clone();
+    let export_state = Rc::clone(state);
+    let source_uri = bindings.source_uri.borrow().clone();
+    dialog.save(
+        Some(&bindings.window),
+        None::<&gtk::gio::Cancellable>,
+        move |result| match result {
+            Ok(file) => {
+                let destination_uri = file.uri().to_string();
+                if source_uri.as_deref() == Some(destination_uri.as_str()) {
+                    show_file_export_error(
+                        &export_bindings,
+                        &localization::text(
+                            export_state.borrow().locale(),
+                            "error.file_export_source",
+                            "Choose a different file so the source remains unchanged.",
+                        ),
+                    );
+                    return;
+                }
+                let bytes = glib::Bytes::from_owned(contents);
+                let callback_bindings = export_bindings.clone();
+                let callback_state = Rc::clone(&export_state);
+                file.replace_contents_bytes_async(
+                    &bytes,
                     None,
                     false,
                     gtk::gio::FileCreateFlags::NONE,
@@ -3346,6 +3440,12 @@ fn apply_worker_event(
         }
         WorkerEvent::DocumentJobsListed { jobs } => {
             show_document_jobs_dialog(bindings, state, jobs);
+        }
+        WorkerEvent::DocumentJobExported {
+            source_name,
+            contents,
+        } => {
+            begin_document_binary_export(bindings, state, &source_name, contents);
         }
         WorkerEvent::DocumentJobUpdated(snapshot) => {
             *bindings.document_job_id.borrow_mut() = Some(snapshot.job_id.clone());
