@@ -70,8 +70,13 @@ XDG_CACHE_HOME="$workspace/cache" \
     xdotool windowactivate --sync "$app_window" >/dev/null 2>&1 || true
     xdotool windowfocus --sync "$app_window" >/dev/null 2>&1 || true
     read -r focus_x focus_y focus_width focus_height <"$LINGUAMESH_KEYBOARD_FOCUS_COORDINATES"
-    printf "GTK keyboard fixture clicking provider field at %s,%s.\n" "$((focus_x + focus_width / 2))" "$((focus_y + focus_height / 2))"
-    xdotool mousemove --sync --window "$app_window" "$((focus_x + focus_width / 2))" "$((focus_y + focus_height / 2))"
+    window_geometry=$(xdotool getwindowgeometry --shell "$app_window")
+    window_x=$(printf "%s\n" "$window_geometry" | grep "^X=" | cut -d= -f2)
+    window_y=$(printf "%s\n" "$window_geometry" | grep "^Y=" | cut -d= -f2)
+    focus_abs_x=$((window_x + focus_x + focus_width / 2))
+    focus_abs_y=$((window_y + focus_y + focus_height / 2))
+    printf "GTK keyboard fixture clicking provider field at %s,%s.\n" "$focus_abs_x" "$focus_abs_y"
+    xdotool mousemove --sync "$focus_abs_x" "$focus_abs_y"
     xdotool click 1
     : >"$LINGUAMESH_KEYBOARD_FOCUS_START"
     sleep 0.1
