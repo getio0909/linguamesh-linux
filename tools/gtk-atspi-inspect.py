@@ -44,7 +44,8 @@ def role_token(node: object) -> str:
         role = str(node.getRoleName())  # type: ignore[attr-defined]
     except Exception:
         return ""
-    return role.upper().replace(" ", "_")
+    normalized = role.upper().replace(" ", "_")
+    return normalized if normalized.startswith("ROLE_") else f"ROLE_{normalized}"
 
 
 def find_nodes(deadline: float) -> list[object]:
