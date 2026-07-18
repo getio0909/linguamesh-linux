@@ -245,7 +245,7 @@ waits for fake-endpoint readiness without auto-connect, clears a session credent
 immediately after Connect, explicitly selects a discovered model, preserves the active
 provider/model and Ready identity after a failed switch, and completes a streamed translation. A
 completed translation also exercises the registered application notification path; its payload is
-fixed generic English text and does not contain source or translated content. It
+  localized generic copy and does not contain source or translated content. It
 also verifies the storage-unavailable session-only warning persists in Ready, injects a two-profile
 startup snapshot, verifies persisted-active prefill without activation, browses another row without
 changing the runtime/default, checks the disconnected storage warning, preserves a
@@ -270,12 +270,12 @@ The GitHub Actions native workflow pins Core revision
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
 namespace test through the unprivileged path.
-The current onboarding localization revision `029e7f21322f3d0f3619a8f3a0158e7157972e30`
-passed Native Linux run `29626461099`, Foundation run `29626461122`, and
-Flatpak run `29626461131`; the native job validated the pinned 97-message catalog and GTK
+The current fixed-error localization revision `b6d2503`
+passed Native Linux run `29627668119`, Foundation run `29627668093`, and
+Flatpak run `29627668108`; the native job validated the pinned 117-message catalog and GTK
 Simplified Chinese provider-card/source-target assertions in addition to the existing storage,
 Secret Service, portal, notification, drag/drop, X11, and forced-Wayland gates. The workflow
-checks out l10n revision `5c2e5756f02fbc29ba1ca311958b6bf7d26027bf`.
+checks out l10n revision `0ba26705e113230ae7d9e74db54039e1e82296ce`.
 Runtime-storage functional revision
 `c37702c76c3b1a2f9cec805cf9e219721ef7b5ce` passed Native Linux run `29586532049` (job
 `87904787338`): strict all-feature Clippy, 66 ordinary library tests with one intentional ignore,
