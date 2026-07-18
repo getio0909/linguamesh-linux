@@ -159,8 +159,9 @@ remain outside the automated boundary.
 
 `l10n/linux/` is a byte-for-byte consumer snapshot of the canonical PO catalogs at the revision
 enforced by `tools/sync-l10n.sh`. The GTK host parses all twelve official catalogs at runtime,
-switches translated action labels without replacing active state, and applies RTL root direction
-for Arabic. Keys not yet covered by the UI retain explicit English fallbacks.
+switches translated action, workspace-widget, active-provider, status, and System/Light/Dark theme
+labels without replacing active state, and applies RTL root direction for Arabic. Keys not yet
+covered by the UI retain explicit English fallbacks.
 
 The application state and worker command/event wrappers intentionally do not derive `Debug`, so
 source text and streamed output are not exposed through routine debug formatting. Diagnostics omit

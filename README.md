@@ -121,9 +121,10 @@ functional revision above; an arbitrary default branch is not compatibility evid
 
 Canonical PO catalogs are synchronized from immutable l10n revision
 `52e73ea2a6cc7e6e7409b2b6eb0d02db35576a49` and validated with `msgfmt`. The locale selector
-exposes all twelve official BCP 47 packs and switches runtime action labels without losing active
-text; Arabic also switches the GTK workspace root to right-to-left direction. Remaining UI strings
-still use English fallbacks until complete gettext coverage is wired.
+exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
+active-provider, status, and System/Light/Dark theme labels without losing active text; Arabic also
+switches the GTK workspace root to right-to-left direction. Remaining UI strings still use English
+fallbacks until complete gettext coverage is wired.
 
 When a translation completes, the registered Linux application sends a desktop notification with
 generic English text only; source and translated content are never included in notification
