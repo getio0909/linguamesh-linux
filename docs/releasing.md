@@ -26,7 +26,7 @@ The external-provider path is tested only with LinguaMesh's loopback fake provid
 secret references use the Linux GIO Secret Service adapter and fail closed when the desktop keyring
 is unavailable or requires an interactive prompt. The native workflow
 pins reviewed Core functional revision
-`08eb64cb87d9cf6df624225819818d8287063c4c`, whose storage delta adds
+`0f71a652a536753f48bb8c852fd38e97740c23ce`, whose storage delta adds
 `SQLITE_OPEN_NOFOLLOW` and whose text path adds protected-span, request-level glossary, and
 bounded long-text restoration, and the bounded SRT/WebVTT/CSV/JSON/HTML document contract, rather than checking
 out a floating branch. Functional revision
@@ -41,16 +41,16 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `08eb64cb87d9cf6df624225819818d8287063c4c` and l10n
+The current Linux gate consumes Core `0f71a652a536753f48bb8c852fd38e97740c23ce` and l10n
 `d64d4085fb3c1cc69c9f7965bd97ffca54ca1995`. Request-level glossary rules, bounded CSV,
 interchange are implemented in the Linux slice; persistent glossary libraries and TBX import
 remain outside the release claim.
 
-The Linux document slice now persists bounded TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX jobs, translates pending prose segments
+The Linux document slice now persists bounded TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX jobs, translates pending prose segments
 sequentially, and restores completed or cancelled snapshots into the editor. Validated non-secret
 provider/model/glossary options are persisted and reused by Resume and Retry after restart only when
 the active runtime matches. This is not yet a release-ready multi-job queue: archive workflows and
-the document-job execution path still require the native Linux validation gate below. DOCX export preserves
+the document-job execution path still require the native Linux validation gate below. DOCX/PPTX export preserves
 non-text package resources and rewrites only supported OOXML text parts; malformed, encrypted, traversal,
 DTD-bearing, or over-limit packages are rejected.
 

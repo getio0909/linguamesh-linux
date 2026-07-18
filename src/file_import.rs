@@ -140,6 +140,10 @@ mod tests {
             decode_document_contents("README.docx", b"not a ZIP package"),
             Err(TextImportError::InvalidStructure)
         );
+        assert_eq!(
+            decode_document_contents("slides.pptx", b"not a ZIP package"),
+            Err(TextImportError::InvalidStructure)
+        );
     }
 
     #[test]

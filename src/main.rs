@@ -2131,6 +2131,9 @@ fn begin_source_file_open(
     filter.add_suffix("json");
     filter.add_mime_type("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     filter.add_suffix("docx");
+    filter
+        .add_mime_type("application/vnd.openxmlformats-officedocument.presentationml.presentation");
+    filter.add_suffix("pptx");
     let filters = gtk::gio::ListStore::new::<gtk::FileFilter>();
     filters.append(&filter);
     let dialog_title = localization::text(locale, "dialog.open_text_file", "Open text file");
