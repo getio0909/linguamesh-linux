@@ -1629,3 +1629,63 @@ msgstr "［ÞÐƑ þåĝë(š) {pages} çøñŧåïñ ñø ëẋŧŕåçŧåƀŀ
 msgctxt "warning.pdf_uncertain_order"
 msgid "PDF page(s) {pages} have uncertain reading order; review the structured output."
 msgstr "［ÞÐƑ þåĝë(š) {pages} ħåṽë ûñçëŕŧåïñ ŕëåðïñĝ øŕðëŕ; ŕëṽïëŵ ŧħë šŧŕûçŧûŕëð øûŧþûŧ.~~~~~~~~~~~~~~~~~~~~~~~~~~］"
+
+#. Action that opens persisted document jobs.
+#, fuzzy
+msgctxt "action.document_jobs"
+msgid "Document jobs"
+msgstr "［Ðøçûṁëñŧ ĵøƀš~~~~］"
+
+#. Action that pauses a document job.
+#, fuzzy
+msgctxt "action.pause_document"
+msgid "Pause document"
+msgstr "［Þåûšë ðøçûṁëñŧ~~~~］"
+
+#. Action that resumes a paused document job.
+#, fuzzy
+msgctxt "action.resume_document"
+msgid "Resume document"
+msgstr "［Ŕëšûṁë ðøçûṁëñŧ~~~~~］"
+
+#. Action that retries a failed document job.
+#, fuzzy
+msgctxt "action.retry_document"
+msgid "Retry document"
+msgstr "［Ŕëŧŕÿ ðøçûṁëñŧ~~~~］"
+
+#. Action that selects a persisted document job.
+#, fuzzy
+msgctxt "action.select_document_job"
+msgid "Select document job"
+msgstr "［Šëŀëçŧ ðøçûṁëñŧ ĵøƀ~~~~~~］"
+
+#. Title of the persisted document jobs dialog.
+#, fuzzy
+msgctxt "dialog.document_jobs"
+msgid "Document jobs"
+msgstr "［Ðøçûṁëñŧ ĵøƀš~~~~］"
+
+#. Empty state shown when no persisted document jobs exist.
+#, fuzzy
+msgctxt "status.document_jobs_empty"
+msgid "No document jobs yet"
+msgstr "［Ñø ðøçûṁëñŧ ĵøƀš ÿëŧ~~~~~~］"
+
+#. Status shown for a paused document job.
+#, fuzzy
+msgctxt "status.document_paused"
+msgid "Document paused"
+msgstr "［Ðøçûṁëñŧ þåûšëð~~~~~］"
+
+#. Progress summary for a document job.
+#, fuzzy, python-brace-format
+msgctxt "status.document_progress"
+msgid "{completed} of {total} segments translated"
+msgstr "［{completed} øƒ {total} šëĝṁëñŧš ŧŕåñšŀåŧëð~~~~~~~~~~~~~~］"
+
+#. Tooltip for opening persisted document jobs.
+#, fuzzy
+msgctxt "tooltip.document_jobs"
+msgid "Inspect persisted document jobs and their progress"
+msgstr "［Ïñšþëçŧ þëŕšïšŧëð ðøçûṁëñŧ ĵøƀš åñð ŧħëïŕ þŕøĝŕëšš~~~~~~~~~~~~~~~~］"

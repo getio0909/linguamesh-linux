@@ -1387,3 +1387,54 @@ msgstr "PDF page(s) {pages} contain no extractable text; OCR is not enabled."
 msgctxt "warning.pdf_uncertain_order"
 msgid "PDF page(s) {pages} have uncertain reading order; review the structured output."
 msgstr "PDF page(s) {pages} have uncertain reading order; review the structured output."
+
+#. Action that opens persisted document jobs.
+msgctxt "action.document_jobs"
+msgid "Document jobs"
+msgstr "Document jobs"
+
+#. Action that pauses a document job.
+msgctxt "action.pause_document"
+msgid "Pause document"
+msgstr "Pause document"
+
+#. Action that resumes a paused document job.
+msgctxt "action.resume_document"
+msgid "Resume document"
+msgstr "Resume document"
+
+#. Action that retries a failed document job.
+msgctxt "action.retry_document"
+msgid "Retry document"
+msgstr "Retry document"
+
+#. Action that selects a persisted document job.
+msgctxt "action.select_document_job"
+msgid "Select document job"
+msgstr "Select document job"
+
+#. Title of the persisted document jobs dialog.
+msgctxt "dialog.document_jobs"
+msgid "Document jobs"
+msgstr "Document jobs"
+
+#. Empty state shown when no persisted document jobs exist.
+msgctxt "status.document_jobs_empty"
+msgid "No document jobs yet"
+msgstr "No document jobs yet"
+
+#. Status shown for a paused document job.
+msgctxt "status.document_paused"
+msgid "Document paused"
+msgstr "Document paused"
+
+#. Progress summary for a document job.
+#, python-brace-format
+msgctxt "status.document_progress"
+msgid "{completed} of {total} segments translated"
+msgstr "{completed} of {total} segments translated"
+
+#. Tooltip for opening persisted document jobs.
+msgctxt "tooltip.document_jobs"
+msgid "Inspect persisted document jobs and their progress"
+msgstr "Inspect persisted document jobs and their progress"

@@ -157,11 +157,13 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`738a7c7328f24acc12c15be78bb11737220bbbae` and validated with `msgfmt`; the 267-message bundle
-checksum is `a3de4b0bf4afd710a01d15e0426f0d163b56910c0b04f26c411870eae9eea368`. The locale selector
+`0ef4fb9b6878655e46e2b8ca5bbed9562f97b0f0` and validated with `msgfmt`; the 277-message bundle
+checksum is `e26da1a391369ed84c0f57f5fd5d440f50ed56dcbc8f069abd4d6d27db7dd9c1`. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
 active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, and construction-stage provider/default-control copy without replacing active source text;
-Arabic also switches the GTK workspace root to right-to-left direction. Stable Linux worker startup,
+Arabic also switches the GTK workspace root to right-to-left direction. Document-job actions,
+dialogue, empty/paused/progress statuses, and queue tooltips are now catalog-backed across the
+same twelve packs. Stable Linux worker startup,
 Core compatibility, and profile-storage error sentences now use the same catalog; arbitrary backend
 diagnostic detail remains an explicit English fallback.
 
