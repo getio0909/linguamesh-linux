@@ -61,15 +61,15 @@ XDG_CACHE_HOME="$workspace/cache" \
     xdotool windowfocus --sync "$app_window" >/dev/null 2>&1 || true
     sleep 0.1
     for _ in {1..8}; do
-      xdotool key --window "$app_window" Shift+Tab
+      xdotool key --clearmodifiers Shift+Tab
       sleep 0.04
     done
     for _ in {1..80}; do
-      xdotool key --window "$app_window" Tab
+      xdotool key --clearmodifiers Tab
       sleep 0.04
     done
     for _ in {1..12}; do
-      xdotool key --window "$app_window" ctrl+Tab
+      xdotool key --clearmodifiers ctrl+Tab
       sleep 0.04
     done
     for _ in {1..240}; do
