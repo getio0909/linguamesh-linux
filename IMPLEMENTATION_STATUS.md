@@ -1004,3 +1004,21 @@ Validated locally:
 - `bash tools/sync-l10n.sh --check` and l10n schema/generator tests passed.
 - Native GUI linking remains CI-only because this host lacks the GTK 4.10 symbols required by the
   current system libraries.
+
+## 2026-07-18 — Linux dialog field localization checkpoint
+
+Assumption: the existing catalog keys `field.source_text` and `field.translation` are the canonical
+labels for source and translated content in the history and translation-memory dialogs. No new
+message keys or locale-pack changes are needed for this bounded UI-copy cleanup.
+
+- History and translation-memory entries now build their visible `Source text:` and `Translation:`
+  prefixes from the active runtime catalog instead of hard-coded English strings; stored content
+  remains unchanged and no diagnostics include the displayed text.
+- Local `cargo fmt --all -- --check`, strict all-target/all-feature Clippy, the locked no-default
+  61-test suite, and `git diff --check` passed.
+- Native `29664748564` (job `88133181160`), Foundation `29664748549`, and Flatpak `29664748553`
+  passed for Linux revision `3422a004c1330d318543917793d96f1b23105ed9`.
+
+Other dynamic dialog metadata (`Job`, `Identity`) and complete visible-string gettext coverage
+remain open alongside Orca speech, physical desktop review, OCR, other clients, and stable-release
+evidence.
