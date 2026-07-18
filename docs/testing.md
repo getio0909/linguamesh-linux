@@ -5,7 +5,7 @@
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`08eb64c6f8c94e7c7c4d3d0edb1eb37f0e1dcfb0`. This revision carries the explicit request-level
+`08eb64cb87d9cf6df624225819818d8287063c4c`. This revision carries the explicit request-level
 Incognito privacy policy and changes file-backed Core storage to add SQLite's `SQLITE_OPEN_NOFOLLOW`
 flag, adds protected-span restoration and request-level glossary
 protection for streamed text, and adds bounded semantic chunking. On
@@ -14,9 +14,9 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 08eb64c6f8c94e7c7c4d3d0edb1eb37f0e1dcfb0^{commit}
+git -C ../linguamesh-core cat-file -e 08eb64cb87d9cf6df624225819818d8287063c4c^{commit}
 git -C ../linguamesh-core diff --quiet \
-  08eb64c6f8c94e7c7c4d3d0edb1eb37f0e1dcfb0..HEAD -- \
+  08eb64cb87d9cf6df624225819818d8287063c4c..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```

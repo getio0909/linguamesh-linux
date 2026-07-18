@@ -41,7 +41,7 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
 
 - Rust 1.93.0 Cargo package at `0.1.0-alpha.2`, with locked Core alpha.2 path dependencies and
   optional `demo-provider`/`gui` features. Native CI pins Core functional revision
-  `08eb64c6f8c94e7c7c4d3d0edb1eb37f0e1dcfb0`.
+  `08eb64cb87d9cf6df624225819818d8287063c4c`.
 - Startup rejects any Core other than semantic version `0.1.0-alpha.2`, ABI 1, protocol 1, provider
   catalog `0.1.0`, with the required cancellation, compatibility, typed Rust host-secret broker,
   model-discovery, protected-span, streaming-text, and text-translation features.
@@ -152,7 +152,7 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
   diagnostic detail remains an explicit English fallback.
 - Foundation and native workflow sources use immutable Node 24-compatible action commits and
   disable persisted checkout credentials. Native CI pins reviewed Core revision
-  `08eb64c6f8c94e7c7c4d3d0edb1eb37f0e1dcfb0` and localization revision
+  `08eb64cb87d9cf6df624225819818d8287063c4c` and localization revision
   `d64d4085fb3c1cc69c9f7965bd97ffca54ca1995`. The revised native gate retains serialized all-target,
   all-feature X11/Xvfb tests, runs the exact ignored storage-fault test in a private user/mount
   namespace when available, then runs the existing GTK binary test under forced Wayland and
@@ -168,7 +168,7 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
 Validated on 2026-07-18 with Rust 1.93.0:
 
 - The pinned global-goal SHA-256 matched the sibling authoritative file.
-- Core functional revision `08eb64c6f8c94e7c7c4d3d0edb1eb37f0e1dcfb0` is the reviewed source
+- Core functional revision `08eb64cb87d9cf6df624225819818d8287063c4c` is the reviewed source
   pin, and every direct Core dependency is constrained to `=0.1.0-alpha.2`.
 - `cargo fmt --all --check`, the locked demo-provider check, strict Clippy, both locked test suites,
   the demo-provider build, `DOCS_RS=1` check and Clippy, `bash tools/sync-l10n.sh --check`, all 14
@@ -717,7 +717,7 @@ entries. Only document, header/footer, footnote, endnote, comment, and glossary 
 translated; package resources are retained. Encrypted, traversal, duplicate, malformed, DTD-bearing,
 oversized, and incomplete packages are rejected, and no source path or credential is persisted.
 
-Implemented Core `08eb64c6f8c94e7c7c4d3d0edb1eb37f0e1dcfb0` DOCX parsing, XML-safe text-node
+Implemented Core `08eb64cb87d9cf6df624225819818d8287063c4c` DOCX parsing, XML-safe text-node
 reconstruction, binary export, and schema-10 package BLOB persistence. Linux's chooser accepts DOCX,
 the worker reconstructs completed jobs through Core, and the GTK save path writes the binary package
 without allowing source overwrite.
