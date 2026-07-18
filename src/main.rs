@@ -756,12 +756,41 @@ fn install_keyboard_focus_probe(
         });
     }
     let initial_focus = bindings.provider_name.clone();
+    let focus_state_widgets = [
+        (
+            "provider_name",
+            bindings.provider_name.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_endpoint",
+            bindings.provider_endpoint.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_credential",
+            bindings.provider_credential.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "remember_profile",
+            bindings.remember_profile.clone().upcast::<gtk::Widget>(),
+        ),
+        ("connect", bindings.connect.clone().upcast::<gtk::Widget>()),
+    ];
     let ready_logged = Rc::new(Cell::new(false));
     let ready_log = Rc::clone(&log);
     let focus_deadline = Instant::now() + Duration::from_secs(5);
     glib::timeout_add_local(Duration::from_millis(50), move || {
         if initial_focus.is_sensitive() && !ready_logged.get() {
             let mut log = ready_log.borrow_mut();
+            for (name, widget) in &focus_state_widgets {
+                let _ = writeln!(
+                    log,
+                    "__state__ {name} focusable={} sensitive={} visible={} mapped={}",
+                    widget.is_focusable(),
+                    widget.is_sensitive(),
+                    widget.is_visible(),
+                    widget.is_mapped()
+                );
+            }
             let _ = writeln!(log, "__ready__");
             let _ = log.flush();
             ready_logged.set(true);
