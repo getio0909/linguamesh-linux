@@ -6,11 +6,93 @@ struct Catalog {
     messages: BTreeMap<String, String>,
 }
 
+#[cfg(test)]
 fn append_field(field: &mut Option<String>, value: &str) {
     field.get_or_insert_with(String::new).push_str(value);
 }
 
 impl Catalog {
+    fn from_mo(source: &[u8]) -> Self {
+        let mut messages = BTreeMap::new();
+        let Some(magic) = source.get(..4) else {
+            return Self { messages };
+        };
+        let little_endian = match magic {
+            [0xde, 0x12, 0x04, 0x95] => true,
+            [0x95, 0x04, 0x12, 0xde] => false,
+            _ => return Self { messages },
+        };
+        let Some(version) = read_mo_u32(source, 4, little_endian) else {
+            return Self { messages };
+        };
+        if version != 0 {
+            return Self { messages };
+        }
+        let Some(count) = read_mo_u32(source, 8, little_endian) else {
+            return Self { messages };
+        };
+        let Some(original_table) = read_mo_u32(source, 12, little_endian) else {
+            return Self { messages };
+        };
+        let Some(translation_table) = read_mo_u32(source, 16, little_endian) else {
+            return Self { messages };
+        };
+        for index in 0..count {
+            let Some(original_length) = read_mo_u32(
+                source,
+                original_table.saturating_add(index.saturating_mul(8)),
+                little_endian,
+            ) else {
+                continue;
+            };
+            let Some(original_offset) = read_mo_u32(
+                source,
+                original_table
+                    .saturating_add(index.saturating_mul(8))
+                    .saturating_add(4),
+                little_endian,
+            ) else {
+                continue;
+            };
+            let Some(translation_length) = read_mo_u32(
+                source,
+                translation_table.saturating_add(index.saturating_mul(8)),
+                little_endian,
+            ) else {
+                continue;
+            };
+            let Some(translation_offset) = read_mo_u32(
+                source,
+                translation_table
+                    .saturating_add(index.saturating_mul(8))
+                    .saturating_add(4),
+                little_endian,
+            ) else {
+                continue;
+            };
+            let Some(original) = mo_slice(source, original_offset, original_length) else {
+                continue;
+            };
+            let Some(translation) = mo_slice(source, translation_offset, translation_length) else {
+                continue;
+            };
+            let original = String::from_utf8_lossy(original);
+            let Some((context, _message_id)) = original.split_once('\x04') else {
+                continue;
+            };
+            let translation = String::from_utf8_lossy(translation)
+                .split('\0')
+                .next()
+                .unwrap_or_default()
+                .to_owned();
+            if !translation.is_empty() {
+                messages.insert(context.to_owned(), translation);
+            }
+        }
+        Self { messages }
+    }
+
+    #[cfg(test)]
     fn from_po(source: &str) -> Self {
         let mut messages = BTreeMap::new();
         let mut context: Option<String> = None;
@@ -66,6 +148,21 @@ impl Catalog {
     }
 }
 
+fn read_mo_u32(source: &[u8], offset: usize, little_endian: bool) -> Option<usize> {
+    let bytes = source.get(offset..offset.saturating_add(4))?;
+    let value = if little_endian {
+        u32::from_le_bytes(bytes.try_into().ok()?)
+    } else {
+        u32::from_be_bytes(bytes.try_into().ok()?)
+    };
+    usize::try_from(value).ok()
+}
+
+fn mo_slice(source: &[u8], offset: usize, length: usize) -> Option<&[u8]> {
+    source.get(offset..offset.checked_add(length)?)
+}
+
+#[cfg(test)]
 #[derive(Clone, Copy)]
 enum Field {
     Context,
@@ -73,6 +170,7 @@ enum Field {
     Message,
 }
 
+#[cfg(test)]
 fn parse_po_string(value: &str) -> Option<String> {
     let value = value.strip_prefix('"')?.strip_suffix('"')?;
     let mut parsed = String::with_capacity(value.len());
@@ -104,53 +202,53 @@ fn catalog(locale: UiLocale) -> &'static Catalog {
     static CATALOGS: OnceLock<[Catalog; 12]> = OnceLock::new();
     let catalogs = CATALOGS.get_or_init(|| {
         [
-            Catalog::from_po(include_str!(concat!(
+            Catalog::from_mo(include_bytes!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/l10n/linux/en/LC_MESSAGES/linguamesh.po"
+                "/l10n/linux/en/LC_MESSAGES/linguamesh.mo"
             ))),
-            Catalog::from_po(include_str!(concat!(
+            Catalog::from_mo(include_bytes!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/l10n/linux/zh-Hans/LC_MESSAGES/linguamesh.po"
+                "/l10n/linux/zh-Hans/LC_MESSAGES/linguamesh.mo"
             ))),
-            Catalog::from_po(include_str!(concat!(
+            Catalog::from_mo(include_bytes!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/l10n/linux/zh-Hant/LC_MESSAGES/linguamesh.po"
+                "/l10n/linux/zh-Hant/LC_MESSAGES/linguamesh.mo"
             ))),
-            Catalog::from_po(include_str!(concat!(
+            Catalog::from_mo(include_bytes!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/l10n/linux/es/LC_MESSAGES/linguamesh.po"
+                "/l10n/linux/es/LC_MESSAGES/linguamesh.mo"
             ))),
-            Catalog::from_po(include_str!(concat!(
+            Catalog::from_mo(include_bytes!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/l10n/linux/fr/LC_MESSAGES/linguamesh.po"
+                "/l10n/linux/fr/LC_MESSAGES/linguamesh.mo"
             ))),
-            Catalog::from_po(include_str!(concat!(
+            Catalog::from_mo(include_bytes!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/l10n/linux/de/LC_MESSAGES/linguamesh.po"
+                "/l10n/linux/de/LC_MESSAGES/linguamesh.mo"
             ))),
-            Catalog::from_po(include_str!(concat!(
+            Catalog::from_mo(include_bytes!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/l10n/linux/ja/LC_MESSAGES/linguamesh.po"
+                "/l10n/linux/ja/LC_MESSAGES/linguamesh.mo"
             ))),
-            Catalog::from_po(include_str!(concat!(
+            Catalog::from_mo(include_bytes!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/l10n/linux/ko/LC_MESSAGES/linguamesh.po"
+                "/l10n/linux/ko/LC_MESSAGES/linguamesh.mo"
             ))),
-            Catalog::from_po(include_str!(concat!(
+            Catalog::from_mo(include_bytes!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/l10n/linux/pt-BR/LC_MESSAGES/linguamesh.po"
+                "/l10n/linux/pt-BR/LC_MESSAGES/linguamesh.mo"
             ))),
-            Catalog::from_po(include_str!(concat!(
+            Catalog::from_mo(include_bytes!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/l10n/linux/ru/LC_MESSAGES/linguamesh.po"
+                "/l10n/linux/ru/LC_MESSAGES/linguamesh.mo"
             ))),
-            Catalog::from_po(include_str!(concat!(
+            Catalog::from_mo(include_bytes!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/l10n/linux/ar/LC_MESSAGES/linguamesh.po"
+                "/l10n/linux/ar/LC_MESSAGES/linguamesh.mo"
             ))),
-            Catalog::from_po(include_str!(concat!(
+            Catalog::from_mo(include_bytes!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/l10n/linux/hi/LC_MESSAGES/linguamesh.po"
+                "/l10n/linux/hi/LC_MESSAGES/linguamesh.mo"
             ))),
         ]
     });
@@ -176,6 +274,18 @@ mod tests {
             "msgctxt \"example\"\nmsgid \"Hello\"\nmsgstr \"Hello \"\n\"world\"\n",
         );
         assert_eq!(catalog.get("example", "fallback"), "Hello world");
+    }
+
+    #[test]
+    fn parses_generated_mo_context_and_translation() {
+        let catalog = Catalog::from_mo(include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/l10n/linux/zh-Hans/LC_MESSAGES/linguamesh.mo"
+        )));
+        assert_eq!(
+            catalog.get("error.state.missing_source", "fallback"),
+            "翻译前请输入源文本。"
+        );
     }
 
     #[test]

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # 将消费端固定到已通过本地化 CI 的不可变提交。
-expected_revision="08118b498646ebf56cbb072b937d95fceb34b75c"
+expected_revision="0b906034784a1b5e81a879649abbfda001fa9e67"
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 l10n_root="${LINGUAMESH_L10N_DIR:-$(dirname "$project_root")/linguamesh-l10n}"
 source_root="$l10n_root/generated/linux"
@@ -43,18 +43,20 @@ copy_or_check() {
     fi
 }
 
-mapfile -t source_files < <(find "$source_root" -mindepth 3 -maxdepth 3 -type f -name linguamesh.po | sort)
-if [[ "${#source_files[@]}" -ne 14 ]]; then
-    printf 'Localization sync failed: expected 14 PO catalogs, found %s.\n' "${#source_files[@]}" >&2
-    exit 1
-fi
-for source_file in "${source_files[@]}"; do
-    locale="$(basename "$(dirname "$(dirname "$source_file")")")"
-    if [[ ! "$locale" =~ ^[A-Za-z0-9-]+$ ]]; then
-        printf 'Localization sync failed: unsafe locale identifier: %s\n' "$locale" >&2
+for catalog_name in linguamesh.po linguamesh.mo; do
+    mapfile -t source_files < <(find "$source_root" -mindepth 3 -maxdepth 3 -type f -name "$catalog_name" | sort)
+    if [[ "${#source_files[@]}" -ne 14 ]]; then
+        printf 'Localization sync failed: expected 14 %s catalogs, found %s.\n' "$catalog_name" "${#source_files[@]}" >&2
         exit 1
     fi
-    copy_or_check "$source_file" "$destination_root/$locale/LC_MESSAGES/linguamesh.po"
+    for source_file in "${source_files[@]}"; do
+        locale="$(basename "$(dirname "$(dirname "$source_file")")")"
+        if [[ ! "$locale" =~ ^[A-Za-z0-9-]+$ ]]; then
+            printf 'Localization sync failed: unsafe locale identifier: %s\n' "$locale" >&2
+            exit 1
+        fi
+        copy_or_check "$source_file" "$destination_root/$locale/LC_MESSAGES/$catalog_name"
+    done
 done
 
 copy_or_check "$l10n_root/generated/manifest.json" "$project_root/l10n/manifest.json"
@@ -65,6 +67,11 @@ if [[ -d "$destination_root" ]]; then
     mapfile -t destination_files < <(find "$destination_root" -mindepth 3 -maxdepth 3 -type f -name linguamesh.po | sort)
     if [[ "${#destination_files[@]}" -ne 14 ]]; then
         printf 'Localization sync failed: destination contains an unexpected PO catalog set.\n' >&2
+        exit 1
+    fi
+    mapfile -t destination_files < <(find "$destination_root" -mindepth 3 -maxdepth 3 -type f -name linguamesh.mo | sort)
+    if [[ "${#destination_files[@]}" -ne 14 ]]; then
+        printf 'Localization sync failed: destination contains an unexpected MO catalog set.\n' >&2
         exit 1
     fi
 fi
