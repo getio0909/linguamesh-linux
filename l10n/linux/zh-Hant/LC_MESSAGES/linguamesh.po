@@ -1183,3 +1183,93 @@ msgstr "無法儲存譯文。"
 msgctxt "profile.default_name"
 msgid "Local OpenAI-compatible provider"
 msgstr "本機 OpenAI 相容提供商"
+
+#. Linux error shown when the shared Core compatibility description cannot be read.
+#, fuzzy, python-brace-format
+msgctxt "error.core.compatibility_read_failed"
+msgid "Core compatibility could not be read: {error}"
+msgstr "無法讀取核心相容性資訊：{error}"
+
+#. Linux error shown when the local loopback provider cannot start.
+#, fuzzy, python-brace-format
+msgctxt "error.provider.loopback_start_failed"
+msgid "Failed to start the loopback provider: {error}"
+msgstr "啟動迴圈提供者失敗：{error}"
+
+#. Linux error shown when the Core runtime cannot start.
+#, fuzzy, python-brace-format
+msgctxt "error.runtime.start_failed"
+msgid "Failed to start the core runtime: {error}"
+msgstr "啟動核心執行環境失敗：{error}"
+
+#. Linux persistence error shown when the profile database path is not absolute.
+#, fuzzy
+msgctxt "error.storage.path_absolute"
+msgid "The profile database path must be absolute."
+msgstr "設定資料庫路徑必須是絕對路徑。"
+
+#. Linux persistence error shown when the profile database directory is invalid.
+#, fuzzy
+msgctxt "error.storage.directory_invalid"
+msgid "The profile database directory is invalid."
+msgstr "設定資料庫目錄無效。"
+
+#. Linux persistence error shown when the profile database directory cannot be created.
+#, fuzzy
+msgctxt "error.storage.directory_create"
+msgid "The profile database directory could not be created."
+msgstr "無法建立設定資料庫目錄。"
+
+#. Linux persistence error shown when the profile database directory cannot be inspected.
+#, fuzzy
+msgctxt "error.storage.directory_inspect"
+msgid "The profile database directory could not be inspected."
+msgstr "無法檢查設定資料庫目錄。"
+
+#. Linux persistence error shown when the profile database directory is not private.
+#, fuzzy
+msgctxt "error.storage.directory_permissions"
+msgid "The profile database directory permissions are not private."
+msgstr "設定資料庫目錄權限不是私有的。"
+
+#. Linux persistence error shown when the profile database is not a private regular file.
+#, fuzzy
+msgctxt "error.storage.file_regular"
+msgid "The profile database must be a private regular file."
+msgstr "設定資料庫必須是私有的一般檔案。"
+
+#. Linux persistence error shown when the profile database path cannot be inspected.
+#, fuzzy
+msgctxt "error.storage.path_inspect"
+msgid "The profile database path could not be inspected."
+msgstr "無法檢查設定資料庫路徑。"
+
+#. Linux persistence error shown when the profile database file cannot be opened.
+#, fuzzy
+msgctxt "error.storage.file_open"
+msgid "The profile database file could not be opened."
+msgstr "無法開啟設定資料庫檔案。"
+
+#. Linux persistence error shown when the profile database file cannot be inspected.
+#, fuzzy
+msgctxt "error.storage.file_inspect"
+msgid "The profile database file could not be inspected."
+msgstr "無法檢查設定資料庫檔案。"
+
+#. Linux persistence error shown when profile database file permissions cannot be restricted.
+#, fuzzy
+msgctxt "error.storage.file_permissions"
+msgid "The profile database file permissions could not be restricted."
+msgstr "無法限制設定資料庫檔案權限。"
+
+#. Linux persistence error shown when a profile database path contains a symbolic link.
+#, fuzzy
+msgctxt "error.storage.path_symlink"
+msgid "The profile database path cannot contain symbolic links."
+msgstr "設定資料庫路徑不能包含符號連結。"
+
+#. Linux persistence error shown when profile database path components cannot be inspected.
+#, fuzzy
+msgctxt "error.storage.path_components_inspect"
+msgid "The profile database path components could not be inspected."
+msgstr "無法檢查設定資料庫路徑元件。"

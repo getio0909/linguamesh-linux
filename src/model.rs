@@ -1318,6 +1318,7 @@ fn state_error_message(message: &str) -> Option<(&'static str, &'static str)> {
     })
 }
 
+#[allow(clippy::too_many_lines)]
 fn additional_state_error_message(message: &str) -> Option<(&'static str, &'static str)> {
     Some(match message {
         "A provider cannot be changed while a translation is running." => (
@@ -1404,6 +1405,54 @@ fn additional_state_error_message(message: &str) -> Option<(&'static str, &'stat
             "error.provider.session_ref_required",
             "A session credential requires an explicit session secret reference.",
         ),
+        "The profile database path must be absolute." => (
+            "error.storage.path_absolute",
+            "The profile database path must be absolute.",
+        ),
+        "The profile database directory is invalid." => (
+            "error.storage.directory_invalid",
+            "The profile database directory is invalid.",
+        ),
+        "The profile database directory could not be created." => (
+            "error.storage.directory_create",
+            "The profile database directory could not be created.",
+        ),
+        "The profile database directory could not be inspected." => (
+            "error.storage.directory_inspect",
+            "The profile database directory could not be inspected.",
+        ),
+        "The profile database directory permissions are not private." => (
+            "error.storage.directory_permissions",
+            "The profile database directory permissions are not private.",
+        ),
+        "The profile database must be a private regular file." => (
+            "error.storage.file_regular",
+            "The profile database must be a private regular file.",
+        ),
+        "The profile database path could not be inspected." => (
+            "error.storage.path_inspect",
+            "The profile database path could not be inspected.",
+        ),
+        "The profile database file could not be opened." => (
+            "error.storage.file_open",
+            "The profile database file could not be opened.",
+        ),
+        "The profile database file could not be inspected." => (
+            "error.storage.file_inspect",
+            "The profile database file could not be inspected.",
+        ),
+        "The profile database file permissions could not be restricted." => (
+            "error.storage.file_permissions",
+            "The profile database file permissions could not be restricted.",
+        ),
+        "The profile database path cannot contain symbolic links." => (
+            "error.storage.path_symlink",
+            "The profile database path cannot contain symbolic links.",
+        ),
+        "The profile database path components could not be inspected." => (
+            "error.storage.path_components_inspect",
+            "The profile database path components could not be inspected.",
+        ),
         _ => return None,
     })
 }
@@ -1428,6 +1477,21 @@ fn localized_error_message(locale: UiLocale, message: &str) -> String {
             "The shared Core contract is incompatible: ",
             "error.core.contract_incompatible",
             "The shared Core contract is incompatible: {error}",
+        ),
+        (
+            "Core compatibility could not be read: ",
+            "error.core.compatibility_read_failed",
+            "Core compatibility could not be read: {error}",
+        ),
+        (
+            "Failed to start the loopback provider: ",
+            "error.provider.loopback_start_failed",
+            "Failed to start the loopback provider: {error}",
+        ),
+        (
+            "Failed to start the core runtime: ",
+            "error.runtime.start_failed",
+            "Failed to start the core runtime: {error}",
         ),
     ] {
         if let Some(detail) = message.strip_prefix(prefix) {
@@ -1584,6 +1648,97 @@ mod tests {
                 .as_deref(),
             Some("内部错误: 提供商配置无效：invalid endpoint")
         );
+    }
+
+    #[test]
+    fn localized_error_text_localizes_runtime_and_storage_messages() {
+        let cases = [
+            (
+                ErrorKind::ProtocolIncompatible,
+                "Core compatibility could not be read: missing compatibility symbol",
+                "协议不兼容: 无法读取核心兼容性信息：missing compatibility symbol",
+            ),
+            (
+                ErrorKind::Network,
+                "Failed to start the loopback provider: address already in use",
+                "网络: 启动回环提供商失败：address already in use",
+            ),
+            (
+                ErrorKind::Internal,
+                "Failed to start the core runtime: runtime initialization failed",
+                "内部错误: 启动核心运行时失败：runtime initialization failed",
+            ),
+            (
+                ErrorKind::Persistence,
+                "The profile database path must be absolute.",
+                "持久化: 配置数据库路径必须为绝对路径。",
+            ),
+            (
+                ErrorKind::Persistence,
+                "The profile database directory is invalid.",
+                "持久化: 配置数据库目录无效。",
+            ),
+            (
+                ErrorKind::Persistence,
+                "The profile database directory could not be created.",
+                "持久化: 无法创建配置数据库目录。",
+            ),
+            (
+                ErrorKind::Persistence,
+                "The profile database directory could not be inspected.",
+                "持久化: 无法检查配置数据库目录。",
+            ),
+            (
+                ErrorKind::Persistence,
+                "The profile database directory permissions are not private.",
+                "持久化: 配置数据库目录权限不是私有的。",
+            ),
+            (
+                ErrorKind::Persistence,
+                "The profile database must be a private regular file.",
+                "持久化: 配置数据库必须是私有普通文件。",
+            ),
+            (
+                ErrorKind::Persistence,
+                "The profile database path could not be inspected.",
+                "持久化: 无法检查配置数据库路径。",
+            ),
+            (
+                ErrorKind::Persistence,
+                "The profile database file could not be opened.",
+                "持久化: 无法打开配置数据库文件。",
+            ),
+            (
+                ErrorKind::Persistence,
+                "The profile database file could not be inspected.",
+                "持久化: 无法检查配置数据库文件。",
+            ),
+            (
+                ErrorKind::Persistence,
+                "The profile database file permissions could not be restricted.",
+                "持久化: 无法限制配置数据库文件权限。",
+            ),
+            (
+                ErrorKind::Persistence,
+                "The profile database path cannot contain symbolic links.",
+                "持久化: 配置数据库路径不能包含符号链接。",
+            ),
+            (
+                ErrorKind::Persistence,
+                "The profile database path components could not be inspected.",
+                "持久化: 无法检查配置数据库路径组件。",
+            ),
+        ];
+        for (kind, message, expected) in cases {
+            let mut state = AppState::default();
+            state.record_operation_failure(TranslationError::new(kind, message));
+            assert_eq!(
+                state
+                    .localized_error_text(UiLocale::SimplifiedChinese)
+                    .as_deref(),
+                Some(expected)
+            );
+        }
     }
 
     fn state_with_profile_storage() -> AppState {

@@ -8,8 +8,8 @@ Assumption: canonical generated PO/MO resources are synchronized and format-vali
 now parses all twelve pinned official Linux MO catalogs at runtime, exposes BCP 47 locale choices,
 switches the root direction for Arabic, and preserves the source editor buffer during a locale
 switch; status summaries, partial-output markers, text-file import controls, provider-profile
-controls, and source/target language options now use the same catalogs; complete UI coverage,
-plural handling, and visual locale/RTL review remain open.
+controls, source/target language options, and stable worker/runtime/storage error sentences now use
+the same catalogs; complete UI coverage, plural handling, and visual locale/RTL review remain open.
 
 Assumption: the existing first-party `linguamesh-storage` crate and the already-reviewed GTK/GIO
 dependency closure are the approved persistence contract for this Linux slice. The Secret Service
@@ -116,20 +116,20 @@ older distributions and future Flatpak runtimes require separate packaging valid
 - The Linux host now uses existing GIO D-Bus bindings for Secret Service `OpenSession`, item search,
   create/update, and `GetSecret` resolution. Persistent profiles retain only a SecretRef; the
   one-shot credential is passed through the existing typed broker and is never written to SQLite.
-- Fourteen canonical official/pseudo PO/MO catalog pairs containing 193 messages pinned to l10n revision
-  `057c1b8e859acfa4b4fd4eafbdc68ce01069f9a5`. Sync rejects a different revision, dirty generated
+- Fourteen canonical official/pseudo PO/MO catalog pairs containing 208 messages pinned to l10n revision
+  `dc9a9d48a38dfeb8f6b2020417960023678d8252`. Sync rejects a different revision, dirty generated
   source artifacts, stale copies, and unexpected catalog counts. The GTK locale selector exposes
   the twelve official packs, runtime action, workspace-widget, active-provider, status summary,
   partial-output, text-file import/export, provider-profile, source/target language, onboarding stage/detail,
   fixed provider/file/worker, reducer-state/category, translation-export, and construction-stage
   provider/default-control messages, and
   System/Light/Dark theme labels switch without losing state, preserves source text while moving
-  from Simplified Chinese to Arabic, and applies right-to-left root direction; uncovered UI strings
-  still use explicit English fallbacks.
+  from Simplified Chinese to Arabic, and applies right-to-left root direction; arbitrary backend
+  diagnostic detail remains an explicit English fallback.
 - Foundation and native workflow sources use immutable Node 24-compatible action commits and
   disable persisted checkout credentials. Native CI pins reviewed Core revision
   `fbf3e9b5927049dccaa19f8c36013495ffebba12` and localization revision
-  `057c1b8e859acfa4b4fd4eafbdc68ce01069f9a5`. The revised native gate retains serialized all-target,
+  `dc9a9d48a38dfeb8f6b2020417960023678d8252`. The revised native gate retains serialized all-target,
   all-feature X11/Xvfb tests, runs the exact ignored storage-fault test in a private user/mount
   namespace when available, then runs the existing GTK binary test under forced Wayland and
   headless Weston before building the application. On restricted Ubuntu hosts, only the private
@@ -249,6 +249,13 @@ Validated on 2026-07-18 with Rust 1.93.0:
   dynamic backend diagnostics as explicit English fallbacks. Local validation passed all-target
   locked check, strict Clippy, 50 no-default tests, 4 localization tests, the targeted localized
   error test, and `bash tools/sync-l10n.sh --check` against l10n `08118b498646ebf56cbb072b937d95fceb34b75c`.
+- The runtime/storage-error localization slice adds 15 Linux-only catalog messages for Core and
+  loopback startup, compatibility reads, and profile-database path/permission failures. Local
+  validation passed `cargo fmt --all`, all-target all-feature locked check, strict Clippy, 52
+  portable tests, 5 localization tests, the targeted runtime/storage localized-error test, all 14
+  PO syntax checks, and `bash tools/sync-l10n.sh --check` against l10n
+  `dc9a9d48a38dfeb8f6b2020417960023678d8252`. The deterministic l10n bundle checksum is
+  `a8c5535b23eb27f02ff5fd3bb4c4c1c6948718f1233321305c173b1741b27e6f`.
 - Linux MO integration revision `daa19923d5dfd4f8d00801f067569daf78a98ab0` adds deterministic
   GNU MO companions for all 14 PO catalogs, switches the runtime parser to MO tables, and
   validates the generated Simplified Chinese state-error translation. Local validation passed
