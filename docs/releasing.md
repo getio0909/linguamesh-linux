@@ -41,8 +41,8 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `6079138348f3182b19c017f50db768df05da62cb` and l10n
-`971d1691a4eff396c71216b898e30fcfb23e72fa`. Request-level glossary rules and bounded CSV
+The current Linux gate consumes Core `fb00f3dd6b62a8a3a47350acc85831e60e266929` and l10n
+`bef59e15fac5c295371ed8b6475fc6be4e4d980d`. Request-level glossary rules and bounded CSV
 interchange are implemented in the Linux slice; persistent glossary libraries and TBX import
 remain outside the release claim.
 

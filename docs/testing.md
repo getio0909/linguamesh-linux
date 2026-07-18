@@ -341,17 +341,16 @@ both display gates, and the all-target all-feature build. Its predecessor `e483a
 first focusability assertion because GTK dropdowns defaulted to non-focusable; the final revision
 sets every labelled control and action explicitly focusable.
 
-The history-controls checkpoint is Core `6079138348f3182b19c017f50db768df05da62cb`, Linux
-`b968cc21978dd5bea1b4bc6d1c8828bb8ecdc489`, and l10n `971d1691a4eff396c71216b898e30fcfb23e72fa`.
+The history-policy checkpoint is Core `fb00f3dd6b62a8a3a47350acc85831e60e266929`, Linux
+`b968cc21978dd5bea1b4bc6d1c8828bb8ecdc489`, and l10n `bef59e15fac5c295371ed8b6475fc6be4e4d980d`.
 Local Core workspace tests, Clippy, offline build, and cargo-deny passed; Linux passed all-target
 Clippy, 54 portable tests, and 82 demo-provider tests with one intentional ignore; l10n validation
-passed with 240 messages. The Linux GUI test remains CI-linked because the local GTK libraries
+passed with 244 messages. The Linux GUI test remains CI-linked because the local GTK libraries
 cannot link the current GTK 4.10 symbols.
-Core CI `29636624648`, Native SDK `29636624656`, l10n Localization `29636630359`, l10n Foundation
-`29636630348`, Linux Native `29637270603` (job `88061682829`), Linux Foundation `29637270599`, and
-Flatpak `29637270601` (job `88061682853`) passed bounded standard-history persistence, Incognito
-skip, startup count restoration, immediate post-write count refresh, clear-all wiring, the all-feature Linux binary link, and the real
-GTK/Flatpak gates. Translation-memory storage and history enable/disable policy remain open.
+Core and l10n remote validation for this checkpoint is recorded after their pushes; local Core
+storage tests passed 15 cases and Linux passed the policy worker regression. The Linux GUI test
+remains CI-linked because the local GTK libraries cannot link the current GTK 4.10 symbols.
+Translation-memory storage remains open.
 
 ## Repository foundation check
 

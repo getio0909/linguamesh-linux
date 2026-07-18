@@ -78,6 +78,11 @@ pub enum WorkerCommand {
         /// 要删除的稳定操作标识。
         operation_id: String,
     },
+    /// 设置是否允许新的标准请求写入本地翻译历史。
+    SetTranslationHistoryEnabled {
+        /// 新的本地历史写入策略。
+        enabled: bool,
+    },
     /// 开始翻译请求。
     Translate(TranslationRequest),
     /// 取消当前连接或翻译。
@@ -121,6 +126,18 @@ pub enum WorkerEvent {
         /// 当前数据库中的历史记录数量。
         count: usize,
     },
+    /// 已恢复本地翻译历史写入策略。
+    TranslationHistoryPolicyRestored {
+        /// 是否允许新的标准请求写入本地翻译历史。
+        enabled: bool,
+    },
+    /// 本地翻译历史写入策略已更新。
+    TranslationHistoryPolicyUpdated {
+        /// 是否允许新的标准请求写入本地翻译历史。
+        enabled: bool,
+    },
+    /// 本地翻译历史写入策略更新被拒绝。
+    TranslationHistoryPolicyRejected(TranslationError),
     /// 读取或删除本地翻译历史被拒绝。
     TranslationHistoryActionRejected(TranslationError),
     /// 清空本地翻译历史被拒绝。
@@ -225,6 +242,13 @@ impl WorkerCommandHandle {
             .try_send(QueuedCommand::DeleteTranslationHistory { operation_id })
             .map_err(|_| WorkerSendError)
     }
+
+    /// 非阻塞请求更新本地翻译历史写入策略。
+    pub fn set_translation_history_enabled(&self, enabled: bool) -> Result<(), WorkerSendError> {
+        self.commands
+            .try_send(QueuedCommand::SetTranslationHistoryEnabled { enabled })
+            .map_err(|_| WorkerSendError)
+    }
 }
 
 enum QueuedCommand {
@@ -245,6 +269,9 @@ enum QueuedCommand {
     ListTranslationHistory,
     DeleteTranslationHistory {
         operation_id: String,
+    },
+    SetTranslationHistoryEnabled {
+        enabled: bool,
     },
     Translate(TranslationRequest),
     Cancel,
@@ -387,6 +414,10 @@ impl CoreWorker {
                 .commands
                 .try_send(QueuedCommand::DeleteTranslationHistory { operation_id })
                 .map_err(|_| WorkerSendError),
+            WorkerCommand::SetTranslationHistoryEnabled { enabled } => self
+                .commands
+                .try_send(QueuedCommand::SetTranslationHistoryEnabled { enabled })
+                .map_err(|_| WorkerSendError),
             WorkerCommand::Translate(request) => self
                 .commands
                 .try_send(QueuedCommand::Translate(request))
@@ -499,6 +530,26 @@ async fn run_worker(
                 {
                     return;
                 }
+                let history_enabled = match storage.translation_history_enabled() {
+                    Ok(enabled) => enabled,
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::TranslationHistoryPersistenceFailed(error))
+                            .is_err()
+                        {
+                            return;
+                        }
+                        true
+                    }
+                };
+                if events
+                    .send(WorkerEvent::TranslationHistoryPolicyRestored {
+                        enabled: history_enabled,
+                    })
+                    .is_err()
+                {
+                    return;
+                }
                 Some(storage)
             }
             Err(error) => {
@@ -602,6 +653,16 @@ async fn run_worker(
                         ),
                     ));
                 }
+                ActiveStep::Command(Some(QueuedCommand::SetTranslationHistoryEnabled {
+                    enabled: _,
+                })) => {
+                    let _ = events.send(WorkerEvent::TranslationHistoryPolicyRejected(
+                        TranslationError::new(
+                            ErrorKind::InvalidConfiguration,
+                            "Translation history policy cannot change while a translation is running.",
+                        ),
+                    ));
+                }
                 ActiveStep::Command(Some(QueuedCommand::Translate(_))) => {
                     let _ = events.send(WorkerEvent::Rejected(TranslationError::new(
                         ErrorKind::InvalidConfiguration,
@@ -624,19 +685,33 @@ async fn run_worker(
                         && !active_translation.request.is_incognito()
                         && let Some(storage) = storage.as_mut()
                     {
-                        let history_event = match storage.record_translation_history(
-                            &active_translation.request,
-                            &active_translation.output,
-                        ) {
-                            Ok(()) => match storage.translation_history_count() {
-                                Ok(count) => WorkerEvent::TranslationHistoryUpdated { count },
-                                Err(error) => {
-                                    WorkerEvent::TranslationHistoryPersistenceFailed(error)
-                                }
-                            },
-                            Err(error) => WorkerEvent::TranslationHistoryPersistenceFailed(error),
+                        let history_event = match storage.translation_history_enabled() {
+                            Ok(false) => None,
+                            Ok(true) => Some(
+                                match storage.record_translation_history(
+                                    &active_translation.request,
+                                    &active_translation.output,
+                                ) {
+                                    Ok(()) => match storage.translation_history_count() {
+                                        Ok(count) => {
+                                            WorkerEvent::TranslationHistoryUpdated { count }
+                                        }
+                                        Err(error) => {
+                                            WorkerEvent::TranslationHistoryPersistenceFailed(error)
+                                        }
+                                    },
+                                    Err(error) => {
+                                        WorkerEvent::TranslationHistoryPersistenceFailed(error)
+                                    }
+                                },
+                            ),
+                            Err(error) => {
+                                Some(WorkerEvent::TranslationHistoryPersistenceFailed(error))
+                            }
                         };
-                        if events.send(history_event).is_err() {
+                        if let Some(history_event) = history_event
+                            && events.send(history_event).is_err()
+                        {
                             shutting_down = true;
                         }
                     }
@@ -872,6 +947,38 @@ async fn run_worker(
                     }
                 }
             }
+            Some(QueuedCommand::SetTranslationHistoryEnabled { enabled }) => {
+                let result = storage
+                    .as_mut()
+                    .ok_or_else(|| {
+                        TranslationError::new(
+                            ErrorKind::Persistence,
+                            "Local translation history storage is unavailable.",
+                        )
+                    })
+                    .and_then(|storage| {
+                        storage.set_translation_history_enabled(enabled)?;
+                        Ok(())
+                    });
+                match result {
+                    Ok(()) => {
+                        if events
+                            .send(WorkerEvent::TranslationHistoryPolicyUpdated { enabled })
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::TranslationHistoryPolicyRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
             Some(QueuedCommand::ClearTranslationHistory) => {
                 let result = storage
                     .as_mut()
@@ -1034,6 +1141,9 @@ fn reject_queued_commands_for_shutdown(
             QueuedCommand::ListTranslationHistory
             | QueuedCommand::DeleteTranslationHistory { .. } => events.send(
                 WorkerEvent::TranslationHistoryActionRejected(TranslationError::cancelled()),
+            ),
+            QueuedCommand::SetTranslationHistoryEnabled { .. } => events.send(
+                WorkerEvent::TranslationHistoryPolicyRejected(TranslationError::cancelled()),
             ),
             QueuedCommand::Translate(_) => events.send(WorkerEvent::TranslationRejected(
                 TranslationError::cancelled(),
@@ -1936,7 +2046,8 @@ mod tests {
                     });
                     restored_snapshot = Some(restored_profile);
                 }
-                WorkerEvent::TranslationHistoryRestored { .. } => {}
+                WorkerEvent::TranslationHistoryRestored { .. }
+                | WorkerEvent::TranslationHistoryPolicyRestored { .. } => {}
                 WorkerEvent::DemoProviderReady { endpoint } => {
                     return (
                         worker,
@@ -1978,7 +2089,8 @@ mod tests {
                             .is_none()
                     );
                 }
-                WorkerEvent::TranslationHistoryRestored { .. } => {}
+                WorkerEvent::TranslationHistoryRestored { .. }
+                | WorkerEvent::TranslationHistoryPolicyRestored { .. } => {}
                 WorkerEvent::DemoProviderReady { endpoint } => {
                     let (profiles, active_profile_id) =
                         restored_snapshot.expect("profile storage snapshot");
@@ -2096,6 +2208,24 @@ mod tests {
 
     fn select(worker: &CoreWorker, profile_id: &str, model_id: &str) {
         select_event(worker, profile_id, model_id).expect("model selection");
+    }
+
+    fn set_history_policy(worker: &CoreWorker, enabled: bool) {
+        worker
+            .try_send(WorkerCommand::SetTranslationHistoryEnabled { enabled })
+            .expect("history policy command");
+        match worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("history policy event")
+        {
+            WorkerEvent::TranslationHistoryPolicyUpdated { enabled: updated }
+                if updated == enabled => {}
+            WorkerEvent::TranslationHistoryPolicyRejected(error) => {
+                panic!("history policy rejected: {error}")
+            }
+            _ => panic!("unexpected history policy event"),
+        }
     }
 
     fn delete_event(worker: &CoreWorker, profile_id: &str) -> Result<(), TranslationError> {
@@ -2250,6 +2380,30 @@ mod tests {
             _ => panic!("unexpected deletion event"),
         }
         shutdown(&worker);
+    }
+
+    #[test]
+    fn history_policy_persists_and_preserves_existing_entries() {
+        let database = TestDatabase::new();
+        let (worker, _, endpoint) = started_worker_with_database(database.path());
+        connect(
+            &worker,
+            profile("history-policy", &endpoint, None, None),
+            None,
+            PersistenceIntent::SessionOnly,
+        )
+        .expect("connection");
+        select(&worker, "history-policy", "fake-translator");
+        let _ = translate(&worker, "fake-translator");
+        set_history_policy(&worker, false);
+        let _ = translate(&worker, "fake-translator");
+        set_history_policy(&worker, true);
+        let _ = translate(&worker, "fake-translator");
+        shutdown(&worker);
+
+        let storage = Storage::open(database.path()).expect("history storage");
+        assert!(storage.translation_history_enabled().expect("policy"));
+        assert_eq!(storage.translation_history_count().expect("count"), 2);
     }
 
     #[test]

@@ -1172,6 +1172,26 @@ msgctxt "status.incognito"
 msgid "Incognito mode is active for this request."
 msgstr "Incognito mode is active for this request."
 
+#. Enables or disables persistence of completed standard translation history on Linux.
+msgctxt "settings.save_history"
+msgid "Save translation history"
+msgstr "Save translation history"
+
+#. Explains the Linux history persistence toggle and retention behavior.
+msgctxt "tooltip.save_history"
+msgid "Persist completed standard translations in local history; existing entries are kept when disabled"
+msgstr "Persist completed standard translations in local history; existing entries are kept when disabled"
+
+#. Status note confirming that local history persistence is enabled.
+msgctxt "status.history_enabled"
+msgid "Local translation history is enabled."
+msgstr "Local translation history is enabled."
+
+#. Status note confirming that local history persistence is disabled without deleting existing entries.
+msgctxt "status.history_disabled"
+msgid "Local translation history is disabled; existing entries are kept."
+msgstr "Local translation history is disabled; existing entries are kept."
+
 #. Action that clears all locally stored translation history on Linux.
 msgctxt "action.clear_history"
 msgid "Clear history"

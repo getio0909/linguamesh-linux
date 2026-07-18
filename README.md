@@ -125,8 +125,8 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`971d1691a4eff396c71216b898e30fcfb23e72fa` and validated with `msgfmt`; the 240-message bundle
-checksum is `03889105a74aec819ae716ee577f78e1da8a235d42be4918aa0fb6f9c5e194b8`. The locale selector
+`bef59e15fac5c295371ed8b6475fc6be4e4d980d` and validated with `msgfmt`; the 244-message bundle
+checksum is `746d38fe80a07013b78d7b1e5efae91af6354f4c702add9dceb6b16f6bc2b7c3`. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
 active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, and construction-stage provider/default-control copy without replacing active source text;
 Arabic also switches the GTK workspace root to right-to-left direction. Stable Linux worker startup,
@@ -150,10 +150,11 @@ glossary content in provider profiles or SQLite.
 The **Incognito mode** toggle carries an explicit Core privacy policy on the next translation
 request. Standard completed translations now persist in bounded local SQLite history (100 entries,
 with a 4 MiB source/output limit); startup restores only the count and **Clear history** removes all
-entries. Incognito requests skip history writes. **View history** opens a bounded scrollable list,
-supports exact per-entry deletion, and exports the displayed snapshot as escaped UTF-8 TSV.
-Translation-memory storage and history enable/disable policy remain future slices. The toggle remains
-visible in the status note and is disabled while a conflicting operation is active.
+entries. Incognito requests skip history writes. **Save translation history** is a persisted policy
+toggle: disabling it keeps existing entries but prevents future standard completions from being saved.
+**View history** opens a bounded scrollable list, supports exact per-entry deletion, and exports the
+displayed snapshot as escaped UTF-8 TSV. Translation-memory storage remains a future slice. The
+history policy toggle is disabled while a conflicting operation or unavailable profile storage is active.
 
 When a translation completes, the registered Linux application sends a desktop notification with
 localized generic copy only; source and translated content are never included in notification

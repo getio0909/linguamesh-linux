@@ -355,6 +355,7 @@ pub struct AppState {
     glossary: Option<Glossary>,
     privacy_mode: TranslationPrivacyMode,
     translation_history_count: usize,
+    translation_history_enabled: bool,
     output: String,
     partial_output: bool,
     status: AppStatus,
@@ -386,6 +387,7 @@ impl Default for AppState {
             glossary: None,
             privacy_mode: TranslationPrivacyMode::Standard,
             translation_history_count: 0,
+            translation_history_enabled: true,
             output: String::new(),
             partial_output: false,
             status: AppStatus::Disconnected,
@@ -1060,6 +1062,12 @@ impl AppState {
         self.translation_history_count
     }
 
+    /// 返回是否允许新的标准请求写入本地翻译历史。
+    #[must_use]
+    pub const fn translation_history_enabled(&self) -> bool {
+        self.translation_history_enabled
+    }
+
     /// 恢复工作线程报告的本地翻译历史记录数量。
     pub const fn restore_translation_history_count(&mut self, count: usize) {
         self.translation_history_count = count;
@@ -1068,6 +1076,11 @@ impl AppState {
     /// 清除本地翻译历史记录数量。
     pub const fn clear_translation_history_count(&mut self) {
         self.translation_history_count = 0;
+    }
+
+    /// 恢复工作线程报告的本地翻译历史写入策略。
+    pub const fn restore_translation_history_enabled(&mut self, enabled: bool) {
+        self.translation_history_enabled = enabled;
     }
 
     /// 更新当前请求的本地隐私策略。
@@ -1607,7 +1620,7 @@ mod tests {
     };
     use linguamesh_domain::{
         ErrorKind, Glossary, GlossaryEntry, ModelDescriptor, ModelSource, SecretRef,
-        SecretRefNamespace, TranslationError, TranslationEvent,
+        SecretRefNamespace, TranslationError, TranslationEvent, TranslationPrivacyMode,
     };
 
     fn profile(
@@ -1693,6 +1706,15 @@ mod tests {
             state.privacy_mode(),
             linguamesh_domain::TranslationPrivacyMode::Incognito
         );
+    }
+
+    #[test]
+    fn history_policy_defaults_to_enabled_and_restores_without_affecting_request_privacy() {
+        let mut state = AppState::default();
+        assert!(state.translation_history_enabled());
+        state.restore_translation_history_enabled(false);
+        assert!(!state.translation_history_enabled());
+        assert_eq!(state.privacy_mode(), TranslationPrivacyMode::Standard);
     }
 
     #[test]

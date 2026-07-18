@@ -585,3 +585,33 @@ Validated locally:
   ignore; `cargo test --features gui --all-targets --offline` reached native linking but failed on
   unavailable GTK 4 symbols in the host libraries, so no local GUI link result is claimed.
 - `bash tools/sync-l10n.sh --check`, `git diff --check`, and l10n schema/generator tests passed.
+
+## 2026-07-18 — History enable/disable policy
+
+Assumption: disabling local history affects only future standard completions; existing rows remain
+available to the already implemented inspection, export, and deletion controls. Incognito remains
+an unconditional request-level opt-out.
+
+Implemented:
+
+- Added a persisted **Save translation history** GTK toggle with localized label, tooltip, and
+  enabled/disabled status notes.
+- Added worker startup/update/rejection events and a serialized command that writes the Core schema
+  4 policy without deleting existing rows or changing session privacy mode.
+- Disabled policy suppresses future standard history writes; re-enabling resumes bounded persistence.
+- Added model, worker, and storage regression coverage for default enablement, persistence, policy
+  changes, and preservation of existing rows.
+- Pinned Core `fb00f3dd6b62a8a3a47350acc85831e60e266929` and l10n
+  `bef59e15fac5c295371ed8b6475fc6be4e4d980d`, with 244 generated messages and bundle checksum
+  `746d38fe80a07013b78d7b1e5efae91af6354f4c702add9dceb6b16f6bc2b7c3`.
+
+Validated locally:
+
+- `cargo fmt --all -- --check` passed.
+- Strict all-target/all-feature Clippy passed.
+- `cargo check --features gui --offline` passed through Rust compilation.
+- `cargo test --features demo-provider --lib --offline` passed: 85 tests, 0 failed, 1 intentional
+  ignore.
+- `bash tools/sync-l10n.sh --check` and `git diff --check` passed.
+- Native GUI linking remains CI-only because this host lacks the GTK 4.10 symbols required by the
+  current system libraries.

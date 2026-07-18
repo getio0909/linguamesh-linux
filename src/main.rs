@@ -55,6 +55,7 @@ struct UiBindings {
     import_glossary: gtk::Button,
     export_glossary: gtk::Button,
     incognito: gtk::CheckButton,
+    history_enabled: gtk::CheckButton,
     history: gtk::Button,
     clear_history: gtk::Button,
     theme: gtk::DropDown,
@@ -85,6 +86,9 @@ struct UiBindings {
     history_export_notice: Rc<Cell<bool>>,
     history_warning: Rc<Cell<bool>>,
     history_clear_pending: Rc<Cell<bool>>,
+    history_policy_guard: Rc<Cell<bool>>,
+    history_policy_pending: Rc<Cell<bool>>,
+    history_policy_notice: Rc<Cell<Option<bool>>>,
     source_drop_target: gtk::DropTarget,
 }
 
@@ -309,6 +313,7 @@ fn create_window(
         import_glossary,
         export_glossary,
         incognito,
+        history_enabled,
         history,
         clear_history,
         theme,
@@ -452,6 +457,7 @@ fn create_window(
             import_glossary,
             export_glossary,
             incognito,
+            history_enabled,
             history,
             clear_history,
             theme: theme.clone(),
@@ -482,6 +488,9 @@ fn create_window(
             history_export_notice: Rc::new(Cell::new(false)),
             history_warning: Rc::new(Cell::new(false)),
             history_clear_pending: Rc::new(Cell::new(false)),
+            history_policy_guard: Rc::new(Cell::new(false)),
+            history_policy_pending: Rc::new(Cell::new(false)),
+            history_policy_notice: Rc::new(Cell::new(None)),
             source_drop_target,
         },
         theme,
@@ -731,7 +740,7 @@ fn create_provider_session() -> (
     )
 }
 
-#[allow(clippy::too_many_lines)]
+#[allow(clippy::too_many_lines, clippy::type_complexity)]
 fn create_controls() -> (
     gtk::Box,
     gtk::DropDown,
@@ -740,6 +749,7 @@ fn create_controls() -> (
     gtk::Entry,
     gtk::Button,
     gtk::Button,
+    gtk::CheckButton,
     gtk::CheckButton,
     gtk::Button,
     gtk::Button,
@@ -821,6 +831,18 @@ fn create_controls() -> (
         "tooltip.incognito",
         "Do not persist source, output, history, or translation-memory data for this request",
     )));
+    let history_enabled = gtk::CheckButton::with_mnemonic(&localized_mnemonic(
+        locale,
+        "settings.save_history",
+        "Save translation history",
+    ));
+    history_enabled.set_focusable(true);
+    history_enabled.set_active(true);
+    history_enabled.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.save_history",
+        "Persist completed standard translations in local history; existing entries are kept when disabled",
+    )));
     let clear_history = gtk::Button::with_mnemonic(&localized_mnemonic(
         locale,
         "action.clear_history",
@@ -897,6 +919,7 @@ fn create_controls() -> (
     controls.append(&import_glossary);
     controls.append(&export_glossary);
     controls.append(&incognito);
+    controls.append(&history_enabled);
     controls.append(&history);
     controls.append(&clear_history);
     (
@@ -908,6 +931,7 @@ fn create_controls() -> (
         import_glossary,
         export_glossary,
         incognito,
+        history_enabled,
         history,
         clear_history,
         theme,
@@ -1392,6 +1416,40 @@ fn connect_action_handlers(
             TranslationPrivacyMode::Standard
         });
         refresh_ui(&incognito_bindings, &state);
+    });
+
+    let history_policy_bindings = bindings.clone();
+    let history_policy_state = Rc::clone(state);
+    let history_policy_worker = Rc::clone(worker);
+    let history_policy_guard = Rc::clone(&bindings.history_policy_guard);
+    bindings.history_enabled.connect_toggled(move |button| {
+        if history_policy_guard.get() {
+            return;
+        }
+        let enabled = button.is_active();
+        if !history_policy_state.borrow().profile_storage_available()
+            || history_policy_bindings.history_policy_pending.get()
+        {
+            history_policy_guard.set(true);
+            button.set_active(history_policy_state.borrow().translation_history_enabled());
+            history_policy_guard.set(false);
+            return;
+        }
+        history_policy_bindings.history_policy_pending.set(true);
+        history_policy_bindings.history_policy_notice.set(None);
+        refresh_ui(&history_policy_bindings, &history_policy_state.borrow());
+        if let Err(error) =
+            history_policy_worker.try_send(WorkerCommand::SetTranslationHistoryEnabled { enabled })
+        {
+            history_policy_bindings.history_policy_pending.set(false);
+            history_policy_guard.set(true);
+            button.set_active(history_policy_state.borrow().translation_history_enabled());
+            history_policy_guard.set(false);
+            history_policy_state
+                .borrow_mut()
+                .record_client_error(error.to_string());
+            refresh_ui(&history_policy_bindings, &history_policy_state.borrow());
+        }
     });
 
     let clear_history_bindings = bindings.clone();
@@ -2450,10 +2508,32 @@ fn apply_worker_event(
         WorkerEvent::ProfileStorageUnavailable(error) => {
             state.borrow_mut().profile_storage_unavailable(error);
             bindings.remember_profile.set_active(false);
+            bindings.history_policy_pending.set(false);
+            bindings.history_policy_guard.set(true);
+            bindings.history_enabled.set_active(false);
+            bindings.history_policy_guard.set(false);
             rebuild_saved_profile_dropdown(bindings, &state.borrow());
         }
         WorkerEvent::TranslationHistoryRestored { count } => {
             state.borrow_mut().restore_translation_history_count(count);
+        }
+        WorkerEvent::TranslationHistoryPolicyRestored { enabled } => {
+            state
+                .borrow_mut()
+                .restore_translation_history_enabled(enabled);
+            bindings.history_policy_guard.set(true);
+            bindings.history_enabled.set_active(enabled);
+            bindings.history_policy_guard.set(false);
+        }
+        WorkerEvent::TranslationHistoryPolicyUpdated { enabled } => {
+            state
+                .borrow_mut()
+                .restore_translation_history_enabled(enabled);
+            bindings.history_policy_pending.set(false);
+            bindings.history_policy_notice.set(Some(enabled));
+            bindings.history_policy_guard.set(true);
+            bindings.history_enabled.set_active(enabled);
+            bindings.history_policy_guard.set(false);
         }
         WorkerEvent::TranslationHistoryUpdated { count } => {
             state.borrow_mut().restore_translation_history_count(count);
@@ -2473,6 +2553,15 @@ fn apply_worker_event(
         }
         WorkerEvent::TranslationHistoryActionRejected(error)
         | WorkerEvent::SecretCleanupFailed { error, .. } => {
+            state.borrow_mut().record_client_error(error.to_string());
+        }
+        WorkerEvent::TranslationHistoryPolicyRejected(error) => {
+            bindings.history_policy_pending.set(false);
+            bindings.history_policy_guard.set(true);
+            bindings
+                .history_enabled
+                .set_active(state.borrow().translation_history_enabled());
+            bindings.history_policy_guard.set(false);
             state.borrow_mut().record_client_error(error.to_string());
         }
         WorkerEvent::TranslationHistoryClearRejected(error) => {
@@ -2905,6 +2994,8 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     let import_glossary = localization::text(locale, "action.import_glossary", "Import glossary");
     let export_glossary = localization::text(locale, "action.export_glossary", "Export glossary");
     let incognito = localization::text(locale, "settings.incognito", "Incognito mode");
+    let history_enabled =
+        localization::text(locale, "settings.save_history", "Save translation history");
     let history = localization::text(locale, "action.view_history", "View history");
     let clear_history = localization::text(locale, "action.clear_history", "Clear history");
     let translate_label = format!("_{translate}");
@@ -2933,6 +3024,9 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
         .export_glossary
         .set_label(&format!("_{export_glossary}"));
     bindings.incognito.set_label(Some(&format!("_{incognito}")));
+    bindings
+        .history_enabled
+        .set_label(Some(&format!("_{history_enabled}")));
     bindings.history.set_label(&format!("_{history}"));
     bindings
         .clear_history
@@ -2958,6 +3052,11 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
             "tooltip.incognito",
             "Do not persist source, output, history, or translation-memory data for this request",
         )));
+    bindings.history_enabled.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.save_history",
+        "Persist completed standard translations in local history; existing entries are kept when disabled",
+    )));
     bindings
         .clear_history
         .set_tooltip_text(Some(&localization::text(
@@ -3251,6 +3350,20 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             "status.history_cleared",
             "Local translation history was cleared.",
         )
+    } else if let Some(enabled) = bindings.history_policy_notice.get() {
+        if enabled {
+            localization::text(
+                state.locale(),
+                "status.history_enabled",
+                "Local translation history is enabled.",
+            )
+        } else {
+            localization::text(
+                state.locale(),
+                "status.history_disabled",
+                "Local translation history is disabled; existing entries are kept.",
+            )
+        }
     } else if state.translation_history_count() > 0 {
         localized_template(
             state.locale(),
@@ -3338,6 +3451,12 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         bindings.incognito.set_active(state.is_incognito());
     }
     bindings.incognito.set_sensitive(!blocked);
+    bindings.history_enabled.set_sensitive(
+        state.worker_ready()
+            && state.profile_storage_available()
+            && !blocked
+            && !bindings.history_policy_pending.get(),
+    );
     bindings.clear_history.set_sensitive(
         state.profile_storage_available()
             && !blocked

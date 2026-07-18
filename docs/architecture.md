@@ -76,8 +76,9 @@ payloads equivalent to `Standard`. Completed standard translations are persisted
 bounded SQLite history migration (100 entries, 4 MiB source/output limit); startup restores the count
 and **Clear history** deletes all entries. Incognito completion skips the history write. **View
 history** reads a bounded newest-first snapshot, supports exact per-entry deletion, and exports the
-displayed snapshot as escaped UTF-8 TSV. Translation-memory storage and history enable/disable policy
-are not implemented yet.
+displayed snapshot as escaped UTF-8 TSV. The persisted **Save translation history** policy keeps
+existing rows when disabled and blocks future standard completion writes until re-enabled.
+Translation-memory storage remains unimplemented.
 
 With `gui`, `src/main.rs` binds this state and worker to GTK 4/libadwaita widgets. GTK objects remain
 on the main context, which processes at most 64 queued events per timer tick without performing
