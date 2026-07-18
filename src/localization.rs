@@ -203,6 +203,19 @@ mod tests {
             assert!(!text(locale, "error.provider_name_required", "").is_empty());
             assert!(!text(locale, "error.file_too_large", "").is_empty());
             assert!(!text(locale, "error.worker_disconnected", "").is_empty());
+            for key in [
+                "error.category.internal",
+                "error.category.network",
+                "error.state.missing_source",
+                "error.state.missing_model",
+                "error.state.busy",
+                "error.state.event_after_terminal",
+            ] {
+                assert!(
+                    !text(locale, key, "").is_empty(),
+                    "missing Linux key: {key}"
+                );
+            }
         }
     }
 

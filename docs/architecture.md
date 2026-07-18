@@ -16,8 +16,9 @@ deletion are separate state so browsing one profile cannot mutate another. A sav
 restored only after an explicit reconnect and only when that exact model remains in discovery;
 otherwise the user must select a model deliberately. The reducer also enforces ordered translation
 events, retains partial output on cancellation or failure, and maps every Core `0.1.0-alpha.2`
-error category to safe UI text. Fixed provider/file/worker errors are catalog-backed at the GTK
-boundary, while dynamic provider diagnostics retain explicit English fallbacks. Its onboarding stage is derived from the same authoritative state
+error category to safe UI text. Fixed provider/file/worker and reducer-state/category errors are
+catalog-backed at the GTK boundary, while dynamic provider diagnostics retain explicit English
+fallbacks. Its onboarding stage is derived from the same authoritative state
 as `Starting`, `Unavailable`, `Configure provider`, `Connecting`, `Select model`, or `Ready`; no
 parallel wizard state or persisted completion flag can race startup, restoration, pending model
 confirmation, or rollback.

@@ -737,3 +737,189 @@ msgstr "⁧⟦The core worker disconnected.⟧⁩"
 msgctxt "error.worker_stopped"
 msgid "The core worker stopped."
 msgstr "⁧⟦The core worker stopped.⟧⁩"
+
+#. Error category shown before a cancellation diagnostic.
+#, fuzzy
+msgctxt "error.category.cancellation"
+msgid "Cancellation"
+msgstr "⁧⟦Cancellation⟧⁩"
+
+#. Error category shown before an invalid endpoint diagnostic.
+#, fuzzy
+msgctxt "error.category.invalid_endpoint"
+msgid "Invalid endpoint"
+msgstr "⁧⟦Invalid endpoint⟧⁩"
+
+#. Error category shown before a network diagnostic.
+#, fuzzy
+msgctxt "error.category.network"
+msgid "Network"
+msgstr "⁧⟦Network⟧⁩"
+
+#. Error category shown before a timeout diagnostic.
+#, fuzzy
+msgctxt "error.category.timeout"
+msgid "Timeout"
+msgstr "⁧⟦Timeout⟧⁩"
+
+#. Error category shown before an authentication diagnostic.
+#, fuzzy
+msgctxt "error.category.authentication"
+msgid "Authentication"
+msgstr "⁧⟦Authentication⟧⁩"
+
+#. Error category shown before a missing-model diagnostic.
+#, fuzzy
+msgctxt "error.category.model_unavailable"
+msgid "Model unavailable"
+msgstr "⁧⟦Model unavailable⟧⁩"
+
+#. Error category shown before a malformed-response diagnostic.
+#, fuzzy
+msgctxt "error.category.malformed_response"
+msgid "Malformed response"
+msgstr "⁧⟦Malformed response⟧⁩"
+
+#. Error category shown before a persistence diagnostic.
+#, fuzzy
+msgctxt "error.category.persistence"
+msgid "Persistence"
+msgstr "⁧⟦Persistence⟧⁩"
+
+#. Error category shown before a protocol diagnostic.
+#, fuzzy
+msgctxt "error.category.protocol_incompatible"
+msgid "Protocol incompatible"
+msgstr "⁧⟦Protocol incompatible⟧⁩"
+
+#. Error category shown before a configuration diagnostic.
+#, fuzzy
+msgctxt "error.category.invalid_configuration"
+msgid "Invalid configuration"
+msgstr "⁧⟦Invalid configuration⟧⁩"
+
+#. Error category shown before an unsupported-capability diagnostic.
+#, fuzzy
+msgctxt "error.category.unsupported_capability"
+msgid "Unsupported capability"
+msgstr "⁧⟦Unsupported capability⟧⁩"
+
+#. Error category shown before a secret-availability diagnostic.
+#, fuzzy
+msgctxt "error.category.secret_unavailable"
+msgid "Secret unavailable"
+msgstr "⁧⟦Secret unavailable⟧⁩"
+
+#. Error category shown before a secure-storage diagnostic.
+#, fuzzy
+msgctxt "error.category.secure_storage_unavailable"
+msgid "Secure storage unavailable"
+msgstr "⁧⟦Secure storage unavailable⟧⁩"
+
+#. Error category shown before an internal diagnostic.
+#, fuzzy
+msgctxt "error.category.internal"
+msgid "Internal"
+msgstr "⁧⟦Internal⟧⁩"
+
+#. Validation error shown when translation starts without source text.
+#, fuzzy
+msgctxt "error.state.missing_source"
+msgid "Enter source text before translating."
+msgstr "⁧⟦Enter source text before translating.⟧⁩"
+
+#. Validation error shown when translation starts without a selected model.
+#, fuzzy
+msgctxt "error.state.missing_model"
+msgid "Select a model before translating."
+msgstr "⁧⟦Select a model before translating.⟧⁩"
+
+#. State error shown while a model selection is awaiting confirmation.
+#, fuzzy
+msgctxt "error.state.model_selection_pending"
+msgid "A model selection is still being confirmed."
+msgstr "⁧⟦A model selection is still being confirmed.⟧⁩"
+
+#. State error shown for a stale or unexpected model selection result.
+#, fuzzy
+msgctxt "error.state.unexpected_model_selection"
+msgid "The model selection result is stale or unexpected."
+msgstr "⁧⟦The model selection result is stale or unexpected.⟧⁩"
+
+#. State error shown when the provider profile is disabled.
+#, fuzzy
+msgctxt "error.state.invalid_profile"
+msgid "The provider profile is disabled."
+msgstr "⁧⟦The provider profile is disabled.⟧⁩"
+
+#. Validation error shown when translation starts without a provider.
+#, fuzzy
+msgctxt "error.state.missing_provider"
+msgid "Connect a provider before translating."
+msgstr "⁧⟦Connect a provider before translating.⟧⁩"
+
+#. State error shown for a stale or unexpected provider connection result.
+#, fuzzy
+msgctxt "error.state.unexpected_provider_connection"
+msgid "The provider connection result is stale or unexpected."
+msgstr "⁧⟦The provider connection result is stale or unexpected.⟧⁩"
+
+#. State error shown when another translation is already running.
+#, fuzzy
+msgctxt "error.state.busy"
+msgid "A translation is already running."
+msgstr "⁧⟦A translation is already running.⟧⁩"
+
+#. State error shown while a provider connection is still in progress.
+#, fuzzy
+msgctxt "error.state.connecting"
+msgid "A provider connection is still in progress."
+msgstr "⁧⟦A provider connection is still in progress.⟧⁩"
+
+#. State error shown when a saved provider profile does not match the operation.
+#, fuzzy
+msgctxt "error.state.invalid_saved_profile"
+msgid "The saved provider profile does not match this operation."
+msgstr "⁧⟦The saved provider profile does not match this operation.⟧⁩"
+
+#. State error shown when saved profile storage is unavailable.
+#, fuzzy
+msgctxt "error.state.profile_storage_unavailable"
+msgid "Saved profile storage is unavailable."
+msgstr "⁧⟦Saved profile storage is unavailable.⟧⁩"
+
+#. State error shown while a saved profile deletion awaits confirmation.
+#, fuzzy
+msgctxt "error.state.profile_deletion_pending"
+msgid "A saved profile deletion is still being confirmed."
+msgstr "⁧⟦A saved profile deletion is still being confirmed.⟧⁩"
+
+#. State error shown for a stale or unexpected saved profile deletion result.
+#, fuzzy
+msgctxt "error.state.unexpected_profile_deletion"
+msgid "The saved profile deletion result is stale or unexpected."
+msgstr "⁧⟦The saved profile deletion result is stale or unexpected.⟧⁩"
+
+#. State error shown when the core stream does not begin with a started event.
+#, fuzzy
+msgctxt "error.state.unexpected_first_event"
+msgid "The core stream did not begin with a started event."
+msgstr "⁧⟦The core stream did not begin with a started event.⟧⁩"
+
+#. State error shown when the core stream repeats its started event.
+#, fuzzy
+msgctxt "error.state.unexpected_started_event"
+msgid "The core stream produced more than one started event."
+msgstr "⁧⟦The core stream produced more than one started event.⟧⁩"
+
+#. State error shown when core event sequence numbers are out of order.
+#, fuzzy
+msgctxt "error.state.non_increasing_sequence"
+msgid "The core stream produced an out-of-order event."
+msgstr "⁧⟦The core stream produced an out-of-order event.⟧⁩"
+
+#. State error shown when the core stream emits after termination.
+#, fuzzy
+msgctxt "error.state.event_after_terminal"
+msgid "The core stream produced an event after termination."
+msgstr "⁧⟦The core stream produced an event after termination.⟧⁩"

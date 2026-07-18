@@ -2134,7 +2134,7 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         String::new()
     };
     bindings.partial.set_label(&partial_label);
-    let error_text = state.error_text();
+    let error_text = state.localized_error_text(state.locale());
     let has_error = error_text.is_some();
     bindings
         .error

@@ -1,3 +1,4 @@
+use crate::localization;
 use linguamesh_domain::{
     ErrorKind, ModelDescriptor, TranslationError, TranslationEvent, TranslationRequest,
 };
@@ -1167,6 +1168,20 @@ impl AppState {
         })
     }
 
+    /// 返回面向界面的本地化错误文本；可变诊断内容保留英文回退。
+    #[must_use]
+    pub fn localized_error_text(&self, locale: UiLocale) -> Option<String> {
+        self.error.as_ref().map(|error| {
+            let (category_key, category_fallback) = error_category(error.kind);
+            let category = localization::text(locale, category_key, category_fallback);
+            let message = state_error_message(&error.message).map_or_else(
+                || error.message.clone(),
+                |(key, fallback)| localization::text(locale, key, fallback),
+            );
+            format!("{category}: {message}")
+        })
+    }
+
     /// 构建不包含源文本或凭据的诊断摘要。
     #[must_use]
     pub fn diagnostics_text(&self) -> String {
@@ -1200,6 +1215,110 @@ impl AppState {
             self.output.len()
         )
     }
+}
+
+fn error_category(kind: ErrorKind) -> (&'static str, &'static str) {
+    match kind {
+        ErrorKind::Cancelled => ("error.category.cancellation", "Cancellation"),
+        ErrorKind::InvalidEndpoint => ("error.category.invalid_endpoint", "Invalid endpoint"),
+        ErrorKind::Network => ("error.category.network", "Network"),
+        ErrorKind::Timeout => ("error.category.timeout", "Timeout"),
+        ErrorKind::Authentication => ("error.category.authentication", "Authentication"),
+        ErrorKind::ModelUnavailable => ("error.category.model_unavailable", "Model unavailable"),
+        ErrorKind::MalformedResponse => ("error.category.malformed_response", "Malformed response"),
+        ErrorKind::Persistence => ("error.category.persistence", "Persistence"),
+        ErrorKind::ProtocolIncompatible => (
+            "error.category.protocol_incompatible",
+            "Protocol incompatible",
+        ),
+        ErrorKind::InvalidConfiguration => (
+            "error.category.invalid_configuration",
+            "Invalid configuration",
+        ),
+        ErrorKind::UnsupportedCapability => (
+            "error.category.unsupported_capability",
+            "Unsupported capability",
+        ),
+        ErrorKind::SecretUnavailable => ("error.category.secret_unavailable", "Secret unavailable"),
+        ErrorKind::SecureStorageUnavailable => (
+            "error.category.secure_storage_unavailable",
+            "Secure storage unavailable",
+        ),
+        ErrorKind::Internal => ("error.category.internal", "Internal"),
+    }
+}
+
+fn state_error_message(message: &str) -> Option<(&'static str, &'static str)> {
+    Some(match message {
+        "Enter source text before translating." => (
+            "error.state.missing_source",
+            "Enter source text before translating.",
+        ),
+        "Select a model before translating." => (
+            "error.state.missing_model",
+            "Select a model before translating.",
+        ),
+        "A model selection is still being confirmed." => (
+            "error.state.model_selection_pending",
+            "A model selection is still being confirmed.",
+        ),
+        "The model selection result is stale or unexpected." => (
+            "error.state.unexpected_model_selection",
+            "The model selection result is stale or unexpected.",
+        ),
+        "The provider profile is disabled." => (
+            "error.state.invalid_profile",
+            "The provider profile is disabled.",
+        ),
+        "Connect a provider before translating." => (
+            "error.state.missing_provider",
+            "Connect a provider before translating.",
+        ),
+        "The provider connection result is stale or unexpected." => (
+            "error.state.unexpected_provider_connection",
+            "The provider connection result is stale or unexpected.",
+        ),
+        "A translation is already running." => {
+            ("error.state.busy", "A translation is already running.")
+        }
+        "A provider connection is still in progress." => (
+            "error.state.connecting",
+            "A provider connection is still in progress.",
+        ),
+        "The saved provider profile does not match this operation." => (
+            "error.state.invalid_saved_profile",
+            "The saved provider profile does not match this operation.",
+        ),
+        "Saved profile storage is unavailable." => (
+            "error.state.profile_storage_unavailable",
+            "Saved profile storage is unavailable.",
+        ),
+        "A saved profile deletion is still being confirmed." => (
+            "error.state.profile_deletion_pending",
+            "A saved profile deletion is still being confirmed.",
+        ),
+        "The saved profile deletion result is stale or unexpected." => (
+            "error.state.unexpected_profile_deletion",
+            "The saved profile deletion result is stale or unexpected.",
+        ),
+        "The core stream did not begin with a started event." => (
+            "error.state.unexpected_first_event",
+            "The core stream did not begin with a started event.",
+        ),
+        "The core stream produced more than one started event." => (
+            "error.state.unexpected_started_event",
+            "The core stream produced more than one started event.",
+        ),
+        "The core stream produced an out-of-order event." => (
+            "error.state.non_increasing_sequence",
+            "The core stream produced an out-of-order event.",
+        ),
+        "The core stream produced an event after termination." => (
+            "error.state.event_after_terminal",
+            "The core stream produced an event after termination.",
+        ),
+        _ => return None,
+    })
 }
 
 fn saved_profile_by_id<'a>(
@@ -1309,6 +1428,29 @@ mod tests {
         state.select_model("fake-translator").expect("select model");
         state.set_source_text("Hello");
         state
+    }
+
+    #[test]
+    fn localized_error_text_localizes_fixed_state_messages_and_categories() {
+        let mut state = AppState::default();
+        state.record_client_error(StateError::MissingSource.to_string());
+        assert_eq!(
+            state
+                .localized_error_text(UiLocale::SimplifiedChinese)
+                .as_deref(),
+            Some("内部错误: 翻译前请输入源文本。")
+        );
+
+        state.record_operation_failure(TranslationError::new(
+            ErrorKind::Network,
+            "The provider could not be reached.",
+        ));
+        assert_eq!(
+            state
+                .localized_error_text(UiLocale::SimplifiedChinese)
+                .as_deref(),
+            Some("网络: The provider could not be reached.")
+        );
     }
 
     fn state_with_profile_storage() -> AppState {
