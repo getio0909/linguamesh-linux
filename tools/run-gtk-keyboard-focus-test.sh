@@ -43,6 +43,10 @@ XDG_CACHE_HOME="$workspace/cache" \
     fi
     xdotool windowactivate --sync "$app_window" >/dev/null 2>&1 || true
     xdotool windowfocus --sync "$app_window" >/dev/null 2>&1 || true
+    for _ in {1..80}; do
+      xdotool key --window "$app_window" Tab
+      sleep 0.04
+    done
     for _ in {1..240}; do
       if [[ -s "$LINGUAMESH_KEYBOARD_FOCUS_LOG" ]]; then
         break
@@ -51,13 +55,9 @@ XDG_CACHE_HOME="$workspace/cache" \
     done
     if [[ ! -s "$LINGUAMESH_KEYBOARD_FOCUS_LOG" ]]; then
       cat "$LINGUAMESH_KEYBOARD_FOCUS_LOG.app" >&2
-      printf "%s\n" "GTK keyboard fixture did not observe initial focus." >&2
+      printf "%s\n" "GTK keyboard fixture did not observe a focused control after Tab input." >&2
       exit 1
     fi
-    for _ in {1..80}; do
-      xdotool key --window "$app_window" Tab
-      sleep 0.04
-    done
     sleep 0.2
     kill "$app_pid" >/dev/null 2>&1 || true
     wait "$app_pid" >/dev/null 2>&1 || true
