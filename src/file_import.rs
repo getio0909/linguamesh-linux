@@ -14,6 +14,8 @@ pub enum TextImportError {
     InvalidUtf8,
     /// 文件后缀不属于当前 Linux 文档切片。
     UnsupportedFormat,
+    /// 字幕文件的时间轴或 cue 结构无效。
+    InvalidStructure,
 }
 
 impl fmt::Display for TextImportError {
@@ -25,6 +27,9 @@ impl fmt::Display for TextImportError {
             Self::InvalidUtf8 => formatter.write_str("The selected file is not valid UTF-8 text."),
             Self::UnsupportedFormat => {
                 formatter.write_str("The selected document format is not supported.")
+            }
+            Self::InvalidStructure => {
+                formatter.write_str("The selected subtitle structure is invalid.")
             }
         }
     }
@@ -60,6 +65,7 @@ fn map_document_error(error: DocumentError) -> TextImportError {
     match error {
         DocumentError::TooLarge | DocumentError::OutputTooLarge => TextImportError::TooLarge,
         DocumentError::InvalidUtf8 => TextImportError::InvalidUtf8,
+        DocumentError::InvalidStructure => TextImportError::InvalidStructure,
         DocumentError::UnsupportedFormat
         | DocumentError::UnknownSegment(_)
         | DocumentError::VerbatimSegment(_)
@@ -106,6 +112,10 @@ mod tests {
             decode_document_contents("README.docx", b"text"),
             Err(TextImportError::UnsupportedFormat)
         );
+        assert_eq!(
+            decode_document_contents("captions.srt", b"1\nnot a timestamp\nHello"),
+            Err(TextImportError::InvalidStructure)
+        );
     }
 
     #[test]
@@ -113,5 +123,16 @@ mod tests {
         let job = decode_document_job("notes.txt", b"one\ntwo").expect("document job");
         assert_eq!(job.source_name, "notes.txt");
         assert_eq!(job.pending_count(), 2);
+    }
+
+    #[test]
+    fn returns_subtitle_jobs_without_translating_timing_lines() {
+        let job = decode_document_job(
+            "captions.vtt",
+            b"WEBVTT\n\n00:00.000 --> 00:01.000\nHello\n",
+        )
+        .expect("webvtt job");
+        assert_eq!(job.pending_count(), 1);
+        assert_eq!(job.segments[2].source_text, "00:00.000 --> 00:01.000");
     }
 }

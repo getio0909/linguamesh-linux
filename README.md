@@ -20,12 +20,12 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `31e7d3d06abbbf32199432bdedfcaf9a46dbed38`, which adds
+reviewed Core functional revision `e4962fc19dd09ca2ef45d4841ffb617cb25a1342`, which adds
 `SQLITE_OPEN_NOFOLLOW` to file-backed storage, protected-span and request-level glossary
 restoration, bounded semantic chunking for long streamed text, bounded translation history, and
-optional translation-memory storage with versioned request identity, and the bounded TXT/Markdown
-document contract with preserved line endings and verbatim Markdown fences, plus schema-8 document
-job snapshots that survive worker restart without persisting source paths or credentials, plus
+optional translation-memory storage with versioned request identity, and the bounded TXT/Markdown/
+SRT/WebVTT document contract with preserved line endings, verbatim Markdown fences, and validated
+subtitle timing, plus schema-8 document job snapshots that survive worker restart without persisting source paths or credentials, plus
 validated non-secret provider/model/glossary options reused by Resume and Retry after restart.
 
 ## Native stack
@@ -68,13 +68,15 @@ document-portal lease lifecycle, drives the real GTK portal FileChooser backend 
 the application-level GTK FileDialog callback, and performs a real XTest drag through the source
 editor. Prompted desktop flows and physical shell rendering remain separate follow-up work.
 
-Each successful TXT/Markdown import is also stored as a bounded Core document job. **Translate**
+Each successful TXT, Markdown, SRT, or WebVTT import is also stored as a bounded Core document job.
+**Translate**
 then sends pending prose segments sequentially through the confirmed provider, emits segment events,
 persists each completed segment, and saves only validated non-secret source/target locale,
 provider/model identifiers, and glossary rules. A worker restart can restore the unfinished snapshot;
 **Resume** and **Retry** reuse those options only after the active provider and model match. **Stop**
 cancels the active document segment and leaves the source unchanged; Incognito mode intentionally
-rejects new document jobs because their progress must be persisted.
+rejects new document jobs because their progress must be persisted. Subtitle timestamps and cue IDs
+remain unchanged; cue text is translated without automatic timing or line-length rewriting.
 
 After a translation completes, **Export translation** opens a native GTK save dialog and writes the
 output asynchronously as UTF-8. Export remains disabled without output, reports a localized success
