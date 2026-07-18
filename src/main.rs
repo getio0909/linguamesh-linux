@@ -1816,6 +1816,7 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
         .update_property(&[gtk::accessible::Property::Label(&stop)]);
 }
 
+#[allow(clippy::too_many_lines)]
 fn refresh_localized_widgets(bindings: &UiBindings, locale: UiLocale) {
     bindings
         .window
