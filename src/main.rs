@@ -780,6 +780,7 @@ fn install_keyboard_focus_probe(
     let focus_window = window.clone();
     let focus_start_path = std::env::var_os("LINGUAMESH_KEYBOARD_FOCUS_START");
     let focus_request_logged = Cell::new(false);
+    let focus_attempt_logged = Cell::new(false);
     let mut focus_deadline = None;
     glib::timeout_add_local(Duration::from_millis(50), move || {
         if initial_focus.is_sensitive() && !ready_logged.get() {
@@ -818,7 +819,19 @@ fn install_keyboard_focus_probe(
             focus_deadline = Some(Instant::now() + Duration::from_secs(5));
         }
         gtk::prelude::GtkWindowExt::set_focus(&focus_window, Some(&initial_focus));
-        let focused = initial_focus.grab_focus() && initial_focus.has_focus();
+        let grabbed = initial_focus.grab_focus();
+        let focused = grabbed && initial_focus.has_focus();
+        if !focus_attempt_logged.get() {
+            let mut log = ready_log.borrow_mut();
+            let _ = writeln!(
+                log,
+                "__focus_attempt__ grabbed={grabbed} has_focus={} active={}",
+                initial_focus.has_focus(),
+                focus_window.is_active()
+            );
+            let _ = log.flush();
+            focus_attempt_logged.set(true);
+        }
         if focused || focus_deadline.is_some_and(|deadline| Instant::now() >= deadline) {
             glib::ControlFlow::Break
         } else {
