@@ -26,7 +26,7 @@ confirmation, or rollback.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `0f71a652a536753f48bb8c852fd38e97740c23ce`; compared with the prior
+functional revision is `36f256637236636889b0933cc5fe6a70bffff02c`; compared with the prior
 alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW` and adds streamed
 protected-span and request-level glossary restoration. The required contract
 is exact Core `0.1.0-alpha.2`, ABI 1, protocol 1, provider catalog `0.1.0`, and these features:
@@ -85,15 +85,15 @@ protected-span policy, prompt-template version, and quality mode. Incognito bypa
 write; **View translation memory** supports inspection, escaped TSV export, exact deletion, and
 clear-all.
 
-The native text-file path delegates TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX format detection and bounded UTF-8/BOM handling to
+The native text-file path delegates TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX format detection and bounded UTF-8/BOM handling to
 Core's `bounded_text_document_v1` contract. It preserves the original LF/CRLF/CR line endings and
 classifies Markdown fenced code and blank structure as verbatim segments before the editor receives
-the source text. Core schema 10 and the worker persist bounded pending/running/paused job snapshots
+the source text. Core schema 12 and the worker persist bounded pending/running/paused job snapshots
 and segment progress without source paths or credentials. Schema 8 also stores validated non-secret
-source/target locales, provider/model IDs, and optional glossary rules. Imported TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX files
+source/target locales, provider/model IDs, and optional glossary rules. Imported TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX files
 become these snapshots before translation; the worker translates pending prose segments sequentially,
 writes each completed segment, and routes safe reconstruction back to the editor. Resume and Retry
-reuse saved options only after the active runtime matches. DOCX/PPTX package resources remain intact while
+reuse saved options only after the active runtime matches. DOCX/PPTX/XLSX package resources remain intact while
 supported OOXML text parts are rewritten under the same 4 MiB package and 512-entry limits. Encrypted,
 malformed, traversal, and DTD-bearing packages are rejected. Multi-job queue presentation remains outside
 this slice.

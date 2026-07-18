@@ -5,7 +5,7 @@
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`0f71a652a536753f48bb8c852fd38e97740c23ce`. This revision carries the explicit request-level
+`36f256637236636889b0933cc5fe6a70bffff02c`. This revision carries the explicit request-level
 Incognito privacy policy and changes file-backed Core storage to add SQLite's `SQLITE_OPEN_NOFOLLOW`
 flag, adds protected-span restoration and request-level glossary
 protection for streamed text, and adds bounded semantic chunking. On
@@ -14,19 +14,19 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 0f71a652a536753f48bb8c852fd38e97740c23ce^{commit}
+git -C ../linguamesh-core cat-file -e 36f256637236636889b0933cc5fe6a70bffff02c^{commit}
 git -C ../linguamesh-core diff --quiet \
-  0f71a652a536753f48bb8c852fd38e97740c23ce..HEAD -- \
+  36f256637236636889b0933cc5fe6a70bffff02c..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
 
 The same Core pin also negotiates `bounded_text_document_v1`: Linux imports only bounded UTF-8 TXT,
-Markdown, CSV, JSON, HTML, SRT, WebVTT, DOCX, and PPTX packages, preserves line endings, keeps Markdown fenced code and subtitle timing
+Markdown, CSV, JSON, HTML, SRT, WebVTT, DOCX, PPTX, and XLSX packages, preserves line endings, keeps Markdown fenced code and subtitle timing
 structure verbatim, and
 persists pending/running/paused document jobs and validated non-secret translation options for worker
 restart recovery. The Linux worker tests also cover
-sequential prose-segment translation, per-segment persistence, safe reconstruction (including DOCX/PPTX package resources), and cancellation
+sequential prose-segment translation, per-segment persistence, safe reconstruction (including DOCX/PPTX/XLSX package resources), and cancellation
 to a persisted cancelled snapshot. The GTK surface now exposes per-job progress and
 pause/resume/retry controls; multi-job selection remains outside the validation gate.
 

@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX document-job translation with sequential segment persistence, bounded DOCX/PPTX package reconstruction and resource retention, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; end-user prompt acceptance, multi-job GUI queue presentation, and release artifacts remain open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX document-job translation with sequential segment persistence, bounded DOCX/PPTX/XLSX package reconstruction and resource retention, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; end-user prompt acceptance, multi-job GUI queue presentation, and release artifacts remain open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -41,7 +41,7 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
 
 - Rust 1.93.0 Cargo package at `0.1.0-alpha.2`, with locked Core alpha.2 path dependencies and
   optional `demo-provider`/`gui` features. Native CI pins Core functional revision
-  `0f71a652a536753f48bb8c852fd38e97740c23ce`.
+  `36f256637236636889b0933cc5fe6a70bffff02c`.
 - Startup rejects any Core other than semantic version `0.1.0-alpha.2`, ABI 1, protocol 1, provider
   catalog `0.1.0`, with the required cancellation, compatibility, typed Rust host-secret broker,
   model-discovery, protected-span, streaming-text, and text-translation features.
@@ -152,7 +152,7 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
   diagnostic detail remains an explicit English fallback.
 - Foundation and native workflow sources use immutable Node 24-compatible action commits and
   disable persisted checkout credentials. Native CI pins reviewed Core revision
-  `0f71a652a536753f48bb8c852fd38e97740c23ce` and localization revision
+  `36f256637236636889b0933cc5fe6a70bffff02c` and localization revision
   `d64d4085fb3c1cc69c9f7965bd97ffca54ca1995`. The revised native gate retains serialized all-target,
   all-feature X11/Xvfb tests, runs the exact ignored storage-fault test in a private user/mount
   namespace when available, then runs the existing GTK binary test under forced Wayland and
@@ -168,7 +168,7 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
 Validated on 2026-07-18 with Rust 1.93.0:
 
 - The pinned global-goal SHA-256 matched the sibling authoritative file.
-- Core functional revision `0f71a652a536753f48bb8c852fd38e97740c23ce` is the reviewed source
+- Core functional revision `36f256637236636889b0933cc5fe6a70bffff02c` is the reviewed source
   pin, and every direct Core dependency is constrained to `=0.1.0-alpha.2`.
 - `cargo fmt --all --check`, the locked demo-provider check, strict Clippy, both locked test suites,
   the demo-provider build, `DOCS_RS=1` check and Clippy, `bash tools/sync-l10n.sh --check`, all 14
@@ -744,6 +744,24 @@ the persisted package bytes never contain source paths or credentials.
 Validated locally:
 
 - Core document tests: 20 passed; storage tests: 26 passed, including schema-11 migration and PPTX
+  package reopen/reconstruction.
+- Linux fmt, all-target/all-feature check, strict Clippy, 61-test library suite, and diff checks
+  passed. Full GTK binary linking remains a CI-only boundary on this host.
+
+## 2026-07-18 — Linux XLSX package checkpoint
+
+Assumption: XLSX support reuses the bounded OOXML ZIP/XML contract: packages are at most 4 MiB and
+512 entries, only shared-string and worksheet text nodes are translated, and workbook relationships,
+styles, formulas, numbers, and media resources remain unchanged. Encrypted, traversal, duplicate,
+malformed, DTD-bearing, oversized, and incomplete packages are rejected.
+
+Implemented Core `36f256637236636889b0933cc5fe6a70bffff02c` XLSX shared-string/worksheet inspection
+and reconstruction with schema-12 format migration. Linux's chooser accepts XLSX and reuses the
+worker's binary export; the persisted package bytes never contain source paths or credentials.
+
+Validated locally:
+
+- Core document tests: 21 passed; storage tests: 27 passed, including schema-12 migration and XLSX
   package reopen/reconstruction.
 - Linux fmt, all-target/all-feature check, strict Clippy, 61-test library suite, and diff checks
   passed. Full GTK binary linking remains a CI-only boundary on this host.

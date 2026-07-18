@@ -20,7 +20,7 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `0f71a652a536753f48bb8c852fd38e97740c23ce`, which adds
+reviewed Core functional revision `36f256637236636889b0933cc5fe6a70bffff02c`, which adds
 `SQLITE_OPEN_NOFOLLOW` to file-backed storage, protected-span and request-level glossary
 restoration, bounded semantic chunking for long streamed text, bounded translation history, and
 optional translation-memory storage with versioned request identity, and the bounded TXT/Markdown/
@@ -60,7 +60,7 @@ is shown as unavailable with request controls disabled. The card is derived from
 writes no completion flag. A user-supplied OpenAI-compatible base endpoint such as
 `http://127.0.0.1:11434/v1/` follows the same flow.
 
-Use **Open text file** to load a UTF-8 TXT, Markdown, CSV, JSON, HTML, SRT, WebVTT, or bounded DOCX/PPTX package into the source editor. The native
+Use **Open text file** to load a UTF-8 TXT, Markdown, CSV, JSON, HTML, SRT, WebVTT, or bounded DOCX/PPTX/XLSX package into the source editor. The native
 GTK file dialog and asynchronous GIO partial read enforce a 4 MiB limit, strip a UTF-8 BOM, reject
 invalid UTF-8, and never place the selected path or file contents in diagnostics. Dropping one GIO
 file onto the source editor reuses the same bounded import path. Native CI verifies the real XDG
@@ -68,7 +68,7 @@ document-portal lease lifecycle, drives the real GTK portal FileChooser backend 
 the application-level GTK FileDialog callback, and performs a real XTest drag through the source
 editor. Prompted desktop flows and physical shell rendering remain separate follow-up work.
 
-Each successful TXT, Markdown, CSV, JSON, HTML, SRT, WebVTT, DOCX, or PPTX import is also stored as a bounded Core document job.
+Each successful TXT, Markdown, CSV, JSON, HTML, SRT, WebVTT, DOCX, PPTX, or XLSX import is also stored as a bounded Core document job.
 **Translate**
 then sends pending prose segments sequentially through the confirmed provider, emits segment events,
 persists each completed segment, and saves only validated non-secret source/target locale,
@@ -82,7 +82,7 @@ translates eligible text fields by default, skips common identifier and numeric 
 Core's selected-column contract for hosts that provide explicit column selection. JSON keys, numbers,
 booleans, nulls, whitespace, and escaping remain unchanged; string values are translated by default.
 HTML tags, attributes, links, scripts, and styles remain unchanged; visible text is translated and
-special characters are escaped on reconstruction. DOCX/PPTX imports retain package resources and rewrite only
+special characters are escaped on reconstruction. DOCX/PPTX/XLSX imports retain package resources and rewrite only
 bounded text nodes in supported OOXML parts; encrypted, traversal, oversized, malformed, and DTD-bearing
 packages are rejected.
 
