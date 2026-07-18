@@ -2,7 +2,7 @@ use adw::prelude::*;
 use gtk::glib;
 use linguamesh_domain::{
     ErrorKind, Glossary, GlossaryEntry, MAX_GLOSSARY_CSV_BYTES, ProviderProfileId, SecretRef,
-    SecretRefNamespace, SecretValue, TranslationError, TranslationEvent,
+    SecretRefNamespace, SecretValue, TranslationError, TranslationEvent, TranslationPrivacyMode,
 };
 use linguamesh_linux::file_import;
 use linguamesh_linux::localization;
@@ -51,6 +51,7 @@ struct UiBindings {
     glossary: gtk::Entry,
     import_glossary: gtk::Button,
     export_glossary: gtk::Button,
+    incognito: gtk::CheckButton,
     theme: gtk::DropDown,
     locale: gtk::DropDown,
     source: gtk::TextBuffer,
@@ -298,6 +299,7 @@ fn create_window(
         glossary,
         import_glossary,
         export_glossary,
+        incognito,
         theme,
         locale,
     ) = create_controls();
@@ -438,6 +440,7 @@ fn create_window(
             glossary,
             import_glossary,
             export_glossary,
+            incognito,
             theme: theme.clone(),
             locale: locale.clone(),
             source: editor_bindings.source,
@@ -720,6 +723,7 @@ fn create_controls() -> (
     gtk::Entry,
     gtk::Button,
     gtk::Button,
+    gtk::CheckButton,
     gtk::DropDown,
     gtk::DropDown,
 ) {
@@ -787,6 +791,17 @@ fn create_controls() -> (
         "tooltip.export_glossary",
         "Save the current glossary rules as a UTF-8 CSV file",
     )));
+    let incognito = gtk::CheckButton::with_mnemonic(&localized_mnemonic(
+        locale,
+        "settings.incognito",
+        "Incognito mode",
+    ));
+    incognito.set_focusable(true);
+    incognito.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.incognito",
+        "Do not persist source, output, history, or translation-memory data for this request",
+    )));
     let theme_options = [
         localization::text(locale, "theme.system", "System"),
         localization::text(locale, "theme.light", "Light"),
@@ -840,6 +855,7 @@ fn create_controls() -> (
     }
     controls.append(&import_glossary);
     controls.append(&export_glossary);
+    controls.append(&incognito);
     (
         controls,
         model,
@@ -848,6 +864,7 @@ fn create_controls() -> (
         glossary,
         import_glossary,
         export_glossary,
+        incognito,
         theme,
         locale,
     )
@@ -1318,6 +1335,18 @@ fn connect_action_handlers(
     let glossary_edit_state = Rc::clone(&bindings.glossary_from_csv);
     bindings.glossary.connect_changed(move |_| {
         glossary_edit_state.set(false);
+    });
+
+    let incognito_bindings = bindings.clone();
+    let incognito_state = Rc::clone(state);
+    bindings.incognito.connect_toggled(move |button| {
+        let mut state = incognito_state.borrow_mut();
+        state.set_privacy_mode(if button.is_active() {
+            TranslationPrivacyMode::Incognito
+        } else {
+            TranslationPrivacyMode::Standard
+        });
+        refresh_ui(&incognito_bindings, &state);
     });
 
     let import_bindings = bindings.clone();
@@ -2551,6 +2580,7 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     );
     let import_glossary = localization::text(locale, "action.import_glossary", "Import glossary");
     let export_glossary = localization::text(locale, "action.export_glossary", "Export glossary");
+    let incognito = localization::text(locale, "settings.incognito", "Incognito mode");
     let translate_label = format!("_{translate}");
     let stop_label = format!("_{stop}");
     bindings.open_source.set_label(&open_source_label);
@@ -2576,6 +2606,7 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     bindings
         .export_glossary
         .set_label(&format!("_{export_glossary}"));
+    bindings.incognito.set_label(Some(&format!("_{incognito}")));
     bindings
         .import_glossary
         .set_tooltip_text(Some(&localization::text(
@@ -2589,6 +2620,13 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
             locale,
             "tooltip.export_glossary",
             "Save the current glossary rules as a UTF-8 CSV file",
+        )));
+    bindings
+        .incognito
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.incognito",
+            "Do not persist source, output, history, or translation-memory data for this request",
         )));
     bindings
         .remove_saved_profile
@@ -2859,6 +2897,12 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             "status.glossary_ready",
             "Glossary CSV is ready.",
         )
+    } else if state.is_incognito() {
+        localization::text(
+            state.locale(),
+            "status.incognito",
+            "Incognito mode is active for this request.",
+        )
     } else {
         localization::text(
             state.locale(),
@@ -2923,6 +2967,10 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         .open_source
         .set_sensitive(source_import_allowed(state));
     bindings.import_glossary.set_sensitive(!blocked);
+    if bindings.incognito.is_active() != state.is_incognito() {
+        bindings.incognito.set_active(state.is_incognito());
+    }
+    bindings.incognito.set_sensitive(!blocked);
     bindings.export_glossary.set_sensitive(
         !blocked && (!bindings.glossary.text().trim().is_empty() || state.glossary().is_some()),
     );

@@ -1,6 +1,7 @@
 use crate::localization;
 use linguamesh_domain::{
-    ErrorKind, Glossary, ModelDescriptor, TranslationError, TranslationEvent, TranslationRequest,
+    ErrorKind, Glossary, ModelDescriptor, TranslationError, TranslationEvent,
+    TranslationPrivacyMode, TranslationRequest,
 };
 pub use linguamesh_domain::{ProviderProfile, ProviderProfileId};
 use linguamesh_protocol::PROTOCOL_VERSION;
@@ -352,6 +353,7 @@ pub struct AppState {
     source_locale: Option<String>,
     target_locale: String,
     glossary: Option<Glossary>,
+    privacy_mode: TranslationPrivacyMode,
     output: String,
     partial_output: bool,
     status: AppStatus,
@@ -381,6 +383,7 @@ impl Default for AppState {
             source_locale: None,
             target_locale: "zh-CN".to_owned(),
             glossary: None,
+            privacy_mode: TranslationPrivacyMode::Standard,
             output: String::new(),
             partial_output: false,
             status: AppStatus::Disconnected,
@@ -1037,6 +1040,23 @@ impl AppState {
         self.glossary.as_ref()
     }
 
+    /// 返回当前请求的本地隐私策略。
+    #[must_use]
+    pub const fn privacy_mode(&self) -> TranslationPrivacyMode {
+        self.privacy_mode
+    }
+
+    /// 指示当前请求是否启用隐身模式。
+    #[must_use]
+    pub const fn is_incognito(&self) -> bool {
+        matches!(self.privacy_mode, TranslationPrivacyMode::Incognito)
+    }
+
+    /// 更新当前请求的本地隐私策略。
+    pub const fn set_privacy_mode(&mut self, privacy_mode: TranslationPrivacyMode) {
+        self.privacy_mode = privacy_mode;
+    }
+
     /// 更新外观偏好。
     pub const fn set_theme(&mut self, theme: ThemePreference) {
         self.theme = theme;
@@ -1080,6 +1100,7 @@ impl AppState {
         if let Some(glossary) = self.glossary.clone() {
             request = request.with_glossary(glossary);
         }
+        request = request.with_privacy_mode(self.privacy_mode);
         self.output.clear();
         self.partial_output = false;
         self.status = AppStatus::Translating;
@@ -1641,6 +1662,18 @@ mod tests {
         assert_eq!(
             request.glossary.as_ref().expect("glossary").entries().len(),
             1
+        );
+    }
+
+    #[test]
+    fn request_carries_incognito_policy_without_persisting_session_state() {
+        let mut state = connected_state();
+        state.set_privacy_mode(linguamesh_domain::TranslationPrivacyMode::Incognito);
+        let request = state.begin_translation().expect("request");
+        assert!(request.is_incognito());
+        assert_eq!(
+            state.privacy_mode(),
+            linguamesh_domain::TranslationPrivacyMode::Incognito
         );
     }
 
