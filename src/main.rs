@@ -777,6 +777,7 @@ fn install_keyboard_focus_probe(
     ];
     let ready_logged = Rc::new(Cell::new(false));
     let ready_log = Rc::clone(&log);
+    let focus_window = window.clone();
     let mut focus_deadline = None;
     glib::timeout_add_local(Duration::from_millis(50), move || {
         if initial_focus.is_sensitive() && !ready_logged.get() {
@@ -799,6 +800,7 @@ fn install_keyboard_focus_probe(
         if !ready_logged.get() {
             return glib::ControlFlow::Continue;
         }
+        gtk::prelude::GtkWindowExt::set_focus(&focus_window, Some(&initial_focus));
         let focused = initial_focus.grab_focus() && initial_focus.has_focus();
         if focused || focus_deadline.is_some_and(|deadline| Instant::now() >= deadline) {
             glib::ControlFlow::Break
