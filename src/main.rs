@@ -779,6 +779,7 @@ fn install_keyboard_focus_probe(
     let ready_log = Rc::clone(&log);
     let focus_window = window.clone();
     let focus_start_path = std::env::var_os("LINGUAMESH_KEYBOARD_FOCUS_START");
+    let focus_request_logged = Cell::new(false);
     let mut focus_deadline = None;
     glib::timeout_add_local(Duration::from_millis(50), move || {
         if initial_focus.is_sensitive() && !ready_logged.get() {
@@ -806,6 +807,12 @@ fn install_keyboard_focus_probe(
             .is_some_and(|path| fs::metadata(path).is_ok());
         if !focus_requested {
             return glib::ControlFlow::Continue;
+        }
+        if !focus_request_logged.get() {
+            let mut log = ready_log.borrow_mut();
+            let _ = writeln!(log, "__focus_requested__");
+            let _ = log.flush();
+            focus_request_logged.set(true);
         }
         if focus_deadline.is_none() {
             focus_deadline = Some(Instant::now() + Duration::from_secs(5));
