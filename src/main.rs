@@ -788,7 +788,7 @@ fn install_keyboard_focus_probe(
     ];
     let ready_logged = Rc::new(Cell::new(false));
     let ready_log = Rc::clone(&log);
-    let focus_deadline = Instant::now() + Duration::from_secs(5);
+    let mut focus_deadline = None;
     glib::timeout_add_local(Duration::from_millis(50), move || {
         if initial_focus.is_sensitive() && !ready_logged.get() {
             let mut log = ready_log.borrow_mut();
@@ -805,9 +805,13 @@ fn install_keyboard_focus_probe(
             let _ = writeln!(log, "__ready__");
             let _ = log.flush();
             ready_logged.set(true);
+            focus_deadline = Some(Instant::now() + Duration::from_secs(5));
+        }
+        if !ready_logged.get() {
+            return glib::ControlFlow::Continue;
         }
         let focused = initial_focus.grab_focus() && initial_focus.has_focus();
-        if focused || Instant::now() >= focus_deadline {
+        if focused || focus_deadline.is_some_and(|deadline| Instant::now() >= deadline) {
             glib::ControlFlow::Break
         } else {
             glib::ControlFlow::Continue
