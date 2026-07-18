@@ -64,6 +64,7 @@ jobs:
             util-linux \
             x11-utils \
             xdotool \
+            xfwm4 \
             weston \
             xdg-desktop-portal \
             xdg-desktop-portal-gtk \

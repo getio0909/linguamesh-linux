@@ -26,6 +26,9 @@ XDG_CACHE_HOME="$workspace/cache" \
     export XDG_CURRENT_DESKTOP=GNOME
     export GDK_BACKEND=x11
     mkdir -p "$XDG_DATA_HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME"
+    xfwm4 --compositor=off >/tmp/linguamesh-xfwm4.log 2>&1 &
+    wm_pid=$!
+    sleep 0.5
     target/debug/linguamesh-linux >"$LINGUAMESH_KEYBOARD_FOCUS_LOG.app" 2>&1 &
     app_pid=$!
     app_window=""
@@ -82,6 +85,8 @@ XDG_CACHE_HOME="$workspace/cache" \
     sleep 0.2
     kill "$app_pid" >/dev/null 2>&1 || true
     wait "$app_pid" >/dev/null 2>&1 || true
+    kill "$wm_pid" >/dev/null 2>&1 || true
+    wait "$wm_pid" >/dev/null 2>&1 || true
     required_widgets=(
       provider_name
       provider_endpoint
