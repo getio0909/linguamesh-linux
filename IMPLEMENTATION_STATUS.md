@@ -602,7 +602,7 @@ Implemented:
 - Added model, worker, and storage regression coverage for default enablement, persistence, policy
   changes, and preservation of existing rows.
 - Pinned Core `fb00f3dd6b62a8a3a47350acc85831e60e266929` and l10n
-  `bef59e15fac5c295371ed8b6475fc6be4e4d980d`, with 244 generated messages and bundle checksum
+  `40f3914e1b28fddd8f38d287fa121010f5192f1c`, with 244 generated messages and bundle checksum
   `746d38fe80a07013b78d7b1e5efae91af6354f4c702add9dceb6b16f6bc2b7c3`.
 
 Validated locally:

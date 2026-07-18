@@ -342,7 +342,7 @@ first focusability assertion because GTK dropdowns defaulted to non-focusable; t
 sets every labelled control and action explicitly focusable.
 
 The history-policy checkpoint is Core `fb00f3dd6b62a8a3a47350acc85831e60e266929`, Linux
-`b968cc21978dd5bea1b4bc6d1c8828bb8ecdc489`, and l10n `bef59e15fac5c295371ed8b6475fc6be4e4d980d`.
+`b968cc21978dd5bea1b4bc6d1c8828bb8ecdc489`, and l10n `40f3914e1b28fddd8f38d287fa121010f5192f1c`.
 Local Core workspace tests, Clippy, offline build, and cargo-deny passed; Linux passed all-target
 Clippy, 54 portable tests, and 82 demo-provider tests with one intentional ignore; l10n validation
 passed with 244 messages. The Linux GUI test remains CI-linked because the local GTK libraries

@@ -42,7 +42,7 @@ Wayland/headless Weston. Neither validation creates a distributable artifact or 
 future release gate below.
 
 The current Linux gate consumes Core `fb00f3dd6b62a8a3a47350acc85831e60e266929` and l10n
-`bef59e15fac5c295371ed8b6475fc6be4e4d980d`. Request-level glossary rules and bounded CSV
+`40f3914e1b28fddd8f38d287fa121010f5192f1c`. Request-level glossary rules and bounded CSV
 interchange are implemented in the Linux slice; persistent glossary libraries and TBX import
 remain outside the release claim.
 
