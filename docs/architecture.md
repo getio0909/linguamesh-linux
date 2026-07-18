@@ -26,7 +26,7 @@ confirmation, or rollback.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `4f03618ffb1f37f27fb1edcf2de5a80e3bec540d`; compared with the prior
+functional revision is `81be0b8be9d7115b98eae3f134b4fd0f25411bbb`; compared with the prior
 alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW` and adds streamed
 protected-span and request-level glossary restoration. The required contract
 is exact Core `0.1.0-alpha.2`, ABI 1, protocol 1, provider catalog `0.1.0`, and these features:
@@ -97,7 +97,8 @@ reuse saved options only after the active runtime matches. DOCX/PPTX/XLSX/EPUB p
 supported text parts are rewritten under the same 4 MiB package and 512-entry limits. PDF extraction
 keeps page association, coordinates where available, and uncertain reading-order boundaries; ASCII
 text streams are rewritten when safe and other text encodings use a structured page-aware HTML
-alternative. EPUB preserves
+alternative. Core also exposes configurable subtitle line-length and reading-speed warnings keyed by
+cue number; the Linux UI renders only those numbers and fixed guidance text. EPUB preserves
 metadata, navigation, CSS, and binary resources while rewriting visible XHTML/HTML text and updating
 OPF language metadata at export. Encrypted, malformed, traversal, and DTD-bearing packages are rejected.
 Multi-job queue presentation remains outside

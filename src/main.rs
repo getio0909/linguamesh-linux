@@ -1,6 +1,9 @@
 use adw::prelude::*;
 use gtk::glib;
-use linguamesh_document::{DocumentJobState, DocumentWarning, DocumentWarningKind};
+use linguamesh_document::{
+    DEFAULT_SUBTITLE_MAX_LINE_CHARS, DEFAULT_SUBTITLE_MAX_READING_SPEED, DocumentJobState,
+    DocumentWarning, DocumentWarningKind,
+};
 use linguamesh_domain::{
     ErrorKind, Glossary, GlossaryEntry, MAX_GLOSSARY_CSV_BYTES, OperationId, ProviderProfileId,
     SecretRef, SecretRefNamespace, SecretValue, TranslationError, TranslationEvent,
@@ -4277,6 +4280,30 @@ fn localized_document_warnings(locale: UiLocale, warnings: &[DocumentWarning]) -
             &[("{pages}", uncertain_pages.as_str())],
         ));
     }
+    let long_line_cues = warning_cues(warnings, &DocumentWarningKind::SubtitleLineLengthExceeded);
+    if !long_line_cues.is_empty() {
+        messages.push(localized_template(
+            locale,
+            "warning.subtitle_line_length",
+            "Subtitle cue(s) {cues} exceed the {limit}-character line guidance.",
+            &[
+                ("{cues}", long_line_cues.as_str()),
+                ("{limit}", &DEFAULT_SUBTITLE_MAX_LINE_CHARS.to_string()),
+            ],
+        ));
+    }
+    let fast_cues = warning_cues(warnings, &DocumentWarningKind::SubtitleReadingSpeedHigh);
+    if !fast_cues.is_empty() {
+        messages.push(localized_template(
+            locale,
+            "warning.subtitle_reading_speed",
+            "Subtitle cue(s) {cues} exceed the {limit}-character-per-second reading-speed guidance.",
+            &[
+                ("{cues}", fast_cues.as_str()),
+                ("{limit}", &DEFAULT_SUBTITLE_MAX_READING_SPEED.to_string()),
+            ],
+        ));
+    }
     messages.join(" ")
 }
 
@@ -4292,6 +4319,21 @@ fn warning_pages(warnings: &[DocumentWarning], kind: &DocumentWarningKind) -> St
     pages
         .into_iter()
         .map(|page| page.to_string())
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+// 提取并排序 warning 涉及的字幕 cue 序号，避免向诊断或日志写入文档内容。
+fn warning_cues(warnings: &[DocumentWarning], kind: &DocumentWarningKind) -> String {
+    let mut cues = warnings
+        .iter()
+        .filter(|warning| &warning.kind == kind)
+        .filter_map(|warning| warning.cue)
+        .collect::<Vec<_>>();
+    cues.sort_unstable();
+    cues.dedup();
+    cues.into_iter()
+        .map(|cue| cue.to_string())
         .collect::<Vec<_>>()
         .join(", ")
 }
@@ -4629,19 +4671,48 @@ mod tests {
             DocumentWarning {
                 kind: DocumentWarningKind::PdfReconstructionLimited,
                 page: None,
+                cue: None,
             },
             DocumentWarning {
                 kind: DocumentWarningKind::PdfImageOnlyPage,
                 page: Some(2),
+                cue: None,
             },
             DocumentWarning {
                 kind: DocumentWarningKind::PdfImageOnlyPage,
                 page: Some(1),
+                cue: None,
             },
         ];
         let text = localized_document_warnings(UiLocale::English, &warnings);
         assert!(text.contains("page association is preserved"));
         assert!(text.contains("page(s) 1, 2"));
+        assert!(!text.contains("source"));
+    }
+
+    #[test]
+    fn subtitle_warning_text_names_cues_without_source_content() {
+        let warnings = vec![
+            DocumentWarning {
+                kind: DocumentWarningKind::SubtitleLineLengthExceeded,
+                page: None,
+                cue: Some(2),
+            },
+            DocumentWarning {
+                kind: DocumentWarningKind::SubtitleLineLengthExceeded,
+                page: None,
+                cue: Some(1),
+            },
+            DocumentWarning {
+                kind: DocumentWarningKind::SubtitleReadingSpeedHigh,
+                page: None,
+                cue: Some(1),
+            },
+        ];
+        let text = localized_document_warnings(UiLocale::English, &warnings);
+        assert!(text.contains("cue(s) 1, 2"));
+        assert!(text.contains("42-character line guidance"));
+        assert!(text.contains("17-character-per-second"));
         assert!(!text.contains("source"));
     }
 

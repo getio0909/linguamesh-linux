@@ -20,7 +20,7 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `4f03618ffb1f37f27fb1edcf2de5a80e3bec540d`, which adds
+reviewed Core functional revision `81be0b8be9d7115b98eae3f134b4fd0f25411bbb`, which adds
 `SQLITE_OPEN_NOFOLLOW` to file-backed storage, protected-span and request-level glossary
 restoration, bounded semantic chunking for long streamed text, bounded translation history, and
 optional translation-memory storage with versioned request identity, and the bounded TXT/Markdown/
@@ -76,7 +76,9 @@ provider/model identifiers, and glossary rules. A worker restart can restore the
 **Resume** and **Retry** reuse those options only after the active provider and model match. **Stop**
 cancels the active document segment and leaves the source unchanged; Incognito mode intentionally
 rejects new document jobs because their progress must be persisted. Subtitle timestamps and cue IDs
-remain unchanged; cue text is translated without automatic timing or line-length rewriting. CSV
+remain unchanged; cue text is translated without automatic timing or line-length rewriting. Core
+reports cue-level warnings when the configured line-length or reading-speed guidance is exceeded;
+the Linux UI shows cue numbers without source text. CSV
 delimiters, quoted fields, variable-width rows, and line endings remain unchanged; the Linux chooser
 translates eligible text fields by default, skips common identifier and numeric columns, and uses
 Core's selected-column contract for hosts that provide explicit column selection. JSON keys, numbers,
