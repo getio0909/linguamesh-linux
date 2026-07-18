@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 30
     # 固定已审查的 LinguaMesh Core 提交。
     env:
-      CORE_REVISION: fd797526664b9a9a61ccf0a5a41f489a8e9b4b35
+      CORE_REVISION: fd79752fe8857ea37098602cefed294924fa1db5
     steps:
       - name: Check out Linux client
         # 固定 actions/checkout v7.0.0。

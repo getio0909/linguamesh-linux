@@ -41,7 +41,7 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
 
 - Rust 1.93.0 Cargo package at `0.1.0-alpha.2`, with locked Core alpha.2 path dependencies and
   optional `demo-provider`/`gui` features. Native CI pins Core functional revision
-  `fd797526664b9a9a61ccf0a5a41f489a8e9b4b35`.
+  `fd79752fe8857ea37098602cefed294924fa1db5`.
 - Startup rejects any Core other than semantic version `0.1.0-alpha.2`, ABI 1, protocol 1, provider
   catalog `0.1.0`, with the required cancellation, compatibility, typed Rust host-secret broker,
   model-discovery, protected-span, streaming-text, and text-translation features.
