@@ -14,7 +14,7 @@ use linguamesh_linux::secret_service;
 use linguamesh_linux::worker::{
     CoreWorker, PersistenceIntent, WorkerCommand, WorkerCommandHandle, WorkerEvent,
 };
-use linguamesh_storage::TranslationHistoryEntry;
+use linguamesh_storage::{TranslationHistoryEntry, TranslationMemoryEntry};
 use std::cell::{Cell, RefCell};
 use std::fs;
 use std::rc::Rc;
@@ -58,6 +58,9 @@ struct UiBindings {
     history_enabled: gtk::CheckButton,
     history: gtk::Button,
     clear_history: gtk::Button,
+    memory_enabled: gtk::CheckButton,
+    memory: gtk::Button,
+    clear_memory: gtk::Button,
     theme: gtk::DropDown,
     locale: gtk::DropDown,
     source: gtk::TextBuffer,
@@ -89,6 +92,13 @@ struct UiBindings {
     history_policy_guard: Rc<Cell<bool>>,
     history_policy_pending: Rc<Cell<bool>>,
     history_policy_notice: Rc<Cell<Option<bool>>>,
+    memory_notice: Rc<Cell<bool>>,
+    memory_export_notice: Rc<Cell<bool>>,
+    memory_warning: Rc<Cell<bool>>,
+    memory_clear_pending: Rc<Cell<bool>>,
+    memory_policy_guard: Rc<Cell<bool>>,
+    memory_policy_pending: Rc<Cell<bool>>,
+    memory_policy_notice: Rc<Cell<Option<bool>>>,
     source_drop_target: gtk::DropTarget,
 }
 
@@ -316,6 +326,9 @@ fn create_window(
         history_enabled,
         history,
         clear_history,
+        memory_enabled,
+        memory,
+        clear_memory,
         theme,
         locale,
     ) = create_controls();
@@ -460,6 +473,9 @@ fn create_window(
             history_enabled,
             history,
             clear_history,
+            memory_enabled,
+            memory,
+            clear_memory,
             theme: theme.clone(),
             locale: locale.clone(),
             source: editor_bindings.source,
@@ -491,6 +507,13 @@ fn create_window(
             history_policy_guard: Rc::new(Cell::new(false)),
             history_policy_pending: Rc::new(Cell::new(false)),
             history_policy_notice: Rc::new(Cell::new(None)),
+            memory_notice: Rc::new(Cell::new(false)),
+            memory_export_notice: Rc::new(Cell::new(false)),
+            memory_warning: Rc::new(Cell::new(false)),
+            memory_clear_pending: Rc::new(Cell::new(false)),
+            memory_policy_guard: Rc::new(Cell::new(false)),
+            memory_policy_pending: Rc::new(Cell::new(false)),
+            memory_policy_notice: Rc::new(Cell::new(None)),
             source_drop_target,
         },
         theme,
@@ -753,6 +776,9 @@ fn create_controls() -> (
     gtk::CheckButton,
     gtk::Button,
     gtk::Button,
+    gtk::CheckButton,
+    gtk::Button,
+    gtk::Button,
     gtk::DropDown,
     gtk::DropDown,
 ) {
@@ -865,6 +891,40 @@ fn create_controls() -> (
         "tooltip.view_history",
         "Inspect, export, or delete individual local translation history entries",
     )));
+    let memory_enabled = gtk::CheckButton::with_mnemonic(&localized_mnemonic(
+        locale,
+        "settings.save_memory",
+        "Save translation memory",
+    ));
+    memory_enabled.set_focusable(true);
+    memory_enabled.set_active(true);
+    memory_enabled.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.save_memory",
+        "Reuse and persist completed standard translations in local translation memory",
+    )));
+    let memory = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.view_memory",
+        "View translation memory",
+    ));
+    memory.set_focusable(true);
+    memory.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.view_memory",
+        "Inspect, export, or delete individual local translation memory entries",
+    )));
+    let clear_memory = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.clear_memory",
+        "Clear translation memory",
+    ));
+    clear_memory.set_focusable(true);
+    clear_memory.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.clear_memory",
+        "Delete all locally stored translation memory entries",
+    )));
     let theme_options = [
         localization::text(locale, "theme.system", "System"),
         localization::text(locale, "theme.light", "Light"),
@@ -922,6 +982,9 @@ fn create_controls() -> (
     controls.append(&history_enabled);
     controls.append(&history);
     controls.append(&clear_history);
+    controls.append(&memory_enabled);
+    controls.append(&memory);
+    controls.append(&clear_memory);
     (
         controls,
         model,
@@ -934,6 +997,9 @@ fn create_controls() -> (
         history_enabled,
         history,
         clear_history,
+        memory_enabled,
+        memory,
+        clear_memory,
         theme,
         locale,
     )
@@ -1452,6 +1518,40 @@ fn connect_action_handlers(
         }
     });
 
+    let memory_policy_bindings = bindings.clone();
+    let memory_policy_state = Rc::clone(state);
+    let memory_policy_worker = Rc::clone(worker);
+    let memory_policy_guard = Rc::clone(&bindings.memory_policy_guard);
+    bindings.memory_enabled.connect_toggled(move |button| {
+        if memory_policy_guard.get() {
+            return;
+        }
+        let enabled = button.is_active();
+        if !memory_policy_state.borrow().profile_storage_available()
+            || memory_policy_bindings.memory_policy_pending.get()
+        {
+            memory_policy_guard.set(true);
+            button.set_active(memory_policy_state.borrow().translation_memory_enabled());
+            memory_policy_guard.set(false);
+            return;
+        }
+        memory_policy_bindings.memory_policy_pending.set(true);
+        memory_policy_bindings.memory_policy_notice.set(None);
+        refresh_ui(&memory_policy_bindings, &memory_policy_state.borrow());
+        if let Err(error) =
+            memory_policy_worker.try_send(WorkerCommand::SetTranslationMemoryEnabled { enabled })
+        {
+            memory_policy_bindings.memory_policy_pending.set(false);
+            memory_policy_guard.set(true);
+            button.set_active(memory_policy_state.borrow().translation_memory_enabled());
+            memory_policy_guard.set(false);
+            memory_policy_state
+                .borrow_mut()
+                .record_client_error(error.to_string());
+            refresh_ui(&memory_policy_bindings, &memory_policy_state.borrow());
+        }
+    });
+
     let clear_history_bindings = bindings.clone();
     let clear_history_state = Rc::clone(state);
     let clear_history_worker = Rc::clone(worker);
@@ -1484,6 +1584,41 @@ fn connect_action_handlers(
                 .borrow_mut()
                 .record_client_error(error.to_string());
             refresh_ui(&history_bindings, &history_state.borrow());
+        }
+    });
+
+    let clear_memory_bindings = bindings.clone();
+    let clear_memory_state = Rc::clone(state);
+    let clear_memory_worker = Rc::clone(worker);
+    bindings.clear_memory.connect_clicked(move |_| {
+        if clear_memory_bindings.memory_clear_pending.get()
+            || !clear_memory_state.borrow().profile_storage_available()
+        {
+            return;
+        }
+        clear_memory_bindings.memory_clear_pending.set(true);
+        refresh_ui(&clear_memory_bindings, &clear_memory_state.borrow());
+        if let Err(error) = clear_memory_worker.try_send(WorkerCommand::ClearTranslationMemory) {
+            clear_memory_bindings.memory_clear_pending.set(false);
+            clear_memory_state
+                .borrow_mut()
+                .record_client_error(error.to_string());
+            refresh_ui(&clear_memory_bindings, &clear_memory_state.borrow());
+        }
+    });
+
+    let memory_bindings = bindings.clone();
+    let memory_state = Rc::clone(state);
+    let memory_worker = Rc::clone(worker);
+    bindings.memory.connect_clicked(move |_| {
+        if !memory_state.borrow().profile_storage_available() {
+            return;
+        }
+        if let Err(error) = memory_worker.try_send(WorkerCommand::ListTranslationMemory) {
+            memory_state
+                .borrow_mut()
+                .record_client_error(error.to_string());
+            refresh_ui(&memory_bindings, &memory_state.borrow());
         }
     });
 
@@ -2424,6 +2559,224 @@ fn begin_history_export(
     );
 }
 
+// 以可读的确定性 TSV 展示本地翻译记忆，并把删除操作重新交给核心工作线程。
+#[allow(clippy::too_many_lines)]
+fn show_memory_dialog(
+    bindings: &UiBindings,
+    state: &Rc<RefCell<AppState>>,
+    worker: &WorkerCommandHandle,
+    entries: Vec<TranslationMemoryEntry>,
+) {
+    bindings.memory_export_notice.set(false);
+    let locale = state.borrow().locale();
+    let dialog = gtk::Window::builder()
+        .application(&bindings.application)
+        .transient_for(&bindings.window)
+        .modal(true)
+        .title(localization::text(
+            locale,
+            "dialog.memory",
+            "Translation memory",
+        ))
+        .default_width(760)
+        .default_height(520)
+        .build();
+    let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    root.set_margin_top(16);
+    root.set_margin_bottom(16);
+    root.set_margin_start(16);
+    root.set_margin_end(16);
+    let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let export = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.export_memory",
+        "Export translation memory",
+    ));
+    export.set_focusable(true);
+    let close = gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.close", "Close"));
+    close.set_focusable(true);
+    actions.append(&export);
+    actions.append(&close);
+    root.append(&actions);
+    let list = gtk::ListBox::new();
+    list.set_selection_mode(gtk::SelectionMode::None);
+    list.set_vexpand(true);
+    if entries.is_empty() {
+        let empty = gtk::Label::new(Some(&localization::text(
+            locale,
+            "status.memory_empty",
+            "No local translation memory is stored.",
+        )));
+        empty.set_xalign(0.0);
+        empty.add_css_class("dim-label");
+        list.append(&empty);
+    } else {
+        for entry in &entries {
+            let row = gtk::Box::new(gtk::Orientation::Vertical, 6);
+            row.set_margin_top(8);
+            row.set_margin_bottom(8);
+            let header = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+            let metadata = gtk::Label::new(Some(&format!(
+                "{} → {} · {} · {}",
+                entry.source_locale.as_deref().unwrap_or("auto"),
+                entry.target_locale,
+                entry.model_id,
+                entry.created_at,
+            )));
+            metadata.set_xalign(0.0);
+            metadata.set_hexpand(true);
+            metadata.add_css_class("dim-label");
+            let delete = gtk::Button::with_mnemonic(&localized_mnemonic(
+                locale,
+                "action.delete_memory_entry",
+                "Delete",
+            ));
+            delete.set_focusable(true);
+            delete.add_css_class("destructive-action");
+            let delete_worker = worker.clone();
+            let delete_dialog = dialog.clone();
+            let delete_bindings = bindings.clone();
+            let delete_state = Rc::clone(state);
+            let cache_key = entry.cache_key.clone();
+            delete.connect_clicked(move |_| {
+                delete_dialog.close();
+                if let Err(error) = delete_worker.delete_translation_memory(cache_key.clone()) {
+                    delete_state
+                        .borrow_mut()
+                        .record_client_error(error.to_string());
+                    refresh_ui(&delete_bindings, &delete_state.borrow());
+                }
+            });
+            header.append(&metadata);
+            header.append(&delete);
+            row.append(&header);
+            let source = gtk::Label::new(Some(&format!("Source: {}", entry.source_text)));
+            source.set_xalign(0.0);
+            source.set_wrap(true);
+            source.set_selectable(true);
+            row.append(&source);
+            let translated =
+                gtk::Label::new(Some(&format!("Translation: {}", entry.translated_text)));
+            translated.set_xalign(0.0);
+            translated.set_wrap(true);
+            translated.set_selectable(true);
+            row.append(&translated);
+            let identity = gtk::Label::new(Some(&format!("Identity: {}", entry.identity_json)));
+            identity.set_xalign(0.0);
+            identity.set_wrap(true);
+            identity.set_selectable(true);
+            identity.add_css_class("dim-label");
+            row.append(&identity);
+            list.append(&row);
+        }
+    }
+    let scroller = gtk::ScrolledWindow::builder()
+        .vexpand(true)
+        .child(&list)
+        .build();
+    root.append(&scroller);
+    dialog.set_child(Some(&root));
+    let export_bindings = bindings.clone();
+    let export_state = Rc::clone(state);
+    let export_entries = entries;
+    export.connect_clicked(move |_| {
+        begin_memory_export(&export_bindings, &export_state, &export_entries);
+    });
+    let close_dialog = dialog.clone();
+    close.connect_clicked(move |_| close_dialog.close());
+    dialog.present();
+}
+
+// 将翻译记忆字段中的控制字符转义，避免导出内容伪造 TSV 行或列。
+fn memory_tsv_field(value: &str) -> String {
+    history_tsv_field(value)
+}
+
+// 通过 GTK 原生保存对话框异步导出本地翻译记忆。
+fn begin_memory_export(
+    bindings: &UiBindings,
+    state: &Rc<RefCell<AppState>>,
+    entries: &[TranslationMemoryEntry],
+) {
+    let locale = state.borrow().locale();
+    let mut contents = String::from(
+        "cache_key\tcreated_at\tsource_locale\ttarget_locale\tmodel_id\tsource_text\ttranslated_text\tidentity_json\n",
+    );
+    for entry in entries {
+        contents.push_str(&memory_tsv_field(&entry.cache_key));
+        contents.push('\t');
+        contents.push_str(&entry.created_at.to_string());
+        contents.push('\t');
+        contents.push_str(&memory_tsv_field(
+            entry.source_locale.as_deref().unwrap_or("auto"),
+        ));
+        contents.push('\t');
+        contents.push_str(&memory_tsv_field(&entry.target_locale));
+        contents.push('\t');
+        contents.push_str(&memory_tsv_field(&entry.model_id));
+        contents.push('\t');
+        contents.push_str(&memory_tsv_field(&entry.source_text));
+        contents.push('\t');
+        contents.push_str(&memory_tsv_field(&entry.translated_text));
+        contents.push('\t');
+        contents.push_str(&memory_tsv_field(&entry.identity_json));
+        contents.push('\n');
+    }
+    let contents = glib::Bytes::from_owned(contents.into_bytes());
+    let dialog = gtk::FileDialog::builder()
+        .title(localization::text(
+            locale,
+            "dialog.export_memory",
+            "Export translation memory",
+        ))
+        .accept_label(localization::text(locale, "dialog.save", "Save"))
+        .modal(true)
+        .build();
+    dialog.set_initial_name(Some("linguamesh-translation-memory.tsv"));
+    let export_bindings = bindings.clone();
+    let export_state = Rc::clone(state);
+    dialog.save(
+        Some(&bindings.window),
+        None::<&gtk::gio::Cancellable>,
+        move |result| match result {
+            Ok(file) => {
+                let callback_bindings = export_bindings.clone();
+                let callback_state = Rc::clone(&export_state);
+                file.replace_contents_bytes_async(
+                    &contents,
+                    None,
+                    false,
+                    gtk::gio::FileCreateFlags::NONE,
+                    None::<&gtk::gio::Cancellable>,
+                    move |write_result| match write_result {
+                        Ok(_) => {
+                            callback_bindings.memory_export_notice.set(true);
+                            refresh_ui(&callback_bindings, &callback_state.borrow());
+                        }
+                        Err(_) => show_file_export_error(
+                            &callback_bindings,
+                            &localization::text(
+                                callback_state.borrow().locale(),
+                                "error.memory_export",
+                                "The translation memory could not be saved.",
+                            ),
+                        ),
+                    },
+                );
+            }
+            Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
+            Err(_) => show_file_export_error(
+                &export_bindings,
+                &localization::text(
+                    export_state.borrow().locale(),
+                    "error.memory_export",
+                    "The translation memory could not be saved.",
+                ),
+            ),
+        },
+    );
+}
+
 // 拖放和按钮导入共享相同的工作状态边界，避免覆盖正在处理的用户内容。
 fn source_import_allowed(state: &AppState) -> bool {
     !state.worker_unavailable()
@@ -2512,6 +2865,9 @@ fn apply_worker_event(
             bindings.history_policy_guard.set(true);
             bindings.history_enabled.set_active(false);
             bindings.history_policy_guard.set(false);
+            bindings.memory_policy_guard.set(true);
+            bindings.memory_enabled.set_active(false);
+            bindings.memory_policy_guard.set(false);
             rebuild_saved_profile_dropdown(bindings, &state.borrow());
         }
         WorkerEvent::TranslationHistoryRestored { count } => {
@@ -2552,7 +2908,8 @@ fn apply_worker_event(
             show_history_dialog(bindings, state, &history_worker, entries);
         }
         WorkerEvent::TranslationHistoryActionRejected(error)
-        | WorkerEvent::SecretCleanupFailed { error, .. } => {
+        | WorkerEvent::SecretCleanupFailed { error, .. }
+        | WorkerEvent::TranslationMemoryActionRejected(error) => {
             state.borrow_mut().record_client_error(error.to_string());
         }
         WorkerEvent::TranslationHistoryPolicyRejected(error) => {
@@ -2571,6 +2928,52 @@ fn apply_worker_event(
         WorkerEvent::TranslationHistoryPersistenceFailed(_) => {
             bindings.history_warning.set(true);
             bindings.history_clear_pending.set(false);
+        }
+        WorkerEvent::TranslationMemoryRestored { count, enabled } => {
+            let mut state = state.borrow_mut();
+            state.restore_translation_memory_count(count);
+            state.restore_translation_memory_enabled(enabled);
+            bindings.memory_policy_guard.set(true);
+            bindings.memory_enabled.set_active(enabled);
+            bindings.memory_policy_guard.set(false);
+        }
+        WorkerEvent::TranslationMemoryPolicyUpdated { enabled } => {
+            state
+                .borrow_mut()
+                .restore_translation_memory_enabled(enabled);
+            bindings.memory_policy_pending.set(false);
+            bindings.memory_policy_notice.set(Some(enabled));
+            bindings.memory_policy_guard.set(true);
+            bindings.memory_enabled.set_active(enabled);
+            bindings.memory_policy_guard.set(false);
+        }
+        WorkerEvent::TranslationMemoryListed { entries, count } => {
+            state.borrow_mut().restore_translation_memory_count(count);
+            let memory_worker = worker.command_handle();
+            show_memory_dialog(bindings, state, &memory_worker, entries);
+        }
+        WorkerEvent::TranslationMemoryCleared => {
+            state.borrow_mut().clear_translation_memory_count();
+            bindings.memory_clear_pending.set(false);
+            bindings.memory_warning.set(false);
+            bindings.memory_notice.set(true);
+        }
+        WorkerEvent::TranslationMemoryPolicyRejected(error) => {
+            bindings.memory_policy_pending.set(false);
+            bindings.memory_policy_guard.set(true);
+            bindings
+                .memory_enabled
+                .set_active(state.borrow().translation_memory_enabled());
+            bindings.memory_policy_guard.set(false);
+            state.borrow_mut().record_client_error(error.to_string());
+        }
+        WorkerEvent::TranslationMemoryClearRejected(error) => {
+            bindings.memory_clear_pending.set(false);
+            state.borrow_mut().record_client_error(error.to_string());
+        }
+        WorkerEvent::TranslationMemoryPersistenceFailed(_) => {
+            bindings.memory_warning.set(true);
+            bindings.memory_clear_pending.set(false);
         }
         WorkerEvent::DemoProviderReady { endpoint } => {
             let should_use_demo = {
@@ -2998,6 +3401,11 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
         localization::text(locale, "settings.save_history", "Save translation history");
     let history = localization::text(locale, "action.view_history", "View history");
     let clear_history = localization::text(locale, "action.clear_history", "Clear history");
+    let memory_enabled =
+        localization::text(locale, "settings.save_memory", "Save translation memory");
+    let memory = localization::text(locale, "action.view_memory", "View translation memory");
+    let clear_memory =
+        localization::text(locale, "action.clear_memory", "Clear translation memory");
     let translate_label = format!("_{translate}");
     let stop_label = format!("_{stop}");
     bindings.open_source.set_label(&open_source_label);
@@ -3031,6 +3439,11 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     bindings
         .clear_history
         .set_label(&format!("_{clear_history}"));
+    bindings
+        .memory_enabled
+        .set_label(Some(&format!("_{memory_enabled}")));
+    bindings.memory.set_label(&format!("_{memory}"));
+    bindings.clear_memory.set_label(&format!("_{clear_memory}"));
     bindings
         .import_glossary
         .set_tooltip_text(Some(&localization::text(
@@ -3069,6 +3482,25 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
         "tooltip.view_history",
         "Inspect, export, or delete individual local translation history entries",
     )));
+    bindings
+        .memory_enabled
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.save_memory",
+            "Reuse and persist completed standard translations in local translation memory",
+        )));
+    bindings.memory.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.view_memory",
+        "Inspect, export, or delete individual local translation memory entries",
+    )));
+    bindings
+        .clear_memory
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.clear_memory",
+            "Delete all locally stored translation memory entries",
+        )));
     bindings
         .remove_saved_profile
         .set_tooltip_text(Some(&localization::text(
@@ -3364,6 +3796,45 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
                 "Local translation history is disabled; existing entries are kept.",
             )
         }
+    } else if bindings.memory_warning.get() {
+        localization::text(
+            state.locale(),
+            "status.memory_not_saved",
+            "The translation completed, but local translation memory could not be saved.",
+        )
+    } else if bindings.memory_export_notice.get() {
+        localization::text(
+            state.locale(),
+            "status.memory_exported",
+            "Translation memory was exported to the selected file.",
+        )
+    } else if bindings.memory_notice.get() {
+        localization::text(
+            state.locale(),
+            "status.memory_cleared",
+            "Local translation memory was cleared.",
+        )
+    } else if let Some(enabled) = bindings.memory_policy_notice.get() {
+        if enabled {
+            localization::text(
+                state.locale(),
+                "status.memory_enabled",
+                "Local translation memory is enabled.",
+            )
+        } else {
+            localization::text(
+                state.locale(),
+                "status.memory_disabled",
+                "Local translation memory is disabled; existing entries are kept.",
+            )
+        }
+    } else if state.translation_memory_count() > 0 {
+        localized_template(
+            state.locale(),
+            "status.memory_count",
+            "Stored translation memory entries: {count}",
+            &[("{count}", &state.translation_memory_count().to_string())],
+        )
     } else if state.translation_history_count() > 0 {
         localized_template(
             state.locale(),
@@ -3465,6 +3936,21 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     );
     bindings.history.set_sensitive(
         state.profile_storage_available() && !blocked && state.translation_history_count() > 0,
+    );
+    bindings.memory_enabled.set_sensitive(
+        state.worker_ready()
+            && state.profile_storage_available()
+            && !blocked
+            && !bindings.memory_policy_pending.get(),
+    );
+    bindings.clear_memory.set_sensitive(
+        state.profile_storage_available()
+            && !blocked
+            && !bindings.memory_clear_pending.get()
+            && state.translation_memory_count() > 0,
+    );
+    bindings.memory.set_sensitive(
+        state.profile_storage_available() && !blocked && state.translation_memory_count() > 0,
     );
     bindings.export_glossary.set_sensitive(
         !blocked && (!bindings.glossary.text().trim().is_empty() || state.glossary().is_some()),

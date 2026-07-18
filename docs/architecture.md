@@ -26,7 +26,7 @@ confirmation, or rollback.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `fb00f3dd6b62a8a3a47350acc85831e60e266929`; compared with the prior
+functional revision is `b5fb19cf2123b70587775cd6e4a68515a5790575`; compared with the prior
 alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW` and adds streamed
 protected-span and request-level glossary restoration. The required contract
 is exact Core `0.1.0-alpha.2`, ABI 1, protocol 1, provider catalog `0.1.0`, and these features:
@@ -77,8 +77,12 @@ bounded SQLite history migration (100 entries, 4 MiB source/output limit); start
 and **Clear history** deletes all entries. Incognito completion skips the history write. **View
 history** reads a bounded newest-first snapshot, supports exact per-entry deletion, and exports the
 displayed snapshot as escaped UTF-8 TSV. The persisted **Save translation history** policy keeps
-existing rows when disabled and blocks future standard completion writes until re-enabled.
-Translation-memory storage remains unimplemented.
+existing rows when disabled and blocks future standard completion writes until re-enabled. The
+persisted **Save translation memory** policy independently gates a bounded Core schema-5 cache whose
+identity includes normalized source, locales, provider/model, chunking options, glossary,
+protected-span policy, prompt-template version, and quality mode. Incognito bypasses lookup and
+write; **View translation memory** supports inspection, escaped TSV export, exact deletion, and
+clear-all.
 
 With `gui`, `src/main.rs` binds this state and worker to GTK 4/libadwaita widgets. GTK objects remain
 on the main context, which processes at most 64 queued events per timer tick without performing
@@ -87,7 +91,8 @@ credential, explicit Connect, **Remember profile, model, and credential in Secre
 **Remove saved profile**,
 model selection, source and target locales, source and streamed output editors, native **Open text
 file** import, single-file drag-and-drop onto the source editor, Translate/Stop,
-typed errors, appearance, runtime catalog-backed locale preference, **View history**, **Clear history**, and redacted
+typed errors, appearance, runtime catalog-backed locale preference, **View history**, **Clear history**,
+**View translation memory**, **Clear translation memory**, and redacted
 diagnostics.
 An always-current Provider setup card explains the next required action, warns when saved-profile
 storage is unavailable, distinguishes fatal worker shutdown from startup, and identifies the

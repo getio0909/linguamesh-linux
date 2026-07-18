@@ -20,9 +20,10 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `fb00f3dd6b62a8a3a47350acc85831e60e266929`, which adds
+reviewed Core functional revision `b5fb19cf2123b70587775cd6e4a68515a5790575`, which adds
 `SQLITE_OPEN_NOFOLLOW` to file-backed storage, protected-span and request-level glossary
-restoration, bounded semantic chunking for long streamed text, and bounded translation history.
+restoration, bounded semantic chunking for long streamed text, bounded translation history, and
+optional translation-memory storage with versioned request identity.
 
 ## Native stack
 
@@ -125,8 +126,8 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`40f3914e1b28fddd8f38d287fa121010f5192f1c` and validated with `msgfmt`; the 244-message bundle
-checksum is `f3e49113ed85e7e4fadeef6b872ccfe5a2e4fa67548028db5f4524479aedeeb4`. The locale selector
+`d64d4085fb3c1cc69c9f7965bd97ffca54ca1995` and validated with `msgfmt`; the 262-message bundle
+checksum is `a3de4b0bf4afd710a01d15e0426f0d163b56910c0b04f26c411870eae9eea368`. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
 active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, and construction-stage provider/default-control copy without replacing active source text;
 Arabic also switches the GTK workspace root to right-to-left direction. Stable Linux worker startup,
@@ -153,8 +154,12 @@ with a 4 MiB source/output limit); startup restores only the count and **Clear h
 entries. Incognito requests skip history writes. **Save translation history** is a persisted policy
 toggle: disabling it keeps existing entries but prevents future standard completions from being saved.
 **View history** opens a bounded scrollable list, supports exact per-entry deletion, and exports the
-displayed snapshot as escaped UTF-8 TSV. Translation-memory storage remains a future slice. The
-history policy toggle is disabled while a conflicting operation or unavailable profile storage is active.
+displayed snapshot as escaped UTF-8 TSV. **Save translation memory** is a separate persisted policy
+toggle. Enabled standard requests reuse a bounded local memory only when normalized source, locales,
+provider/model identity, glossary, chunking, and versioned translation policies all match. Incognito
+requests never read or write memory. **View translation memory** supports inspection, escaped TSV
+export, exact per-entry deletion, and **Clear translation memory** removes all entries. Both policy
+toggles are disabled while a conflicting operation or unavailable profile storage is active.
 
 When a translation completes, the registered Linux application sends a desktop notification with
 localized generic copy only; source and translated content are never included in notification

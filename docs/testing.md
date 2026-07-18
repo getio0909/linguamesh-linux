@@ -5,7 +5,7 @@
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`fb00f3dd6b62a8a3a47350acc85831e60e266929`. This revision carries the explicit request-level
+`b5fb19cf2123b70587775cd6e4a68515a5790575`. This revision carries the explicit request-level
 Incognito privacy policy and changes file-backed Core storage to add SQLite's `SQLITE_OPEN_NOFOLLOW`
 flag, adds protected-span restoration and request-level glossary
 protection for streamed text, and adds bounded semantic chunking. On
@@ -14,9 +14,9 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e fb00f3dd6b62a8a3a47350acc85831e60e266929^{commit}
+git -C ../linguamesh-core cat-file -e b5fb19cf2123b70587775cd6e4a68515a5790575^{commit}
 git -C ../linguamesh-core diff --quiet \
-  fb00f3dd6b62a8a3a47350acc85831e60e266929..HEAD -- \
+  b5fb19cf2123b70587775cd6e4a68515a5790575..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -350,7 +350,8 @@ cannot link the current GTK 4.10 symbols.
 Core and l10n remote validation for this checkpoint is recorded after their pushes; local Core
 storage tests passed 15 cases and Linux passed the policy worker regression. The Linux GUI test
 remains CI-linked because the local GTK libraries cannot link the current GTK 4.10 symbols.
-Translation-memory storage remains open.
+The Linux translation-memory controls are covered by the current worker/storage slice; remote
+native and Flatpak evidence for this revision is recorded after the push.
 
 ## Repository foundation check
 

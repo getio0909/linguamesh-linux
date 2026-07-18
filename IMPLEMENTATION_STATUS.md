@@ -615,3 +615,35 @@ Validated locally:
 - `bash tools/sync-l10n.sh --check` and `git diff --check` passed.
 - Native GUI linking remains CI-only because this host lacks the GTK 4.10 symbols required by the
   current system libraries.
+
+## 2026-07-18 — Linux translation memory controls
+
+Assumption: translation memory is a separate optional local cache from history. Incognito never
+reads or writes it; disabling the policy keeps existing entries; and provider/model identity is
+included so same-named models from different confirmed providers cannot cross-reuse results.
+
+Implemented:
+
+- Pinned Core `b5fb19cf2123b70587775cd6e4a68515a5790575`, whose schema 5 storage exposes a bounded
+  translation-memory policy, deterministic identity, lookup/write, inspection, export data, exact
+  deletion, and clear-all controls.
+- Added Linux worker startup/policy/list/delete/clear events and cache-hit translation flow. A hit
+  emits the normal ordered translation lifecycle without contacting the provider and still obeys
+  the separate history policy.
+- Added GTK controls for Save/View/Export/Delete/Clear translation memory, localized across all 12
+  official packs. The pinned l10n revision is
+  `d64d4085fb3c1cc69c9f7965bd97ffca54ca1995` (262 messages; bundle checksum
+  `a3de4b0bf4afd710a01d15e0426f0d163b56910c0b04f26c411870eae9eea368`).
+- Added model, worker, and storage regressions for policy persistence, cache reuse, provider
+  isolation, identity mismatches, Incognito, exact deletion, and clear-all.
+
+Validated locally:
+
+- `cargo fmt --all -- --check` passed.
+- Strict all-target/all-feature Clippy passed.
+- `cargo check --features gui --offline` passed through Rust compilation.
+- `cargo test --features demo-provider --lib --offline` passed: 87 tests, 0 failed, 1 intentional
+  ignore.
+- `bash tools/sync-l10n.sh --check` and l10n schema/generator tests passed.
+- Native GUI linking remains CI-only because this host lacks the GTK 4.10 symbols required by the
+  current system libraries.

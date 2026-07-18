@@ -1499,3 +1499,111 @@ msgstr "⁧⟦The translation completed, but local history could not be saved.�
 msgctxt "status.history_count"
 msgid "Stored translation history entries: {count}"
 msgstr "⁧⟦Stored translation history entries: {count}⟧⁩"
+
+#. Enables or disables persistence and reuse of completed standard translation memory on Linux.
+#, fuzzy
+msgctxt "settings.save_memory"
+msgid "Save translation memory"
+msgstr "⁧⟦Save translation memory⟧⁩"
+
+#. Explains the Linux translation memory persistence and reuse toggle.
+#, fuzzy
+msgctxt "tooltip.save_memory"
+msgid "Reuse and persist completed standard translations in local translation memory"
+msgstr "⁧⟦Reuse and persist completed standard translations in local translation memory⟧⁩"
+
+#. Opens the Linux translation memory inspection window.
+#, fuzzy
+msgctxt "action.view_memory"
+msgid "View translation memory"
+msgstr "⁧⟦View translation memory⟧⁩"
+
+#. Action that clears all locally stored translation memory on Linux.
+#, fuzzy
+msgctxt "action.clear_memory"
+msgid "Clear translation memory"
+msgstr "⁧⟦Clear translation memory⟧⁩"
+
+#. Exports the currently displayed Linux translation memory entries.
+#, fuzzy
+msgctxt "action.export_memory"
+msgid "Export translation memory"
+msgstr "⁧⟦Export translation memory⟧⁩"
+
+#. Deletes one Linux translation memory entry.
+#, fuzzy
+msgctxt "action.delete_memory_entry"
+msgid "Delete"
+msgstr "⁧⟦Delete⟧⁩"
+
+#. Tooltip for opening Linux translation memory controls.
+#, fuzzy
+msgctxt "tooltip.view_memory"
+msgid "Inspect, export, or delete individual local translation memory entries"
+msgstr "⁧⟦Inspect, export, or delete individual local translation memory entries⟧⁩"
+
+#. Tooltip for clearing Linux translation memory.
+#, fuzzy
+msgctxt "tooltip.clear_memory"
+msgid "Delete all locally stored translation memory entries"
+msgstr "⁧⟦Delete all locally stored translation memory entries⟧⁩"
+
+#. Title of the Linux translation memory inspection window.
+#, fuzzy
+msgctxt "dialog.memory"
+msgid "Translation memory"
+msgstr "⁧⟦Translation memory⟧⁩"
+
+#. Title of the Linux translation memory export dialog.
+#, fuzzy
+msgctxt "dialog.export_memory"
+msgid "Export translation memory"
+msgstr "⁧⟦Export translation memory⟧⁩"
+
+#. Empty-state message for Linux translation memory.
+#, fuzzy
+msgctxt "status.memory_empty"
+msgid "No local translation memory is stored."
+msgstr "⁧⟦No local translation memory is stored.⟧⁩"
+
+#. Status note confirming that translation memory export completed.
+#, fuzzy
+msgctxt "status.memory_exported"
+msgid "Translation memory was exported to the selected file."
+msgstr "⁧⟦Translation memory was exported to the selected file.⟧⁩"
+
+#. Status note confirming that translation memory was cleared.
+#, fuzzy
+msgctxt "status.memory_cleared"
+msgid "Local translation memory was cleared."
+msgstr "⁧⟦Local translation memory was cleared.⟧⁩"
+
+#. Status note confirming that translation memory is enabled.
+#, fuzzy
+msgctxt "status.memory_enabled"
+msgid "Local translation memory is enabled."
+msgstr "⁧⟦Local translation memory is enabled.⟧⁩"
+
+#. Status note confirming that translation memory is disabled without deleting existing entries.
+#, fuzzy
+msgctxt "status.memory_disabled"
+msgid "Local translation memory is disabled; existing entries are kept."
+msgstr "⁧⟦Local translation memory is disabled; existing entries are kept.⟧⁩"
+
+#. Status summary for the number of local translation memory entries.
+#, fuzzy, python-brace-format
+msgctxt "status.memory_count"
+msgid "Stored translation memory entries: {count}"
+msgstr "⁧⟦Stored translation memory entries: {count}⟧⁩"
+
+#. Non-fatal warning that translation memory persistence failed after a completed translation.
+#, fuzzy
+msgctxt "status.memory_not_saved"
+msgid "The translation completed, but local translation memory could not be saved."
+msgstr "⁧⟦The translation completed, but local translation memory could not be saved.⟧⁩"
+
+#. Label for the Linux translation memory export action.
+#, fuzzy
+msgctxt "error.memory_export"
+msgid "The translation memory could not be saved."
+msgstr "⁧⟦The translation memory could not be saved.⟧⁩"

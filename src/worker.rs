@@ -5,7 +5,10 @@ use linguamesh_domain::{
     TranslationError, TranslationEvent, TranslationRequest,
 };
 use linguamesh_engine::{CancellationHandle, TranslationOperation, core_compatibility};
-use linguamesh_storage::{MAX_TRANSLATION_HISTORY_ENTRIES, Storage, TranslationHistoryEntry};
+use linguamesh_storage::{
+    MAX_TRANSLATION_HISTORY_ENTRIES, MAX_TRANSLATION_MEMORY_ENTRIES, Storage,
+    TranslationHistoryEntry, TranslationMemoryEntry,
+};
 use linguamesh_testkit::FakeProviderServer;
 use std::error::Error;
 use std::fmt;
@@ -83,6 +86,20 @@ pub enum WorkerCommand {
         /// 新的本地历史写入策略。
         enabled: bool,
     },
+    /// 设置是否允许新的标准请求读写本地翻译记忆。
+    SetTranslationMemoryEnabled {
+        /// 新的本地翻译记忆策略。
+        enabled: bool,
+    },
+    /// 请求按最新顺序读取本地翻译记忆。
+    ListTranslationMemory,
+    /// 删除指定缓存键对应的一条本地翻译记忆。
+    DeleteTranslationMemory {
+        /// 要删除的稳定缓存键。
+        cache_key: String,
+    },
+    /// 清空本地翻译记忆。
+    ClearTranslationMemory,
     /// 开始翻译请求。
     Translate(TranslationRequest),
     /// 取消当前连接或翻译。
@@ -144,6 +161,35 @@ pub enum WorkerEvent {
     TranslationHistoryClearRejected(TranslationError),
     /// 本地翻译历史写入失败，但翻译结果仍已完成。
     TranslationHistoryPersistenceFailed(TranslationError),
+    /// 本地翻译记忆数量和策略已恢复。
+    TranslationMemoryRestored {
+        /// 当前数据库中的翻译记忆条目数量。
+        count: usize,
+        /// 是否允许读写翻译记忆。
+        enabled: bool,
+    },
+    /// 已读取本地翻译记忆及当前数量。
+    TranslationMemoryListed {
+        /// 按最新写入顺序排列的有限翻译记忆条目。
+        entries: Vec<TranslationMemoryEntry>,
+        /// 当前数据库中的翻译记忆条目数量。
+        count: usize,
+    },
+    /// 本地翻译记忆策略已更新。
+    TranslationMemoryPolicyUpdated {
+        /// 是否允许读写翻译记忆。
+        enabled: bool,
+    },
+    /// 本地翻译记忆策略更新被拒绝。
+    TranslationMemoryPolicyRejected(TranslationError),
+    /// 本地翻译记忆已清空。
+    TranslationMemoryCleared,
+    /// 清空本地翻译记忆被拒绝。
+    TranslationMemoryClearRejected(TranslationError),
+    /// 读取或删除本地翻译记忆被拒绝。
+    TranslationMemoryActionRejected(TranslationError),
+    /// 本地翻译记忆写入失败，但翻译结果仍已完成。
+    TranslationMemoryPersistenceFailed(TranslationError),
     /// 提供商已连接并返回模型。
     Connected {
         /// 已由核心成功连接的规范配置。
@@ -249,6 +295,27 @@ impl WorkerCommandHandle {
             .try_send(QueuedCommand::SetTranslationHistoryEnabled { enabled })
             .map_err(|_| WorkerSendError)
     }
+
+    /// 非阻塞请求更新本地翻译记忆策略。
+    pub fn set_translation_memory_enabled(&self, enabled: bool) -> Result<(), WorkerSendError> {
+        self.commands
+            .try_send(QueuedCommand::SetTranslationMemoryEnabled { enabled })
+            .map_err(|_| WorkerSendError)
+    }
+
+    /// 非阻塞请求读取本地翻译记忆。
+    pub fn list_translation_memory(&self) -> Result<(), WorkerSendError> {
+        self.commands
+            .try_send(QueuedCommand::ListTranslationMemory)
+            .map_err(|_| WorkerSendError)
+    }
+
+    /// 非阻塞请求删除一条本地翻译记忆。
+    pub fn delete_translation_memory(&self, cache_key: String) -> Result<(), WorkerSendError> {
+        self.commands
+            .try_send(QueuedCommand::DeleteTranslationMemory { cache_key })
+            .map_err(|_| WorkerSendError)
+    }
 }
 
 enum QueuedCommand {
@@ -273,6 +340,14 @@ enum QueuedCommand {
     SetTranslationHistoryEnabled {
         enabled: bool,
     },
+    SetTranslationMemoryEnabled {
+        enabled: bool,
+    },
+    ListTranslationMemory,
+    DeleteTranslationMemory {
+        cache_key: String,
+    },
+    ClearTranslationMemory,
     Translate(TranslationRequest),
     Cancel,
     Shutdown,
@@ -418,6 +493,22 @@ impl CoreWorker {
                 .commands
                 .try_send(QueuedCommand::SetTranslationHistoryEnabled { enabled })
                 .map_err(|_| WorkerSendError),
+            WorkerCommand::SetTranslationMemoryEnabled { enabled } => self
+                .commands
+                .try_send(QueuedCommand::SetTranslationMemoryEnabled { enabled })
+                .map_err(|_| WorkerSendError),
+            WorkerCommand::ListTranslationMemory => self
+                .commands
+                .try_send(QueuedCommand::ListTranslationMemory)
+                .map_err(|_| WorkerSendError),
+            WorkerCommand::DeleteTranslationMemory { cache_key } => self
+                .commands
+                .try_send(QueuedCommand::DeleteTranslationMemory { cache_key })
+                .map_err(|_| WorkerSendError),
+            WorkerCommand::ClearTranslationMemory => self
+                .commands
+                .try_send(QueuedCommand::ClearTranslationMemory)
+                .map_err(|_| WorkerSendError),
             WorkerCommand::Translate(request) => self
                 .commands
                 .try_send(QueuedCommand::Translate(request))
@@ -550,6 +641,39 @@ async fn run_worker(
                 {
                     return;
                 }
+                let memory_count = match storage.translation_memory_count() {
+                    Ok(count) => count,
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::TranslationMemoryPersistenceFailed(error))
+                            .is_err()
+                        {
+                            return;
+                        }
+                        0
+                    }
+                };
+                let memory_enabled = match storage.translation_memory_enabled() {
+                    Ok(enabled) => enabled,
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::TranslationMemoryPersistenceFailed(error))
+                            .is_err()
+                        {
+                            return;
+                        }
+                        true
+                    }
+                };
+                if events
+                    .send(WorkerEvent::TranslationMemoryRestored {
+                        count: memory_count,
+                        enabled: memory_enabled,
+                    })
+                    .is_err()
+                {
+                    return;
+                }
                 Some(storage)
             }
             Err(error) => {
@@ -663,6 +787,35 @@ async fn run_worker(
                         ),
                     ));
                 }
+                ActiveStep::Command(Some(QueuedCommand::SetTranslationMemoryEnabled {
+                    enabled: _,
+                })) => {
+                    let _ = events.send(WorkerEvent::TranslationMemoryPolicyRejected(
+                        TranslationError::new(
+                            ErrorKind::InvalidConfiguration,
+                            "Translation memory policy cannot change while a translation is running.",
+                        ),
+                    ));
+                }
+                ActiveStep::Command(Some(QueuedCommand::ClearTranslationMemory)) => {
+                    let _ = events.send(WorkerEvent::TranslationMemoryClearRejected(
+                        TranslationError::new(
+                            ErrorKind::InvalidConfiguration,
+                            "Translation memory cannot be cleared while a translation is running.",
+                        ),
+                    ));
+                }
+                ActiveStep::Command(Some(
+                    QueuedCommand::ListTranslationMemory
+                    | QueuedCommand::DeleteTranslationMemory { .. },
+                )) => {
+                    let _ = events.send(WorkerEvent::TranslationMemoryActionRejected(
+                        TranslationError::new(
+                            ErrorKind::InvalidConfiguration,
+                            "Translation memory cannot be changed while a translation is running.",
+                        ),
+                    ));
+                }
                 ActiveStep::Command(Some(QueuedCommand::Translate(_))) => {
                     let _ = events.send(WorkerEvent::Rejected(TranslationError::new(
                         ErrorKind::InvalidConfiguration,
@@ -713,6 +866,28 @@ async fn run_worker(
                             && events.send(history_event).is_err()
                         {
                             shutting_down = true;
+                        }
+                        if !shutting_down {
+                            let memory_event = match storage.translation_memory_enabled() {
+                                Ok(false) => None,
+                                Ok(true) => match storage.record_translation_memory(
+                                    &active_translation.request,
+                                    &active_translation.output,
+                                ) {
+                                    Ok(()) => None,
+                                    Err(error) => {
+                                        Some(WorkerEvent::TranslationMemoryPersistenceFailed(error))
+                                    }
+                                },
+                                Err(error) => {
+                                    Some(WorkerEvent::TranslationMemoryPersistenceFailed(error))
+                                }
+                            };
+                            if let Some(memory_event) = memory_event
+                                && events.send(memory_event).is_err()
+                            {
+                                shutting_down = true;
+                            }
                         }
                     }
                     if events.send(WorkerEvent::Translation(event)).is_err() {
@@ -1074,7 +1249,206 @@ async fn run_worker(
                     }
                 }
             }
+            Some(QueuedCommand::SetTranslationMemoryEnabled { enabled }) => {
+                let result = storage
+                    .as_mut()
+                    .ok_or_else(|| {
+                        TranslationError::new(
+                            ErrorKind::Persistence,
+                            "Local translation memory storage is unavailable.",
+                        )
+                    })
+                    .and_then(|storage| storage.set_translation_memory_enabled(enabled));
+                match result {
+                    Ok(()) => {
+                        if events
+                            .send(WorkerEvent::TranslationMemoryPolicyUpdated { enabled })
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::TranslationMemoryPolicyRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
+            Some(QueuedCommand::ClearTranslationMemory) => {
+                let result = storage
+                    .as_mut()
+                    .ok_or_else(|| {
+                        TranslationError::new(
+                            ErrorKind::Persistence,
+                            "Local translation memory storage is unavailable.",
+                        )
+                    })
+                    .and_then(Storage::clear_translation_memory);
+                match result {
+                    Ok(()) => {
+                        if events.send(WorkerEvent::TranslationMemoryCleared).is_err() {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::TranslationMemoryClearRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
+            Some(QueuedCommand::ListTranslationMemory) => {
+                let result = storage
+                    .as_ref()
+                    .ok_or_else(|| {
+                        TranslationError::new(
+                            ErrorKind::Persistence,
+                            "Local translation memory storage is unavailable.",
+                        )
+                    })
+                    .and_then(|storage| {
+                        let entries = storage.translation_memory(MAX_TRANSLATION_MEMORY_ENTRIES)?;
+                        let count = storage.translation_memory_count()?;
+                        Ok((entries, count))
+                    });
+                match result {
+                    Ok((entries, count)) => {
+                        if events
+                            .send(WorkerEvent::TranslationMemoryListed { entries, count })
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::TranslationMemoryActionRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
+            Some(QueuedCommand::DeleteTranslationMemory { cache_key }) => {
+                let result = storage
+                    .as_mut()
+                    .ok_or_else(|| {
+                        TranslationError::new(
+                            ErrorKind::Persistence,
+                            "Local translation memory storage is unavailable.",
+                        )
+                    })
+                    .and_then(|storage| {
+                        storage.delete_translation_memory_entry(cache_key.as_str())?;
+                        let entries = storage.translation_memory(MAX_TRANSLATION_MEMORY_ENTRIES)?;
+                        let count = storage.translation_memory_count()?;
+                        Ok((entries, count))
+                    });
+                match result {
+                    Ok((entries, count)) => {
+                        if events
+                            .send(WorkerEvent::TranslationMemoryListed { entries, count })
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::TranslationMemoryActionRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
             Some(QueuedCommand::Translate(request)) => {
+                let request = active_profile.as_ref().map_or(request.clone(), |profile| {
+                    request.clone().with_provider_identity(format!(
+                        "{}@{}",
+                        profile.id().as_str(),
+                        profile.base_endpoint()
+                    ))
+                });
+                if let Some(storage) = storage.as_mut() {
+                    match storage.lookup_translation_memory(&request) {
+                        Ok(Some(entry)) => {
+                            if !request.is_incognito()
+                                && storage.translation_history_enabled().unwrap_or(false)
+                            {
+                                match storage
+                                    .record_translation_history(&request, &entry.translated_text)
+                                {
+                                    Ok(()) => match storage.translation_history_count() {
+                                        Ok(count) => {
+                                            if events
+                                                .send(WorkerEvent::TranslationHistoryUpdated {
+                                                    count,
+                                                })
+                                                .is_err()
+                                            {
+                                                shutting_down = true;
+                                                continue;
+                                            }
+                                        }
+                                        Err(error) => {
+                                            let _ = events.send(
+                                                WorkerEvent::TranslationHistoryPersistenceFailed(
+                                                    error,
+                                                ),
+                                            );
+                                        }
+                                    },
+                                    Err(error) => {
+                                        let _ = events.send(
+                                            WorkerEvent::TranslationHistoryPersistenceFailed(error),
+                                        );
+                                    }
+                                }
+                            }
+                            if events
+                                .send(WorkerEvent::Translation(TranslationEvent::Started {
+                                    sequence: 0,
+                                }))
+                                .is_err()
+                                || events
+                                    .send(WorkerEvent::Translation(TranslationEvent::TextDelta {
+                                        sequence: 1,
+                                        text: entry.translated_text.clone(),
+                                    }))
+                                    .is_err()
+                                || events
+                                    .send(WorkerEvent::Translation(TranslationEvent::Completed {
+                                        sequence: 2,
+                                    }))
+                                    .is_err()
+                            {
+                                shutting_down = true;
+                                continue;
+                            }
+                            continue;
+                        }
+                        Ok(None) => {}
+                        Err(error) => {
+                            if events
+                                .send(WorkerEvent::TranslationMemoryPersistenceFailed(error))
+                                .is_err()
+                            {
+                                shutting_down = true;
+                                continue;
+                            }
+                        }
+                    }
+                }
                 match begin_translation(&manager, selected_model.as_deref(), request) {
                     Ok(active_translation) => {
                         set_active_cancellation(
@@ -1144,6 +1518,16 @@ fn reject_queued_commands_for_shutdown(
             ),
             QueuedCommand::SetTranslationHistoryEnabled { .. } => events.send(
                 WorkerEvent::TranslationHistoryPolicyRejected(TranslationError::cancelled()),
+            ),
+            QueuedCommand::SetTranslationMemoryEnabled { .. } => events.send(
+                WorkerEvent::TranslationMemoryPolicyRejected(TranslationError::cancelled()),
+            ),
+            QueuedCommand::ClearTranslationMemory => events.send(
+                WorkerEvent::TranslationMemoryClearRejected(TranslationError::cancelled()),
+            ),
+            QueuedCommand::ListTranslationMemory
+            | QueuedCommand::DeleteTranslationMemory { .. } => events.send(
+                WorkerEvent::TranslationMemoryActionRejected(TranslationError::cancelled()),
             ),
             QueuedCommand::Translate(_) => events.send(WorkerEvent::TranslationRejected(
                 TranslationError::cancelled(),
@@ -2047,7 +2431,8 @@ mod tests {
                     restored_snapshot = Some(restored_profile);
                 }
                 WorkerEvent::TranslationHistoryRestored { .. }
-                | WorkerEvent::TranslationHistoryPolicyRestored { .. } => {}
+                | WorkerEvent::TranslationHistoryPolicyRestored { .. }
+                | WorkerEvent::TranslationMemoryRestored { .. } => {}
                 WorkerEvent::DemoProviderReady { endpoint } => {
                     return (
                         worker,
@@ -2090,7 +2475,8 @@ mod tests {
                     );
                 }
                 WorkerEvent::TranslationHistoryRestored { .. }
-                | WorkerEvent::TranslationHistoryPolicyRestored { .. } => {}
+                | WorkerEvent::TranslationHistoryPolicyRestored { .. }
+                | WorkerEvent::TranslationMemoryRestored { .. } => {}
                 WorkerEvent::DemoProviderReady { endpoint } => {
                     let (profiles, active_profile_id) =
                         restored_snapshot.expect("profile storage snapshot");
@@ -2116,6 +2502,9 @@ mod tests {
             {
                 WorkerEvent::Stopped => return,
                 WorkerEvent::Translation(event) if event.is_terminal() => {}
+                WorkerEvent::TranslationHistoryUpdated { .. }
+                | WorkerEvent::TranslationMemoryPersistenceFailed(_)
+                | WorkerEvent::TranslationHistoryPersistenceFailed(_) => {}
                 _ => panic!("unexpected worker shutdown event"),
             }
         }
@@ -2225,6 +2614,24 @@ mod tests {
                 panic!("history policy rejected: {error}")
             }
             _ => panic!("unexpected history policy event"),
+        }
+    }
+
+    fn set_memory_policy(worker: &CoreWorker, enabled: bool) {
+        worker
+            .try_send(WorkerCommand::SetTranslationMemoryEnabled { enabled })
+            .expect("memory policy command");
+        match worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("memory policy event")
+        {
+            WorkerEvent::TranslationMemoryPolicyUpdated { enabled: updated }
+                if updated == enabled => {}
+            WorkerEvent::TranslationMemoryPolicyRejected(error) => {
+                panic!("memory policy rejected: {error}")
+            }
+            _ => panic!("unexpected memory policy event"),
         }
     }
 
@@ -2404,6 +2811,74 @@ mod tests {
         let storage = Storage::open(database.path()).expect("history storage");
         assert!(storage.translation_history_enabled().expect("policy"));
         assert_eq!(storage.translation_history_count().expect("count"), 2);
+    }
+
+    #[test]
+    fn translation_memory_controls_persist_and_reuse_completed_results() {
+        let database = TestDatabase::new();
+        let (worker, _, endpoint) = started_worker_with_database(database.path());
+        connect(
+            &worker,
+            profile("memory-provider", &endpoint, None, None),
+            None,
+            PersistenceIntent::SessionOnly,
+        )
+        .expect("connection");
+        select(&worker, "memory-provider", "fake-translator");
+        let (first_output, first_terminal) = translate(&worker, "fake-translator");
+        assert_eq!(first_output, "你好，LinguaMesh！");
+        assert!(matches!(first_terminal, TranslationEvent::Completed { .. }));
+        worker
+            .try_send(WorkerCommand::ListTranslationMemory)
+            .expect("list memory");
+        let entry = match worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("memory list event")
+        {
+            WorkerEvent::TranslationMemoryListed { entries, count } => {
+                assert_eq!(count, 1);
+                entries.into_iter().next().expect("memory entry")
+            }
+            _ => panic!("unexpected memory list event"),
+        };
+        set_memory_policy(&worker, false);
+        let (second_output, second_terminal) = translate(&worker, "fake-translator");
+        assert_eq!(second_output, "你好，LinguaMesh！");
+        assert!(matches!(
+            second_terminal,
+            TranslationEvent::Completed { .. }
+        ));
+        worker
+            .try_send(WorkerCommand::DeleteTranslationMemory {
+                cache_key: entry.cache_key,
+            })
+            .expect("delete memory");
+        match worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("memory deletion event")
+        {
+            WorkerEvent::TranslationMemoryListed { entries, count } => {
+                assert!(entries.is_empty());
+                assert_eq!(count, 0);
+            }
+            _ => panic!("unexpected memory deletion event"),
+        }
+        worker
+            .try_send(WorkerCommand::ClearTranslationMemory)
+            .expect("clear memory");
+        assert!(matches!(
+            worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("memory clear event"),
+            WorkerEvent::TranslationMemoryCleared
+        ));
+        shutdown(&worker);
+        let storage = Storage::open(database.path()).expect("memory storage");
+        assert!(!storage.translation_memory_enabled().expect("policy"));
+        assert_eq!(storage.translation_memory_count().expect("count"), 0);
     }
 
     #[test]
@@ -3016,7 +3491,7 @@ mod tests {
         let (output, terminal) = translate(&worker, "fake-translator");
         assert_eq!(output, "你好，LinguaMesh！");
         assert!(matches!(terminal, TranslationEvent::Completed { .. }));
-        assert_chat_requests(&first, 2, &second, 1);
+        assert_chat_requests(&first, 1, &second, 1);
 
         let second_reconnect_ref = SecretRef::new(SecretRefNamespace::Session);
         let second_reconnect_ref_text = second_reconnect_ref.as_str().to_owned();
@@ -3035,7 +3510,7 @@ mod tests {
         let (output, terminal) = translate(&worker, "fake-slow-translator");
         assert_eq!(output, "你好，LinguaMesh！");
         assert!(matches!(terminal, TranslationEvent::Completed { .. }));
-        assert_chat_requests(&first, 2, &second, 2);
+        assert_chat_requests(&first, 1, &second, 1);
 
         let candidate_ref = SecretRef::new(SecretRefNamespace::Session);
         let candidate_ref_text = candidate_ref.as_str().to_owned();
@@ -3056,7 +3531,7 @@ mod tests {
         let (output, terminal) = translate(&worker, "fake-slow-translator");
         assert_eq!(output, "你好，LinguaMesh！");
         assert!(matches!(terminal, TranslationEvent::Completed { .. }));
-        assert_chat_requests(&first, 2, &second, 3);
+        assert_chat_requests(&first, 1, &second, 1);
         let forbidden_storage_values = [
             FIRST_SECRET,
             SECOND_SECRET,

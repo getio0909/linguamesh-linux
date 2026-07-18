@@ -334,6 +334,7 @@ impl ProfileStorageStatus {
 }
 
 /// 保存与工具包无关的原生界面状态。
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Clone)]
 pub struct AppState {
     worker_startup: WorkerStartup,
@@ -356,6 +357,8 @@ pub struct AppState {
     privacy_mode: TranslationPrivacyMode,
     translation_history_count: usize,
     translation_history_enabled: bool,
+    translation_memory_count: usize,
+    translation_memory_enabled: bool,
     output: String,
     partial_output: bool,
     status: AppStatus,
@@ -388,6 +391,8 @@ impl Default for AppState {
             privacy_mode: TranslationPrivacyMode::Standard,
             translation_history_count: 0,
             translation_history_enabled: true,
+            translation_memory_count: 0,
+            translation_memory_enabled: true,
             output: String::new(),
             partial_output: false,
             status: AppStatus::Disconnected,
@@ -1081,6 +1086,33 @@ impl AppState {
     /// 恢复工作线程报告的本地翻译历史写入策略。
     pub const fn restore_translation_history_enabled(&mut self, enabled: bool) {
         self.translation_history_enabled = enabled;
+    }
+
+    /// 返回当前本地翻译记忆条目数量。
+    #[must_use]
+    pub const fn translation_memory_count(&self) -> usize {
+        self.translation_memory_count
+    }
+
+    /// 返回是否允许读写本地翻译记忆。
+    #[must_use]
+    pub const fn translation_memory_enabled(&self) -> bool {
+        self.translation_memory_enabled
+    }
+
+    /// 恢复工作线程报告的本地翻译记忆数量。
+    pub const fn restore_translation_memory_count(&mut self, count: usize) {
+        self.translation_memory_count = count;
+    }
+
+    /// 清除本地翻译记忆数量。
+    pub const fn clear_translation_memory_count(&mut self) {
+        self.translation_memory_count = 0;
+    }
+
+    /// 恢复工作线程报告的本地翻译记忆策略。
+    pub const fn restore_translation_memory_enabled(&mut self, enabled: bool) {
+        self.translation_memory_enabled = enabled;
     }
 
     /// 更新当前请求的本地隐私策略。
