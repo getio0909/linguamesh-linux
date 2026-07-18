@@ -627,6 +627,21 @@ fn create_window(
         memory_policy_notice: Rc::new(Cell::new(None)),
         source_drop_target,
     };
+    install_provider_focus_traversal(
+        &window,
+        vec![
+            bindings.saved_profile.clone().upcast::<gtk::Widget>(),
+            bindings
+                .remove_saved_profile
+                .clone()
+                .upcast::<gtk::Widget>(),
+            bindings.provider_name.clone().upcast::<gtk::Widget>(),
+            bindings.provider_endpoint.clone().upcast::<gtk::Widget>(),
+            bindings.provider_credential.clone().upcast::<gtk::Widget>(),
+            bindings.connect.clone().upcast::<gtk::Widget>(),
+            bindings.remember_profile.clone().upcast::<gtk::Widget>(),
+        ],
+    );
     install_keyboard_focus_probe(&window, &bindings, &theme, &locale);
     (window, bindings, theme, locale)
 }
@@ -1079,17 +1094,6 @@ fn create_provider_session() -> (
     fields.append(&connect);
     section.append(&fields);
     section.append(&remember_profile);
-    let focus_order = vec![
-        saved_profile.clone().upcast::<gtk::Widget>(),
-        remove_saved_profile.clone().upcast::<gtk::Widget>(),
-        provider_name.clone().upcast::<gtk::Widget>(),
-        provider_endpoint.clone().upcast::<gtk::Widget>(),
-        provider_credential.clone().upcast::<gtk::Widget>(),
-        connect.clone().upcast::<gtk::Widget>(),
-        remember_profile.clone().upcast::<gtk::Widget>(),
-    ];
-    install_provider_focus_traversal(&focus_order);
-
     let active_provider = gtk::Label::new(None);
     active_provider.set_xalign(0.0);
     active_provider.set_wrap(true);
@@ -1110,38 +1114,45 @@ fn create_provider_session() -> (
 }
 
 // 为 provider 表单提供稳定的 Tab 与 Shift+Tab 焦点顺序。
-fn install_provider_focus_traversal(focus_order: &[gtk::Widget]) {
-    for widget in focus_order {
-        let order = focus_order.to_owned();
-        let controller = gtk::EventControllerKey::new();
-        controller.set_propagation_phase(gtk::PropagationPhase::Capture);
-        controller.connect_key_pressed(move |_, key, _, state| {
-            if key != gtk::gdk::Key::Tab {
-                return gtk::glib::Propagation::Proceed;
-            }
-            let reverse = state.contains(gtk::gdk::ModifierType::SHIFT_MASK);
-            let Some(current) = order.iter().position(gtk::prelude::WidgetExt::has_focus) else {
-                return gtk::glib::Propagation::Proceed;
+fn install_provider_focus_traversal(
+    window: &adw::ApplicationWindow,
+    focus_order: Vec<gtk::Widget>,
+) {
+    let controller = gtk::EventControllerKey::new();
+    controller.set_propagation_phase(gtk::PropagationPhase::Capture);
+    controller.connect_key_pressed(move |_, key, _, state| {
+        if key != gtk::gdk::Key::Tab {
+            return gtk::glib::Propagation::Proceed;
+        }
+        let reverse = state.contains(gtk::gdk::ModifierType::SHIFT_MASK);
+        let step: isize = if reverse { -1 } else { 1 };
+        let mut next: isize = focus_order
+            .iter()
+            .position(gtk::prelude::WidgetExt::has_focus)
+            .map_or(
+                if reverse {
+                    (focus_order.len() - 1).cast_signed()
+                } else {
+                    0
+                },
+                |current| current.cast_signed() + step,
+            );
+        while let Ok(index) = usize::try_from(next) {
+            let Some(widget) = focus_order.get(index) else {
+                break;
             };
-            let step: isize = if reverse { -1 } else { 1 };
-            let mut next = current.cast_signed() + step;
-            while let Ok(index) = usize::try_from(next) {
-                let Some(widget) = order.get(index) else {
-                    break;
-                };
-                if widget.is_visible()
-                    && widget.is_sensitive()
-                    && widget.is_focusable()
-                    && widget.grab_focus()
-                {
-                    return gtk::glib::Propagation::Stop;
-                }
-                next += step;
+            if widget.is_visible()
+                && widget.is_sensitive()
+                && widget.is_focusable()
+                && widget.grab_focus()
+            {
+                return gtk::glib::Propagation::Stop;
             }
-            gtk::glib::Propagation::Proceed
-        });
-        widget.add_controller(controller);
-    }
+            next += step;
+        }
+        gtk::glib::Propagation::Proceed
+    });
+    window.add_controller(controller);
 }
 
 #[allow(clippy::too_many_lines, clippy::type_complexity)]
