@@ -779,6 +779,7 @@ fn install_keyboard_focus_probe(
     let ready_log = Rc::clone(&log);
     let focus_window = window.clone();
     let focus_start_path = std::env::var_os("LINGUAMESH_KEYBOARD_FOCUS_START");
+    let focus_coordinates_path = std::env::var_os("LINGUAMESH_KEYBOARD_FOCUS_COORDINATES");
     let focus_request_logged = Cell::new(false);
     let focus_attempt_logged = Cell::new(false);
     let mut focus_deadline = None;
@@ -798,6 +799,20 @@ fn install_keyboard_focus_probe(
             let _ = writeln!(log, "__ready__");
             let _ = log.flush();
             ready_logged.set(true);
+            // 为夹具提供真实鼠标点击所需的 provider 输入框窗口内坐标。
+            if let (Some(path), Some(bounds)) = (
+                focus_coordinates_path.as_ref(),
+                initial_focus.compute_bounds(&focus_window),
+            ) {
+                let content = format!(
+                    "{:.0} {:.0} {:.0} {:.0}\n",
+                    bounds.x(),
+                    bounds.y(),
+                    bounds.width(),
+                    bounds.height()
+                );
+                let _ = fs::write(path, content);
+            }
         }
         if !ready_logged.get() {
             return glib::ControlFlow::Continue;

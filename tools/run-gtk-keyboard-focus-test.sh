@@ -4,6 +4,7 @@ set -euo pipefail
 workspace=$(mktemp -d)
 focus_log="$workspace/focus.log"
 focus_start="$workspace/focus-start"
+focus_coordinates="$workspace/focus-coordinates"
 app_log="$workspace/app.log"
 cleanup() {
   if [[ -n "${app_pid:-}" ]]; then
@@ -18,6 +19,7 @@ cargo build --all-features --locked --bin linguamesh-linux
 
 LINGUAMESH_KEYBOARD_FOCUS_LOG="$focus_log" \
 LINGUAMESH_KEYBOARD_FOCUS_START="$focus_start" \
+LINGUAMESH_KEYBOARD_FOCUS_COORDINATES="$focus_coordinates" \
 XDG_DATA_HOME="$workspace/data" \
 XDG_CONFIG_HOME="$workspace/config" \
 XDG_CACHE_HOME="$workspace/cache" \
@@ -59,8 +61,19 @@ XDG_CACHE_HOME="$workspace/cache" \
       printf "%s\n" "GTK keyboard fixture did not reach the enabled provider form." >&2
       exit 1
     fi
+    for _ in {1..50}; do
+      if [[ -s "$LINGUAMESH_KEYBOARD_FOCUS_COORDINATES" ]]; then
+        break
+      fi
+      sleep 0.1
+    done
     xdotool windowactivate --sync "$app_window" >/dev/null 2>&1 || true
     xdotool windowfocus --sync "$app_window" >/dev/null 2>&1 || true
+    read -r focus_x focus_y focus_width focus_height <"$LINGUAMESH_KEYBOARD_FOCUS_COORDINATES"
+    window_x=$(xdotool getwindowgeometry --shell "$app_window" | awk -F= '$1 == "X" { print $2 }')
+    window_y=$(xdotool getwindowgeometry --shell "$app_window" | awk -F= '$1 == "Y" { print $2 }')
+    xdotool mousemove --sync "$((window_x + focus_x + focus_width / 2))" "$((window_y + focus_y + focus_height / 2))"
+    xdotool click 1
     : >"$LINGUAMESH_KEYBOARD_FOCUS_START"
     sleep 0.1
     xdotool key --clearmodifiers alt+p
