@@ -240,3 +240,58 @@ msgstr "Text to translate"
 msgctxt "accessibility.translation_output"
 msgid "Streamed translation output"
 msgstr "Streamed translation output"
+
+#. Status label shown when no provider is connected.
+msgctxt "status.disconnected"
+msgid "Disconnected"
+msgstr "Disconnected"
+
+#. Status label shown while a provider connection is in progress.
+msgctxt "status.connecting"
+msgid "Connecting"
+msgstr "Connecting"
+
+#. Status label shown while cancellation is being finalized.
+msgctxt "status.cancelling"
+msgid "Cancelling"
+msgstr "Cancelling"
+
+#. Status label shown after a translation completes.
+msgctxt "status.completed"
+msgid "Completed"
+msgstr "Completed"
+
+#. Status label shown after a translation fails.
+msgctxt "status.failed"
+msgid "Failed"
+msgstr "Failed"
+
+#. Prefix for the compact status announcement.
+msgctxt "status.label"
+msgid "Status"
+msgstr "Status"
+
+#. Marker shown when a translation retains partial output.
+msgctxt "status.partial_output"
+msgid "Partial output"
+msgstr "Partial output"
+
+#. Status shown while the application is starting.
+msgctxt "status.starting"
+msgid "Starting"
+msgstr "Starting"
+
+#. Status shown while a saved provider profile is being removed.
+msgctxt "status.removing_profile"
+msgid "Removing saved profile"
+msgstr "Removing saved profile"
+
+#. Status shown while a discovered model selection is being confirmed.
+msgctxt "status.selecting_model"
+msgid "Selecting model"
+msgstr "Selecting model"
+
+#. Status label shown when the worker cannot serve requests.
+msgctxt "status.unavailable"
+msgid "Unavailable"
+msgstr "Unavailable"

@@ -1769,14 +1769,20 @@ fn refresh_localized_widgets(bindings: &UiBindings, locale: UiLocale) {
 
 fn localized_status_label(locale: UiLocale, status: AppStatus) -> String {
     match status {
+        AppStatus::Disconnected => {
+            localization::text(locale, "status.disconnected", "Disconnected")
+        }
+        AppStatus::Connecting => localization::text(locale, "status.connecting", "Connecting"),
         AppStatus::Ready => localization::text(locale, "status.ready", "Ready"),
         AppStatus::Translating => localization::text(locale, "status.translating", "Translating…"),
+        AppStatus::Cancelling => localization::text(locale, "status.cancelling", "Cancelling"),
+        AppStatus::Completed => localization::text(locale, "status.completed", "Completed"),
         AppStatus::Cancelled => localization::text(
             locale,
             "status.cancelled",
             "Translation cancelled. Partial output was kept.",
         ),
-        _ => status.label().to_owned(),
+        AppStatus::Failed => localization::text(locale, "status.failed", "Failed"),
     }
 }
 
@@ -1793,24 +1799,30 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         });
     bindings.output.set_text(state.output());
     let status_label = if state.worker_unavailable() {
-        "Unavailable".to_owned()
+        localization::text(state.locale(), "status.unavailable", "Unavailable")
     } else if !state.worker_ready() {
-        "Starting".to_owned()
+        localization::text(state.locale(), "status.starting", "Starting")
     } else if state.pending_profile_deletion().is_some() {
-        "Removing saved profile".to_owned()
+        localization::text(
+            state.locale(),
+            "status.removing_profile",
+            "Removing saved profile",
+        )
     } else if state.pending_model_selection().is_some() {
-        "Selecting model".to_owned()
+        localization::text(state.locale(), "status.selecting_model", "Selecting model")
     } else {
         localized_status_label(state.locale(), state.status())
     };
-    bindings
-        .status
-        .set_label(&format!("Status: {status_label}"));
-    bindings.partial.set_label(if state.has_partial_output() {
-        "Partial output"
+    bindings.status.set_label(&format!(
+        "{}: {status_label}",
+        localization::text(state.locale(), "status.label", "Status")
+    ));
+    let partial_label = if state.has_partial_output() {
+        localization::text(state.locale(), "status.partial_output", "Partial output")
     } else {
-        ""
-    });
+        String::new()
+    };
+    bindings.partial.set_label(&partial_label);
     let error_text = state.error_text();
     let has_error = error_text.is_some();
     bindings
@@ -2134,6 +2146,7 @@ mod tests {
         assert_eq!(bindings.window.title().as_deref(), Some("LinguaMesh"));
         assert_eq!(bindings.source_label.label(), "源文本");
         assert_eq!(bindings.output_label.label(), "译文");
+        assert_eq!(bindings.status.label(), "状态: 正在启动");
         let theme_model = bindings
             .theme
             .model()
@@ -2147,6 +2160,7 @@ mod tests {
         );
         state.borrow_mut().set_locale(UiLocale::Arabic);
         refresh_ui(&bindings, &state.borrow());
+        assert_eq!(bindings.status.label(), "الحالة: جارٍ البدء");
         assert_eq!(bindings.workspace.direction(), gtk::TextDirection::Rtl);
         let source_text = bindings.source.text(
             &bindings.source.start_iter(),

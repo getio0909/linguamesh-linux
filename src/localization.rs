@@ -191,6 +191,8 @@ mod tests {
         for locale in UiLocale::ALL {
             assert!(!text(locale, "app.title", "").is_empty());
             assert!(!text(locale, "action.translate", "").is_empty());
+            assert!(!text(locale, "status.disconnected", "").is_empty());
+            assert!(!text(locale, "status.label", "").is_empty());
         }
     }
 

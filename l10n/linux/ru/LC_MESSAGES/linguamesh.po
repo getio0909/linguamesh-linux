@@ -275,3 +275,69 @@ msgstr "Текст для перевода"
 msgctxt "accessibility.translation_output"
 msgid "Streamed translation output"
 msgstr "Потоковый результат перевода"
+
+#. Status label shown when no provider is connected.
+#, fuzzy
+msgctxt "status.disconnected"
+msgid "Disconnected"
+msgstr "Отключено"
+
+#. Status label shown while a provider connection is in progress.
+#, fuzzy
+msgctxt "status.connecting"
+msgid "Connecting"
+msgstr "Подключение…"
+
+#. Status label shown while cancellation is being finalized.
+#, fuzzy
+msgctxt "status.cancelling"
+msgid "Cancelling"
+msgstr "Отмена…"
+
+#. Status label shown after a translation completes.
+#, fuzzy
+msgctxt "status.completed"
+msgid "Completed"
+msgstr "Завершено"
+
+#. Status label shown after a translation fails.
+#, fuzzy
+msgctxt "status.failed"
+msgid "Failed"
+msgstr "Ошибка"
+
+#. Prefix for the compact status announcement.
+#, fuzzy
+msgctxt "status.label"
+msgid "Status"
+msgstr "Состояние"
+
+#. Marker shown when a translation retains partial output.
+#, fuzzy
+msgctxt "status.partial_output"
+msgid "Partial output"
+msgstr "Частичный результат"
+
+#. Status shown while the application is starting.
+#, fuzzy
+msgctxt "status.starting"
+msgid "Starting"
+msgstr "Запуск…"
+
+#. Status shown while a saved provider profile is being removed.
+#, fuzzy
+msgctxt "status.removing_profile"
+msgid "Removing saved profile"
+msgstr "Удаление сохранённого профиля"
+
+#. Status shown while a discovered model selection is being confirmed.
+#, fuzzy
+msgctxt "status.selecting_model"
+msgid "Selecting model"
+msgstr "Выбор модели"
+
+#. Status label shown when the worker cannot serve requests.
+#, fuzzy
+msgctxt "status.unavailable"
+msgid "Unavailable"
+msgstr "Недоступно"

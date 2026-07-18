@@ -271,3 +271,69 @@ msgstr "待翻譯文字"
 msgctxt "accessibility.translation_output"
 msgid "Streamed translation output"
 msgstr "串流翻譯輸出"
+
+#. Status label shown when no provider is connected.
+#, fuzzy
+msgctxt "status.disconnected"
+msgid "Disconnected"
+msgstr "未連線"
+
+#. Status label shown while a provider connection is in progress.
+#, fuzzy
+msgctxt "status.connecting"
+msgid "Connecting"
+msgstr "正在連線"
+
+#. Status label shown while cancellation is being finalized.
+#, fuzzy
+msgctxt "status.cancelling"
+msgid "Cancelling"
+msgstr "正在取消"
+
+#. Status label shown after a translation completes.
+#, fuzzy
+msgctxt "status.completed"
+msgid "Completed"
+msgstr "已完成"
+
+#. Status label shown after a translation fails.
+#, fuzzy
+msgctxt "status.failed"
+msgid "Failed"
+msgstr "失敗"
+
+#. Prefix for the compact status announcement.
+#, fuzzy
+msgctxt "status.label"
+msgid "Status"
+msgstr "狀態"
+
+#. Marker shown when a translation retains partial output.
+#, fuzzy
+msgctxt "status.partial_output"
+msgid "Partial output"
+msgstr "部分輸出"
+
+#. Status shown while the application is starting.
+#, fuzzy
+msgctxt "status.starting"
+msgid "Starting"
+msgstr "正在啟動"
+
+#. Status shown while a saved provider profile is being removed.
+#, fuzzy
+msgctxt "status.removing_profile"
+msgid "Removing saved profile"
+msgstr "正在移除已儲存的設定檔"
+
+#. Status shown while a discovered model selection is being confirmed.
+#, fuzzy
+msgctxt "status.selecting_model"
+msgid "Selecting model"
+msgstr "正在選擇模型"
+
+#. Status label shown when the worker cannot serve requests.
+#, fuzzy
+msgctxt "status.unavailable"
+msgid "Unavailable"
+msgstr "無法使用"

@@ -273,3 +273,69 @@ msgstr "अनुवाद किया जाने वाला टेक्�
 msgctxt "accessibility.translation_output"
 msgid "Streamed translation output"
 msgstr "स्ट्रीम किया गया अनुवाद आउटपुट"
+
+#. Status label shown when no provider is connected.
+#, fuzzy
+msgctxt "status.disconnected"
+msgid "Disconnected"
+msgstr "डिस्कनेक्ट किया गया"
+
+#. Status label shown while a provider connection is in progress.
+#, fuzzy
+msgctxt "status.connecting"
+msgid "Connecting"
+msgstr "कनेक्ट हो रहा है"
+
+#. Status label shown while cancellation is being finalized.
+#, fuzzy
+msgctxt "status.cancelling"
+msgid "Cancelling"
+msgstr "रद्द किया जा रहा है"
+
+#. Status label shown after a translation completes.
+#, fuzzy
+msgctxt "status.completed"
+msgid "Completed"
+msgstr "पूरा हुआ"
+
+#. Status label shown after a translation fails.
+#, fuzzy
+msgctxt "status.failed"
+msgid "Failed"
+msgstr "विफल"
+
+#. Prefix for the compact status announcement.
+#, fuzzy
+msgctxt "status.label"
+msgid "Status"
+msgstr "स्थिति"
+
+#. Marker shown when a translation retains partial output.
+#, fuzzy
+msgctxt "status.partial_output"
+msgid "Partial output"
+msgstr "आंशिक आउटपुट"
+
+#. Status shown while the application is starting.
+#, fuzzy
+msgctxt "status.starting"
+msgid "Starting"
+msgstr "शुरू हो रहा है"
+
+#. Status shown while a saved provider profile is being removed.
+#, fuzzy
+msgctxt "status.removing_profile"
+msgid "Removing saved profile"
+msgstr "सहेजी गई प्रोफ़ाइल हटाई जा रही है"
+
+#. Status shown while a discovered model selection is being confirmed.
+#, fuzzy
+msgctxt "status.selecting_model"
+msgid "Selecting model"
+msgstr "मॉडल चुना जा रहा है"
+
+#. Status label shown when the worker cannot serve requests.
+#, fuzzy
+msgctxt "status.unavailable"
+msgid "Unavailable"
+msgstr "अनुपलब्ध"

@@ -271,3 +271,69 @@ msgstr "번역할 텍스트"
 msgctxt "accessibility.translation_output"
 msgid "Streamed translation output"
 msgstr "스트리밍 번역 출력"
+
+#. Status label shown when no provider is connected.
+#, fuzzy
+msgctxt "status.disconnected"
+msgid "Disconnected"
+msgstr "연결 끊김"
+
+#. Status label shown while a provider connection is in progress.
+#, fuzzy
+msgctxt "status.connecting"
+msgid "Connecting"
+msgstr "연결 중"
+
+#. Status label shown while cancellation is being finalized.
+#, fuzzy
+msgctxt "status.cancelling"
+msgid "Cancelling"
+msgstr "취소 중"
+
+#. Status label shown after a translation completes.
+#, fuzzy
+msgctxt "status.completed"
+msgid "Completed"
+msgstr "완료됨"
+
+#. Status label shown after a translation fails.
+#, fuzzy
+msgctxt "status.failed"
+msgid "Failed"
+msgstr "실패"
+
+#. Prefix for the compact status announcement.
+#, fuzzy
+msgctxt "status.label"
+msgid "Status"
+msgstr "상태"
+
+#. Marker shown when a translation retains partial output.
+#, fuzzy
+msgctxt "status.partial_output"
+msgid "Partial output"
+msgstr "부분 출력"
+
+#. Status shown while the application is starting.
+#, fuzzy
+msgctxt "status.starting"
+msgid "Starting"
+msgstr "시작 중"
+
+#. Status shown while a saved provider profile is being removed.
+#, fuzzy
+msgctxt "status.removing_profile"
+msgid "Removing saved profile"
+msgstr "저장된 프로필 제거 중"
+
+#. Status shown while a discovered model selection is being confirmed.
+#, fuzzy
+msgctxt "status.selecting_model"
+msgid "Selecting model"
+msgstr "모델 선택 중"
+
+#. Status label shown when the worker cannot serve requests.
+#, fuzzy
+msgctxt "status.unavailable"
+msgid "Unavailable"
+msgstr "사용할 수 없음"

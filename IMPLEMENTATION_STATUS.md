@@ -7,7 +7,8 @@ Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903
 Assumption: canonical generated PO resources are synchronized and format-validated. The GTK host
 now parses all twelve pinned official Linux catalogs at runtime, exposes BCP 47 locale choices,
 switches the root direction for Arabic, and preserves the source editor buffer during a locale
-switch; complete UI coverage, plural handling, and visual locale/RTL review remain open.
+switch; status summaries and partial-output markers now use the same catalogs; complete UI coverage,
+plural handling, and visual locale/RTL review remain open.
 
 Assumption: the existing first-party `linguamesh-storage` crate and the already-reviewed GTK/GIO
 dependency closure are the approved persistence contract for this Linux slice. The Secret Service
@@ -94,7 +95,7 @@ older distributions and future Flatpak runtimes require separate packaging valid
   provider name, endpoint, optional session credential, explicit non-secret remember/remove
   choices, connection and model selection, saved/session status, language controls, source/output
   views, Translate/Stop, typed errors, partial-result display, appearance, runtime catalog-backed
-  action, workspace-widget, active-provider, status, and theme-option labels with an explicit
+  action, workspace-widget, active-provider, status summary/partial-output, and theme-option labels with an explicit
   fallback notice, a generic completion desktop notification that
   excludes source and translated content, bounded native UTF-8 TXT/Markdown import through GTK
   `FileDialog`/GIO, keyboard mnemonics, and redacted diagnostics. An
@@ -115,16 +116,17 @@ older distributions and future Flatpak runtimes require separate packaging valid
   create/update, and `GetSecret` resolution. Persistent profiles retain only a SecretRef; the
   one-shot credential is passed through the existing typed broker and is never written to SQLite.
 - Fourteen canonical official/pseudo PO catalogs pinned to l10n revision
-  `52e73ea2a6cc7e6e7409b2b6eb0d02db35576a49`. Sync rejects a different revision, dirty generated
+  `24e6c6b387e52473922574ebb861a9b3bf049ba1`. Sync rejects a different revision, dirty generated
   source artifacts, stale copies, and unexpected catalog counts. The GTK locale selector exposes
-  the twelve official packs, runtime action, workspace-widget, active-provider, status, and
+  the twelve official packs, runtime action, workspace-widget, active-provider, status summary,
+  partial-output, and
   System/Light/Dark theme labels switch without losing state, preserves source text while moving
   from Simplified Chinese to Arabic, and applies right-to-left root direction; uncovered UI strings
   still use explicit English fallbacks.
 - Foundation and native workflow sources use immutable Node 24-compatible action commits and
   disable persisted checkout credentials. Native CI pins reviewed Core revision
   `fbf3e9b5927049dccaa19f8c36013495ffebba12` and localization revision
-  `52e73ea2a6cc7e6e7409b2b6eb0d02db35576a49`. The revised native gate retains serialized all-target,
+  `24e6c6b387e52473922574ebb861a9b3bf049ba1`. The revised native gate retains serialized all-target,
   all-feature X11/Xvfb tests, runs the exact ignored storage-fault test in a private user/mount
   namespace when available, then runs the existing GTK binary test under forced Wayland and
   headless Weston before building the application. On restricted Ubuntu hosts, only the private
@@ -136,7 +138,7 @@ older distributions and future Flatpak runtimes require separate packaging valid
 
 ## Local validation evidence
 
-Validated on 2026-07-17 with Rust 1.93.0:
+Validated on 2026-07-18 with Rust 1.93.0:
 
 - The pinned global-goal SHA-256 matched the sibling authoritative file.
 - Core functional revision `fbf3e9b5927049dccaa19f8c36013495ffebba12` is the reviewed source
@@ -144,7 +146,7 @@ Validated on 2026-07-17 with Rust 1.93.0:
   HEAD was a documentation-only descendant whose scoped compiled-source diff from that revision
   was empty.
 - `cargo fmt --all --check`, the locked demo-provider check, strict Clippy, and build passed.
-- `cargo test --no-default-features --locked` passed: 44 tests, 0 failed. Coverage includes the
+- `cargo test --no-default-features --locked` passed: 45 tests, 0 failed. Coverage includes the
   derived onboarding progression, safe stage labels, pending-model confirmation, worker-unavailable
   and storage-unavailable fallbacks, and failed-switch rollback that preserves the confirmed Ready
   identity.
@@ -219,6 +221,11 @@ Validated on 2026-07-17 with Rust 1.93.0:
   expected missing-Weston and early-compositor-exit failure paths without leaving a temporary
   runtime directory; both workflow files parsed as YAML. Its actual GTK run requires the remote
   native environment.
+- The current status-localization slice passed `DOCS_RS=1 cargo check --all-targets --all-features
+  --locked`, strict library Clippy, 45 no-default tests, 4 localization tests, and
+  `bash tools/sync-l10n.sh --check`. The GTK test asserts Simplified Chinese and Arabic status
+  summaries alongside the existing action, widget, theme, source-preservation, and RTL checks in
+  the remote native gate.
 - Linux revision `7a8526f7a1a0e3cfe068e3dd20934cf3e11d18ca` adds a GTK regression that sets source
   text in Simplified Chinese, switches to Arabic, verifies RTL direction, and asserts the source
   buffer is unchanged. Native run `29623544194` (job `88023275325`), Foundation run `29623544187`,
