@@ -1031,18 +1031,16 @@ fn create_provider_session() -> (
     fields.append(&connect);
     section.append(&fields);
     section.append(&remember_profile);
-    install_provider_focus_traversal(
-        &section,
-        vec![
-            saved_profile.clone().upcast::<gtk::Widget>(),
-            remove_saved_profile.clone().upcast::<gtk::Widget>(),
-            provider_name.clone().upcast::<gtk::Widget>(),
-            provider_endpoint.clone().upcast::<gtk::Widget>(),
-            provider_credential.clone().upcast::<gtk::Widget>(),
-            connect.clone().upcast::<gtk::Widget>(),
-            remember_profile.clone().upcast::<gtk::Widget>(),
-        ],
-    );
+    let focus_order = vec![
+        saved_profile.clone().upcast::<gtk::Widget>(),
+        remove_saved_profile.clone().upcast::<gtk::Widget>(),
+        provider_name.clone().upcast::<gtk::Widget>(),
+        provider_endpoint.clone().upcast::<gtk::Widget>(),
+        provider_credential.clone().upcast::<gtk::Widget>(),
+        connect.clone().upcast::<gtk::Widget>(),
+        remember_profile.clone().upcast::<gtk::Widget>(),
+    ];
+    install_provider_focus_traversal(&focus_order);
 
     let active_provider = gtk::Label::new(None);
     active_provider.set_xalign(0.0);
@@ -1064,38 +1062,38 @@ fn create_provider_session() -> (
 }
 
 // 为 provider 表单提供稳定的 Tab 与 Shift+Tab 焦点顺序。
-fn install_provider_focus_traversal(section: &gtk::Box, focus_order: Vec<gtk::Widget>) {
-    let controller = gtk::EventControllerKey::new();
-    controller.set_propagation_phase(gtk::PropagationPhase::Capture);
-    controller.connect_key_pressed(move |_, key, _, state| {
-        if key != gtk::gdk::Key::Tab {
-            return gtk::glib::Propagation::Proceed;
-        }
-        let reverse = state.contains(gtk::gdk::ModifierType::SHIFT_MASK);
-        let Some(current) = focus_order
-            .iter()
-            .position(gtk::prelude::WidgetExt::has_focus)
-        else {
-            return gtk::glib::Propagation::Proceed;
-        };
-        let step: isize = if reverse { -1 } else { 1 };
-        let mut next = current.cast_signed() + step;
-        while let Ok(index) = usize::try_from(next) {
-            let Some(widget) = focus_order.get(index) else {
-                break;
-            };
-            if widget.is_visible()
-                && widget.is_sensitive()
-                && widget.is_focusable()
-                && widget.grab_focus()
-            {
-                return gtk::glib::Propagation::Stop;
+fn install_provider_focus_traversal(focus_order: &[gtk::Widget]) {
+    for widget in focus_order {
+        let order = focus_order.to_owned();
+        let controller = gtk::EventControllerKey::new();
+        controller.set_propagation_phase(gtk::PropagationPhase::Capture);
+        controller.connect_key_pressed(move |_, key, _, state| {
+            if key != gtk::gdk::Key::Tab {
+                return gtk::glib::Propagation::Proceed;
             }
-            next += step;
-        }
-        gtk::glib::Propagation::Proceed
-    });
-    section.add_controller(controller);
+            let reverse = state.contains(gtk::gdk::ModifierType::SHIFT_MASK);
+            let Some(current) = order.iter().position(gtk::prelude::WidgetExt::has_focus) else {
+                return gtk::glib::Propagation::Proceed;
+            };
+            let step: isize = if reverse { -1 } else { 1 };
+            let mut next = current.cast_signed() + step;
+            while let Ok(index) = usize::try_from(next) {
+                let Some(widget) = order.get(index) else {
+                    break;
+                };
+                if widget.is_visible()
+                    && widget.is_sensitive()
+                    && widget.is_focusable()
+                    && widget.grab_focus()
+                {
+                    return gtk::glib::Propagation::Stop;
+                }
+                next += step;
+            }
+            gtk::glib::Propagation::Proceed
+        });
+        widget.add_controller(controller);
+    }
 }
 
 #[allow(clippy::too_many_lines, clippy::type_complexity)]
