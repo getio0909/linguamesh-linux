@@ -90,7 +90,7 @@ XDG_CACHE_HOME="$workspace/cache" \
       xdotool key --clearmodifiers Tab
       sleep 0.04
     done
-    for _ in {1..12}; do
+    for _ in {1..24}; do
       xdotool key --clearmodifiers ctrl+Tab
       sleep 0.04
     done
