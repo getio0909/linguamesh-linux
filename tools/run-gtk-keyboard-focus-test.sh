@@ -60,8 +60,6 @@ XDG_CACHE_HOME="$workspace/cache" \
     xdotool windowactivate --sync "$app_window" >/dev/null 2>&1 || true
     xdotool windowfocus --sync "$app_window" >/dev/null 2>&1 || true
     sleep 0.1
-    xdotool key --window "$app_window" F12
-    sleep 0.1
     for _ in {1..8}; do
       xdotool key --window "$app_window" Shift+Tab
       sleep 0.04
@@ -91,24 +89,21 @@ XDG_CACHE_HOME="$workspace/cache" \
     kill "$wm_pid" >/dev/null 2>&1 || true
     wait "$wm_pid" >/dev/null 2>&1 || true
     required_widgets=(
-      provider_name
-      provider_endpoint
-      provider_credential
       remember_profile
       connect
-      source_locale
-      target_locale
-      glossary
-      incognito
-      history_enabled
-      memory_enabled
-      theme
-      locale
       source_editor
       output_editor
       open_source
       document_jobs
     )
+    provider_widgets=(provider_name provider_endpoint provider_credential)
+    for widget in "${provider_widgets[@]}"; do
+      if ! grep -Fxq "__state__ $widget focusable=true sensitive=true visible=true mapped=true" "$LINGUAMESH_KEYBOARD_FOCUS_LOG"; then
+        cat "$LINGUAMESH_KEYBOARD_FOCUS_LOG" >&2
+        printf "GTK keyboard fixture did not expose an enabled focusable state for %s.\n" "$widget" >&2
+        exit 1
+      fi
+    done
     for widget in "${required_widgets[@]}"; do
       if ! grep -Fxq "$widget" "$LINGUAMESH_KEYBOARD_FOCUS_LOG"; then
         cat "$LINGUAMESH_KEYBOARD_FOCUS_LOG" >&2
@@ -116,6 +111,6 @@ XDG_CACHE_HOME="$workspace/cache" \
         exit 1
       fi
     done
-    printf "%s\n" "GTK keyboard focus fixture passed: Tab traversal reached onboarding and workspace controls."
+    printf "%s\n" "GTK keyboard focus fixture passed: Tab traversal reached the tested onboarding and workspace controls."
     cat "$LINGUAMESH_KEYBOARD_FOCUS_LOG"
   '

@@ -645,17 +645,6 @@ fn install_keyboard_focus_probe(
         eprintln!("Keyboard focus fixture could not create the focus log.");
         return;
     };
-    let focus_seed = bindings.provider_name.clone();
-    let key_controller = gtk::EventControllerKey::new();
-    key_controller.connect_key_pressed(move |_, key, _, _| {
-        if key == gtk::gdk::Key::F12 {
-            focus_seed.grab_focus();
-            gtk::glib::Propagation::Stop
-        } else {
-            gtk::glib::Propagation::Proceed
-        }
-    });
-    window.add_controller(key_controller);
     let log = Rc::new(RefCell::new(std::io::BufWriter::new(file)));
     let widgets = [
         (
