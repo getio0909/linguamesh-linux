@@ -28,17 +28,6 @@ XDG_CACHE_HOME="$workspace/cache" \
     mkdir -p "$XDG_DATA_HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME"
     target/debug/linguamesh-linux >"$LINGUAMESH_KEYBOARD_FOCUS_LOG.app" 2>&1 &
     app_pid=$!
-    for _ in {1..240}; do
-      if [[ -s "$LINGUAMESH_KEYBOARD_FOCUS_LOG" ]]; then
-        break
-      fi
-      sleep 0.1
-    done
-    if [[ ! -s "$LINGUAMESH_KEYBOARD_FOCUS_LOG" ]]; then
-      cat "$LINGUAMESH_KEYBOARD_FOCUS_LOG.app" >&2
-      printf "%s\n" "GTK keyboard fixture did not observe initial focus." >&2
-      exit 1
-    fi
     app_window=""
     for _ in {1..120}; do
       app_window=$(xdotool search --onlyvisible --name "^LinguaMesh$" | head -n 1 || true)
@@ -53,6 +42,17 @@ XDG_CACHE_HOME="$workspace/cache" \
       exit 1
     fi
     xdotool windowactivate --sync "$app_window"
+    for _ in {1..240}; do
+      if [[ -s "$LINGUAMESH_KEYBOARD_FOCUS_LOG" ]]; then
+        break
+      fi
+      sleep 0.1
+    done
+    if [[ ! -s "$LINGUAMESH_KEYBOARD_FOCUS_LOG" ]]; then
+      cat "$LINGUAMESH_KEYBOARD_FOCUS_LOG.app" >&2
+      printf "%s\n" "GTK keyboard fixture did not observe initial focus." >&2
+      exit 1
+    fi
     for _ in {1..80}; do
       xdotool key --window "$app_window" Tab
       sleep 0.04
