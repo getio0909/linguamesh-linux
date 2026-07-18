@@ -5163,7 +5163,7 @@ mod tests {
             Some("_允许使用已批准的回退")
         );
         assert!(!bindings.fallback_enabled.is_sensitive());
-        assert_eq!(bindings.fallback_profile_label.label(), "回退提供商");
+        assert_eq!(bindings.fallback_profile_label.label(), "_回退提供商");
         let source_language_model = bindings
             .source_locale
             .model()
