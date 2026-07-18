@@ -20,7 +20,7 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `7adc9cdf6c8243243d42136f8b80fe3ee19f0af1`, which adds
+reviewed Core functional revision `225d1edc0316b11ea0791c658adc14bd811dc865`, which adds
 `SQLITE_OPEN_NOFOLLOW` to file-backed storage, protected-span and request-level glossary
 restoration, and bounded semantic chunking for long streamed text.
 
@@ -125,7 +125,7 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`8fd778a5869c8b8c91610c22241883fff2e41c99` and validated with `msgfmt`. The locale selector
+`e5c51a046e01c51b106ba3d177e33e41a69b8aa0` and validated with `msgfmt`. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
 active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, and construction-stage provider/default-control copy without replacing active source text;
 Arabic also switches the GTK workspace root to right-to-left direction. Stable Linux worker startup,
@@ -145,6 +145,12 @@ The glossary controls also support bounded UTF-8 CSV interchange. **Import gloss
 rules in Core, and keeps the imported rules request-scoped in memory. **Export glossary** writes
 the deterministic Core CSV schema to a user-selected file without persisting credentials or
 glossary content in provider profiles or SQLite.
+
+The **Incognito mode** toggle carries an explicit Core privacy policy on the next translation
+request. It prevents request source/output data from being written to local history or translation
+memory; this checkpoint does not yet add history or translation-memory stores, so the standard path
+also has no such persistence today. The toggle remains visible in the status note and is disabled
+while a conflicting operation is active.
 
 When a translation completes, the registered Linux application sends a desktop notification with
 localized generic copy only; source and translated content are never included in notification

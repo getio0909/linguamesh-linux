@@ -1357,3 +1357,21 @@ msgstr "請先輸入或匯入詞彙表規則。"
 msgctxt "status.glossary_ready"
 msgid "Glossary CSV is ready."
 msgstr "詞彙表 CSV 已就緒。"
+
+#. Linux toggle that prevents this request from being written to local history or translation memory.
+#, fuzzy
+msgctxt "settings.incognito"
+msgid "Incognito mode"
+msgstr "隱身模式"
+
+#. Accessible tooltip for the Linux request-level local privacy toggle.
+#, fuzzy
+msgctxt "tooltip.incognito"
+msgid "Do not persist source, output, history, or translation-memory data for this request"
+msgstr "本次請求不保存來源文字、輸出、歷史記錄或翻譯記憶資料"
+
+#. Status note that confirms the request-level local privacy policy is active.
+#, fuzzy
+msgctxt "status.incognito"
+msgid "Incognito mode is active for this request."
+msgstr "本次請求已啟用隱身模式。"

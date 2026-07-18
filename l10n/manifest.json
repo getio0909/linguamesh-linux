@@ -72,143 +72,143 @@
     },
     {
       "path": "linux/ar/LC_MESSAGES/linguamesh.mo",
-      "sha256": "25c42c9587811973f7d57526f3181679dbd2fe6e3078956fa17a095f24da515d",
-      "size": 31017
+      "sha256": "56db193fe0127bac20172f82a90a59bfa56271e3db7b34a30474062b89857767",
+      "size": 31403
     },
     {
       "path": "linux/ar/LC_MESSAGES/linguamesh.po",
-      "sha256": "ca31a044d3650177eb702bc44a0b383bf98265bcab33952a955fe7638243f7f3",
-      "size": 50283
+      "sha256": "7b7ecbfa7a873c968dfd73ca356e0888674b8253e5fb035f3115b1a85e313d20",
+      "size": 50985
     },
     {
       "path": "linux/ar-XB/LC_MESSAGES/linguamesh.mo",
-      "sha256": "6a6124082c0e5e9e12bbc51dca882e11d30a2ea9dfc1a234bb632aa8f3af8036",
-      "size": 30091
+      "sha256": "c2a266a3dd08ac7325ed15d354b36836d9eeb8c3e6d5254ca7b17e0ad50520de",
+      "size": 30513
     },
     {
       "path": "linux/ar-XB/LC_MESSAGES/linguamesh.po",
-      "sha256": "94acb2aeeb5df29092268c90c6f57b0ed0c6b9b7bf199bb6e720957aedbaf7e4",
-      "size": 49357
+      "sha256": "7928ba52111e17363218383273f2e3a4ba931f4c247d55437357e754217aa841",
+      "size": 50095
     },
     {
       "path": "linux/de/LC_MESSAGES/linguamesh.mo",
-      "sha256": "b7ff2e86e8a8ac20b9d5e4f19530e70b858bdc8b19b263d6cd907f4d8df3e704",
-      "size": 27383
+      "sha256": "4e4f14df514787db6fa42ef2cb7da2be32f220b961bf7ab4c85667d69b2ac0d2",
+      "size": 27769
     },
     {
       "path": "linux/de/LC_MESSAGES/linguamesh.po",
-      "sha256": "5b7d9cfff39e7ff02981e6b34632f2d26d69f3187ef785d135f207aa5ac6f607",
-      "size": 46553
+      "sha256": "82fb0e45493fd00c775c9a6f1a34dd97ed7b5e890b9ff2b6c2aff92dbdac65f6",
+      "size": 47255
     },
     {
       "path": "linux/en/LC_MESSAGES/linguamesh.mo",
-      "sha256": "eddafc9fe37b671a74758232a0b60eb37874c2c2f528c7b5711a38f57e9f04a8",
-      "size": 27004
+      "sha256": "c583b172f6d8c3a02f36d647a9f2a91f1caed1b3d94ebf6601f68984142ca303",
+      "size": 27390
     },
     {
       "path": "linux/en/LC_MESSAGES/linguamesh.po",
-      "sha256": "37c56794fe9f9622ba240b867360bb516ddb970ec538d98e89e9fa1c58b5022f",
-      "size": 44200
+      "sha256": "163c6af0294bb6ca4fffeee378b9ba1dc3e9e46bf0136b9adbdf94d93322096b",
+      "size": 44875
     },
     {
       "path": "linux/en-XA/LC_MESSAGES/linguamesh.mo",
-      "sha256": "8a7e182e16c209a91f7017ecc21830c168afd1e9cd0d159fb825cc091144715d",
-      "size": 38457
+      "sha256": "d215bfd1f8e351e12db766a7923195f5574438d19306391fb549745449105016",
+      "size": 39027
     },
     {
       "path": "linux/en-XA/LC_MESSAGES/linguamesh.po",
-      "sha256": "42c13d7866f5ee12a1958dfe766c78a3ff2e26866f4f56587ca34262613f9da7",
-      "size": 57627
+      "sha256": "91c52701c93756634d0ddc55c591aa8225c2abc38a92ad34f14b8bc25347ef5c",
+      "size": 58513
     },
     {
       "path": "linux/es/LC_MESSAGES/linguamesh.mo",
-      "sha256": "834232eb6a58be2873a0f1171769d048db49fb063b4da21c618010ee23b243f0",
-      "size": 27310
+      "sha256": "d7859e894a1b635f9a6712ac22448e62990473bd3f239d979073123aac13ede1",
+      "size": 27696
     },
     {
       "path": "linux/es/LC_MESSAGES/linguamesh.po",
-      "sha256": "55a0d104a0269a86098bb65c1a8c89e13fcddc94bd76e44e80ec715f52622300",
-      "size": 46480
+      "sha256": "51dafa05665ab74f54b399b33d03fa209c133a40e56df1466ad58a0d6c69588a",
+      "size": 47182
     },
     {
       "path": "linux/fr/LC_MESSAGES/linguamesh.mo",
-      "sha256": "ca46b48795083795e2dae1124ea7f3535265d1ce815afb7749895ddf4e2104b1",
-      "size": 27354
+      "sha256": "d9317aade288583debd6d7c6c3d3d4007b6ff30fe6ac0a8a7ae50137294b6f12",
+      "size": 27740
     },
     {
       "path": "linux/fr/LC_MESSAGES/linguamesh.po",
-      "sha256": "13fa8308d65782e2e93ef4a7fd8c29970279be3d56a94156999eef4ad699585e",
-      "size": 46524
+      "sha256": "e5426e44afcf86f9a06385cb0f925419fcfb5a11e76f1056f4da6a559997eb0e",
+      "size": 47226
     },
     {
       "path": "linux/hi/LC_MESSAGES/linguamesh.mo",
-      "sha256": "9ff7b9facc738ed0b1d6b3a8fc613293860e516feb18d4a86e19f30473e11be2",
-      "size": 29333
+      "sha256": "a67a7ec45f2af505dfaf0ffd9fa9ac8574654dd4686ac08de5145d11cb781b86",
+      "size": 29719
     },
     {
       "path": "linux/hi/LC_MESSAGES/linguamesh.po",
-      "sha256": "081d2c7d88d1a0bb979484920798b42e76fed2657fecf1852758755a1ae3fc65",
-      "size": 48503
+      "sha256": "51da3cb5096d63f2c9a12180c8678f14f30edb8651073ca0df90a3f153361079",
+      "size": 49205
     },
     {
       "path": "linux/ja/LC_MESSAGES/linguamesh.mo",
-      "sha256": "f91d78ea054f52c96d190955b1fc7fa58c97ddcfac9b1d4e2c4707b23c9a4a1b",
-      "size": 27705
+      "sha256": "112960d77a0af8d4ed77bc758ad507bf148ee6e8a6e4bba0f065cd79339d014d",
+      "size": 28091
     },
     {
       "path": "linux/ja/LC_MESSAGES/linguamesh.po",
-      "sha256": "86a4cd1fd6fd228d2bcb8adfb036b402a48bdf6d9c90d5660ab2133cbe77e52a",
-      "size": 46851
+      "sha256": "8f6576b2fb2ea7f57061902cb026ba1280495e0d3faab682006e75b4aef8a884",
+      "size": 47553
     },
     {
       "path": "linux/ko/LC_MESSAGES/linguamesh.mo",
-      "sha256": "b325183df379bc79fad12d8157502b76fd401272cfdd38c7a8349b0e68980d86",
-      "size": 27328
+      "sha256": "4c22ab5c6122b8e36854c0e7030a9544f236d76dac6620f0bd92d3896fa61754",
+      "size": 27714
     },
     {
       "path": "linux/ko/LC_MESSAGES/linguamesh.po",
-      "sha256": "e9924d0d09eb95d037ccb30067bfe58d1814e374b4ccfa4bce5c3e2a89c1a3ad",
-      "size": 46474
+      "sha256": "c548a0fa1e9ad18622db9a0227ed439091493905d49df1d0d92f5b7e4cf07060",
+      "size": 47176
     },
     {
       "path": "linux/pt-BR/LC_MESSAGES/linguamesh.mo",
-      "sha256": "ff0d7075a31555e5f9b1caf3df66588fe23086f2af56cf12d4278836d2985ea3",
-      "size": 27214
+      "sha256": "b1560bf6442505cd53eb1fb485f1e3107026523af5d9655d720de65769fc9be9",
+      "size": 27600
     },
     {
       "path": "linux/pt-BR/LC_MESSAGES/linguamesh.po",
-      "sha256": "e7de86ec17f4ecd156e7f8b01b9cee1f7e4479ac5086dfbf700bf307b445efb2",
-      "size": 46384
+      "sha256": "c570b182e047f01ab44a69785c30d41360799761feff7c8de2098a2712884c91",
+      "size": 47086
     },
     {
       "path": "linux/ru/LC_MESSAGES/linguamesh.mo",
-      "sha256": "52a165fb9ca4710121a90936b700be4753dc3281b55670e812843ebb791bcf8a",
-      "size": 28738
+      "sha256": "8bfb0f12a65ad51d38d73b543d5419f25f7f05c14c4fb41130b6ccaab5603f6f",
+      "size": 29124
     },
     {
       "path": "linux/ru/LC_MESSAGES/linguamesh.po",
-      "sha256": "30685e05d8b5281d11c0f62ed5bd7f69ee9a9268f41548461d95b04f21b445ba",
-      "size": 47932
+      "sha256": "102636386efc868adff454db141a90c7dbc2ddf84f61bccc24715186f4928a4d",
+      "size": 48634
     },
     {
       "path": "linux/zh-Hans/LC_MESSAGES/linguamesh.mo",
-      "sha256": "7507ba88c0828c496b55412c4ccd6d2655ef16128b120ebee2f5326ce26befdb",
-      "size": 25945
+      "sha256": "8b39fca5833ebba75580e177f0383f23570ab1909c565dbf02a4fb5a57660e2b",
+      "size": 26315
     },
     {
       "path": "linux/zh-Hans/LC_MESSAGES/linguamesh.po",
-      "sha256": "d742ae054134a0fd682a44ecf7725e75103d1dc626975b96713814f5d72f2cdf",
-      "size": 45091
+      "sha256": "2a9b106afd842e366d17fc54e2b10d3ac7faa2864382816964edf40213dc87b4",
+      "size": 45777
     },
     {
       "path": "linux/zh-Hant/LC_MESSAGES/linguamesh.mo",
-      "sha256": "558c2976ab76b892123b814357462cdfee3382ea0a84a728d4a9d392b0859770",
-      "size": 26509
+      "sha256": "5da1992805d4478e703dcb9081f644d23cecf59e538b2f616802e7dd2a99acb3",
+      "size": 26882
     },
     {
       "path": "linux/zh-Hant/LC_MESSAGES/linguamesh.po",
-      "sha256": "1c845ddbab942acf79d773bce6c546c9a1cf412fd7d17402abdbc1c54d19b3bd",
-      "size": 45655
+      "sha256": "f237cf476d0f803147a04e5dd41199977016f041c9ddc677cc912c1e570a71da",
+      "size": 46344
     },
     {
       "path": "macos/Localizable.xcstrings",
@@ -217,13 +217,13 @@
     },
     {
       "path": "pseudo/ar-XB.json",
-      "sha256": "2b651310f6c11fd722b8373ee72fa649a7137f6a2d1ba2031b5b3b4f3bef19a2",
-      "size": 37756
+      "sha256": "abb8c675fe33fdded83e92f36cc3093c5880cb7217339a2a70a94da4701f64f6",
+      "size": 38252
     },
     {
       "path": "pseudo/en-XA.json",
-      "sha256": "7c0cf2cd97019e7eecf6652ac65b9ca6df01e8fbcdea18a8aaedaade9fbb8b8a",
-      "size": 45866
+      "sha256": "6b338bf1c0951e68af2985c81fe507a26baadaa48f1c40157a7155d98e285465",
+      "size": 46510
     },
     {
       "path": "windows/ar/Resources.resw",
@@ -402,5 +402,5 @@
     }
   ],
   "schemaVersion": 1,
-  "sourceRevision": 8
+  "sourceRevision": 9
 }

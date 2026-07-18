@@ -5,17 +5,18 @@
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`7adc9cdf6c8243243d42136f8b80fe3ee19f0af1`. This revision changes file-backed Core storage to add
-SQLite's `SQLITE_OPEN_NOFOLLOW` flag, adds protected-span restoration and request-level glossary
+`225d1edc0316b11ea0791c658adc14bd811dc865`. This revision carries the explicit request-level
+Incognito privacy policy and changes file-backed Core storage to add SQLite's `SQLITE_OPEN_NOFOLLOW`
+flag, adds protected-span restoration and request-level glossary
 protection for streamed text, and adds bounded semantic chunking. On
 Linux's default Unix VFS, any symbolic-link path component is rejected. A clean documentation-only
 descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 7adc9cdf6c8243243d42136f8b80fe3ee19f0af1^{commit}
+git -C ../linguamesh-core cat-file -e 225d1edc0316b11ea0791c658adc14bd811dc865^{commit}
 git -C ../linguamesh-core diff --quiet \
-  7adc9cdf6c8243243d42136f8b80fe3ee19f0af1..HEAD -- \
+  225d1edc0316b11ea0791c658adc14bd811dc865..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -44,8 +45,8 @@ cargo build --features demo-provider --locked
 DOCS_RS=1 cargo check --all-targets --all-features --locked
 ```
 
-The no-default suite contains 53 tests. It covers the text-import decoder and request-level glossary
-transport in addition to the disconnected initial state, atomic
+The no-default suite contains 54 tests. It covers the text-import decoder, request-level glossary,
+and explicit Incognito privacy policy in addition to the disconnected initial state, atomic
 sorted restoration of multiple profiles without activation, duplicate/missing/default/session-ref
 snapshot rejection, form-only selection, exact pending deletion, connected-row removal that keeps
 the runtime session, pending and active canonical profiles, exact stale-result rejection, atomic
@@ -337,6 +338,12 @@ strict Clippy, 66 ordinary library tests and one intentional ignore, the exact s
 both display gates, and the all-target all-feature build. Its predecessor `e483ad8` failed at the
 first focusability assertion because GTK dropdowns defaulted to non-focusable; the final revision
 sets every labelled control and action explicitly focusable.
+
+The Incognito policy checkpoint is Core `225d1edc0316b11ea0791c658adc14bd811dc865`, Linux
+`PENDING`, and l10n `e5c51a046e01c51b106ba3d177e33e41a69b8aa0`. Local Core workspace Clippy and
+all-feature tests passed, Linux all-target Clippy and the 54 portable tests passed, and l10n
+`make check` passed with 225 messages. The host still lacks GTK development libraries, so the
+all-feature Linux binary link and real GTK Incognito toggle remain remote native-CI evidence.
 
 ## Repository foundation check
 

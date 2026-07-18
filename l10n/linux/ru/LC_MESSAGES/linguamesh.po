@@ -1361,3 +1361,21 @@ msgstr "Enter or import glossary rules before exporting."
 msgctxt "status.glossary_ready"
 msgid "Glossary CSV is ready."
 msgstr "Glossary CSV is ready."
+
+#. Linux toggle that prevents this request from being written to local history or translation memory.
+#, fuzzy
+msgctxt "settings.incognito"
+msgid "Incognito mode"
+msgstr "Incognito mode"
+
+#. Accessible tooltip for the Linux request-level local privacy toggle.
+#, fuzzy
+msgctxt "tooltip.incognito"
+msgid "Do not persist source, output, history, or translation-memory data for this request"
+msgstr "Do not persist source, output, history, or translation-memory data for this request"
+
+#. Status note that confirms the request-level local privacy policy is active.
+#, fuzzy
+msgctxt "status.incognito"
+msgid "Incognito mode is active for this request."
+msgstr "Incognito mode is active for this request."
