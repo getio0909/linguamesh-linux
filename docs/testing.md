@@ -5,7 +5,7 @@
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`6079138348f3182b19c017f50db768df05da62cb`. This revision carries the explicit request-level
+`fb00f3dd6b62a8a3a47350acc85831e60e266929`. This revision carries the explicit request-level
 Incognito privacy policy and changes file-backed Core storage to add SQLite's `SQLITE_OPEN_NOFOLLOW`
 flag, adds protected-span restoration and request-level glossary
 protection for streamed text, and adds bounded semantic chunking. On
@@ -14,9 +14,9 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 6079138348f3182b19c017f50db768df05da62cb^{commit}
+git -C ../linguamesh-core cat-file -e fb00f3dd6b62a8a3a47350acc85831e60e266929^{commit}
 git -C ../linguamesh-core diff --quiet \
-  6079138348f3182b19c017f50db768df05da62cb..HEAD -- \
+  fb00f3dd6b62a8a3a47350acc85831e60e266929..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -342,7 +342,7 @@ first focusability assertion because GTK dropdowns defaulted to non-focusable; t
 sets every labelled control and action explicitly focusable.
 
 The history-policy checkpoint is Core `fb00f3dd6b62a8a3a47350acc85831e60e266929`, Linux
-`b968cc21978dd5bea1b4bc6d1c8828bb8ecdc489`, and l10n `40f3914e1b28fddd8f38d287fa121010f5192f1c`.
+`7173d4a4217d6211c7dc92c368d9f033874198f5`, and l10n `40f3914e1b28fddd8f38d287fa121010f5192f1c`.
 Local Core workspace tests, Clippy, offline build, and cargo-deny passed; Linux passed all-target
 Clippy, 54 portable tests, and 82 demo-provider tests with one intentional ignore; l10n validation
 passed with 244 messages. The Linux GUI test remains CI-linked because the local GTK libraries
