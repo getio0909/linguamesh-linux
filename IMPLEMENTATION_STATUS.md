@@ -4,8 +4,8 @@ Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline 
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
-Assumption: canonical generated PO resources are synchronized and format-validated. The GTK host
-now parses all twelve pinned official Linux catalogs at runtime, exposes BCP 47 locale choices,
+Assumption: canonical generated PO/MO resources are synchronized and format-validated. The GTK host
+now parses all twelve pinned official Linux MO catalogs at runtime, exposes BCP 47 locale choices,
 switches the root direction for Arabic, and preserves the source editor buffer during a locale
 switch; status summaries, partial-output markers, text-file import controls, provider-profile
 controls, and source/target language options now use the same catalogs; complete UI coverage,
@@ -116,8 +116,8 @@ older distributions and future Flatpak runtimes require separate packaging valid
 - The Linux host now uses existing GIO D-Bus bindings for Secret Service `OpenSession`, item search,
   create/update, and `GetSecret` resolution. Persistent profiles retain only a SecretRef; the
   one-shot credential is passed through the existing typed broker and is never written to SQLite.
-- Fourteen canonical official/pseudo PO catalogs containing 148 messages pinned to l10n revision
-  `08118b498646ebf56cbb072b937d95fceb34b75c`. Sync rejects a different revision, dirty generated
+- Fourteen canonical official/pseudo PO/MO catalog pairs containing 148 messages pinned to l10n revision
+  `0b906034784a1b5e81a879649abbfda001fa9e67`. Sync rejects a different revision, dirty generated
   source artifacts, stale copies, and unexpected catalog counts. The GTK locale selector exposes
   the twelve official packs, runtime action, workspace-widget, active-provider, status summary,
   partial-output, text-file import, provider-profile, source/target language, onboarding stage/detail,
@@ -128,7 +128,7 @@ older distributions and future Flatpak runtimes require separate packaging valid
 - Foundation and native workflow sources use immutable Node 24-compatible action commits and
   disable persisted checkout credentials. Native CI pins reviewed Core revision
   `fbf3e9b5927049dccaa19f8c36013495ffebba12` and localization revision
-  `08118b498646ebf56cbb072b937d95fceb34b75c`. The revised native gate retains serialized all-target,
+  `0b906034784a1b5e81a879649abbfda001fa9e67`. The revised native gate retains serialized all-target,
   all-feature X11/Xvfb tests, runs the exact ignored storage-fault test in a private user/mount
   namespace when available, then runs the existing GTK binary test under forced Wayland and
   headless Weston before building the application. On restricted Ubuntu hosts, only the private
@@ -248,12 +248,17 @@ Validated on 2026-07-18 with Rust 1.93.0:
   dynamic backend diagnostics as explicit English fallbacks. Local validation passed all-target
   locked check, strict Clippy, 50 no-default tests, 4 localization tests, the targeted localized
   error test, and `bash tools/sync-l10n.sh --check` against l10n `08118b498646ebf56cbb072b937d95fceb34b75c`.
+- Linux MO integration revision `daa19923d5dfd4f8d00801f067569daf78a98ab0` adds deterministic
+  GNU MO companions for all 14 PO catalogs, switches the runtime parser to MO tables, and
+  validates the generated Simplified Chinese state-error translation. Local validation passed
+  locked all-target check, strict Clippy, 51 no-default tests, 5 localization tests, and sync
+  validation against l10n `0b906034784a1b5e81a879649abbfda001fa9e67`.
 - Linux revision `7a8526f7a1a0e3cfe068e3dd20934cf3e11d18ca` adds a GTK regression that sets source
   text in Simplified Chinese, switches to Arabic, verifies RTL direction, and asserts the source
   buffer is unchanged. Native run `29623544194` (job `88023275325`), Foundation run `29623544187`,
   and Flatpak run `29623544225` passed.
-- `bash tools/sync-l10n.sh --check` passed against the exact clean l10n checkout, and all 14 PO
-  catalogs passed `msgfmt --check --check-format`.
+- `bash tools/sync-l10n.sh --check` passed against the exact clean l10n checkout, all 14 PO
+  catalogs passed `msgfmt --check --check-format`, and `msgunfmt` read the generated MO table.
 - The Linux localization unit suite parsed all twelve official catalogs and verified non-empty
   application/action entries, unique BCP 47 tags, and Arabic RTL metadata. `cargo test --features
   gui --lib localization::tests --locked` passed 4 tests; the portable model suite passed 45 tests.

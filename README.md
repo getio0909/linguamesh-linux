@@ -119,8 +119,8 @@ At worker startup, the client requires exact Core `0.1.0-alpha.2`, ABI 1, protoc
 catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out the exact
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
-Canonical PO catalogs are synchronized from immutable l10n revision
-`08118b498646ebf56cbb072b937d95fceb34b75c` and validated with `msgfmt`. The locale selector
+Canonical PO/MO catalogs are synchronized from immutable l10n revision
+`0b906034784a1b5e81a879649abbfda001fa9e67` and validated with `msgfmt`. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
 active-provider, status summary/partial-output, text-file import, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, and System/Light/Dark theme labels without replacing active source text;
 Arabic also switches the GTK workspace root to right-to-left direction. Remaining UI strings still

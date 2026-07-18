@@ -118,11 +118,21 @@ bash tools/run-secret-service-prompt-test.sh
 This proves the fail-closed boundary without automating user approval or unlock UI; end-user prompt
 acceptance remains a separate validation gate.
 
-The localization unit suite parses every official Linux PO catalog, checks action entries are
+The localization unit suite parses every official Linux MO catalog, checks action entries are
 available, and verifies unique BCP 47 tags plus Arabic RTL metadata:
 
 ```sh
 cargo test --features gui --lib localization::tests --locked
+```
+
+The checked-in PO sources must pass gettext syntax validation, and the generated MO table must be
+readable by gettext tooling:
+
+```sh
+for file in l10n/linux/*/LC_MESSAGES/linguamesh.po; do
+  msgfmt --check --check-format -o /dev/null "$file"
+done
+msgunfmt l10n/linux/zh-Hans/LC_MESSAGES/linguamesh.mo >/dev/null
 ```
 
 The notification transport runner starts a private `org.freedesktop.Notifications` fixture service and

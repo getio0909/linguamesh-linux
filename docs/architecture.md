@@ -159,8 +159,8 @@ checks that the credential canary is absent from SQLite. A separate prompt fixtu
 prompt paths for store and delete and verifies the adapter fails closed; user approval and unlock UI
 remain outside the automated boundary.
 
-`l10n/linux/` is a byte-for-byte consumer snapshot of the canonical PO catalogs at the revision
-enforced by `tools/sync-l10n.sh`. The GTK host parses all twelve official catalogs at runtime,
+`l10n/linux/` is a byte-for-byte consumer snapshot of the canonical PO/MO catalogs at the revision
+enforced by `tools/sync-l10n.sh`. The GTK host parses all twelve official MO catalogs at runtime,
 switches translated action, workspace-widget, active-provider, status summary/partial-output, text-file import, provider-profile, source/target language, and onboarding stage/detail controls plus System/Light/Dark theme
 labels without replacing active source text, and applies RTL root direction for Arabic. Keys not
 yet covered by the UI retain explicit English fallbacks.
