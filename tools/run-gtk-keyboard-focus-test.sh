@@ -89,6 +89,9 @@ XDG_CACHE_HOME="$workspace/cache" \
     kill "$wm_pid" >/dev/null 2>&1 || true
     wait "$wm_pid" >/dev/null 2>&1 || true
     required_widgets=(
+      provider_name
+      provider_endpoint
+      provider_credential
       remember_profile
       connect
       source_editor
@@ -96,14 +99,6 @@ XDG_CACHE_HOME="$workspace/cache" \
       open_source
       document_jobs
     )
-    provider_widgets=(provider_name provider_endpoint provider_credential)
-    for widget in "${provider_widgets[@]}"; do
-      if ! grep -Fxq "__state__ $widget focusable=true sensitive=true visible=true mapped=true" "$LINGUAMESH_KEYBOARD_FOCUS_LOG"; then
-        cat "$LINGUAMESH_KEYBOARD_FOCUS_LOG" >&2
-        printf "GTK keyboard fixture did not expose an enabled focusable state for %s.\n" "$widget" >&2
-        exit 1
-      fi
-    done
     for widget in "${required_widgets[@]}"; do
       if ! grep -Fxq "$widget" "$LINGUAMESH_KEYBOARD_FOCUS_LOG"; then
         cat "$LINGUAMESH_KEYBOARD_FOCUS_LOG" >&2
