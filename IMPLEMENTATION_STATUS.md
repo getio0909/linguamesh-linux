@@ -263,6 +263,11 @@ Validated on 2026-07-18 with Rust 1.93.0:
   language and onboarding stage/detail guidance,
   language labels, and the existing X11/Wayland, storage, Secret Service, portal, notification,
   drag/drop, and accessibility fixtures.
+- Linux reducer-state localization revision `9f21836f214d3056934fac9322adc0f20791834e` passed
+  Native Linux run `29628307915`, Foundation run `29628307945`, and Flatpak run `29628307886`;
+  the native gate covered the 148-message pinned catalog, localized fixed reducer errors and
+  category prefixes, and the existing X11/Wayland, storage, Secret Service, portal, notification,
+  drag/drop, and accessibility fixtures.
 - The checkout, Rust-toolchain, and Rust-cache action SHAs resolved through the GitHub commits API;
   their action metadata uses Node 24 or a composite action.
 

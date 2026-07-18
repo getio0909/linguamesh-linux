@@ -276,6 +276,12 @@ Flatpak run `29627668108`; the native job validated the pinned 117-message catal
 Simplified Chinese provider-card/source-target assertions in addition to the existing storage,
 Secret Service, portal, notification, drag/drop, X11, and forced-Wayland gates. The workflow
 checks out l10n revision `0ba26705e113230ae7d9e74db54039e1e82296ce`.
+The current reducer-state localization revision `9f21836f214d3056934fac9322adc0f20791834e`
+passed Native Linux run `29628307915`, Foundation run `29628307945`, and Flatpak run
+`29628307886`; the native job validated the pinned 148-message catalog, localized fixed reducer
+errors and category prefixes, and the existing storage, Secret Service, portal, notification,
+drag/drop, X11, and forced-Wayland gates. The workflow checks out l10n revision
+`08118b498646ebf56cbb072b937d95fceb34b75c`.
 Runtime-storage functional revision
 `c37702c76c3b1a2f9cec805cf9e219721ef7b5ce` passed Native Linux run `29586532049` (job
 `87904787338`): strict all-feature Clippy, 66 ordinary library tests with one intentional ignore,
