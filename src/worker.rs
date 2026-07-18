@@ -69,6 +69,8 @@ pub enum WorkerCommand {
         /// 要删除的稳定配置标识。
         profile_id: ProviderProfileId,
     },
+    /// 清空本地翻译历史。
+    ClearTranslationHistory,
     /// 开始翻译请求。
     Translate(TranslationRequest),
     /// 取消当前连接或翻译。
@@ -93,6 +95,17 @@ pub enum WorkerEvent {
     },
     /// 配置数据库不可用，但会话模式仍可继续使用。
     ProfileStorageUnavailable(TranslationError),
+    /// 本地历史记录数量已恢复。
+    TranslationHistoryRestored {
+        /// 当前数据库中的历史记录数量。
+        count: usize,
+    },
+    /// 本地翻译历史已清空。
+    TranslationHistoryCleared,
+    /// 清空本地翻译历史被拒绝。
+    TranslationHistoryClearRejected(TranslationError),
+    /// 本地翻译历史写入失败，但翻译结果仍已完成。
+    TranslationHistoryPersistenceFailed(TranslationError),
     /// 提供商已连接并返回模型。
     Connected {
         /// 已由核心成功连接的规范配置。
@@ -185,6 +198,7 @@ enum QueuedCommand {
     DeleteSavedProfile {
         profile_id: ProviderProfileId,
     },
+    ClearTranslationHistory,
     Translate(TranslationRequest),
     Cancel,
     Shutdown,
@@ -314,6 +328,10 @@ impl CoreWorker {
                 .commands
                 .try_send(QueuedCommand::DeleteSavedProfile { profile_id })
                 .map_err(|_| WorkerSendError),
+            WorkerCommand::ClearTranslationHistory => self
+                .commands
+                .try_send(QueuedCommand::ClearTranslationHistory)
+                .map_err(|_| WorkerSendError),
             WorkerCommand::Translate(request) => self
                 .commands
                 .try_send(QueuedCommand::Translate(request))
@@ -358,6 +376,12 @@ struct ConnectedCandidate {
     selected_model: Option<String>,
 }
 
+struct ActiveTranslation {
+    operation: TranslationOperation,
+    request: TranslationRequest,
+    output: String,
+}
+
 // 集中保留命令与事件优先级，避免拆分后破坏单一活动操作约束。
 #[allow(clippy::too_many_lines)]
 async fn run_worker(
@@ -387,6 +411,26 @@ async fn run_worker(
                     .send(WorkerEvent::ProfilesRestored {
                         profiles,
                         active_profile_id,
+                    })
+                    .is_err()
+                {
+                    return;
+                }
+                let history_count = match storage.translation_history_count() {
+                    Ok(count) => count,
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::TranslationHistoryPersistenceFailed(error))
+                            .is_err()
+                        {
+                            return;
+                        }
+                        0
+                    }
+                };
+                if events
+                    .send(WorkerEvent::TranslationHistoryRestored {
+                        count: history_count,
                     })
                     .is_err()
                 {
@@ -431,11 +475,12 @@ async fn run_worker(
     let mut active_profile: Option<ProviderProfile> = None;
     let mut active_saved_profile: Option<ProviderProfile> = None;
     let mut selected_model: Option<String> = None;
-    let mut active: Option<TranslationOperation> = None;
+    let mut active: Option<ActiveTranslation> = None;
     let mut shutting_down = false;
     let mut stop_after_active = false;
     while !shutting_down {
-        if let Some(operation) = active.as_mut() {
+        if let Some(active_translation) = active.as_mut() {
+            let operation = &mut active_translation.operation;
             let step = tokio::select! {
                 biased;
                 () = shutdown_cancellation.cancelled(), if !stop_after_active => ActiveStep::Shutdown,
@@ -475,6 +520,14 @@ async fn run_worker(
                         ),
                     });
                 }
+                ActiveStep::Command(Some(QueuedCommand::ClearTranslationHistory)) => {
+                    let _ = events.send(WorkerEvent::TranslationHistoryClearRejected(
+                        TranslationError::new(
+                            ErrorKind::InvalidConfiguration,
+                            "Translation history cannot be cleared while a translation is running.",
+                        ),
+                    ));
+                }
                 ActiveStep::Command(Some(QueuedCommand::Translate(_))) => {
                     let _ = events.send(WorkerEvent::Rejected(TranslationError::new(
                         ErrorKind::InvalidConfiguration,
@@ -487,11 +540,27 @@ async fn run_worker(
                     stop_after_active = true;
                 }
                 ActiveStep::Event(Some(event)) => {
+                    if let TranslationEvent::TextDelta { text, .. } = &event {
+                        active_translation.output.push_str(text);
+                    }
                     let terminal = event.is_terminal();
+                    let completed = matches!(&event, TranslationEvent::Completed { .. });
                     if events.send(WorkerEvent::Translation(event)).is_err() {
                         shutting_down = true;
                     }
                     if terminal {
+                        if completed
+                            && let Some(storage) = storage.as_mut()
+                            && let Err(error) = storage.record_translation_history(
+                                &active_translation.request,
+                                &active_translation.output,
+                            )
+                            && events
+                                .send(WorkerEvent::TranslationHistoryPersistenceFailed(error))
+                                .is_err()
+                        {
+                            shutting_down = true;
+                        }
                         clear_active_cancellation(&active_cancellation);
                         active = None;
                         if stop_after_active {
@@ -720,14 +789,42 @@ async fn run_worker(
                     }
                 }
             }
+            Some(QueuedCommand::ClearTranslationHistory) => {
+                let result = storage
+                    .as_mut()
+                    .ok_or_else(|| {
+                        TranslationError::new(
+                            ErrorKind::Persistence,
+                            "Local translation history storage is unavailable.",
+                        )
+                    })
+                    .and_then(Storage::clear_translation_history);
+                match result {
+                    Ok(()) => {
+                        if events.send(WorkerEvent::TranslationHistoryCleared).is_err() {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::TranslationHistoryClearRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
             Some(QueuedCommand::Translate(request)) => {
                 match begin_translation(&manager, selected_model.as_deref(), request) {
-                    Ok(operation) => {
+                    Ok(active_translation) => {
                         set_active_cancellation(
                             &active_cancellation,
-                            ActiveCancellation::Translation(operation.cancellation_handle()),
+                            ActiveCancellation::Translation(
+                                active_translation.operation.cancellation_handle(),
+                            ),
                         );
-                        active = Some(operation);
+                        active = Some(active_translation);
                     }
                     Err(error) => {
                         if events
@@ -745,7 +842,7 @@ async fn run_worker(
     }
 
     if let Some(operation) = active {
-        operation.cancel();
+        operation.operation.cancel();
     }
     reject_queued_commands_for_shutdown(&mut commands, &events);
     clear_active_cancellation(&active_cancellation);
@@ -779,6 +876,9 @@ fn reject_queued_commands_for_shutdown(
                     error: TranslationError::cancelled(),
                 })
             }
+            QueuedCommand::ClearTranslationHistory => events.send(
+                WorkerEvent::TranslationHistoryClearRejected(TranslationError::cancelled()),
+            ),
             QueuedCommand::Translate(_) => events.send(WorkerEvent::TranslationRejected(
                 TranslationError::cancelled(),
             )),
@@ -1236,7 +1336,7 @@ fn begin_translation(
     manager: &ProviderManager,
     selected_model: Option<&str>,
     request: TranslationRequest,
-) -> Result<TranslationOperation, TranslationError> {
+) -> Result<ActiveTranslation, TranslationError> {
     let engine = manager.active_engine().ok_or_else(|| {
         TranslationError::new(
             ErrorKind::InvalidConfiguration,
@@ -1255,7 +1355,11 @@ fn begin_translation(
             "The translation request does not use the confirmed model selection.",
         ));
     }
-    Ok(engine.translate(request))
+    Ok(ActiveTranslation {
+        operation: engine.translate(request.clone()),
+        request,
+        output: String::new(),
+    })
 }
 
 fn install_connection_cancellation_if_idle(
@@ -1304,9 +1408,10 @@ mod tests {
     use crate::model::{ProviderProfile, ProviderProfileId};
     use linguamesh_domain::{
         CoreCompatibility, ErrorKind, SecretRef, SecretRefNamespace, SecretValue, TranslationError,
-        TranslationEvent, TranslationRequest,
+        TranslationEvent, TranslationPrivacyMode, TranslationRequest,
     };
     use linguamesh_engine::core_compatibility;
+    use linguamesh_storage::Storage;
     use linguamesh_testkit::FakeProviderServer;
     use std::fs;
     use std::io::Write;
@@ -1675,6 +1780,7 @@ mod tests {
                     });
                     restored_snapshot = Some(restored_profile);
                 }
+                WorkerEvent::TranslationHistoryRestored { .. } => {}
                 WorkerEvent::DemoProviderReady { endpoint } => {
                     return (
                         worker,
@@ -1716,6 +1822,7 @@ mod tests {
                             .is_none()
                     );
                 }
+                WorkerEvent::TranslationHistoryRestored { .. } => {}
                 WorkerEvent::DemoProviderReady { endpoint } => {
                     let (profiles, active_profile_id) =
                         restored_snapshot.expect("profile storage snapshot");
@@ -1867,10 +1974,15 @@ mod tests {
     }
 
     fn translate(worker: &CoreWorker, model_id: &str) -> (String, TranslationEvent) {
+        translate_request(worker, TranslationRequest::new("Hello", "zh-CN", model_id))
+    }
+
+    fn translate_request(
+        worker: &CoreWorker,
+        request: TranslationRequest,
+    ) -> (String, TranslationEvent) {
         worker
-            .try_send(WorkerCommand::Translate(TranslationRequest::new(
-                "Hello", "zh-CN", model_id,
-            )))
+            .try_send(WorkerCommand::Translate(request))
             .expect("translation command");
         let deadline = Instant::now() + Duration::from_secs(5);
         let mut output = String::new();
@@ -1896,6 +2008,42 @@ mod tests {
             }
         }
         panic!("translation did not terminate before the deadline");
+    }
+
+    #[test]
+    fn completed_history_is_persisted_and_incognito_is_skipped() {
+        let database = TestDatabase::new();
+        let (worker, _, endpoint) = started_worker_with_database(database.path());
+        connect(
+            &worker,
+            profile("history-provider", &endpoint, None, None),
+            None,
+            PersistenceIntent::SessionOnly,
+        )
+        .expect("connection");
+        select(&worker, "history-provider", "fake-translator");
+
+        let (output, terminal) = translate(&worker, "fake-translator");
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+
+        let (private_output, private_terminal) = translate_request(
+            &worker,
+            TranslationRequest::new("Private", "zh-CN", "fake-translator")
+                .with_privacy_mode(TranslationPrivacyMode::Incognito),
+        );
+        assert_eq!(private_output, "你好，LinguaMesh！");
+        assert!(matches!(
+            private_terminal,
+            TranslationEvent::Completed { .. }
+        ));
+        shutdown(&worker);
+
+        let storage = Storage::open(database.path()).expect("history storage");
+        assert_eq!(
+            storage.translation_history_count().expect("history count"),
+            1
+        );
     }
 
     #[test]

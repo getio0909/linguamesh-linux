@@ -52,6 +52,7 @@ struct UiBindings {
     import_glossary: gtk::Button,
     export_glossary: gtk::Button,
     incognito: gtk::CheckButton,
+    clear_history: gtk::Button,
     theme: gtk::DropDown,
     locale: gtk::DropDown,
     source: gtk::TextBuffer,
@@ -76,6 +77,9 @@ struct UiBindings {
     export_notice: Rc<Cell<bool>>,
     glossary_notice: Rc<Cell<bool>>,
     glossary_from_csv: Rc<Cell<bool>>,
+    history_notice: Rc<Cell<bool>>,
+    history_warning: Rc<Cell<bool>>,
+    history_clear_pending: Rc<Cell<bool>>,
     source_drop_target: gtk::DropTarget,
 }
 
@@ -300,6 +304,7 @@ fn create_window(
         import_glossary,
         export_glossary,
         incognito,
+        clear_history,
         theme,
         locale,
     ) = create_controls();
@@ -441,6 +446,7 @@ fn create_window(
             import_glossary,
             export_glossary,
             incognito,
+            clear_history,
             theme: theme.clone(),
             locale: locale.clone(),
             source: editor_bindings.source,
@@ -465,6 +471,9 @@ fn create_window(
             export_notice: Rc::new(Cell::new(false)),
             glossary_notice: Rc::new(Cell::new(false)),
             glossary_from_csv: Rc::new(Cell::new(false)),
+            history_notice: Rc::new(Cell::new(false)),
+            history_warning: Rc::new(Cell::new(false)),
+            history_clear_pending: Rc::new(Cell::new(false)),
             source_drop_target,
         },
         theme,
@@ -724,6 +733,7 @@ fn create_controls() -> (
     gtk::Button,
     gtk::Button,
     gtk::CheckButton,
+    gtk::Button,
     gtk::DropDown,
     gtk::DropDown,
 ) {
@@ -802,6 +812,17 @@ fn create_controls() -> (
         "tooltip.incognito",
         "Do not persist source, output, history, or translation-memory data for this request",
     )));
+    let clear_history = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.clear_history",
+        "Clear history",
+    ));
+    clear_history.set_focusable(true);
+    clear_history.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.clear_history",
+        "Delete all locally stored translation history",
+    )));
     let theme_options = [
         localization::text(locale, "theme.system", "System"),
         localization::text(locale, "theme.light", "Light"),
@@ -856,6 +877,7 @@ fn create_controls() -> (
     controls.append(&import_glossary);
     controls.append(&export_glossary);
     controls.append(&incognito);
+    controls.append(&clear_history);
     (
         controls,
         model,
@@ -865,6 +887,7 @@ fn create_controls() -> (
         import_glossary,
         export_glossary,
         incognito,
+        clear_history,
         theme,
         locale,
     )
@@ -1347,6 +1370,26 @@ fn connect_action_handlers(
             TranslationPrivacyMode::Standard
         });
         refresh_ui(&incognito_bindings, &state);
+    });
+
+    let clear_history_bindings = bindings.clone();
+    let clear_history_state = Rc::clone(state);
+    let clear_history_worker = Rc::clone(worker);
+    bindings.clear_history.connect_clicked(move |_| {
+        if clear_history_bindings.history_clear_pending.get()
+            || !clear_history_state.borrow().profile_storage_available()
+        {
+            return;
+        }
+        clear_history_bindings.history_clear_pending.set(true);
+        refresh_ui(&clear_history_bindings, &clear_history_state.borrow());
+        if let Err(error) = clear_history_worker.try_send(WorkerCommand::ClearTranslationHistory) {
+            clear_history_bindings.history_clear_pending.set(false);
+            clear_history_state
+                .borrow_mut()
+                .record_client_error(error.to_string());
+            refresh_ui(&clear_history_bindings, &clear_history_state.borrow());
+        }
     });
 
     let import_bindings = bindings.clone();
@@ -2156,6 +2199,23 @@ fn apply_worker_event(
             bindings.remember_profile.set_active(false);
             rebuild_saved_profile_dropdown(bindings, &state.borrow());
         }
+        WorkerEvent::TranslationHistoryRestored { count } => {
+            state.borrow_mut().restore_translation_history_count(count);
+        }
+        WorkerEvent::TranslationHistoryCleared => {
+            state.borrow_mut().clear_translation_history_count();
+            bindings.history_clear_pending.set(false);
+            bindings.history_warning.set(false);
+            bindings.history_notice.set(true);
+        }
+        WorkerEvent::TranslationHistoryClearRejected(error) => {
+            bindings.history_clear_pending.set(false);
+            state.borrow_mut().record_client_error(error.to_string());
+        }
+        WorkerEvent::TranslationHistoryPersistenceFailed(_) => {
+            bindings.history_warning.set(true);
+            bindings.history_clear_pending.set(false);
+        }
         WorkerEvent::DemoProviderReady { endpoint } => {
             let should_use_demo = {
                 let state = state.borrow();
@@ -2581,6 +2641,7 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     let import_glossary = localization::text(locale, "action.import_glossary", "Import glossary");
     let export_glossary = localization::text(locale, "action.export_glossary", "Export glossary");
     let incognito = localization::text(locale, "settings.incognito", "Incognito mode");
+    let clear_history = localization::text(locale, "action.clear_history", "Clear history");
     let translate_label = format!("_{translate}");
     let stop_label = format!("_{stop}");
     bindings.open_source.set_label(&open_source_label);
@@ -2608,6 +2669,9 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
         .set_label(&format!("_{export_glossary}"));
     bindings.incognito.set_label(Some(&format!("_{incognito}")));
     bindings
+        .clear_history
+        .set_label(&format!("_{clear_history}"));
+    bindings
         .import_glossary
         .set_tooltip_text(Some(&localization::text(
             locale,
@@ -2627,6 +2691,13 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
             locale,
             "tooltip.incognito",
             "Do not persist source, output, history, or translation-memory data for this request",
+        )));
+    bindings
+        .clear_history
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.clear_history",
+            "Delete all locally stored translation history",
         )));
     bindings
         .remove_saved_profile
@@ -2891,6 +2962,25 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             "status.exported",
             "Translation saved to the selected file.",
         )
+    } else if bindings.history_warning.get() {
+        localization::text(
+            state.locale(),
+            "status.history_not_saved",
+            "The translation completed, but local history could not be saved.",
+        )
+    } else if bindings.history_notice.get() {
+        localization::text(
+            state.locale(),
+            "status.history_cleared",
+            "Local translation history was cleared.",
+        )
+    } else if state.translation_history_count() > 0 {
+        localized_template(
+            state.locale(),
+            "status.history_count",
+            "Stored translation history entries: {count}",
+            &[("{count}", &state.translation_history_count().to_string())],
+        )
     } else if bindings.glossary_notice.get() {
         localization::text(
             state.locale(),
@@ -2971,6 +3061,12 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         bindings.incognito.set_active(state.is_incognito());
     }
     bindings.incognito.set_sensitive(!blocked);
+    bindings.clear_history.set_sensitive(
+        state.profile_storage_available()
+            && !blocked
+            && !bindings.history_clear_pending.get()
+            && state.translation_history_count() > 0,
+    );
     bindings.export_glossary.set_sensitive(
         !blocked && (!bindings.glossary.text().trim().is_empty() || state.glossary().is_some()),
     );

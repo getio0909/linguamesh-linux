@@ -1377,3 +1377,33 @@ msgstr "［Ðø ñøŧ þëŕšïšŧ šøûŕçë, øûŧþûŧ, ħïšŧøŕÿ
 msgctxt "status.incognito"
 msgid "Incognito mode is active for this request."
 msgstr "［Ïñçøĝñïŧø ṁøðë ïš åçŧïṽë ƒøŕ ŧħïš ŕëǫûëšŧ.~~~~~~~~~~~~~~］"
+
+#. Action that clears all locally stored translation history on Linux.
+#, fuzzy
+msgctxt "action.clear_history"
+msgid "Clear history"
+msgstr "［Çŀëåŕ ħïšŧøŕÿ~~~~］"
+
+#. Tooltip for clearing locally stored translation history on Linux.
+#, fuzzy
+msgctxt "tooltip.clear_history"
+msgid "Delete all locally stored translation history"
+msgstr "［Ðëŀëŧë åŀŀ ŀøçåŀŀÿ šŧøŕëð ŧŕåñšŀåŧïøñ ħïšŧøŕÿ~~~~~~~~~~~~~~~］"
+
+#. Status note confirming that local translation history was cleared.
+#, fuzzy
+msgctxt "status.history_cleared"
+msgid "Local translation history was cleared."
+msgstr "［Ŀøçåŀ ŧŕåñšŀåŧïøñ ħïšŧøŕÿ ŵåš çŀëåŕëð.~~~~~~~~~~~~］"
+
+#. Non-fatal warning that history persistence failed after a completed translation.
+#, fuzzy
+msgctxt "status.history_not_saved"
+msgid "The translation completed, but local history could not be saved."
+msgstr "［Ŧħë ŧŕåñšŀåŧïøñ çøṁþŀëŧëð, ƀûŧ ŀøçåŀ ħïšŧøŕÿ çøûŀð ñøŧ ƀë šåṽëð.~~~~~~~~~~~~~~~~~~~~~］"
+
+#. Status summary for the number of local translation history entries.
+#, fuzzy, python-brace-format
+msgctxt "status.history_count"
+msgid "Stored translation history entries: {count}"
+msgstr "［Šŧøŕëð ŧŕåñšŀåŧïøñ ħïšŧøŕÿ ëñŧŕïëš: {count}~~~~~~~~~~~~~~］"

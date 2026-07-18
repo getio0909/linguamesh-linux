@@ -354,6 +354,7 @@ pub struct AppState {
     target_locale: String,
     glossary: Option<Glossary>,
     privacy_mode: TranslationPrivacyMode,
+    translation_history_count: usize,
     output: String,
     partial_output: bool,
     status: AppStatus,
@@ -384,6 +385,7 @@ impl Default for AppState {
             target_locale: "zh-CN".to_owned(),
             glossary: None,
             privacy_mode: TranslationPrivacyMode::Standard,
+            translation_history_count: 0,
             output: String::new(),
             partial_output: false,
             status: AppStatus::Disconnected,
@@ -1050,6 +1052,22 @@ impl AppState {
     #[must_use]
     pub const fn is_incognito(&self) -> bool {
         matches!(self.privacy_mode, TranslationPrivacyMode::Incognito)
+    }
+
+    /// 返回当前本地翻译历史记录数量。
+    #[must_use]
+    pub const fn translation_history_count(&self) -> usize {
+        self.translation_history_count
+    }
+
+    /// 恢复工作线程报告的本地翻译历史记录数量。
+    pub const fn restore_translation_history_count(&mut self, count: usize) {
+        self.translation_history_count = count;
+    }
+
+    /// 清除本地翻译历史记录数量。
+    pub const fn clear_translation_history_count(&mut self) {
+        self.translation_history_count = 0;
     }
 
     /// 更新当前请求的本地隐私策略。
