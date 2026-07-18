@@ -1122,7 +1122,13 @@ fn install_provider_focus_traversal(
     controller.set_propagation_phase(gtk::PropagationPhase::Capture);
     let focus_root = window.clone();
     controller.connect_key_pressed(move |_, key, _, state| {
-        if key != gtk::gdk::Key::Tab {
+        if key != gtk::gdk::Key::Tab
+            || state.intersects(
+                gtk::gdk::ModifierType::CONTROL_MASK
+                    | gtk::gdk::ModifierType::ALT_MASK
+                    | gtk::gdk::ModifierType::SUPER_MASK,
+            )
+        {
             return gtk::glib::Propagation::Proceed;
         }
         let reverse = state.contains(gtk::gdk::ModifierType::SHIFT_MASK);
