@@ -69,7 +69,8 @@ fn map_document_error(error: DocumentError) -> TextImportError {
         DocumentError::UnsupportedFormat
         | DocumentError::UnknownSegment(_)
         | DocumentError::VerbatimSegment(_)
-        | DocumentError::SegmentIncomplete(_) => TextImportError::UnsupportedFormat,
+        | DocumentError::SegmentIncomplete(_)
+        | DocumentError::PdfTextEncodingUnsupported => TextImportError::UnsupportedFormat,
     }
 }
 
@@ -150,6 +151,10 @@ mod tests {
         );
         assert_eq!(
             decode_document_contents("book.epub", b"not a ZIP package"),
+            Err(TextImportError::InvalidStructure)
+        );
+        assert_eq!(
+            decode_document_contents("book.pdf", b"not a PDF"),
             Err(TextImportError::InvalidStructure)
         );
     }

@@ -26,7 +26,7 @@ confirmation, or rollback.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `554c09521b57de45be154a99edfbf24aa2fc6538`; compared with the prior
+functional revision is `7275c5ec195946ea20a2d65e5f42790b2d631ff2`; compared with the prior
 alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW` and adds streamed
 protected-span and request-level glossary restoration. The required contract
 is exact Core `0.1.0-alpha.2`, ABI 1, protocol 1, provider catalog `0.1.0`, and these features:
@@ -85,16 +85,19 @@ protected-span policy, prompt-template version, and quality mode. Incognito bypa
 write; **View translation memory** supports inspection, escaped TSV export, exact deletion, and
 clear-all.
 
-The native text-file path delegates TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB format detection and bounded UTF-8/BOM handling to
+The native text-file path delegates TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF format detection and bounded UTF-8/BOM handling to
 Core's `bounded_text_document_v1` contract. It preserves the original LF/CRLF/CR line endings and
 classifies Markdown fenced code and blank structure as verbatim segments before the editor receives
-the source text. Core schema 13 and the worker persist bounded pending/running/paused job snapshots
+the source text. Core schema 14 and the worker persist bounded pending/running/paused job snapshots
 and segment progress without source paths or credentials. Schema 8 also stores validated non-secret
-source/target locales, provider/model IDs, and optional glossary rules. Imported TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB files
+source/target locales, provider/model IDs, and optional glossary rules. Imported TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF files
 become these snapshots before translation; the worker translates pending prose segments sequentially,
 writes each completed segment, and routes safe reconstruction back to the editor. Resume and Retry
 reuse saved options only after the active runtime matches. DOCX/PPTX/XLSX/EPUB package resources remain intact while
-supported text parts are rewritten under the same 4 MiB package and 512-entry limits. EPUB preserves
+supported text parts are rewritten under the same 4 MiB package and 512-entry limits. PDF extraction
+keeps page association, coordinates where available, and uncertain reading-order boundaries; ASCII
+text streams are rewritten when safe and other text encodings use a structured page-aware HTML
+alternative. EPUB preserves
 metadata, navigation, CSS, and binary resources while rewriting visible XHTML/HTML text and updating
 OPF language metadata at export. Encrypted, malformed, traversal, and DTD-bearing packages are rejected.
 Multi-job queue presentation remains outside

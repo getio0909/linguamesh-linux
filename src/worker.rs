@@ -1,6 +1,6 @@
 use crate::model::{ProviderProfile, ProviderProfileId};
 use linguamesh_application::{HostSecretRequests, ProviderManager, host_secret_channel};
-use linguamesh_document::{DocumentJob, DocumentJobState};
+use linguamesh_document::{DocumentError, DocumentJob, DocumentJobState};
 use linguamesh_domain::{
     CompatibilityRequirements, CoreCompatibility, ErrorKind, Glossary, ModelDescriptor,
     SecretValue, TranslationError, TranslationEvent, TranslationPrivacyMode, TranslationRequest,
@@ -2007,21 +2007,33 @@ async fn run_worker(
                                 "The document job was not found.",
                             )
                         })?;
-                        let contents = snapshot
-                            .job
-                            .reconstruct_bytes_with_target_locale(
+                        let (source_name, contents) =
+                            match snapshot.job.reconstruct_bytes_with_target_locale(
                                 snapshot
                                     .options
                                     .as_ref()
                                     .map(|options| options.target_locale.as_str()),
-                            )
-                            .map_err(|error| {
-                                TranslationError::new(
-                                    ErrorKind::InvalidConfiguration,
-                                    error.to_string(),
-                                )
-                            })?;
-                        Ok((snapshot.job.source_name, contents))
+                            ) {
+                                Ok(contents) => (snapshot.job.source_name, contents),
+                                Err(DocumentError::PdfTextEncodingUnsupported) => (
+                                    alternative_pdf_source_name(&snapshot.job.source_name),
+                                    snapshot.job.reconstruct_alternative_html().map_err(
+                                        |error| {
+                                            TranslationError::new(
+                                                ErrorKind::InvalidConfiguration,
+                                                error.to_string(),
+                                            )
+                                        },
+                                    )?,
+                                ),
+                                Err(error) => {
+                                    return Err(TranslationError::new(
+                                        ErrorKind::InvalidConfiguration,
+                                        error.to_string(),
+                                    ));
+                                }
+                            };
+                        Ok((source_name, contents))
                     });
                 match result {
                     Ok((source_name, contents)) => {
@@ -3023,6 +3035,14 @@ fn persisted_document_options(
     })
 }
 
+// 为无法直接编码非 ASCII PDF 文本的任务生成结构化 HTML 文件名。
+fn alternative_pdf_source_name(source_name: &str) -> String {
+    source_name.rsplit_once('.').map_or_else(
+        || format!("{source_name}.html"),
+        |(base, _)| format!("{base}.html"),
+    )
+}
+
 fn start_persisted_document_job_translation(
     storage: &mut Storage,
     manager: &ProviderManager,
@@ -3138,7 +3158,8 @@ fn cancel_active(active_cancellation: &Mutex<Option<ActiveCancellation>>) {
 mod tests {
     use super::{
         COMMAND_CAPACITY, CoreWorker, PersistenceIntent, QueuedCommand, REQUIRED_CORE_FEATURES,
-        WorkerCommand, WorkerEvent, profile_without_secret, validate_core_contract,
+        WorkerCommand, WorkerEvent, alternative_pdf_source_name, profile_without_secret,
+        validate_core_contract,
     };
     use crate::model::{ProviderProfile, ProviderProfileId};
     use linguamesh_document::{DocumentFormat, DocumentJob, DocumentJobState};
@@ -3171,6 +3192,12 @@ mod tests {
 
     static TEST_DATABASE_COUNTER: AtomicUsize = AtomicUsize::new(0);
     const LINUX_ENOSPC: i32 = 28;
+
+    #[test]
+    fn pdf_alternative_export_uses_html_suffix() {
+        assert_eq!(alternative_pdf_source_name("report.pdf"), "report.html");
+        assert_eq!(alternative_pdf_source_name("report"), "report.html");
+    }
 
     struct TestDatabase {
         directory: PathBuf,
