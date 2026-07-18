@@ -76,6 +76,7 @@ struct UiBindings {
     output_label: gtk::Label,
     translate: gtk::Button,
     export_output: gtk::Button,
+    open_output: gtk::Button,
     open_source: gtk::Button,
     document_jobs: gtk::Button,
     stop: gtk::Button,
@@ -91,6 +92,7 @@ struct UiBindings {
     profile_selection_guard: Rc<Cell<bool>>,
     draft_profile_id: Rc<RefCell<Option<ProviderProfileId>>>,
     source_uri: Rc<RefCell<Option<String>>>,
+    output_uri: Rc<RefCell<Option<String>>>,
     document_job_id: Rc<RefCell<Option<String>>>,
     document_job_guard: Rc<Cell<bool>>,
     document_job_state: Rc<Cell<Option<DocumentJobState>>>,
@@ -418,6 +420,17 @@ fn create_window(
         "tooltip.export_output",
         "Save the translated output to a new file",
     )));
+    let open_output = gtk::Button::with_mnemonic(&localized_mnemonic(
+        display_locale,
+        "action.open_output",
+        "Open exported output",
+    ));
+    open_output.set_focusable(true);
+    open_output.set_tooltip_text(Some(&localization::text(
+        display_locale,
+        "tooltip.open_output",
+        "Open the most recently exported translation output",
+    )));
     let stop = gtk::Button::with_mnemonic(&localized_mnemonic(
         display_locale,
         "accessibility.stop_translation",
@@ -449,6 +462,7 @@ fn create_window(
     action_row.append(&document_jobs);
     action_row.append(&translate);
     action_row.append(&export_output);
+    action_row.append(&open_output);
     action_row.append(&pause_document);
     action_row.append(&resume_document);
     action_row.append(&retry_document);
@@ -532,6 +546,7 @@ fn create_window(
             output_label: editor_bindings.output_label,
             translate,
             export_output,
+            open_output,
             open_source,
             document_jobs,
             stop,
@@ -547,6 +562,7 @@ fn create_window(
             profile_selection_guard: Rc::new(Cell::new(false)),
             draft_profile_id: Rc::new(RefCell::new(None)),
             source_uri: Rc::new(RefCell::new(None)),
+            output_uri: Rc::new(RefCell::new(None)),
             document_job_id: Rc::new(RefCell::new(None)),
             document_job_guard: Rc::new(Cell::new(false)),
             document_job_state: Rc::new(Cell::new(None)),
@@ -1959,6 +1975,7 @@ fn connect_action_handlers(
     let translate_worker = Rc::clone(worker);
     bindings.translate.connect_clicked(move |_| {
         translate_bindings.export_notice.set(false);
+        *translate_bindings.output_uri.borrow_mut() = None;
         let source = translate_bindings.source.text(
             &translate_bindings.source.start_iter(),
             &translate_bindings.source.end_iter(),
@@ -2084,6 +2101,26 @@ fn connect_action_handlers(
     let export_worker = Rc::clone(worker);
     bindings.export_output.connect_clicked(move |_| {
         begin_translation_export(&export_bindings, &export_state, &export_worker);
+    });
+
+    let open_output_bindings = bindings.clone();
+    let open_output_state = Rc::clone(state);
+    bindings.open_output.connect_clicked(move |_| {
+        let Some(uri) = open_output_bindings.output_uri.borrow().clone() else {
+            return;
+        };
+        if gtk::gio::AppInfo::launch_default_for_uri(&uri, None::<&gtk::gio::AppLaunchContext>)
+            .is_err()
+        {
+            show_file_export_error(
+                &open_output_bindings,
+                &localization::text(
+                    open_output_state.borrow().locale(),
+                    "error.output_open",
+                    "The exported output could not be opened.",
+                ),
+            );
+        }
     });
 
     let stop_bindings = bindings.clone();
@@ -2467,6 +2504,7 @@ fn begin_translation_export(
                     return;
                 }
                 let contents = glib::Bytes::from_owned(output.into_bytes());
+                let output_uri = destination_uri.clone();
                 let callback_bindings = export_bindings.clone();
                 let callback_state = Rc::clone(&export_state);
                 file.replace_contents_bytes_async(
@@ -2477,6 +2515,7 @@ fn begin_translation_export(
                     None::<&gtk::gio::Cancellable>,
                     move |write_result| match write_result {
                         Ok(_) => {
+                            *callback_bindings.output_uri.borrow_mut() = Some(output_uri.clone());
                             callback_bindings.export_notice.set(true);
                             refresh_ui(&callback_bindings, &callback_state.borrow());
                         }
@@ -2547,6 +2586,7 @@ fn begin_document_binary_export(
                     return;
                 }
                 let bytes = glib::Bytes::from_owned(contents);
+                let output_uri = destination_uri.clone();
                 let callback_bindings = export_bindings.clone();
                 let callback_state = Rc::clone(&export_state);
                 file.replace_contents_bytes_async(
@@ -2557,6 +2597,7 @@ fn begin_document_binary_export(
                     None::<&gtk::gio::Cancellable>,
                     move |write_result| match write_result {
                         Ok(_) => {
+                            *callback_bindings.output_uri.borrow_mut() = Some(output_uri.clone());
                             callback_bindings.export_notice.set(true);
                             refresh_ui(&callback_bindings, &callback_state.borrow());
                         }
@@ -2605,6 +2646,7 @@ fn load_source_file(
     let load_state = Rc::clone(state);
     let load_worker = Rc::clone(worker);
     load_bindings.export_notice.set(false);
+    *load_bindings.output_uri.borrow_mut() = None;
     file.load_partial_contents_async(
         None::<&gtk::gio::Cancellable>,
         move |chunk| {
@@ -3916,6 +3958,7 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     let resume = localization::text(locale, "action.resume_document", "Resume document");
     let retry = localization::text(locale, "action.retry_document", "Retry document");
     let export = localization::text(locale, "action.export_output", "Export translation");
+    let open_output = localization::text(locale, "action.open_output", "Open exported output");
     let connect = localization::text(locale, "action.connect", "Connect");
     let remove_profile =
         localization::text(locale, "action.remove_profile", "Remove saved profile");
@@ -3958,6 +4001,14 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
             locale,
             "tooltip.export_output",
             "Save the translated output to a new file",
+        )));
+    bindings.open_output.set_label(&format!("_{open_output}"));
+    bindings
+        .open_output
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.open_output",
+            "Open the most recently exported translation output",
         )));
     bindings.stop.set_label(&stop_label);
     bindings.pause_document.set_label(&format!("_{pause}"));
@@ -4584,6 +4635,9 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         .export_output
         .set_sensitive(!state.output().is_empty() && !blocked);
     bindings
+        .open_output
+        .set_sensitive(bindings.output_uri.borrow().is_some() && !blocked);
+    bindings
         .open_source
         .set_sensitive(source_import_allowed(state));
     bindings
@@ -4929,6 +4983,11 @@ mod tests {
         assert_eq!(bindings.translate.label().as_deref(), Some("_翻译"));
         assert_eq!(bindings.export_output.label().as_deref(), Some("_导出翻译"));
         assert!(!bindings.export_output.is_sensitive());
+        assert_eq!(
+            bindings.open_output.label().as_deref(),
+            Some("_打开已导出输出")
+        );
+        assert!(!bindings.open_output.is_sensitive());
         assert_eq!(bindings.stop.label().as_deref(), Some("_停止翻译"));
         assert_eq!(bindings.window.title().as_deref(), Some("LinguaMesh"));
         assert_eq!(bindings.source_label.label(), "源文本");
@@ -5022,6 +5081,7 @@ mod tests {
             &bindings.open_source,
             &bindings.translate,
             &bindings.export_output,
+            &bindings.open_output,
             &bindings.stop,
             &bindings.document_jobs,
             &bindings.pause_document,

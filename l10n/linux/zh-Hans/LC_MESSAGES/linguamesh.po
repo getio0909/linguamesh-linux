@@ -1687,3 +1687,21 @@ msgstr "{completed} of {total} segments translated"
 msgctxt "tooltip.document_jobs"
 msgid "Inspect persisted document jobs and their progress"
 msgstr "Inspect persisted document jobs and their progress"
+
+#. Action that opens the most recently exported translation output.
+#, fuzzy
+msgctxt "action.open_output"
+msgid "Open exported output"
+msgstr "打开已导出输出"
+
+#. Tooltip for opening the most recently exported translation output.
+#, fuzzy
+msgctxt "tooltip.open_output"
+msgid "Open the most recently exported translation output"
+msgstr "打开最近导出的翻译输出"
+
+#. Error shown when the exported output cannot be opened.
+#, fuzzy
+msgctxt "error.output_open"
+msgid "The exported output could not be opened."
+msgstr "无法打开已导出的输出。"

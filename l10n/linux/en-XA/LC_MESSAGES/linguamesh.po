@@ -1689,3 +1689,21 @@ msgstr "［{completed} øƒ {total} šëĝṁëñŧš ŧŕåñšŀåŧëð~~~~~~
 msgctxt "tooltip.document_jobs"
 msgid "Inspect persisted document jobs and their progress"
 msgstr "［Ïñšþëçŧ þëŕšïšŧëð ðøçûṁëñŧ ĵøƀš åñð ŧħëïŕ þŕøĝŕëšš~~~~~~~~~~~~~~~~］"
+
+#. Action that opens the most recently exported translation output.
+#, fuzzy
+msgctxt "action.open_output"
+msgid "Open exported output"
+msgstr "［Øþëñ ëẋþøŕŧëð øûŧþûŧ~~~~~~］"
+
+#. Tooltip for opening the most recently exported translation output.
+#, fuzzy
+msgctxt "tooltip.open_output"
+msgid "Open the most recently exported translation output"
+msgstr "［Øþëñ ŧħë ṁøšŧ ŕëçëñŧŀÿ ëẋþøŕŧëð ŧŕåñšŀåŧïøñ øûŧþûŧ~~~~~~~~~~~~~~~~］"
+
+#. Error shown when the exported output cannot be opened.
+#, fuzzy
+msgctxt "error.output_open"
+msgid "The exported output could not be opened."
+msgstr "［Ŧħë ëẋþøŕŧëð øûŧþûŧ çøûŀð ñøŧ ƀë øþëñëð.~~~~~~~~~~~~~］"
