@@ -681,6 +681,24 @@ fn refresh_dropdown_labels(dropdown: &gtk::DropDown, labels: &[String]) {
     }
 }
 
+fn localized_locale_name(locale: UiLocale, displayed_locale: UiLocale) -> String {
+    let (key, fallback) = match displayed_locale {
+        UiLocale::English => ("locale.name.en", "English"),
+        UiLocale::SimplifiedChinese => ("locale.name.zh_hans", "Simplified Chinese"),
+        UiLocale::TraditionalChinese => ("locale.name.zh_hant", "Traditional Chinese"),
+        UiLocale::Spanish => ("locale.name.es", "Spanish"),
+        UiLocale::French => ("locale.name.fr", "French"),
+        UiLocale::German => ("locale.name.de", "German"),
+        UiLocale::Japanese => ("locale.name.ja", "Japanese"),
+        UiLocale::Korean => ("locale.name.ko", "Korean"),
+        UiLocale::BrazilianPortuguese => ("locale.name.pt_br", "Portuguese (Brazil)"),
+        UiLocale::Russian => ("locale.name.ru", "Russian"),
+        UiLocale::Arabic => ("locale.name.ar", "Arabic"),
+        UiLocale::Hindi => ("locale.name.hi", "Hindi"),
+    };
+    localization::text(locale, key, fallback)
+}
+
 // 刷新动态模型列表的占位项，同时保留核心返回的模型名称。
 fn refresh_model_placeholder(dropdown: &gtk::DropDown, locale: UiLocale) {
     let Some(model) = dropdown
@@ -2067,6 +2085,10 @@ fn refresh_localized_widgets(bindings: &UiBindings, locale: UiLocale) {
             localization::text(locale, "option.target.japanese", "Japanese"),
         ],
     );
+    let locale_labels = UiLocale::ALL
+        .map(|displayed_locale| localized_locale_name(locale, displayed_locale))
+        .to_vec();
+    refresh_dropdown_labels(&bindings.locale, &locale_labels);
     refresh_model_placeholder(&bindings.model, locale);
     refresh_profile_placeholder(&bindings.saved_profile, locale);
     bindings
@@ -2488,6 +2510,13 @@ mod tests {
             .and_then(|model| model.downcast::<gtk::StringList>().ok())
             .expect("theme labels");
         assert_eq!(theme_model.string(1).as_deref(), Some("浅色"));
+        let locale_model = bindings
+            .locale
+            .model()
+            .and_then(|model| model.downcast::<gtk::StringList>().ok())
+            .expect("locale labels");
+        assert_eq!(locale_model.string(0).as_deref(), Some("英语"));
+        assert_eq!(locale_model.string(10).as_deref(), Some("阿拉伯语"));
         bindings.source.set_text("保留源文本");
         state.borrow_mut().set_locale(UiLocale::Arabic);
         refresh_ui(&bindings, &state.borrow());

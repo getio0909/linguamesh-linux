@@ -903,3 +903,63 @@ msgstr "The Core secret request was no longer active."
 msgctxt "error.provider.session_ref_required"
 msgid "A session credential requires an explicit session secret reference."
 msgstr "A session credential requires an explicit session secret reference."
+
+#. Locale selector name for the English interface pack.
+msgctxt "locale.name.en"
+msgid "English"
+msgstr "English"
+
+#. Locale selector name for the Simplified Chinese interface pack.
+msgctxt "locale.name.zh_hans"
+msgid "Simplified Chinese"
+msgstr "Simplified Chinese"
+
+#. Locale selector name for the Traditional Chinese interface pack.
+msgctxt "locale.name.zh_hant"
+msgid "Traditional Chinese"
+msgstr "Traditional Chinese"
+
+#. Locale selector name for the Spanish interface pack.
+msgctxt "locale.name.es"
+msgid "Spanish"
+msgstr "Spanish"
+
+#. Locale selector name for the French interface pack.
+msgctxt "locale.name.fr"
+msgid "French"
+msgstr "French"
+
+#. Locale selector name for the German interface pack.
+msgctxt "locale.name.de"
+msgid "German"
+msgstr "German"
+
+#. Locale selector name for the Japanese interface pack.
+msgctxt "locale.name.ja"
+msgid "Japanese"
+msgstr "Japanese"
+
+#. Locale selector name for the Korean interface pack.
+msgctxt "locale.name.ko"
+msgid "Korean"
+msgstr "Korean"
+
+#. Locale selector name for the Brazilian Portuguese interface pack.
+msgctxt "locale.name.pt_br"
+msgid "Portuguese (Brazil)"
+msgstr "Portuguese (Brazil)"
+
+#. Locale selector name for the Russian interface pack.
+msgctxt "locale.name.ru"
+msgid "Russian"
+msgstr "Russian"
+
+#. Locale selector name for the Arabic interface pack.
+msgctxt "locale.name.ar"
+msgid "Arabic"
+msgstr "Arabic"
+
+#. Locale selector name for the Hindi interface pack.
+msgctxt "locale.name.hi"
+msgid "Hindi"
+msgstr "Hindi"

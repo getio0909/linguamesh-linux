@@ -296,10 +296,11 @@ The MO integration revision `6c5bfb305967d0f01488ad09ade6e5b88eebbdb0` passed Na
 `29628986188`, Foundation run `29628986160`, and Flatpak run `29628986187`; the workflow validates
 both PO syntax and MO readability before the runtime GTK gates and checks out l10n revision
 `0b906034784a1b5e81a879649abbfda001fa9e67`.
-The current worker/file/storage/provider error-coverage revision is validated locally with 172
-catalog messages and l10n revision `cc841103c3480ece237baa088bbb5881a321cf0a`; it adds fixed
-translations for invalid UTF-8 import, storage fallback, provider/model state, secret-channel,
-and profile validation failures before the native CI gate.
+The current locale-selector coverage revision is validated locally with 184 catalog messages and
+l10n revision `d21c3b0d065831b20cf31c9bf3009ffd262e4797`; it adds localized names for all twelve
+official interface packs and refreshes those labels during runtime locale switching. The same
+revision includes fixed translations for invalid UTF-8 import, storage fallback, provider/model
+state, secret-channel, and profile validation failures before the native CI gate.
 Runtime-storage functional revision
 `c37702c76c3b1a2f9cec805cf9e219721ef7b5ce` passed Native Linux run `29586532049` (job
 `87904787338`): strict all-feature Clippy, 66 ordinary library tests with one intentional ignore,

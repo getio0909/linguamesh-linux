@@ -120,7 +120,7 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`cc841103c3480ece237baa088bbb5881a321cf0a` and validated with `msgfmt`. The locale selector
+`d21c3b0d065831b20cf31c9bf3009ffd262e4797` and validated with `msgfmt`. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
 active-provider, status summary/partial-output, text-file import, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, and System/Light/Dark theme labels without replacing active source text;
 Arabic also switches the GTK workspace root to right-to-left direction. Remaining UI strings still

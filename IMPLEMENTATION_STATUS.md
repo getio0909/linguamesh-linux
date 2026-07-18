@@ -116,8 +116,8 @@ older distributions and future Flatpak runtimes require separate packaging valid
 - The Linux host now uses existing GIO D-Bus bindings for Secret Service `OpenSession`, item search,
   create/update, and `GetSecret` resolution. Persistent profiles retain only a SecretRef; the
   one-shot credential is passed through the existing typed broker and is never written to SQLite.
-- Fourteen canonical official/pseudo PO/MO catalog pairs containing 172 messages pinned to l10n revision
-  `cc841103c3480ece237baa088bbb5881a321cf0a`. Sync rejects a different revision, dirty generated
+- Fourteen canonical official/pseudo PO/MO catalog pairs containing 184 messages pinned to l10n revision
+  `d21c3b0d065831b20cf31c9bf3009ffd262e4797`. Sync rejects a different revision, dirty generated
   source artifacts, stale copies, and unexpected catalog counts. The GTK locale selector exposes
   the twelve official packs, runtime action, workspace-widget, active-provider, status summary,
   partial-output, text-file import, provider-profile, source/target language, onboarding stage/detail,
@@ -128,7 +128,7 @@ older distributions and future Flatpak runtimes require separate packaging valid
 - Foundation and native workflow sources use immutable Node 24-compatible action commits and
   disable persisted checkout credentials. Native CI pins reviewed Core revision
   `fbf3e9b5927049dccaa19f8c36013495ffebba12` and localization revision
-  `cc841103c3480ece237baa088bbb5881a321cf0a`. The revised native gate retains serialized all-target,
+  `d21c3b0d065831b20cf31c9bf3009ffd262e4797`. The revised native gate retains serialized all-target,
   all-feature X11/Xvfb tests, runs the exact ignored storage-fault test in a private user/mount
   namespace when available, then runs the existing GTK binary test under forced Wayland and
   headless Weston before building the application. On restricted Ubuntu hosts, only the private
@@ -259,6 +259,10 @@ Validated on 2026-07-18 with Rust 1.93.0:
   `cargo test --features gui --lib localization::tests --locked` (5 tests), all-target locked
   check, strict all-feature Clippy, and `bash tools/sync-l10n.sh --check` against l10n
   `cc841103c3480ece237baa088bbb5881a321cf0a`.
+- Linux locale-selector coverage adds 12 locale-name keys and refreshes the selector labels when
+  the interface locale changes. Source-level validation passed all-target all-feature check,
+  strict Clippy, 51 portable tests, 5 localization tests, PO/MO syntax checks, and
+  `bash tools/sync-l10n.sh --check` against l10n `d21c3b0d065831b20cf31c9bf3009ffd262e4797`.
 - Linux revision `7a8526f7a1a0e3cfe068e3dd20934cf3e11d18ca` adds a GTK regression that sets source
   text in Simplified Chinese, switches to Arabic, verifies RTL direction, and asserts the source
   buffer is unchanged. Native run `29623544194` (job `88023275325`), Foundation run `29623544187`,

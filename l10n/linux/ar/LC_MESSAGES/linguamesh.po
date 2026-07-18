@@ -1067,3 +1067,75 @@ msgstr "لم يعد طلب السر من Core نشطًا."
 msgctxt "error.provider.session_ref_required"
 msgid "A session credential requires an explicit session secret reference."
 msgstr "تتطلب بيانات اعتماد الجلسة مرجع سر جلسة صريحًا."
+
+#. Locale selector name for the English interface pack.
+#, fuzzy
+msgctxt "locale.name.en"
+msgid "English"
+msgstr "الإنجليزية"
+
+#. Locale selector name for the Simplified Chinese interface pack.
+#, fuzzy
+msgctxt "locale.name.zh_hans"
+msgid "Simplified Chinese"
+msgstr "الصينية المبسطة"
+
+#. Locale selector name for the Traditional Chinese interface pack.
+#, fuzzy
+msgctxt "locale.name.zh_hant"
+msgid "Traditional Chinese"
+msgstr "الصينية التقليدية"
+
+#. Locale selector name for the Spanish interface pack.
+#, fuzzy
+msgctxt "locale.name.es"
+msgid "Spanish"
+msgstr "الإسبانية"
+
+#. Locale selector name for the French interface pack.
+#, fuzzy
+msgctxt "locale.name.fr"
+msgid "French"
+msgstr "الفرنسية"
+
+#. Locale selector name for the German interface pack.
+#, fuzzy
+msgctxt "locale.name.de"
+msgid "German"
+msgstr "الألمانية"
+
+#. Locale selector name for the Japanese interface pack.
+#, fuzzy
+msgctxt "locale.name.ja"
+msgid "Japanese"
+msgstr "اليابانية"
+
+#. Locale selector name for the Korean interface pack.
+#, fuzzy
+msgctxt "locale.name.ko"
+msgid "Korean"
+msgstr "الكورية"
+
+#. Locale selector name for the Brazilian Portuguese interface pack.
+#, fuzzy
+msgctxt "locale.name.pt_br"
+msgid "Portuguese (Brazil)"
+msgstr "البرتغالية (البرازيل)"
+
+#. Locale selector name for the Russian interface pack.
+#, fuzzy
+msgctxt "locale.name.ru"
+msgid "Russian"
+msgstr "الروسية"
+
+#. Locale selector name for the Arabic interface pack.
+#, fuzzy
+msgctxt "locale.name.ar"
+msgid "Arabic"
+msgstr "العربية"
+
+#. Locale selector name for the Hindi interface pack.
+#, fuzzy
+msgctxt "locale.name.hi"
+msgid "Hindi"
+msgstr "الهندية"
