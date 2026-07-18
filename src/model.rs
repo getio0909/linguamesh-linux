@@ -1172,6 +1172,55 @@ impl AppState {
         Ok(request)
     }
 
+    /// 开始一个已持久化文档任务，并清除上一份编辑器译文。
+    pub fn begin_document_translation(&mut self) -> Result<(), StateError> {
+        if self.status == AppStatus::Connecting {
+            return Err(StateError::Connecting);
+        }
+        if matches!(self.status, AppStatus::Translating | AppStatus::Cancelling) {
+            return Err(StateError::Busy);
+        }
+        if self.pending_model_selection.is_some() {
+            return Err(StateError::ModelSelectionPending);
+        }
+        if self.pending_profile_deletion.is_some() {
+            return Err(StateError::ProfileDeletionPending);
+        }
+        if self.active_provider.is_none() {
+            return Err(StateError::MissingProvider);
+        }
+        if self.selected_model.is_none() {
+            return Err(StateError::MissingModel);
+        }
+        self.output.clear();
+        self.partial_output = false;
+        self.status = AppStatus::Translating;
+        self.error = None;
+        self.last_sequence = None;
+        Ok(())
+    }
+
+    /// 将当前文档任务的安全重建结果显示在译文编辑器中。
+    pub fn set_document_output(&mut self, output: impl Into<String>) {
+        self.output = output.into();
+        self.partial_output = true;
+    }
+
+    /// 标记文档任务已完成，保留核心验证后的重建译文。
+    pub fn complete_document_translation(&mut self, output: impl Into<String>) {
+        self.output = output.into();
+        self.partial_output = false;
+        self.status = AppStatus::Completed;
+        self.error = None;
+    }
+
+    /// 标记文档任务已取消，并保留可能存在的部分译文。
+    pub fn cancel_document_translation(&mut self, output: impl Into<String>) {
+        self.output = output.into();
+        self.partial_output = !self.output.is_empty();
+        self.status = AppStatus::Cancelled;
+    }
+
     /// 标记用户已请求取消。
     pub fn request_cancellation(&mut self) -> Result<(), StateError> {
         if self.status != AppStatus::Translating {

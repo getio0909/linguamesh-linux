@@ -23,7 +23,9 @@ test -z "$(git -C ../linguamesh-core status --porcelain)"
 
 The same Core pin also negotiates `bounded_text_document_v1`: Linux imports only bounded UTF-8 TXT
 and Markdown, preserves line endings, keeps Markdown fenced code and blank structure verbatim, and
-persists pending/running document jobs for worker restart recovery.
+persists pending/running document jobs for worker restart recovery. The Linux worker tests also cover
+sequential prose-segment translation, per-segment persistence, safe reconstruction, and cancellation
+to a persisted cancelled snapshot. GUI queue presentation is not yet part of the validation gate.
 
 A sibling `../linguamesh-l10n` checkout at the revision pinned by `tools/sync-l10n.sh` is required
 to verify the checked-in PO catalogs.

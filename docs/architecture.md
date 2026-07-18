@@ -89,8 +89,10 @@ The native text-file path delegates TXT/Markdown format detection and bounded UT
 Core's `bounded_text_document_v1` contract. It preserves the original LF/CRLF/CR line endings and
 classifies Markdown fenced code and blank structure as verbatim segments before the editor receives
 the source text. Core schema 6 and the worker persist bounded pending/running job snapshots and
-segment progress without source paths or credentials; archive codecs and GUI queue presentation
-remain outside this slice.
+segment progress without source paths or credentials. Imported TXT/Markdown files become these
+snapshots before translation; the worker translates pending prose segments sequentially, writes each
+completed segment, and routes safe reconstruction back to the editor. Archive codecs, multi-job queue
+presentation, and provider-parameter persistence remain outside this slice.
 
 With `gui`, `src/main.rs` binds this state and worker to GTK 4/libadwaita widgets. GTK objects remain
 on the main context, which processes at most 64 queued events per timer tick without performing

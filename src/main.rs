@@ -1,8 +1,10 @@
 use adw::prelude::*;
 use gtk::glib;
+use linguamesh_document::DocumentJobState;
 use linguamesh_domain::{
-    ErrorKind, Glossary, GlossaryEntry, MAX_GLOSSARY_CSV_BYTES, ProviderProfileId, SecretRef,
-    SecretRefNamespace, SecretValue, TranslationError, TranslationEvent, TranslationPrivacyMode,
+    ErrorKind, Glossary, GlossaryEntry, MAX_GLOSSARY_CSV_BYTES, OperationId, ProviderProfileId,
+    SecretRef, SecretRefNamespace, SecretValue, TranslationError, TranslationEvent,
+    TranslationPrivacyMode,
 };
 use linguamesh_linux::file_import;
 use linguamesh_linux::localization;
@@ -82,6 +84,8 @@ struct UiBindings {
     profile_selection_guard: Rc<Cell<bool>>,
     draft_profile_id: Rc<RefCell<Option<ProviderProfileId>>>,
     source_uri: Rc<RefCell<Option<String>>>,
+    document_job_id: Rc<RefCell<Option<String>>>,
+    document_job_guard: Rc<Cell<bool>>,
     export_notice: Rc<Cell<bool>>,
     glossary_notice: Rc<Cell<bool>>,
     glossary_from_csv: Rc<Cell<bool>>,
@@ -146,7 +150,7 @@ fn build_ui(application: &adw::Application, file_dialog_fixture: bool, file_drop
     refresh_ui(&bindings, &state.borrow());
     window.present();
     if file_dialog_fixture {
-        start_file_dialog_fixture(application, bindings, &state);
+        start_file_dialog_fixture(application, bindings, &state, &worker);
     } else if file_drop_fixture {
         start_file_drop_fixture(application, bindings);
     }
@@ -156,6 +160,7 @@ fn start_file_dialog_fixture(
     application: &adw::Application,
     bindings: UiBindings,
     state: &Rc<RefCell<AppState>>,
+    worker: &Rc<CoreWorker>,
 ) {
     let fixture_path = std::env::var("LINGUAMESH_FILE_CHOOSER_FIXTURE")
         .expect("LINGUAMESH_FILE_CHOOSER_FIXTURE must be set");
@@ -163,8 +168,9 @@ fn start_file_dialog_fixture(
     println!("GTK file chooser application fixture requesting the portal dialog.");
     let open_bindings = bindings.clone();
     let open_state = Rc::clone(state);
+    let open_worker = Rc::clone(worker);
     glib::timeout_add_local(Duration::from_millis(250), move || {
-        begin_source_file_open(&open_bindings, &open_state);
+        begin_source_file_open(&open_bindings, &open_state, &open_worker);
         glib::ControlFlow::Break
     });
 
@@ -497,6 +503,8 @@ fn create_window(
             profile_selection_guard: Rc::new(Cell::new(false)),
             draft_profile_id: Rc::new(RefCell::new(None)),
             source_uri: Rc::new(RefCell::new(None)),
+            document_job_id: Rc::new(RefCell::new(None)),
+            document_job_guard: Rc::new(Cell::new(false)),
             export_notice: Rc::new(Cell::new(false)),
             glossary_notice: Rc::new(Cell::new(false)),
             glossary_from_csv: Rc::new(Cell::new(false)),
@@ -1472,6 +1480,14 @@ fn connect_action_handlers(
         glossary_edit_state.set(false);
     });
 
+    let source_job_bindings = bindings.clone();
+    let source_job_guard = Rc::clone(&bindings.document_job_guard);
+    bindings.source.connect_changed(move |_| {
+        if !source_job_guard.get() {
+            *source_job_bindings.document_job_id.borrow_mut() = None;
+        }
+    });
+
     let incognito_bindings = bindings.clone();
     let incognito_state = Rc::clone(state);
     bindings.incognito.connect_toggled(move |button| {
@@ -1636,11 +1652,13 @@ fn connect_action_handlers(
 
     let open_bindings = bindings.clone();
     let open_state = Rc::clone(state);
+    let open_worker = Rc::clone(worker);
     bindings.open_source.connect_clicked(move |_| {
-        begin_source_file_open(&open_bindings, &open_state);
+        begin_source_file_open(&open_bindings, &open_state, &open_worker);
     });
     let drop_bindings = bindings.clone();
     let drop_state = Rc::clone(state);
+    let drop_worker = Rc::clone(worker);
     bindings
         .source_drop_target
         .connect_drop(move |_, value, _, _| {
@@ -1652,16 +1670,16 @@ fn connect_action_handlers(
                     return false;
                 };
                 let file = gtk::gio::File::for_uri(uri);
-                load_source_file(&file, &drop_bindings, &drop_state);
+                load_source_file(&file, &drop_bindings, &drop_state, &drop_worker);
                 true
             } else if let Ok(file) = value.get::<gtk::gio::File>() {
-                load_source_file(&file, &drop_bindings, &drop_state);
+                load_source_file(&file, &drop_bindings, &drop_state, &drop_worker);
                 true
             } else if let Ok(file_list) = value.get::<gtk::gdk::FileList>() {
                 let Some(file) = file_list.files().into_iter().next() else {
                     return false;
                 };
-                load_source_file(&file, &drop_bindings, &drop_state);
+                load_source_file(&file, &drop_bindings, &drop_state, &drop_worker);
                 true
             } else {
                 false
@@ -1874,15 +1892,40 @@ fn connect_action_handlers(
         match parsed_glossary {
             Ok(glossary) => {
                 state.set_glossary(glossary);
-                match state.begin_translation() {
-                    Ok(request) => {
-                        if let Err(error) =
-                            translate_worker.try_send(WorkerCommand::Translate(request))
-                        {
-                            state.record_client_error(error.to_string());
+                let document_job_id = translate_bindings.document_job_id.borrow().clone();
+                if let Some(job_id) = document_job_id {
+                    if state.is_incognito() {
+                        state.record_client_error(
+                            "Incognito mode cannot persist document job progress.",
+                        );
+                    } else {
+                        match state.begin_document_translation() {
+                            Ok(()) => {
+                                let command = WorkerCommand::TranslateDocumentJob {
+                                    job_id,
+                                    source_locale,
+                                    target_locale: target_locale.to_owned(),
+                                    glossary: state.glossary().cloned(),
+                                    privacy_mode: state.privacy_mode(),
+                                };
+                                if let Err(error) = translate_worker.try_send(command) {
+                                    state.record_client_error(error.to_string());
+                                }
+                            }
+                            Err(error) => state.record_client_error(error.to_string()),
                         }
                     }
-                    Err(error) => state.record_client_error(error.to_string()),
+                } else {
+                    match state.begin_translation() {
+                        Ok(request) => {
+                            if let Err(error) =
+                                translate_worker.try_send(WorkerCommand::Translate(request))
+                            {
+                                state.record_client_error(error.to_string());
+                            }
+                        }
+                        Err(error) => state.record_client_error(error.to_string()),
+                    }
                 }
             }
             Err(error) => state.record_client_error(error.message),
@@ -1901,20 +1944,33 @@ fn connect_action_handlers(
     let stop_worker = Rc::clone(worker);
     bindings.stop.connect_clicked(move |_| {
         let mut state = stop_state.borrow_mut();
-        let can_cancel = if state.status() == AppStatus::Connecting {
-            true
+        if let Some(job_id) = stop_bindings.document_job_id.borrow().clone() {
+            if state.request_cancellation().is_ok()
+                && let Err(error) =
+                    stop_worker.try_send(WorkerCommand::CancelDocumentJob { job_id })
+            {
+                state.record_client_error(error.to_string());
+            }
         } else {
-            state.request_cancellation().is_ok()
-        };
-        if can_cancel && let Err(error) = stop_worker.try_send(WorkerCommand::Cancel) {
-            state.record_client_error(error.to_string());
+            let can_cancel = if state.status() == AppStatus::Connecting {
+                true
+            } else {
+                state.request_cancellation().is_ok()
+            };
+            if can_cancel && let Err(error) = stop_worker.try_send(WorkerCommand::Cancel) {
+                state.record_client_error(error.to_string());
+            }
         }
         refresh_ui(&stop_bindings, &state);
     });
 }
 
 // 通过 GTK 原生文件对话框选择文本文件，读取工作放在 GIO 异步路径中。
-fn begin_source_file_open(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
+fn begin_source_file_open(
+    bindings: &UiBindings,
+    state: &Rc<RefCell<AppState>>,
+    worker: &Rc<CoreWorker>,
+) {
     let locale = state.borrow().locale();
     let filter_name = localization::text(locale, "file.filter.text", "Text files");
     let filter = gtk::FileFilter::new();
@@ -1935,6 +1991,7 @@ fn begin_source_file_open(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) 
     dialog.set_filters(Some(&filters));
     let open_bindings = bindings.clone();
     let open_state = Rc::clone(state);
+    let open_worker = Rc::clone(worker);
     dialog.open(
         Some(&bindings.window),
         None::<&gtk::gio::Cancellable>,
@@ -1943,7 +2000,7 @@ fn begin_source_file_open(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) 
                 if std::env::var_os("LINGUAMESH_TEST_FILE_DIALOG").is_some() {
                     println!("GTK file chooser application fixture received the selected file.");
                 }
-                load_source_file(&file, &open_bindings, &open_state);
+                load_source_file(&file, &open_bindings, &open_state, &open_worker);
             }
             Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
             Err(_) => show_file_import_error(
@@ -2270,7 +2327,12 @@ fn begin_translation_export(bindings: &UiBindings, state: &Rc<RefCell<AppState>>
 }
 
 // 通过 GIO 的分块异步读取限制内存占用，并在主线程完成 UTF-8 解码。
-fn load_source_file(file: &gtk::gio::File, bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
+fn load_source_file(
+    file: &gtk::gio::File,
+    bindings: &UiBindings,
+    state: &Rc<RefCell<AppState>>,
+    worker: &Rc<CoreWorker>,
+) {
     let bytes_read = Rc::new(Cell::new(0_usize));
     let too_large = Rc::new(Cell::new(false));
     let source_uri = file.uri().to_string();
@@ -2282,6 +2344,7 @@ fn load_source_file(file: &gtk::gio::File, bindings: &UiBindings, state: &Rc<Ref
     let read_too_large = Rc::clone(&too_large);
     let load_bindings = bindings.clone();
     let load_state = Rc::clone(state);
+    let load_worker = Rc::clone(worker);
     load_bindings.export_notice.set(false);
     file.load_partial_contents_async(
         None::<&gtk::gio::Cancellable>,
@@ -2309,12 +2372,25 @@ fn load_source_file(file: &gtk::gio::File, bindings: &UiBindings, state: &Rc<Ref
             }
             match result {
                 Ok((contents, _)) => {
-                    match file_import::decode_document_contents(&source_name, contents.as_ref()) {
-                    Ok(text) => {
+                    match file_import::decode_document_job(&source_name, contents.as_ref()) {
+                    Ok(job) => {
                         if std::env::var_os("LINGUAMESH_TEST_FILE_DIALOG").is_some() {
                             println!("GTK file chooser application fixture completed the asynchronous GIO read.");
                         }
+                        let text = job.source_text();
+                        let job_id = OperationId::new().as_str().to_owned();
+                        if let Err(error) = load_worker.try_send(WorkerCommand::CreateDocumentJob {
+                            job_id: job_id.clone(),
+                            job,
+                        }) {
+                            load_state.borrow_mut().record_client_error(error.to_string());
+                            refresh_ui(&load_bindings, &load_state.borrow());
+                            return;
+                        }
+                        load_bindings.document_job_guard.set(true);
                         load_bindings.source.set_text(&text);
+                        load_bindings.document_job_guard.set(false);
+                        *load_bindings.document_job_id.borrow_mut() = Some(job_id);
                         *load_bindings.source_uri.borrow_mut() = Some(source_uri.clone());
                         load_bindings.error.set_label("");
                         load_bindings.error.set_visible(false);
@@ -3001,9 +3077,37 @@ fn apply_worker_event(
             bindings.memory_warning.set(true);
             bindings.memory_clear_pending.set(false);
         }
-        WorkerEvent::DocumentJobsRestored { .. }
-        | WorkerEvent::DocumentJobsListed { .. }
-        | WorkerEvent::DocumentJobUpdated(_) => {}
+        WorkerEvent::DocumentJobsRestored { jobs } | WorkerEvent::DocumentJobsListed { jobs } => {
+            if bindings.document_job_id.borrow().is_none()
+                && let Some(snapshot) = jobs.first()
+            {
+                *bindings.document_job_id.borrow_mut() = Some(snapshot.job_id.clone());
+                bindings.document_job_guard.set(true);
+                let source_text = snapshot.job.source_text();
+                bindings.source.set_text(&source_text);
+                bindings.document_job_guard.set(false);
+            }
+        }
+        WorkerEvent::DocumentJobUpdated(snapshot) => {
+            *bindings.document_job_id.borrow_mut() = Some(snapshot.job_id.clone());
+            if let Ok(output) = snapshot.job.reconstruct() {
+                let mut state = state.borrow_mut();
+                match snapshot.state {
+                    DocumentJobState::Completed => state.complete_document_translation(output),
+                    DocumentJobState::Cancelled => state.cancel_document_translation(output),
+                    DocumentJobState::Running => {
+                        if state.status() != AppStatus::Translating {
+                            let _ = state.begin_document_translation();
+                        }
+                        state.set_document_output(output);
+                    }
+                    DocumentJobState::Pending | DocumentJobState::Failed => {
+                        state.set_document_output(output);
+                    }
+                }
+            }
+        }
+        WorkerEvent::DocumentJobSegment { .. } => {}
         WorkerEvent::DemoProviderReady { endpoint } => {
             let should_use_demo = {
                 let state = state.borrow();

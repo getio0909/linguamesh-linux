@@ -67,6 +67,12 @@ document-portal lease lifecycle, drives the real GTK portal FileChooser backend 
 the application-level GTK FileDialog callback, and performs a real XTest drag through the source
 editor. Prompted desktop flows and physical shell rendering remain separate follow-up work.
 
+Each successful TXT/Markdown import is also stored as a bounded Core document job. **Translate**
+then sends pending prose segments sequentially through the confirmed provider, emits segment events,
+and persists each completed segment so a worker restart can restore the unfinished snapshot. **Stop**
+cancels the active document segment and leaves the source unchanged; Incognito mode intentionally
+rejects document jobs because their progress must be persisted.
+
 After a translation completes, **Export translation** opens a native GTK save dialog and writes the
 output asynchronously as UTF-8. Export remains disabled without output, reports a localized success
 notice, and refuses to overwrite the imported source file.

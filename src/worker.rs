@@ -2,8 +2,8 @@ use crate::model::{ProviderProfile, ProviderProfileId};
 use linguamesh_application::{HostSecretRequests, ProviderManager, host_secret_channel};
 use linguamesh_document::{DocumentJob, DocumentJobState};
 use linguamesh_domain::{
-    CompatibilityRequirements, CoreCompatibility, ErrorKind, ModelDescriptor, SecretValue,
-    TranslationError, TranslationEvent, TranslationRequest,
+    CompatibilityRequirements, CoreCompatibility, ErrorKind, Glossary, ModelDescriptor,
+    SecretValue, TranslationError, TranslationEvent, TranslationPrivacyMode, TranslationRequest,
 };
 use linguamesh_engine::{CancellationHandle, TranslationOperation, core_compatibility};
 use linguamesh_storage::{
@@ -108,6 +108,19 @@ pub enum WorkerCommand {
         job_id: String,
         /// TXT 或 Markdown 文档快照。
         job: DocumentJob,
+    },
+    /// 顺序翻译一个已持久化的文档任务。
+    TranslateDocumentJob {
+        /// 文档任务标识。
+        job_id: String,
+        /// 可选的源语言标签。
+        source_locale: Option<String>,
+        /// 目标语言标签。
+        target_locale: String,
+        /// 请求级词汇表。
+        glossary: Option<Glossary>,
+        /// 本地隐私策略；隐身模式禁止写入文档任务状态。
+        privacy_mode: TranslationPrivacyMode,
     },
     /// 按最近更新时间读取本地文档任务。
     ListDocumentJobs,
@@ -232,6 +245,15 @@ pub enum WorkerEvent {
     },
     /// 文档任务快照已写入。
     DocumentJobUpdated(DocumentJobSnapshot),
+    /// 文档任务某一段产生了翻译事件。
+    DocumentJobSegment {
+        /// 文档任务标识。
+        job_id: String,
+        /// 当前段的稳定顺序号。
+        index: usize,
+        /// 当前段的核心翻译事件。
+        event: TranslationEvent,
+    },
     /// 文档任务存储在启动或操作期间不可用。
     DocumentJobStorageUnavailable(TranslationError),
     /// 文档任务命令被精确拒绝。
@@ -397,6 +419,13 @@ enum QueuedCommand {
     CreateDocumentJob {
         job_id: String,
         job: DocumentJob,
+    },
+    TranslateDocumentJob {
+        job_id: String,
+        source_locale: Option<String>,
+        target_locale: String,
+        glossary: Option<Glossary>,
+        privacy_mode: TranslationPrivacyMode,
     },
     ListDocumentJobs,
     UpdateDocumentSegment {
@@ -576,6 +605,22 @@ impl CoreWorker {
                 .commands
                 .try_send(QueuedCommand::CreateDocumentJob { job_id, job })
                 .map_err(|_| WorkerSendError),
+            WorkerCommand::TranslateDocumentJob {
+                job_id,
+                source_locale,
+                target_locale,
+                glossary,
+                privacy_mode,
+            } => self
+                .commands
+                .try_send(QueuedCommand::TranslateDocumentJob {
+                    job_id,
+                    source_locale,
+                    target_locale,
+                    glossary,
+                    privacy_mode,
+                })
+                .map_err(|_| WorkerSendError),
             WorkerCommand::ListDocumentJobs => self
                 .commands
                 .try_send(QueuedCommand::ListDocumentJobs)
@@ -656,6 +701,26 @@ struct ActiveTranslation {
     operation: TranslationOperation,
     request: TranslationRequest,
     output: String,
+}
+
+struct ActiveDocumentTranslation {
+    job_id: String,
+    segment_index: usize,
+    source_locale: Option<String>,
+    target_locale: String,
+    glossary: Option<Glossary>,
+    privacy_mode: TranslationPrivacyMode,
+    operation: TranslationOperation,
+    output: String,
+    cancel_requested: bool,
+    stop_after_active: bool,
+}
+
+struct DocumentTranslationOptions {
+    source_locale: Option<String>,
+    target_locale: String,
+    glossary: Option<Glossary>,
+    privacy_mode: TranslationPrivacyMode,
 }
 
 // 集中保留命令与事件优先级，避免拆分后破坏单一活动操作约束。
@@ -823,6 +888,7 @@ async fn run_worker(
     let mut active_saved_profile: Option<ProviderProfile> = None;
     let mut selected_model: Option<String> = None;
     let mut active: Option<ActiveTranslation> = None;
+    let mut active_document: Option<ActiveDocumentTranslation> = None;
     let mut shutting_down = false;
     let mut stop_after_active = false;
     while !shutting_down {
@@ -927,6 +993,7 @@ async fn run_worker(
                 }
                 ActiveStep::Command(Some(
                     QueuedCommand::CreateDocumentJob { .. }
+                    | QueuedCommand::TranslateDocumentJob { .. }
                     | QueuedCommand::ListDocumentJobs
                     | QueuedCommand::UpdateDocumentSegment { .. }
                     | QueuedCommand::ResumeDocumentJob { .. }
@@ -1034,6 +1101,191 @@ async fn run_worker(
                     if stop_after_active {
                         shutting_down = true;
                     }
+                }
+            }
+            continue;
+        }
+
+        if let Some(mut document_translation) = active_document.take() {
+            let step = tokio::select! {
+                biased;
+                () = shutdown_cancellation.cancelled(), if !document_translation.stop_after_active => ActiveStep::Shutdown,
+                command = commands.recv(), if !document_translation.stop_after_active => ActiveStep::Command(command),
+                event = document_translation.operation.next_event() => ActiveStep::Event(event),
+            };
+            match step {
+                ActiveStep::Command(Some(QueuedCommand::Cancel)) => {
+                    document_translation.cancel_requested = true;
+                    document_translation.operation.cancel();
+                    active_document = Some(document_translation);
+                }
+                ActiveStep::Command(Some(QueuedCommand::CancelDocumentJob { job_id }))
+                    if job_id == document_translation.job_id =>
+                {
+                    document_translation.cancel_requested = true;
+                    document_translation.operation.cancel();
+                    active_document = Some(document_translation);
+                }
+                ActiveStep::Command(Some(QueuedCommand::CancelDocumentJob { .. })) => {
+                    let _ = events.send(WorkerEvent::DocumentJobActionRejected(
+                        TranslationError::new(
+                            ErrorKind::InvalidConfiguration,
+                            "A different document job is already translating.",
+                        ),
+                    ));
+                    active_document = Some(document_translation);
+                }
+                ActiveStep::Shutdown
+                | ActiveStep::Command(Some(QueuedCommand::Shutdown) | None) => {
+                    document_translation.stop_after_active = true;
+                    document_translation.operation.cancel();
+                    active_document = Some(document_translation);
+                }
+                ActiveStep::Command(Some(_)) => {
+                    let _ = events.send(WorkerEvent::DocumentJobActionRejected(
+                        TranslationError::new(
+                            ErrorKind::InvalidConfiguration,
+                            "A document job cannot change while another document job is translating.",
+                        ),
+                    ));
+                    active_document = Some(document_translation);
+                }
+                ActiveStep::Event(Some(event)) => {
+                    if let TranslationEvent::TextDelta { text, .. } = &event {
+                        document_translation.output.push_str(text);
+                    }
+                    let terminal = event.is_terminal();
+                    let completed = matches!(&event, TranslationEvent::Completed { .. });
+                    if events
+                        .send(WorkerEvent::DocumentJobSegment {
+                            job_id: document_translation.job_id.clone(),
+                            index: document_translation.segment_index,
+                            event,
+                        })
+                        .is_err()
+                    {
+                        shutting_down = true;
+                    }
+                    if terminal && !shutting_down {
+                        clear_active_cancellation(&active_cancellation);
+                        if completed {
+                            let update = storage
+                                .as_mut()
+                                .ok_or_else(|| {
+                                    TranslationError::new(
+                                        ErrorKind::Persistence,
+                                        "Local document job storage is unavailable.",
+                                    )
+                                })
+                                .and_then(|storage| {
+                                    storage.update_document_segment(
+                                        &document_translation.job_id,
+                                        document_translation.segment_index,
+                                        &document_translation.output,
+                                    )
+                                });
+                            match update {
+                                Ok(snapshot) => {
+                                    if events
+                                        .send(WorkerEvent::DocumentJobUpdated(snapshot.clone()))
+                                        .is_err()
+                                    {
+                                        shutting_down = true;
+                                    } else if snapshot.state == DocumentJobState::Completed
+                                        || document_translation.stop_after_active
+                                    {
+                                        shutting_down |= document_translation.stop_after_active;
+                                    } else {
+                                        match begin_document_segment(
+                                            &manager,
+                                            active_profile.as_ref(),
+                                            selected_model.as_deref(),
+                                            &document_translation.job_id,
+                                            &snapshot.job,
+                                            DocumentTranslationOptions {
+                                                source_locale: document_translation
+                                                    .source_locale
+                                                    .clone(),
+                                                target_locale: document_translation
+                                                    .target_locale
+                                                    .clone(),
+                                                glossary: document_translation.glossary.clone(),
+                                                privacy_mode: document_translation.privacy_mode,
+                                            },
+                                        ) {
+                                            Ok(next) => {
+                                                set_active_cancellation(
+                                                    &active_cancellation,
+                                                    ActiveCancellation::Translation(
+                                                        next.operation.cancellation_handle(),
+                                                    ),
+                                                );
+                                                active_document = Some(next);
+                                            }
+                                            Err(error) => {
+                                                let _ = events.send(
+                                                    WorkerEvent::DocumentJobActionRejected(error),
+                                                );
+                                            }
+                                        }
+                                    }
+                                }
+                                Err(error) => {
+                                    let _ =
+                                        events.send(WorkerEvent::DocumentJobActionRejected(error));
+                                }
+                            }
+                        } else if !document_translation.stop_after_active {
+                            let state = if document_translation.cancel_requested {
+                                DocumentJobState::Cancelled
+                            } else {
+                                DocumentJobState::Failed
+                            };
+                            match storage
+                                .as_mut()
+                                .ok_or_else(|| {
+                                    TranslationError::new(
+                                        ErrorKind::Persistence,
+                                        "Local document job storage is unavailable.",
+                                    )
+                                })
+                                .and_then(|storage| {
+                                    storage
+                                        .set_document_job_state(&document_translation.job_id, state)
+                                }) {
+                                Ok(snapshot) => {
+                                    let _ = events.send(WorkerEvent::DocumentJobUpdated(snapshot));
+                                }
+                                Err(error) => {
+                                    let _ =
+                                        events.send(WorkerEvent::DocumentJobActionRejected(error));
+                                }
+                            }
+                        }
+                        if document_translation.stop_after_active {
+                            shutting_down = true;
+                        }
+                    } else if !terminal && !shutting_down {
+                        active_document = Some(document_translation);
+                    }
+                }
+                ActiveStep::Event(None) => {
+                    clear_active_cancellation(&active_cancellation);
+                    if !document_translation.stop_after_active {
+                        let _ = events.send(WorkerEvent::DocumentJobActionRejected(
+                            TranslationError::new(
+                                ErrorKind::Internal,
+                                "The document translation event stream ended without a terminal event.",
+                            ),
+                        ));
+                        if let Some(storage) = storage.as_mut() {
+                            let _ = storage.set_document_job_state(
+                                &document_translation.job_id,
+                                DocumentJobState::Failed,
+                            );
+                        }
+                    }
+                    shutting_down |= document_translation.stop_after_active;
                 }
             }
             continue;
@@ -1525,6 +1777,86 @@ async fn run_worker(
                     }
                 }
             }
+            Some(QueuedCommand::TranslateDocumentJob {
+                job_id,
+                source_locale,
+                target_locale,
+                glossary,
+                privacy_mode,
+            }) => {
+                if privacy_mode == TranslationPrivacyMode::Incognito {
+                    let _ = events.send(WorkerEvent::DocumentJobActionRejected(
+                        TranslationError::new(
+                            ErrorKind::InvalidConfiguration,
+                            "Incognito mode cannot persist document job progress.",
+                        ),
+                    ));
+                    continue;
+                }
+                let result = storage
+                    .as_mut()
+                    .ok_or_else(|| {
+                        TranslationError::new(
+                            ErrorKind::Persistence,
+                            "Local document job storage is unavailable.",
+                        )
+                    })
+                    .and_then(|storage| {
+                        let snapshot = storage.document_job(&job_id)?.ok_or_else(|| {
+                            TranslationError::new(
+                                ErrorKind::InvalidConfiguration,
+                                "The document job was not found.",
+                            )
+                        })?;
+                        if !snapshot.state.is_resumable() {
+                            return Err(TranslationError::new(
+                                ErrorKind::InvalidConfiguration,
+                                "The document job is not ready to translate.",
+                            ));
+                        }
+                        if snapshot.job.pending_count() == 0 {
+                            return Err(TranslationError::new(
+                                ErrorKind::InvalidConfiguration,
+                                "The document job has no pending segments.",
+                            ));
+                        }
+                        storage.set_document_job_state(&job_id, DocumentJobState::Running)
+                    })
+                    .and_then(|snapshot| {
+                        begin_document_segment(
+                            &manager,
+                            active_profile.as_ref(),
+                            selected_model.as_deref(),
+                            &job_id,
+                            &snapshot.job,
+                            DocumentTranslationOptions {
+                                source_locale,
+                                target_locale,
+                                glossary,
+                                privacy_mode,
+                            },
+                        )
+                    });
+                match result {
+                    Ok(document_translation) => {
+                        set_active_cancellation(
+                            &active_cancellation,
+                            ActiveCancellation::Translation(
+                                document_translation.operation.cancellation_handle(),
+                            ),
+                        );
+                        active_document = Some(document_translation);
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::DocumentJobActionRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
             Some(QueuedCommand::ListDocumentJobs) => {
                 let result = storage
                     .as_ref()
@@ -1822,6 +2154,7 @@ fn reject_queued_commands_for_shutdown(
                 WorkerEvent::TranslationMemoryActionRejected(TranslationError::cancelled()),
             ),
             QueuedCommand::CreateDocumentJob { .. }
+            | QueuedCommand::TranslateDocumentJob { .. }
             | QueuedCommand::ListDocumentJobs
             | QueuedCommand::UpdateDocumentSegment { .. }
             | QueuedCommand::ResumeDocumentJob { .. }
@@ -2308,6 +2641,67 @@ fn begin_translation(
         operation: engine.translate(request.clone()),
         request,
         output: String::new(),
+    })
+}
+
+fn begin_document_segment(
+    manager: &ProviderManager,
+    active_profile: Option<&ProviderProfile>,
+    selected_model: Option<&str>,
+    job_id: &str,
+    job: &DocumentJob,
+    options: DocumentTranslationOptions,
+) -> Result<ActiveDocumentTranslation, TranslationError> {
+    let segment = job
+        .segments
+        .iter()
+        .find(|segment| {
+            segment.kind == linguamesh_document::DocumentSegmentKind::Prose
+                && segment.translated_text.is_none()
+        })
+        .ok_or_else(|| {
+            TranslationError::new(
+                ErrorKind::InvalidConfiguration,
+                "The document job has no pending prose segment.",
+            )
+        })?;
+    let model_id = selected_model.ok_or_else(|| {
+        TranslationError::new(
+            ErrorKind::ModelUnavailable,
+            "Select a model before translating a document job.",
+        )
+    })?;
+    let mut request = TranslationRequest::new(
+        segment.source_text.clone(),
+        options.target_locale.clone(),
+        model_id,
+    )
+    .with_privacy_mode(options.privacy_mode);
+    if let Some(glossary) = options.glossary.clone() {
+        request = request.with_glossary(glossary);
+    }
+    if let Some(source_locale) = options.source_locale.as_deref() {
+        request.source_locale = Some(source_locale.to_owned());
+    }
+    if let Some(profile) = active_profile {
+        request = request.with_provider_identity(format!(
+            "{}@{}",
+            profile.id().as_str(),
+            profile.base_endpoint()
+        ));
+    }
+    let active_translation = begin_translation(manager, selected_model, request)?;
+    Ok(ActiveDocumentTranslation {
+        job_id: job_id.to_owned(),
+        segment_index: segment.index,
+        source_locale: options.source_locale,
+        target_locale: options.target_locale,
+        glossary: options.glossary,
+        privacy_mode: options.privacy_mode,
+        operation: active_translation.operation,
+        output: String::new(),
+        cancel_requested: false,
+        stop_after_active: false,
     })
 }
 
@@ -3179,6 +3573,132 @@ mod tests {
         };
         assert_eq!(completed.state, DocumentJobState::Completed);
         assert_eq!(completed.job.reconstruct().expect("reconstruct"), "一\n二");
+        shutdown(&worker);
+    }
+
+    #[test]
+    fn document_job_translation_runs_each_pending_segment_and_reconstructs_output() {
+        let database = TestDatabase::new();
+        let (worker, _, endpoint) = started_worker_with_database(database.path());
+        connect(
+            &worker,
+            profile("document-provider", &endpoint, None, None),
+            None,
+            PersistenceIntent::SessionOnly,
+        )
+        .expect("connection");
+        select(&worker, "document-provider", "fake-translator");
+        worker
+            .try_send(WorkerCommand::CreateDocumentJob {
+                job_id: "document-translate-1".to_owned(),
+                job: DocumentJob::from_text("notes.txt", DocumentFormat::Txt, "one\ntwo"),
+            })
+            .expect("create document job");
+        assert!(matches!(
+            worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("created event"),
+            WorkerEvent::DocumentJobUpdated(snapshot)
+                if snapshot.state == DocumentJobState::Pending
+        ));
+        worker
+            .try_send(WorkerCommand::TranslateDocumentJob {
+                job_id: "document-translate-1".to_owned(),
+                source_locale: Some("en".to_owned()),
+                target_locale: "zh-CN".to_owned(),
+                glossary: None,
+                privacy_mode: TranslationPrivacyMode::Standard,
+            })
+            .expect("translate document job");
+        let completed = loop {
+            match worker
+                .events
+                .recv_timeout(Duration::from_secs(10))
+                .expect("document translation event")
+            {
+                WorkerEvent::DocumentJobUpdated(snapshot)
+                    if snapshot.state == DocumentJobState::Completed =>
+                {
+                    break snapshot;
+                }
+                WorkerEvent::DocumentJobSegment { event, .. } => {
+                    assert!(!matches!(event, TranslationEvent::Failed { .. }));
+                }
+                _ => {}
+            }
+        };
+        assert_eq!(completed.job.pending_count(), 0);
+        assert_eq!(
+            completed.job.reconstruct().expect("reconstruct"),
+            "你好，LinguaMesh！\n你好，LinguaMesh！"
+        );
+        shutdown(&worker);
+    }
+
+    #[test]
+    fn document_job_translation_cancellation_persists_cancelled_state() {
+        let database = TestDatabase::new();
+        let (worker, _, endpoint) = started_worker_with_database(database.path());
+        connect(
+            &worker,
+            profile("document-cancel-provider", &endpoint, None, None),
+            None,
+            PersistenceIntent::SessionOnly,
+        )
+        .expect("connection");
+        select(&worker, "document-cancel-provider", "fake-slow-translator");
+        worker
+            .try_send(WorkerCommand::CreateDocumentJob {
+                job_id: "document-cancel-1".to_owned(),
+                job: DocumentJob::from_text("notes.txt", DocumentFormat::Txt, "one"),
+            })
+            .expect("create document job");
+        assert!(matches!(
+            worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("created event"),
+            WorkerEvent::DocumentJobUpdated(snapshot)
+                if snapshot.state == DocumentJobState::Pending
+        ));
+        worker
+            .try_send(WorkerCommand::TranslateDocumentJob {
+                job_id: "document-cancel-1".to_owned(),
+                source_locale: Some("en".to_owned()),
+                target_locale: "zh-CN".to_owned(),
+                glossary: None,
+                privacy_mode: TranslationPrivacyMode::Standard,
+            })
+            .expect("translate document job");
+        let mut cancel_sent = false;
+        let cancelled = loop {
+            match worker
+                .events
+                .recv_timeout(Duration::from_secs(10))
+                .expect("document cancellation event")
+            {
+                WorkerEvent::DocumentJobSegment { event, .. } => {
+                    if matches!(event, TranslationEvent::TextDelta { .. }) && !cancel_sent {
+                        worker
+                            .try_send(WorkerCommand::CancelDocumentJob {
+                                job_id: "document-cancel-1".to_owned(),
+                            })
+                            .expect("cancel document job");
+                        cancel_sent = true;
+                    }
+                    assert!(!matches!(event, TranslationEvent::Failed { .. }));
+                }
+                WorkerEvent::DocumentJobUpdated(snapshot)
+                    if snapshot.state == DocumentJobState::Cancelled =>
+                {
+                    break snapshot;
+                }
+                _ => {}
+            }
+        };
+        assert!(cancel_sent);
+        assert!(cancelled.job.pending_count() > 0);
         shutdown(&worker);
     }
 

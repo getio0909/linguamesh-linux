@@ -44,8 +44,16 @@ pub fn decode_document_contents(
     source_name: &str,
     contents: &[u8],
 ) -> Result<String, TextImportError> {
+    Ok(decode_document_job(source_name, contents)?.source_text())
+}
+
+/// 使用 Core 文档契约解码并分段，供持久化文档任务复用同一份快照。
+pub fn decode_document_job(
+    source_name: &str,
+    contents: &[u8],
+) -> Result<DocumentJob, TextImportError> {
     let job = DocumentJob::from_utf8(source_name, contents).map_err(map_document_error)?;
-    Ok(job.source_text())
+    Ok(job)
 }
 
 fn map_document_error(error: DocumentError) -> TextImportError {
@@ -62,7 +70,8 @@ fn map_document_error(error: DocumentError) -> TextImportError {
 #[cfg(test)]
 mod tests {
     use super::{
-        MAX_TEXT_FILE_BYTES, TextImportError, decode_document_contents, decode_text_contents,
+        MAX_TEXT_FILE_BYTES, TextImportError, decode_document_contents, decode_document_job,
+        decode_text_contents,
     };
 
     #[test]
@@ -97,5 +106,12 @@ mod tests {
             decode_document_contents("README.docx", b"text"),
             Err(TextImportError::UnsupportedFormat)
         );
+    }
+
+    #[test]
+    fn returns_a_persistable_document_job() {
+        let job = decode_document_job("notes.txt", b"one\ntwo").expect("document job");
+        assert_eq!(job.source_name, "notes.txt");
+        assert_eq!(job.pending_count(), 2);
     }
 }

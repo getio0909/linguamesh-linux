@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; end-user prompt acceptance and release artifacts remain open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown document-job translation with sequential segment persistence, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; end-user prompt acceptance, multi-job GUI queue presentation, and release artifacts remain open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -123,6 +123,13 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
   fields. Profile/remember/remove controls fail closed when storage is unavailable, all conflicting
   controls are blocked during connection, model selection, translation, or deletion, and event
   processing is capped per main-context tick.
+- Imported TXT/Markdown files are converted into Core `DocumentJob` snapshots before the source
+  editor is populated. The existing Translate action starts a sequential worker pipeline for pending
+  prose segments, forwards the request glossary and privacy policy, and writes each completed segment
+  back to schema-6 storage. Document terminal snapshots reconstruct safely into the output editor;
+  Stop persists cancellation, and Incognito rejects document jobs rather than creating durable
+  progress. The GTK surface still lacks a dedicated multi-job queue, retry controls, and persisted
+  provider-parameter metadata for automatic restart.
 - The GTK boundary provides baseline accessibility semantics: `Main`, `Heading`, `Status`, and
   `Alert` roles; named multi-line source/output `TextBox` editors with output read-only; visible
   label-to-control `LabelledBy` and mnemonic relations; focusable editor and action controls; an
@@ -613,6 +620,32 @@ Validated locally:
 - `cargo test --features demo-provider --lib --offline` passed: 85 tests, 0 failed, 1 intentional
   ignore.
 - `bash tools/sync-l10n.sh --check` and `git diff --check` passed.
+
+## 2026-07-18 — Linux document-job execution
+
+Assumption: the current Linux-first slice reuses the existing single-document editor as the first
+queue surface. Imported TXT/Markdown jobs persist their source-safe segments before translation;
+provider parameters are supplied again when a resumed job is started, and multi-job queue UI remains
+future work.
+
+Implemented:
+
+- Added `TranslateDocumentJob` and per-segment events to the Linux worker. Each pending prose segment
+  becomes a normal Core request carrying the selected source/target locales, request glossary, and
+  standard privacy mode, then its completed text is committed before the next segment starts.
+- Connected native file import to `CreateDocumentJob`, the existing Translate and Stop buttons, and
+  startup restoration. Completed and cancelled snapshots reconstruct safely into the output editor;
+  Incognito rejects document jobs because durable progress is required.
+- Added file-import, worker cancellation, and sequential reconstruction regressions while preserving
+  source-file immutability and the schema-6 storage bounds.
+
+Validated locally:
+
+- `cargo fmt --all` passed.
+- Strict all-target/all-feature Clippy passed.
+- `cargo test --features demo-provider --lib --offline` passed: 91 tests, 90 passed, 0 failed,
+  1 intentional environment-dependent ignore.
+- `git diff --check` passed.
 - Native GUI linking remains CI-only because this host lacks the GTK 4.10 symbols required by the
   current system libraries.
 

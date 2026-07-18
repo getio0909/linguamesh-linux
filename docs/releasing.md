@@ -46,6 +46,12 @@ The current Linux gate consumes Core `6c54f329e9a62ffa1d2f9503087e59d4b9e9d6e9` 
 interchange are implemented in the Linux slice; persistent glossary libraries and TBX import
 remain outside the release claim.
 
+The Linux document slice now persists bounded TXT/Markdown jobs, translates pending prose segments
+sequentially, and restores completed or cancelled snapshots into the editor. This is not yet a
+release-ready multi-job queue: provider parameters must be supplied again after restart, retry and
+archive workflows are absent, and the document-job execution path still requires the native Linux
+validation gate below.
+
 The current native gate also includes a real post-startup `ENOSPC` regression for persistent model
 updates, profile deletion, and provider switching. Runtime-storage functional revision
 `c37702c76c3b1a2f9cec805cf9e219721ef7b5ce` passed Native Linux run `29586532049` (job
