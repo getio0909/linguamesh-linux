@@ -339,3 +339,33 @@ msgstr "Modell wird ausgewählt"
 msgctxt "status.unavailable"
 msgid "Unavailable"
 msgstr "Nicht verfügbar"
+
+#. Primary action that opens a UTF-8 text file for translation.
+#, fuzzy
+msgctxt "action.open_source"
+msgid "Open text file"
+msgstr "Textdatei öffnen"
+
+#. Accept button in the native text-file chooser.
+#, fuzzy
+msgctxt "dialog.open"
+msgid "Open"
+msgstr "Öffnen"
+
+#. Title of the native text-file chooser.
+#, fuzzy
+msgctxt "dialog.open_text_file"
+msgid "Open text file"
+msgstr "Textdatei öffnen"
+
+#. Native file-filter name for supported text documents.
+#, fuzzy
+msgctxt "file.filter.text"
+msgid "Text files"
+msgstr "Textdateien"
+
+#. Tooltip explaining the UTF-8 source-file import action.
+#, fuzzy
+msgctxt "tooltip.open_source"
+msgid "Load a UTF-8 text file into the source editor"
+msgstr "Eine UTF-8-Textdatei in den Quelltexteditor laden"

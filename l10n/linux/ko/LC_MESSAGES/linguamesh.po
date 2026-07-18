@@ -337,3 +337,33 @@ msgstr "모델 선택 중"
 msgctxt "status.unavailable"
 msgid "Unavailable"
 msgstr "사용할 수 없음"
+
+#. Primary action that opens a UTF-8 text file for translation.
+#, fuzzy
+msgctxt "action.open_source"
+msgid "Open text file"
+msgstr "텍스트 파일 열기"
+
+#. Accept button in the native text-file chooser.
+#, fuzzy
+msgctxt "dialog.open"
+msgid "Open"
+msgstr "열기"
+
+#. Title of the native text-file chooser.
+#, fuzzy
+msgctxt "dialog.open_text_file"
+msgid "Open text file"
+msgstr "텍스트 파일 열기"
+
+#. Native file-filter name for supported text documents.
+#, fuzzy
+msgctxt "file.filter.text"
+msgid "Text files"
+msgstr "텍스트 파일"
+
+#. Tooltip explaining the UTF-8 source-file import action.
+#, fuzzy
+msgctxt "tooltip.open_source"
+msgid "Load a UTF-8 text file into the source editor"
+msgstr "UTF-8 텍스트 파일을 소스 편집기로 불러옵니다"

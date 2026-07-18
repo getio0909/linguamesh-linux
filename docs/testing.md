@@ -330,6 +330,6 @@ Broader GTK component/UI automation, AT-SPI/Orca and physical-keyboard accessibi
 physical-compositor and GPU-backed Wayland coverage, a broader X11/desktop matrix, prompted
 interactive Secret Service flows, broader XDG and portal tests, third-party
 local-server interoperability, Flatpak smoke tests, runtime localization behavior beyond the
-currently catalog-backed action, workspace-widget, active-provider, status summary/partial-output, and theme-option labels, runtime database
+currently catalog-backed action, workspace-widget, active-provider, status summary/partial-output, text-file import, and theme-option labels, runtime database
 faults beyond the implemented Linux `ENOSPC` transaction boundary, dependency/license automation,
 and release builds remain required before a supported release.

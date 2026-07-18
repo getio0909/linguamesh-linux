@@ -1197,17 +1197,21 @@ fn connect_action_handlers(
 
 // 通过 GTK 原生文件对话框选择文本文件，读取工作放在 GIO 异步路径中。
 fn begin_source_file_open(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
+    let locale = state.borrow().locale();
+    let filter_name = localization::text(locale, "file.filter.text", "Text files");
     let filter = gtk::FileFilter::new();
-    filter.set_name(Some("Text files"));
+    filter.set_name(Some(&filter_name));
     filter.add_mime_type("text/plain");
     filter.add_suffix("txt");
     filter.add_suffix("md");
     filter.add_suffix("markdown");
     let filters = gtk::gio::ListStore::new::<gtk::FileFilter>();
     filters.append(&filter);
+    let dialog_title = localization::text(locale, "dialog.open_text_file", "Open text file");
+    let dialog_accept = localization::text(locale, "dialog.open", "Open");
     let dialog = gtk::FileDialog::builder()
-        .title("Open text file")
-        .accept_label("Open")
+        .title(&dialog_title)
+        .accept_label(&dialog_accept)
         .modal(true)
         .build();
     dialog.set_filters(Some(&filters));
@@ -1680,10 +1684,21 @@ fn refresh_onboarding(bindings: &UiBindings, state: &AppState) {
 }
 
 fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
+    let open_source = localization::text(locale, "action.open_source", "Open text file");
+    let open_source_label = format!("_{open_source}");
+    let open_source_tooltip = localization::text(
+        locale,
+        "tooltip.open_source",
+        "Load a UTF-8 text file into the source editor",
+    );
     let translate = localization::text(locale, "action.translate", "Translate");
     let stop = localization::text(locale, "accessibility.stop_translation", "Stop translation");
     let translate_label = format!("_{translate}");
     let stop_label = format!("_{stop}");
+    bindings.open_source.set_label(&open_source_label);
+    bindings
+        .open_source
+        .set_tooltip_text(Some(&open_source_tooltip));
     bindings.translate.set_label(&translate_label);
     bindings.stop.set_label(&stop_label);
     bindings
@@ -2147,6 +2162,10 @@ mod tests {
         assert_eq!(bindings.source_label.label(), "源文本");
         assert_eq!(bindings.output_label.label(), "译文");
         assert_eq!(bindings.status.label(), "状态: 正在启动");
+        assert_eq!(
+            bindings.open_source.label().as_deref(),
+            Some("_打开文本文件")
+        );
         let theme_model = bindings
             .theme
             .model()
@@ -2154,10 +2173,6 @@ mod tests {
             .expect("theme labels");
         assert_eq!(theme_model.string(1).as_deref(), Some("浅色"));
         bindings.source.set_text("保留源文本");
-        assert_eq!(
-            bindings.open_source.label().as_deref(),
-            Some("_Open text file")
-        );
         state.borrow_mut().set_locale(UiLocale::Arabic);
         refresh_ui(&bindings, &state.borrow());
         assert_eq!(bindings.status.label(), "الحالة: جارٍ البدء");
