@@ -3,6 +3,7 @@ set -euo pipefail
 
 workspace=$(mktemp -d)
 focus_log="$workspace/focus.log"
+focus_start="$workspace/focus-start"
 app_log="$workspace/app.log"
 cleanup() {
   if [[ -n "${app_pid:-}" ]]; then
@@ -16,6 +17,7 @@ trap cleanup EXIT
 cargo build --all-features --locked --bin linguamesh-linux
 
 LINGUAMESH_KEYBOARD_FOCUS_LOG="$focus_log" \
+LINGUAMESH_KEYBOARD_FOCUS_START="$focus_start" \
 XDG_DATA_HOME="$workspace/data" \
 XDG_CONFIG_HOME="$workspace/config" \
 XDG_CACHE_HOME="$workspace/cache" \
@@ -59,6 +61,7 @@ XDG_CACHE_HOME="$workspace/cache" \
     fi
     xdotool windowactivate --sync "$app_window" >/dev/null 2>&1 || true
     xdotool windowfocus --sync "$app_window" >/dev/null 2>&1 || true
+    : >"$LINGUAMESH_KEYBOARD_FOCUS_START"
     sleep 0.1
     for _ in {1..8}; do
       xdotool key --clearmodifiers Shift+Tab

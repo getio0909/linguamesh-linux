@@ -778,6 +778,7 @@ fn install_keyboard_focus_probe(
     let ready_logged = Rc::new(Cell::new(false));
     let ready_log = Rc::clone(&log);
     let focus_window = window.clone();
+    let focus_start_path = std::env::var_os("LINGUAMESH_KEYBOARD_FOCUS_START");
     let mut focus_deadline = None;
     glib::timeout_add_local(Duration::from_millis(50), move || {
         if initial_focus.is_sensitive() && !ready_logged.get() {
@@ -795,10 +796,19 @@ fn install_keyboard_focus_probe(
             let _ = writeln!(log, "__ready__");
             let _ = log.flush();
             ready_logged.set(true);
-            focus_deadline = Some(Instant::now() + Duration::from_secs(5));
         }
         if !ready_logged.get() {
             return glib::ControlFlow::Continue;
+        }
+        // 仅在键盘夹具请求后重新抓取焦点，确保测试从真实 provider 输入框开始。
+        let focus_requested = focus_start_path
+            .as_ref()
+            .is_some_and(|path| fs::metadata(path).is_ok());
+        if !focus_requested {
+            return glib::ControlFlow::Continue;
+        }
+        if focus_deadline.is_none() {
+            focus_deadline = Some(Instant::now() + Duration::from_secs(5));
         }
         gtk::prelude::GtkWindowExt::set_focus(&focus_window, Some(&initial_focus));
         let focused = initial_focus.grab_focus() && initial_focus.has_focus();
