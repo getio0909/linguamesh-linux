@@ -57,6 +57,7 @@ struct UiBindings {
     source_label: gtk::Label,
     output_label: gtk::Label,
     translate: gtk::Button,
+    export_output: gtk::Button,
     open_source: gtk::Button,
     stop: gtk::Button,
     status: gtk::Label,
@@ -67,6 +68,8 @@ struct UiBindings {
     diagnostics: gtk::Label,
     profile_selection_guard: Rc<Cell<bool>>,
     draft_profile_id: Rc<RefCell<Option<ProviderProfileId>>>,
+    source_uri: Rc<RefCell<Option<String>>>,
+    export_notice: Rc<Cell<bool>>,
     source_drop_target: gtk::DropTarget,
 }
 
@@ -314,12 +317,16 @@ fn create_window(
     let translate = gtk::Button::with_mnemonic("_Translate");
     translate.add_css_class("suggested-action");
     translate.set_focusable(true);
+    let export_output = gtk::Button::with_mnemonic("_Export translation");
+    export_output.set_focusable(true);
+    export_output.set_tooltip_text(Some("Save the translated output to a new file"));
     let stop = gtk::Button::with_mnemonic("_Stop");
     stop.add_css_class("destructive-action");
     stop.set_focusable(true);
     stop.update_property(&[gtk::accessible::Property::Label("Stop translation")]);
     action_row.append(&open_source);
     action_row.append(&translate);
+    action_row.append(&export_output);
     action_row.append(&stop);
     let status = gtk::Label::new(None);
     status.set_accessible_role(gtk::AccessibleRole::Status);
@@ -385,6 +392,7 @@ fn create_window(
             source_label: editor_bindings.source_label,
             output_label: editor_bindings.output_label,
             translate,
+            export_output,
             open_source,
             stop,
             status,
@@ -395,6 +403,8 @@ fn create_window(
             diagnostics,
             profile_selection_guard: Rc::new(Cell::new(false)),
             draft_profile_id: Rc::new(RefCell::new(None)),
+            source_uri: Rc::new(RefCell::new(None)),
+            export_notice: Rc::new(Cell::new(false)),
             source_drop_target,
         },
         theme,
@@ -1260,6 +1270,7 @@ fn connect_action_handlers(
     let translate_state = Rc::clone(state);
     let translate_worker = Rc::clone(worker);
     bindings.translate.connect_clicked(move |_| {
+        translate_bindings.export_notice.set(false);
         let source = translate_bindings.source.text(
             &translate_bindings.source.start_iter(),
             &translate_bindings.source.end_iter(),
@@ -1282,6 +1293,12 @@ fn connect_action_handlers(
             Err(error) => state.record_client_error(error.to_string()),
         }
         refresh_ui(&translate_bindings, &state);
+    });
+
+    let export_bindings = bindings.clone();
+    let export_state = Rc::clone(state);
+    bindings.export_output.connect_clicked(move |_| {
+        begin_translation_export(&export_bindings, &export_state);
     });
 
     let stop_bindings = bindings.clone();
@@ -1346,14 +1363,105 @@ fn begin_source_file_open(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) 
     );
 }
 
+// 将译文异步写入用户选择的新文件，并拒绝覆盖已导入的源文件。
+fn begin_translation_export(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
+    let locale = state.borrow().locale();
+    let output = bindings
+        .output
+        .text(
+            &bindings.output.start_iter(),
+            &bindings.output.end_iter(),
+            true,
+        )
+        .to_string();
+    if output.is_empty() {
+        show_file_export_error(
+            bindings,
+            &localization::text(
+                locale,
+                "error.file_export_empty",
+                "Translate some text before exporting the output.",
+            ),
+        );
+        return;
+    }
+    let dialog_title =
+        localization::text(locale, "dialog.export_translation", "Export translation");
+    let dialog_accept = localization::text(locale, "dialog.save", "Save");
+    let dialog = gtk::FileDialog::builder()
+        .title(&dialog_title)
+        .accept_label(&dialog_accept)
+        .modal(true)
+        .build();
+    dialog.set_initial_name(Some("linguamesh-translation.txt"));
+    let export_bindings = bindings.clone();
+    let export_state = Rc::clone(state);
+    let source_uri = bindings.source_uri.borrow().clone();
+    dialog.save(
+        Some(&bindings.window),
+        None::<&gtk::gio::Cancellable>,
+        move |result| match result {
+            Ok(file) => {
+                let destination_uri = file.uri().to_string();
+                if source_uri.as_deref() == Some(destination_uri.as_str()) {
+                    show_file_export_error(
+                        &export_bindings,
+                        &localization::text(
+                            export_state.borrow().locale(),
+                            "error.file_export_source",
+                            "Choose a different file so the source remains unchanged.",
+                        ),
+                    );
+                    return;
+                }
+                let contents = glib::Bytes::from_owned(output.into_bytes());
+                let callback_bindings = export_bindings.clone();
+                let callback_state = Rc::clone(&export_state);
+                file.replace_contents_bytes_async(
+                    &contents,
+                    None,
+                    false,
+                    gtk::gio::FileCreateFlags::NONE,
+                    None::<&gtk::gio::Cancellable>,
+                    move |write_result| match write_result {
+                        Ok(_) => {
+                            callback_bindings.export_notice.set(true);
+                            refresh_ui(&callback_bindings, &callback_state.borrow());
+                        }
+                        Err(_) => show_file_export_error(
+                            &callback_bindings,
+                            &localization::text(
+                                callback_state.borrow().locale(),
+                                "error.file_export",
+                                "The translated output could not be saved.",
+                            ),
+                        ),
+                    },
+                );
+            }
+            Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
+            Err(_) => show_file_export_error(
+                &export_bindings,
+                &localization::text(
+                    export_state.borrow().locale(),
+                    "error.file_export",
+                    "The translated output could not be saved.",
+                ),
+            ),
+        },
+    );
+}
+
 // 通过 GIO 的分块异步读取限制内存占用，并在主线程完成 UTF-8 解码。
 fn load_source_file(file: &gtk::gio::File, bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
     let bytes_read = Rc::new(Cell::new(0_usize));
     let too_large = Rc::new(Cell::new(false));
+    let source_uri = file.uri().to_string();
     let read_bytes = Rc::clone(&bytes_read);
     let read_too_large = Rc::clone(&too_large);
     let load_bindings = bindings.clone();
     let load_state = Rc::clone(state);
+    load_bindings.export_notice.set(false);
     file.load_partial_contents_async(
         None::<&gtk::gio::Cancellable>,
         move |chunk| {
@@ -1385,6 +1493,7 @@ fn load_source_file(file: &gtk::gio::File, bindings: &UiBindings, state: &Rc<Ref
                             println!("GTK file chooser application fixture completed the asynchronous GIO read.");
                         }
                         load_bindings.source.set_text(&text);
+                        *load_bindings.source_uri.borrow_mut() = Some(source_uri.clone());
                         load_bindings.error.set_label("");
                         load_bindings.error.set_visible(false);
                     }
@@ -1406,6 +1515,12 @@ fn load_source_file(file: &gtk::gio::File, bindings: &UiBindings, state: &Rc<Ref
 
 // 导入错误只显示安全的固定文本，不把路径或文件内容写入诊断状态。
 fn show_file_import_error(bindings: &UiBindings, message: &str) {
+    bindings.error.set_label(message);
+    bindings.error.set_visible(true);
+    bindings.error.reset_state(gtk::AccessibleState::Hidden);
+}
+
+fn show_file_export_error(bindings: &UiBindings, message: &str) {
     bindings.error.set_label(message);
     bindings.error.set_visible(true);
     bindings.error.reset_state(gtk::AccessibleState::Hidden);
@@ -1909,6 +2024,7 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     );
     let translate = localization::text(locale, "action.translate", "Translate");
     let stop = localization::text(locale, "accessibility.stop_translation", "Stop translation");
+    let export = localization::text(locale, "action.export_output", "Export translation");
     let connect = localization::text(locale, "action.connect", "Connect");
     let remove_profile =
         localization::text(locale, "action.remove_profile", "Remove saved profile");
@@ -1924,6 +2040,14 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
         .open_source
         .set_tooltip_text(Some(&open_source_tooltip));
     bindings.translate.set_label(&translate_label);
+    bindings.export_output.set_label(&format!("_{export}"));
+    bindings
+        .export_output
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.export_output",
+            "Save the translated output to a new file",
+        )));
     bindings.stop.set_label(&stop_label);
     bindings.connect.set_label(&format!("_{connect}"));
     bindings.remove_saved_profile.set_label(&remove_profile);
@@ -2169,11 +2293,20 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             .error
             .update_state(&[gtk::accessible::State::Hidden(true)]);
     }
-    bindings.locale_note.set_label(&localization::text(
-        state.locale(),
-        "locale.note.drafts",
-        "Simplified Chinese resources are loaded from the pinned runtime catalog; translations remain unreviewed drafts.",
-    ));
+    let locale_note = if bindings.export_notice.get() {
+        localization::text(
+            state.locale(),
+            "status.exported",
+            "Translation saved to the selected file.",
+        )
+    } else {
+        localization::text(
+            state.locale(),
+            "locale.note.drafts",
+            "Simplified Chinese resources are loaded from the pinned runtime catalog; translations remain unreviewed drafts.",
+        )
+    };
+    bindings.locale_note.set_label(&locale_note);
     bindings.diagnostics.set_label(&state.diagnostics_text());
     let translation_busy = matches!(
         state.status(),
@@ -2223,6 +2356,9 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     bindings
         .translate
         .set_sensitive(state.worker_ready() && !blocked && state.selected_model().is_some());
+    bindings
+        .export_output
+        .set_sensitive(!state.output().is_empty() && !blocked);
     bindings
         .open_source
         .set_sensitive(source_import_allowed(state));
@@ -2473,6 +2609,8 @@ mod tests {
         state.borrow_mut().set_locale(UiLocale::SimplifiedChinese);
         refresh_ui(&bindings, &state.borrow());
         assert_eq!(bindings.translate.label().as_deref(), Some("_翻译"));
+        assert_eq!(bindings.export_output.label().as_deref(), Some("_导出翻译"));
+        assert!(!bindings.export_output.is_sensitive());
         assert_eq!(bindings.stop.label().as_deref(), Some("_停止翻译"));
         assert_eq!(bindings.window.title().as_deref(), Some("LinguaMesh"));
         assert_eq!(bindings.source_label.label(), "源文本");
@@ -2565,6 +2703,7 @@ mod tests {
             &bindings.connect,
             &bindings.open_source,
             &bindings.translate,
+            &bindings.export_output,
             &bindings.stop,
         ] {
             assert!(button.is_focusable());

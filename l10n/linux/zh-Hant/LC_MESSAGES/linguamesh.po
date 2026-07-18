@@ -1129,3 +1129,51 @@ msgstr "阿拉伯語"
 msgctxt "locale.name.hi"
 msgid "Hindi"
 msgstr "印地語"
+
+#. Action that exports the current translated output to a user-selected file.
+#, fuzzy
+msgctxt "action.export_output"
+msgid "Export translation"
+msgstr "匯出翻譯"
+
+#. Tooltip explaining that export writes translated output to a new file.
+#, fuzzy
+msgctxt "tooltip.export_output"
+msgid "Save the translated output to a new file"
+msgstr "將譯文儲存到新檔案"
+
+#. Title for the Linux translation export dialog.
+#, fuzzy
+msgctxt "dialog.export_translation"
+msgid "Export translation"
+msgstr "匯出翻譯"
+
+#. Accept label for the Linux translation export dialog.
+#, fuzzy
+msgctxt "dialog.save"
+msgid "Save"
+msgstr "儲存"
+
+#. Status shown after translated output is written successfully.
+#, fuzzy
+msgctxt "status.exported"
+msgid "Translation saved to the selected file."
+msgstr "譯文已儲存到所選檔案。"
+
+#. Export error shown when there is no translated output to save.
+#, fuzzy
+msgctxt "error.file_export_empty"
+msgid "Translate some text before exporting the output."
+msgstr "請先翻譯一些文字再匯出譯文。"
+
+#. Export error shown when the selected output would overwrite the source file.
+#, fuzzy
+msgctxt "error.file_export_source"
+msgid "Choose a different file so the source remains unchanged."
+msgstr "請選擇其他檔案，以保持來源檔案不變。"
+
+#. Export error shown when the translated output cannot be written.
+#, fuzzy
+msgctxt "error.file_export"
+msgid "The translated output could not be saved."
+msgstr "無法儲存譯文。"

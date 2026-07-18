@@ -63,6 +63,10 @@ document-portal lease lifecycle, drives the real GTK portal FileChooser backend 
 the application-level GTK FileDialog callback, and performs a real XTest drag through the source
 editor. Prompted desktop flows and physical shell rendering remain separate follow-up work.
 
+After a translation completes, **Export translation** opens a native GTK save dialog and writes the
+output asynchronously as UTF-8. Export remains disabled without output, reports a localized success
+notice, and refuses to overwrite the imported source file.
+
 The credential field is optional. Its value is copied into Core's secret-aware `SecretValue`, the
 widget is cleared immediately, and the temporary GTK string is dropped. Without Remember, a
 `session:` `SecretRef` lets the bounded typed host-secret broker provide it once during connection.
@@ -120,9 +124,9 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`d21c3b0d065831b20cf31c9bf3009ffd262e4797` and validated with `msgfmt`. The locale selector
+`6a1f0e914e56788c34970bd7b18c8f963026ff73` and validated with `msgfmt`. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
-active-provider, status summary/partial-output, text-file import, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, and System/Light/Dark theme labels without replacing active source text;
+active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, and System/Light/Dark theme labels without replacing active source text;
 Arabic also switches the GTK workspace root to right-to-left direction. Remaining UI strings still
 use English fallbacks until complete gettext coverage is wired.
 

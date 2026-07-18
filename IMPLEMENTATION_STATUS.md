@@ -116,19 +116,19 @@ older distributions and future Flatpak runtimes require separate packaging valid
 - The Linux host now uses existing GIO D-Bus bindings for Secret Service `OpenSession`, item search,
   create/update, and `GetSecret` resolution. Persistent profiles retain only a SecretRef; the
   one-shot credential is passed through the existing typed broker and is never written to SQLite.
-- Fourteen canonical official/pseudo PO/MO catalog pairs containing 184 messages pinned to l10n revision
-  `d21c3b0d065831b20cf31c9bf3009ffd262e4797`. Sync rejects a different revision, dirty generated
+- Fourteen canonical official/pseudo PO/MO catalog pairs containing 192 messages pinned to l10n revision
+  `6a1f0e914e56788c34970bd7b18c8f963026ff73`. Sync rejects a different revision, dirty generated
   source artifacts, stale copies, and unexpected catalog counts. The GTK locale selector exposes
   the twelve official packs, runtime action, workspace-widget, active-provider, status summary,
-  partial-output, text-file import, provider-profile, source/target language, onboarding stage/detail,
-  fixed provider/file/worker and reducer-state/category error messages, and
+  partial-output, text-file import/export, provider-profile, source/target language, onboarding stage/detail,
+  fixed provider/file/worker, reducer-state/category, and translation-export error messages, and
   System/Light/Dark theme labels switch without losing state, preserves source text while moving
   from Simplified Chinese to Arabic, and applies right-to-left root direction; uncovered UI strings
   still use explicit English fallbacks.
 - Foundation and native workflow sources use immutable Node 24-compatible action commits and
   disable persisted checkout credentials. Native CI pins reviewed Core revision
   `fbf3e9b5927049dccaa19f8c36013495ffebba12` and localization revision
-  `d21c3b0d065831b20cf31c9bf3009ffd262e4797`. The revised native gate retains serialized all-target,
+  `6a1f0e914e56788c34970bd7b18c8f963026ff73`. The revised native gate retains serialized all-target,
   all-feature X11/Xvfb tests, runs the exact ignored storage-fault test in a private user/mount
   namespace when available, then runs the existing GTK binary test under forced Wayland and
   headless Weston before building the application. On restricted Ubuntu hosts, only the private
