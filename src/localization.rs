@@ -320,6 +320,11 @@ mod tests {
                 "error.state.missing_model",
                 "error.state.busy",
                 "error.state.event_after_terminal",
+                "warning.pdf_image_only_pages",
+                "warning.pdf_reconstruction_limited",
+                "warning.pdf_uncertain_order",
+                "warning.subtitle_line_length",
+                "warning.subtitle_reading_speed",
             ] {
                 assert!(
                     !text(locale, key, "").is_empty(),

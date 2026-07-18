@@ -1611,3 +1611,21 @@ msgstr "［Šûƀŧïŧŀë çûë(š) {cues} ëẋçëëð ŧħë {limit}-çħ�
 msgctxt "warning.subtitle_reading_speed"
 msgid "Subtitle cue(s) {cues} exceed the {limit}-character-per-second reading-speed guidance."
 msgstr "［Šûƀŧïŧŀë çûë(š) {cues} ëẋçëëð ŧħë {limit}-çħåŕåçŧëŕ-þëŕ-šëçøñð ŕëåðïñĝ-šþëëð ĝûïðåñçë.~~~~~~~~~~~~~~~~~~~~~~~~~~~~］"
+
+#. Advisory PDF fidelity warning that does not expose document source content.
+#, fuzzy
+msgctxt "warning.pdf_reconstruction_limited"
+msgid "PDF layout fidelity is limited; page association is preserved, but pixel-identical output is not guaranteed."
+msgstr "［ÞÐƑ ŀåÿøûŧ ƒïðëŀïŧÿ ïš ŀïṁïŧëð; þåĝë åššøçïåŧïøñ ïš þŕëšëŕṽëð, ƀûŧ þïẋëŀ-ïðëñŧïçåŀ øûŧþûŧ ïš ñøŧ ĝûåŕåñŧëëð.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~］"
+
+#. Page numbers for image-only PDF pages where OCR is not enabled.
+#, fuzzy, python-brace-format
+msgctxt "warning.pdf_image_only_pages"
+msgid "PDF page(s) {pages} contain no extractable text; OCR is not enabled."
+msgstr "［ÞÐƑ þåĝë(š) {pages} çøñŧåïñ ñø ëẋŧŕåçŧåƀŀë ŧëẋŧ; ØÇŔ ïš ñøŧ ëñåƀŀëð.~~~~~~~~~~~~~~~~~~~~~~］"
+
+#. Page numbers for PDF pages whose extracted reading order needs review.
+#, fuzzy, python-brace-format
+msgctxt "warning.pdf_uncertain_order"
+msgid "PDF page(s) {pages} have uncertain reading order; review the structured output."
+msgstr "［ÞÐƑ þåĝë(š) {pages} ħåṽë ûñçëŕŧåïñ ŕëåðïñĝ øŕðëŕ; ŕëṽïëŵ ŧħë šŧŕûçŧûŕëð øûŧþûŧ.~~~~~~~~~~~~~~~~~~~~~~~~~~］"

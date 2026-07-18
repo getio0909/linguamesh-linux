@@ -1619,3 +1619,21 @@ msgstr "Subtitle cue(s) {cues} exceed the {limit}-character line guidance."
 msgctxt "warning.subtitle_reading_speed"
 msgid "Subtitle cue(s) {cues} exceed the {limit}-character-per-second reading-speed guidance."
 msgstr "Subtitle cue(s) {cues} exceed the {limit}-character-per-second reading-speed guidance."
+
+#. Advisory PDF fidelity warning that does not expose document source content.
+#, fuzzy
+msgctxt "warning.pdf_reconstruction_limited"
+msgid "PDF layout fidelity is limited; page association is preserved, but pixel-identical output is not guaranteed."
+msgstr "PDF layout fidelity is limited; page association is preserved, but pixel-identical output is not guaranteed."
+
+#. Page numbers for image-only PDF pages where OCR is not enabled.
+#, fuzzy, python-brace-format
+msgctxt "warning.pdf_image_only_pages"
+msgid "PDF page(s) {pages} contain no extractable text; OCR is not enabled."
+msgstr "PDF page(s) {pages} contain no extractable text; OCR is not enabled."
+
+#. Page numbers for PDF pages whose extracted reading order needs review.
+#, fuzzy, python-brace-format
+msgctxt "warning.pdf_uncertain_order"
+msgid "PDF page(s) {pages} have uncertain reading order; review the structured output."
+msgstr "PDF page(s) {pages} have uncertain reading order; review the structured output."
