@@ -41,7 +41,8 @@ XDG_CACHE_HOME="$workspace/cache" \
       printf "%s\n" "GTK keyboard fixture could not find the application window." >&2
       exit 1
     fi
-    xdotool windowactivate --sync "$app_window"
+    xdotool windowactivate --sync "$app_window" >/dev/null 2>&1 || true
+    xdotool windowfocus --sync "$app_window" >/dev/null 2>&1 || true
     for _ in {1..240}; do
       if [[ -s "$LINGUAMESH_KEYBOARD_FOCUS_LOG" ]]; then
         break
