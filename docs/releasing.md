@@ -26,7 +26,7 @@ The external-provider path is tested only with LinguaMesh's loopback fake provid
 secret references use the Linux GIO Secret Service adapter and fail closed when the desktop keyring
 is unavailable or requires an interactive prompt. The native workflow
 pins reviewed Core functional revision
-`7275c5ec195946ea20a2d65e5f42790b2d631ff2`, whose storage delta adds
+`4f03618ffb1f37f27fb1edcf2de5a80e3bec540d`, whose storage delta adds
 `SQLITE_OPEN_NOFOLLOW` and whose text path adds protected-span, request-level glossary, and
 bounded long-text restoration, and the bounded SRT/WebVTT/CSV/JSON/HTML document contract, rather than checking
 out a floating branch. Functional revision
@@ -41,7 +41,7 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `7275c5ec195946ea20a2d65e5f42790b2d631ff2` and l10n
+The current Linux gate consumes Core `4f03618ffb1f37f27fb1edcf2de5a80e3bec540d` and l10n
 `d64d4085fb3c1cc69c9f7965bd97ffca54ca1995`. Request-level glossary rules, bounded CSV,
 interchange are implemented in the Linux slice; persistent glossary libraries and TBX import
 remain outside the release claim.
@@ -57,6 +57,8 @@ preserves navigation and resources, translates XHTML/HTML text, and updates OPF 
 Text PDFs retain page association and available coordinates; reliable ASCII streams are rewritten in
 place, while unsupported encodings use a page-aware HTML alternative. Pixel-identical output and OCR
 for image-only pages are explicitly outside this release claim.
+The Linux UI surfaces Core's bounded page-level warnings for those limitations and uncertain reading
+order without treating them as OCR or pixel-fidelity guarantees.
 
 The current native gate also includes a real post-startup `ENOSPC` regression for persistent model
 updates, profile deletion, and provider switching. Runtime-storage functional revision

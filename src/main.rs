@@ -1,6 +1,6 @@
 use adw::prelude::*;
 use gtk::glib;
-use linguamesh_document::DocumentJobState;
+use linguamesh_document::{DocumentJobState, DocumentWarning, DocumentWarningKind};
 use linguamesh_domain::{
     ErrorKind, Glossary, GlossaryEntry, MAX_GLOSSARY_CSV_BYTES, OperationId, ProviderProfileId,
     SecretRef, SecretRefNamespace, SecretValue, TranslationError, TranslationEvent,
@@ -92,6 +92,7 @@ struct UiBindings {
     document_job_guard: Rc<Cell<bool>>,
     document_job_state: Rc<Cell<Option<DocumentJobState>>>,
     document_progress: Rc<Cell<Option<(usize, usize)>>>,
+    document_warnings: Rc<RefCell<Vec<DocumentWarning>>>,
     export_notice: Rc<Cell<bool>>,
     glossary_notice: Rc<Cell<bool>>,
     glossary_from_csv: Rc<Cell<bool>>,
@@ -547,6 +548,7 @@ fn create_window(
             document_job_guard: Rc::new(Cell::new(false)),
             document_job_state: Rc::new(Cell::new(None)),
             document_progress: Rc::new(Cell::new(None)),
+            document_warnings: Rc::new(RefCell::new(Vec::new())),
             export_notice: Rc::new(Cell::new(false)),
             glossary_notice: Rc::new(Cell::new(false)),
             glossary_from_csv: Rc::new(Cell::new(false)),
@@ -1568,6 +1570,7 @@ fn connect_action_handlers(
     bindings.source.connect_changed(move |_| {
         if !source_job_guard.get() {
             *source_job_bindings.document_job_id.borrow_mut() = None;
+            source_job_bindings.document_warnings.borrow_mut().clear();
         }
     });
 
@@ -2579,6 +2582,7 @@ fn begin_document_binary_export(
 }
 
 // 通过 GIO 的分块异步读取限制内存占用，并在主线程完成 UTF-8 解码。
+#[allow(clippy::too_many_lines)]
 fn load_source_file(
     file: &gtk::gio::File,
     bindings: &UiBindings,
@@ -2626,6 +2630,7 @@ fn load_source_file(
                 Ok((contents, _)) => {
                     match file_import::decode_document_job(&source_name, contents.as_ref()) {
                     Ok(job) => {
+                        let warnings = job.warnings().unwrap_or_default();
                         if std::env::var_os("LINGUAMESH_TEST_FILE_DIALOG").is_some() {
                             println!("GTK file chooser application fixture completed the asynchronous GIO read.");
                         }
@@ -2643,6 +2648,7 @@ fn load_source_file(
                         load_bindings.source.set_text(&text);
                         load_bindings.document_job_guard.set(false);
                         *load_bindings.document_job_id.borrow_mut() = Some(job_id);
+                        *load_bindings.document_warnings.borrow_mut() = warnings;
                         *load_bindings.source_uri.borrow_mut() = Some(source_uri.clone());
                         load_bindings.error.set_label("");
                         load_bindings.error.set_visible(false);
@@ -2773,6 +2779,8 @@ fn show_document_jobs_dialog(
                 select_bindings.document_job_guard.set(true);
                 select_bindings.source.set_text(&source_text);
                 select_bindings.document_job_guard.set(false);
+                *select_bindings.document_warnings.borrow_mut() =
+                    selected.job.warnings().unwrap_or_default();
                 select_state.borrow_mut().set_source_text(&source_text);
                 select_dialog.close();
                 refresh_ui(&select_bindings, &select_state.borrow());
@@ -3445,6 +3453,8 @@ fn apply_worker_event(
                 let source_text = snapshot.job.source_text();
                 bindings.source.set_text(&source_text);
                 bindings.document_job_guard.set(false);
+                *bindings.document_warnings.borrow_mut() =
+                    snapshot.job.warnings().unwrap_or_default();
             }
         }
         WorkerEvent::DocumentJobsListed { jobs } => {
@@ -3462,6 +3472,7 @@ fn apply_worker_event(
             bindings
                 .document_progress
                 .set(Some(document_progress(&snapshot)));
+            *bindings.document_warnings.borrow_mut() = snapshot.job.warnings().unwrap_or_default();
             if let Ok(output) = snapshot.job.reconstruct() {
                 let mut state = state.borrow_mut();
                 match snapshot.state {
@@ -4235,6 +4246,56 @@ fn localized_status_label(locale: UiLocale, status: AppStatus) -> String {
     }
 }
 
+// 将 Core 提供的文档限制转换为不包含源内容的本地化提示。
+fn localized_document_warnings(locale: UiLocale, warnings: &[DocumentWarning]) -> String {
+    let mut messages = Vec::new();
+    if warnings
+        .iter()
+        .any(|warning| matches!(&warning.kind, DocumentWarningKind::PdfReconstructionLimited))
+    {
+        messages.push(localization::text(
+            locale,
+            "warning.pdf_reconstruction_limited",
+            "PDF layout fidelity is limited; page association is preserved, but pixel-identical output is not guaranteed.",
+        ));
+    }
+    let image_pages = warning_pages(warnings, &DocumentWarningKind::PdfImageOnlyPage);
+    if !image_pages.is_empty() {
+        messages.push(localized_template(
+            locale,
+            "warning.pdf_image_only_pages",
+            "PDF page(s) {pages} contain no extractable text; OCR is not enabled.",
+            &[("{pages}", image_pages.as_str())],
+        ));
+    }
+    let uncertain_pages = warning_pages(warnings, &DocumentWarningKind::PdfUncertainReadingOrder);
+    if !uncertain_pages.is_empty() {
+        messages.push(localized_template(
+            locale,
+            "warning.pdf_uncertain_order",
+            "PDF page(s) {pages} have uncertain reading order; review the structured output.",
+            &[("{pages}", uncertain_pages.as_str())],
+        ));
+    }
+    messages.join(" ")
+}
+
+// 提取并排序 warning 涉及的页码，避免向诊断或日志写入文档内容。
+fn warning_pages(warnings: &[DocumentWarning], kind: &DocumentWarningKind) -> String {
+    let mut pages = warnings
+        .iter()
+        .filter(|warning| &warning.kind == kind)
+        .filter_map(|warning| warning.page)
+        .collect::<Vec<_>>();
+    pages.sort_unstable();
+    pages.dedup();
+    pages
+        .into_iter()
+        .map(|page| page.to_string())
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
 #[allow(clippy::too_many_lines)]
 fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     refresh_localized_actions(bindings, state.locale());
@@ -4298,6 +4359,8 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             .error
             .update_state(&[gtk::accessible::State::Hidden(true)]);
     }
+    let document_warning_text =
+        localized_document_warnings(state.locale(), &bindings.document_warnings.borrow());
     let locale_note = if bindings.export_notice.get() {
         localization::text(
             state.locale(),
@@ -4388,6 +4451,8 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             "status.glossary_ready",
             "Glossary CSV is ready.",
         )
+    } else if !document_warning_text.is_empty() {
+        document_warning_text
     } else if state.is_incognito() {
         localization::text(
             state.locale(),
@@ -4542,11 +4607,12 @@ mod tests {
         DEFAULT_PROVIDER_NAME, ErrorKind, OPENAI_ADAPTER_TYPE, OnboardingStage, ProviderProfileId,
         SecretRef, SecretRefNamespace, SecretValue, TranslationError, UiLocale, WorkerCommand,
         WorkerEvent, apply_worker_event, connect_action_handlers, connect_selection_handlers,
-        create_window, custom_provider_profile, generate_custom_provider_id, refresh_ui,
-        start_event_pump,
+        create_window, custom_provider_profile, generate_custom_provider_id,
+        localized_document_warnings, refresh_ui, start_event_pump,
     };
     use adw::prelude::*;
     use gtk::glib;
+    use linguamesh_document::{DocumentWarning, DocumentWarningKind};
     use linguamesh_testkit::FakeProviderServer;
     use std::cell::RefCell;
     use std::fs;
@@ -4556,6 +4622,28 @@ mod tests {
     use std::time::{Duration, Instant};
     use tokio::runtime::Builder;
     use tokio::sync::oneshot;
+
+    #[test]
+    fn pdf_warning_text_names_limited_pages_without_source_content() {
+        let warnings = vec![
+            DocumentWarning {
+                kind: DocumentWarningKind::PdfReconstructionLimited,
+                page: None,
+            },
+            DocumentWarning {
+                kind: DocumentWarningKind::PdfImageOnlyPage,
+                page: Some(2),
+            },
+            DocumentWarning {
+                kind: DocumentWarningKind::PdfImageOnlyPage,
+                page: Some(1),
+            },
+        ];
+        let text = localized_document_warnings(UiLocale::English, &warnings);
+        assert!(text.contains("page association is preserved"));
+        assert!(text.contains("page(s) 1, 2"));
+        assert!(!text.contains("source"));
+    }
 
     fn spin_main_context_until(
         context: &glib::MainContext,

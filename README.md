@@ -20,7 +20,7 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `7275c5ec195946ea20a2d65e5f42790b2d631ff2`, which adds
+reviewed Core functional revision `4f03618ffb1f37f27fb1edcf2de5a80e3bec540d`, which adds
 `SQLITE_OPEN_NOFOLLOW` to file-backed storage, protected-span and request-level glossary
 restoration, bounded semantic chunking for long streamed text, bounded translation history, and
 optional translation-memory storage with versioned request identity, and the bounded TXT/Markdown/
@@ -91,6 +91,8 @@ metadata at export time. Text PDFs preserve page association and available coord
 ASCII text streams are rewritten in place, while unsupported PDF text encoding exports a page-aware
 HTML file with fidelity limitations rather than claiming pixel-identical reconstruction. Image-only
 pages remain explicit PDF limitations and are not OCR'd by this Linux slice.
+The editor surfaces Core's structured warnings for limited reconstruction, image-only pages, and
+uncertain reading order without including source content in diagnostics.
 
 After a translation completes, **Export translation** opens a native GTK save dialog and writes the
 output asynchronously as UTF-8. Export remains disabled without output, reports a localized success

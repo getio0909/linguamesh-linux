@@ -5,7 +5,7 @@
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`7275c5ec195946ea20a2d65e5f42790b2d631ff2`. This revision carries the explicit request-level
+`4f03618ffb1f37f27fb1edcf2de5a80e3bec540d`. This revision carries the explicit request-level
 Incognito privacy policy and changes file-backed Core storage to add SQLite's `SQLITE_OPEN_NOFOLLOW`
 flag, adds protected-span restoration and request-level glossary
 protection for streamed text, and adds bounded semantic chunking. On
@@ -14,9 +14,9 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 7275c5ec195946ea20a2d65e5f42790b2d631ff2^{commit}
+git -C ../linguamesh-core cat-file -e 4f03618ffb1f37f27fb1edcf2de5a80e3bec540d^{commit}
 git -C ../linguamesh-core diff --quiet \
-  7275c5ec195946ea20a2d65e5f42790b2d631ff2..HEAD -- \
+  4f03618ffb1f37f27fb1edcf2de5a80e3bec540d..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -28,7 +28,10 @@ persists pending/running/paused document jobs and validated non-secret translati
 restart recovery. The Linux worker tests also cover
 sequential prose-segment translation, per-segment persistence, safe reconstruction (including DOCX/PPTX/XLSX/EPUB package resources and PDF page association), structured HTML fallback for unsupported PDF encodings, and cancellation
 to a persisted cancelled snapshot. The GTK surface now exposes per-job progress and
-pause/resume/retry controls; multi-job selection remains outside the validation gate.
+pause/resume/retry controls; multi-job selection remains outside the validation gate. PDF imports
+also expose bounded structured warnings for image-only pages, uncertain reading order, and limited
+reconstruction; the UI warning test verifies that only page numbers and fixed text are shown, never
+source content.
 
 A sibling `../linguamesh-l10n` checkout at the revision pinned by `tools/sync-l10n.sh` is required
 to verify the checked-in PO catalogs.
