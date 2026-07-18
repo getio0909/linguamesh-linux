@@ -20,11 +20,12 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `e207754a35d9e29b8716420e1d19f755c9e27682`, which adds
+reviewed Core functional revision `6c54f329e9a62ffa1d2f9503087e59d4b9e9d6e9`, which adds
 `SQLITE_OPEN_NOFOLLOW` to file-backed storage, protected-span and request-level glossary
 restoration, bounded semantic chunking for long streamed text, bounded translation history, and
 optional translation-memory storage with versioned request identity, and the bounded TXT/Markdown
-document contract with preserved line endings and verbatim Markdown fences.
+document contract with preserved line endings and verbatim Markdown fences, plus schema-6 document
+job snapshots that survive worker restart without persisting source paths or credentials.
 
 ## Native stack
 

@@ -2933,7 +2933,9 @@ fn apply_worker_event(
         }
         WorkerEvent::TranslationHistoryActionRejected(error)
         | WorkerEvent::SecretCleanupFailed { error, .. }
-        | WorkerEvent::TranslationMemoryActionRejected(error) => {
+        | WorkerEvent::TranslationMemoryActionRejected(error)
+        | WorkerEvent::DocumentJobActionRejected(error)
+        | WorkerEvent::DocumentJobStorageUnavailable(error) => {
             state.borrow_mut().record_client_error(error.to_string());
         }
         WorkerEvent::TranslationHistoryPolicyRejected(error) => {
@@ -2999,6 +3001,9 @@ fn apply_worker_event(
             bindings.memory_warning.set(true);
             bindings.memory_clear_pending.set(false);
         }
+        WorkerEvent::DocumentJobsRestored { .. }
+        | WorkerEvent::DocumentJobsListed { .. }
+        | WorkerEvent::DocumentJobUpdated(_) => {}
         WorkerEvent::DemoProviderReady { endpoint } => {
             let should_use_demo = {
                 let state = state.borrow();

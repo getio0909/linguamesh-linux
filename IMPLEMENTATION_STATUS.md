@@ -41,7 +41,7 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
 
 - Rust 1.93.0 Cargo package at `0.1.0-alpha.2`, with locked Core alpha.2 path dependencies and
   optional `demo-provider`/`gui` features. Native CI pins Core functional revision
-  `e207754a35d9e29b8716420e1d19f755c9e27682`.
+  `6c54f329e9a62ffa1d2f9503087e59d4b9e9d6e9`.
 - Startup rejects any Core other than semantic version `0.1.0-alpha.2`, ABI 1, protocol 1, provider
   catalog `0.1.0`, with the required cancellation, compatibility, typed Rust host-secret broker,
   model-discovery, protected-span, streaming-text, and text-translation features.
@@ -625,7 +625,7 @@ format support.
 
 Implemented:
 
-- Pinned Core `e207754a35d9e29b8716420e1d19f755c9e27682`, which exposes the negotiated
+- Pinned Core `6c54f329e9a62ffa1d2f9503087e59d4b9e9d6e9`, which exposes the negotiated
   `bounded_text_document_v1` feature and the `linguamesh-document` crate.
 - Routed Linux TXT/Markdown file import through the Core document contract. Unsupported formats,
   oversized data, and invalid UTF-8 are rejected without exposing paths or file contents; existing
@@ -641,6 +641,31 @@ Validated locally:
 - Native linking remains CI-only because this host lacks the GTK 4.10 symbols required by the
   current system libraries.
 
+## 2026-07-18 — Linux document job recovery
+
+Assumption: the first recoverable queue slice persists only an opaque job ID, source basename,
+format, ordered bounded segments, and lifecycle state. It does not persist source paths, provider
+credentials, session secrets, or archive payloads. GUI queue presentation and archive codecs remain
+future work.
+
+Implemented:
+
+- Pinned Core `6c54f329e9a62ffa1d2f9503087e59d4b9e9d6e9`, whose schema 6 adds bounded document-job
+  and segment snapshots plus resumable-state APIs.
+- Added Linux worker commands/events for document-job create, list, segment update, resume, cancel,
+  startup restoration, and exact storage rejection. Segment progress survives worker restart and
+  reconstruction still preserves source line endings and Markdown structure segments.
+- Kept persistence limited to the safe basename/segment snapshot contract; no filesystem paths or
+  credential values are written.
+
+Validated locally:
+
+- `cargo fmt --all -- --check` and strict all-target/all-feature Clippy passed.
+- `cargo check --features gui --offline` passed through Rust compilation.
+- `cargo test --features demo-provider --lib --offline` passed: 89 tests, 88 passed, 0 failed,
+  1 intentional environment-dependent ignore.
+- `bash tools/sync-l10n.sh --check` and `git diff --check` passed.
+
 ## 2026-07-18 — Linux translation memory controls
 
 Assumption: translation memory is a separate optional local cache from history. Incognito never
@@ -649,7 +674,8 @@ included so same-named models from different confirmed providers cannot cross-re
 
 Implemented:
 
-- Pinned Core `e207754a35d9e29b8716420e1d19f755c9e27682`, whose schema 5 storage exposes a bounded
+- Pinned Core `6c54f329e9a62ffa1d2f9503087e59d4b9e9d6e9`, whose schema 6 storage exposes bounded document jobs alongside the existing
+  schema-5 translation-memory policy, deterministic identity, lookup/write, inspection, export data, exact
   translation-memory policy, deterministic identity, lookup/write, inspection, export data, exact
   deletion, and clear-all controls.
 - Added Linux worker startup/policy/list/delete/clear events and cache-hit translation flow. A hit

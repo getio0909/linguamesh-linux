@@ -26,7 +26,7 @@ confirmation, or rollback.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `e207754a35d9e29b8716420e1d19f755c9e27682`; compared with the prior
+functional revision is `6c54f329e9a62ffa1d2f9503087e59d4b9e9d6e9`; compared with the prior
 alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW` and adds streamed
 protected-span and request-level glossary restoration. The required contract
 is exact Core `0.1.0-alpha.2`, ABI 1, protocol 1, provider catalog `0.1.0`, and these features:
@@ -88,7 +88,9 @@ clear-all.
 The native text-file path delegates TXT/Markdown format detection and bounded UTF-8/BOM handling to
 Core's `bounded_text_document_v1` contract. It preserves the original LF/CRLF/CR line endings and
 classifies Markdown fenced code and blank structure as verbatim segments before the editor receives
-the source text; persistent document queues and archive codecs remain outside this slice.
+the source text. Core schema 6 and the worker persist bounded pending/running job snapshots and
+segment progress without source paths or credentials; archive codecs and GUI queue presentation
+remain outside this slice.
 
 With `gui`, `src/main.rs` binds this state and worker to GTK 4/libadwaita widgets. GTK objects remain
 on the main context, which processes at most 64 queued events per timer tick without performing

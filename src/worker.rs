@@ -1,13 +1,14 @@
 use crate::model::{ProviderProfile, ProviderProfileId};
 use linguamesh_application::{HostSecretRequests, ProviderManager, host_secret_channel};
+use linguamesh_document::{DocumentJob, DocumentJobState};
 use linguamesh_domain::{
     CompatibilityRequirements, CoreCompatibility, ErrorKind, ModelDescriptor, SecretValue,
     TranslationError, TranslationEvent, TranslationRequest,
 };
 use linguamesh_engine::{CancellationHandle, TranslationOperation, core_compatibility};
 use linguamesh_storage::{
-    MAX_TRANSLATION_HISTORY_ENTRIES, MAX_TRANSLATION_MEMORY_ENTRIES, Storage,
-    TranslationHistoryEntry, TranslationMemoryEntry,
+    DocumentJobSnapshot, MAX_DOCUMENT_JOBS, MAX_TRANSLATION_HISTORY_ENTRIES,
+    MAX_TRANSLATION_MEMORY_ENTRIES, Storage, TranslationHistoryEntry, TranslationMemoryEntry,
 };
 use linguamesh_testkit::FakeProviderServer;
 use std::error::Error;
@@ -101,6 +102,34 @@ pub enum WorkerCommand {
     },
     /// 清空本地翻译记忆。
     ClearTranslationMemory,
+    /// 创建或替换一个本地文档任务快照。
+    CreateDocumentJob {
+        /// 不包含路径的稳定任务标识。
+        job_id: String,
+        /// TXT 或 Markdown 文档快照。
+        job: DocumentJob,
+    },
+    /// 按最近更新时间读取本地文档任务。
+    ListDocumentJobs,
+    /// 更新文档任务中的一个可翻译段。
+    UpdateDocumentSegment {
+        /// 文档任务标识。
+        job_id: String,
+        /// 段稳定顺序号。
+        index: usize,
+        /// 已完成的译文。
+        translated_text: String,
+    },
+    /// 将一个可恢复文档任务标记为继续处理。
+    ResumeDocumentJob {
+        /// 文档任务标识。
+        job_id: String,
+    },
+    /// 取消一个文档任务并保留其快照。
+    CancelDocumentJob {
+        /// 文档任务标识。
+        job_id: String,
+    },
     /// 开始翻译请求。
     Translate(TranslationRequest),
     /// 取消当前连接或翻译。
@@ -191,6 +220,22 @@ pub enum WorkerEvent {
     TranslationMemoryActionRejected(TranslationError),
     /// 本地翻译记忆写入失败，但翻译结果仍已完成。
     TranslationMemoryPersistenceFailed(TranslationError),
+    /// 启动时恢复的可继续文档任务。
+    DocumentJobsRestored {
+        /// 状态为 pending 或 running 的任务快照。
+        jobs: Vec<DocumentJobSnapshot>,
+    },
+    /// 已读取本地文档任务。
+    DocumentJobsListed {
+        /// 按最近更新时间排列的任务快照。
+        jobs: Vec<DocumentJobSnapshot>,
+    },
+    /// 文档任务快照已写入。
+    DocumentJobUpdated(DocumentJobSnapshot),
+    /// 文档任务存储在启动或操作期间不可用。
+    DocumentJobStorageUnavailable(TranslationError),
+    /// 文档任务命令被精确拒绝。
+    DocumentJobActionRejected(TranslationError),
     /// 提供商已连接并返回模型。
     Connected {
         /// 已由核心成功连接的规范配置。
@@ -349,6 +394,22 @@ enum QueuedCommand {
         cache_key: String,
     },
     ClearTranslationMemory,
+    CreateDocumentJob {
+        job_id: String,
+        job: DocumentJob,
+    },
+    ListDocumentJobs,
+    UpdateDocumentSegment {
+        job_id: String,
+        index: usize,
+        translated_text: String,
+    },
+    ResumeDocumentJob {
+        job_id: String,
+    },
+    CancelDocumentJob {
+        job_id: String,
+    },
     Translate(TranslationRequest),
     Cancel,
     Shutdown,
@@ -430,6 +491,7 @@ impl CoreWorker {
     }
 
     /// 非阻塞提交界面命令。
+    #[allow(clippy::too_many_lines)]
     pub fn try_send(&self, command: WorkerCommand) -> Result<(), WorkerSendError> {
         match command {
             WorkerCommand::Cancel => {
@@ -509,6 +571,34 @@ impl CoreWorker {
             WorkerCommand::ClearTranslationMemory => self
                 .commands
                 .try_send(QueuedCommand::ClearTranslationMemory)
+                .map_err(|_| WorkerSendError),
+            WorkerCommand::CreateDocumentJob { job_id, job } => self
+                .commands
+                .try_send(QueuedCommand::CreateDocumentJob { job_id, job })
+                .map_err(|_| WorkerSendError),
+            WorkerCommand::ListDocumentJobs => self
+                .commands
+                .try_send(QueuedCommand::ListDocumentJobs)
+                .map_err(|_| WorkerSendError),
+            WorkerCommand::UpdateDocumentSegment {
+                job_id,
+                index,
+                translated_text,
+            } => self
+                .commands
+                .try_send(QueuedCommand::UpdateDocumentSegment {
+                    job_id,
+                    index,
+                    translated_text,
+                })
+                .map_err(|_| WorkerSendError),
+            WorkerCommand::ResumeDocumentJob { job_id } => self
+                .commands
+                .try_send(QueuedCommand::ResumeDocumentJob { job_id })
+                .map_err(|_| WorkerSendError),
+            WorkerCommand::CancelDocumentJob { job_id } => self
+                .commands
+                .try_send(QueuedCommand::CancelDocumentJob { job_id })
                 .map_err(|_| WorkerSendError),
             WorkerCommand::Translate(request) => self
                 .commands
@@ -675,6 +765,24 @@ async fn run_worker(
                 {
                     return;
                 }
+                match storage.resumable_document_jobs() {
+                    Ok(jobs) => {
+                        if events
+                            .send(WorkerEvent::DocumentJobsRestored { jobs })
+                            .is_err()
+                        {
+                            return;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::DocumentJobStorageUnavailable(error))
+                            .is_err()
+                        {
+                            return;
+                        }
+                    }
+                }
                 Some(storage)
             }
             Err(error) => {
@@ -814,6 +922,20 @@ async fn run_worker(
                         TranslationError::new(
                             ErrorKind::InvalidConfiguration,
                             "Translation memory cannot be changed while a translation is running.",
+                        ),
+                    ));
+                }
+                ActiveStep::Command(Some(
+                    QueuedCommand::CreateDocumentJob { .. }
+                    | QueuedCommand::ListDocumentJobs
+                    | QueuedCommand::UpdateDocumentSegment { .. }
+                    | QueuedCommand::ResumeDocumentJob { .. }
+                    | QueuedCommand::CancelDocumentJob { .. },
+                )) => {
+                    let _ = events.send(WorkerEvent::DocumentJobActionRejected(
+                        TranslationError::new(
+                            ErrorKind::InvalidConfiguration,
+                            "A document job cannot change while a translation is running.",
                         ),
                     ));
                 }
@@ -1372,6 +1494,175 @@ async fn run_worker(
                     }
                 }
             }
+            Some(QueuedCommand::CreateDocumentJob { job_id, job }) => {
+                let result = storage
+                    .as_mut()
+                    .ok_or_else(|| {
+                        TranslationError::new(
+                            ErrorKind::Persistence,
+                            "Local document job storage is unavailable.",
+                        )
+                    })
+                    .and_then(|storage| {
+                        storage.save_document_job(&job_id, &job, DocumentJobState::Pending)
+                    });
+                match result {
+                    Ok(snapshot) => {
+                        if events
+                            .send(WorkerEvent::DocumentJobUpdated(snapshot))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::DocumentJobActionRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
+            Some(QueuedCommand::ListDocumentJobs) => {
+                let result = storage
+                    .as_ref()
+                    .ok_or_else(|| {
+                        TranslationError::new(
+                            ErrorKind::Persistence,
+                            "Local document job storage is unavailable.",
+                        )
+                    })
+                    .and_then(|storage| storage.document_jobs(MAX_DOCUMENT_JOBS));
+                match result {
+                    Ok(jobs) => {
+                        if events
+                            .send(WorkerEvent::DocumentJobsListed { jobs })
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::DocumentJobActionRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
+            Some(QueuedCommand::UpdateDocumentSegment {
+                job_id,
+                index,
+                translated_text,
+            }) => {
+                let result = storage
+                    .as_mut()
+                    .ok_or_else(|| {
+                        TranslationError::new(
+                            ErrorKind::Persistence,
+                            "Local document job storage is unavailable.",
+                        )
+                    })
+                    .and_then(|storage| {
+                        storage.update_document_segment(&job_id, index, &translated_text)
+                    });
+                match result {
+                    Ok(snapshot) => {
+                        if events
+                            .send(WorkerEvent::DocumentJobUpdated(snapshot))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::DocumentJobActionRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
+            Some(QueuedCommand::ResumeDocumentJob { job_id }) => {
+                let result = storage
+                    .as_mut()
+                    .ok_or_else(|| {
+                        TranslationError::new(
+                            ErrorKind::Persistence,
+                            "Local document job storage is unavailable.",
+                        )
+                    })
+                    .and_then(|storage| {
+                        let snapshot = storage.document_job(&job_id)?.ok_or_else(|| {
+                            TranslationError::new(
+                                ErrorKind::InvalidConfiguration,
+                                "The document job was not found.",
+                            )
+                        })?;
+                        if !snapshot.state.is_resumable() {
+                            return Err(TranslationError::new(
+                                ErrorKind::InvalidConfiguration,
+                                "The document job is not resumable.",
+                            ));
+                        }
+                        storage.set_document_job_state(&job_id, DocumentJobState::Running)
+                    });
+                match result {
+                    Ok(snapshot) => {
+                        if events
+                            .send(WorkerEvent::DocumentJobUpdated(snapshot))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::DocumentJobActionRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
+            Some(QueuedCommand::CancelDocumentJob { job_id }) => {
+                let result = storage
+                    .as_mut()
+                    .ok_or_else(|| {
+                        TranslationError::new(
+                            ErrorKind::Persistence,
+                            "Local document job storage is unavailable.",
+                        )
+                    })
+                    .and_then(|storage| {
+                        storage.set_document_job_state(&job_id, DocumentJobState::Cancelled)
+                    });
+                match result {
+                    Ok(snapshot) => {
+                        if events
+                            .send(WorkerEvent::DocumentJobUpdated(snapshot))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::DocumentJobActionRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
             Some(QueuedCommand::Translate(request)) => {
                 let request = active_profile.as_ref().map_or(request.clone(), |profile| {
                     request.clone().with_provider_identity(format!(
@@ -1529,6 +1820,13 @@ fn reject_queued_commands_for_shutdown(
             QueuedCommand::ListTranslationMemory
             | QueuedCommand::DeleteTranslationMemory { .. } => events.send(
                 WorkerEvent::TranslationMemoryActionRejected(TranslationError::cancelled()),
+            ),
+            QueuedCommand::CreateDocumentJob { .. }
+            | QueuedCommand::ListDocumentJobs
+            | QueuedCommand::UpdateDocumentSegment { .. }
+            | QueuedCommand::ResumeDocumentJob { .. }
+            | QueuedCommand::CancelDocumentJob { .. } => events.send(
+                WorkerEvent::DocumentJobActionRejected(TranslationError::cancelled()),
             ),
             QueuedCommand::Translate(_) => events.send(WorkerEvent::TranslationRejected(
                 TranslationError::cancelled(),
@@ -2057,6 +2355,7 @@ mod tests {
         WorkerCommand, WorkerEvent, profile_without_secret, validate_core_contract,
     };
     use crate::model::{ProviderProfile, ProviderProfileId};
+    use linguamesh_document::{DocumentFormat, DocumentJob, DocumentJobState};
     use linguamesh_domain::{
         CoreCompatibility, ErrorKind, SecretRef, SecretRefNamespace, SecretValue, TranslationError,
         TranslationEvent, TranslationPrivacyMode, TranslationRequest,
@@ -2433,7 +2732,8 @@ mod tests {
                 }
                 WorkerEvent::TranslationHistoryRestored { .. }
                 | WorkerEvent::TranslationHistoryPolicyRestored { .. }
-                | WorkerEvent::TranslationMemoryRestored { .. } => {}
+                | WorkerEvent::TranslationMemoryRestored { .. }
+                | WorkerEvent::DocumentJobsRestored { .. } => {}
                 WorkerEvent::DemoProviderReady { endpoint } => {
                     return (
                         worker,
@@ -2477,7 +2777,8 @@ mod tests {
                 }
                 WorkerEvent::TranslationHistoryRestored { .. }
                 | WorkerEvent::TranslationHistoryPolicyRestored { .. }
-                | WorkerEvent::TranslationMemoryRestored { .. } => {}
+                | WorkerEvent::TranslationMemoryRestored { .. }
+                | WorkerEvent::DocumentJobsRestored { .. } => {}
                 WorkerEvent::DemoProviderReady { endpoint } => {
                     let (profiles, active_profile_id) =
                         restored_snapshot.expect("profile storage snapshot");
@@ -2505,7 +2806,12 @@ mod tests {
                 WorkerEvent::Translation(event) if event.is_terminal() => {}
                 WorkerEvent::TranslationHistoryUpdated { .. }
                 | WorkerEvent::TranslationMemoryPersistenceFailed(_)
-                | WorkerEvent::TranslationHistoryPersistenceFailed(_) => {}
+                | WorkerEvent::TranslationHistoryPersistenceFailed(_)
+                | WorkerEvent::DocumentJobActionRejected(_)
+                | WorkerEvent::DocumentJobStorageUnavailable(_)
+                | WorkerEvent::DocumentJobUpdated(_)
+                | WorkerEvent::DocumentJobsListed { .. }
+                | WorkerEvent::DocumentJobsRestored { .. } => {}
                 _ => panic!("unexpected worker shutdown event"),
             }
         }
@@ -2787,6 +3093,92 @@ mod tests {
             }
             _ => panic!("unexpected deletion event"),
         }
+        shutdown(&worker);
+    }
+
+    #[test]
+    fn document_jobs_persist_segment_progress_and_restore_after_restart() {
+        let database = TestDatabase::new();
+        let worker = CoreWorker::spawn_with_database(database.path());
+        loop {
+            match worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("startup event")
+            {
+                WorkerEvent::DemoProviderReady { .. } => break,
+                WorkerEvent::ProfileStorageUnavailable(error) => {
+                    panic!("document storage unavailable: {error}");
+                }
+                _ => {}
+            }
+        }
+        let job = DocumentJob::from_text("notes.txt", DocumentFormat::Txt, "one\ntwo");
+        worker
+            .try_send(WorkerCommand::CreateDocumentJob {
+                job_id: "document-job-1".to_owned(),
+                job,
+            })
+            .expect("create document job");
+        let created = worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("created event");
+        assert!(
+            matches!(created, WorkerEvent::DocumentJobUpdated(snapshot) if snapshot.state == DocumentJobState::Pending)
+        );
+        worker
+            .try_send(WorkerCommand::UpdateDocumentSegment {
+                job_id: "document-job-1".to_owned(),
+                index: 0,
+                translated_text: "一".to_owned(),
+            })
+            .expect("update document segment");
+        let updated = worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("updated event");
+        assert!(
+            matches!(updated, WorkerEvent::DocumentJobUpdated(snapshot) if snapshot.state == DocumentJobState::Running && snapshot.job.pending_count() == 1)
+        );
+        shutdown(&worker);
+
+        let worker = CoreWorker::spawn_with_database(database.path());
+        let restored = loop {
+            match worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("restart startup event")
+            {
+                WorkerEvent::DocumentJobsRestored { jobs } => break jobs,
+                WorkerEvent::ProfileStorageUnavailable(error) => {
+                    panic!("document storage unavailable after restart: {error}");
+                }
+                _ => {}
+            }
+        };
+        assert_eq!(restored.len(), 1);
+        assert_eq!(restored[0].job_id, "document-job-1");
+        assert_eq!(restored[0].state, DocumentJobState::Running);
+        assert_eq!(restored[0].job.pending_count(), 1);
+        worker
+            .try_send(WorkerCommand::UpdateDocumentSegment {
+                job_id: "document-job-1".to_owned(),
+                index: 1,
+                translated_text: "二".to_owned(),
+            })
+            .expect("complete restored document job");
+        let completed = loop {
+            if let WorkerEvent::DocumentJobUpdated(snapshot) = worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("completion event")
+            {
+                break snapshot;
+            }
+        };
+        assert_eq!(completed.state, DocumentJobState::Completed);
+        assert_eq!(completed.job.reconstruct().expect("reconstruct"), "一\n二");
         shutdown(&worker);
     }
 
