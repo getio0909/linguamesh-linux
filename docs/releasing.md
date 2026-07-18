@@ -26,8 +26,9 @@ The external-provider path is tested only with LinguaMesh's loopback fake provid
 secret references use the Linux GIO Secret Service adapter and fail closed when the desktop keyring
 is unavailable or requires an interactive prompt. The native workflow
 pins reviewed Core functional revision
-`fbf3e9b5927049dccaa19f8c36013495ffebba12`, whose storage delta adds
-`SQLITE_OPEN_NOFOLLOW`, rather than checking out a floating branch. Functional revision
+`031b20cd6f4ddc7635057d1b2d949db4ac7d1f39`, whose storage delta adds
+`SQLITE_OPEN_NOFOLLOW` and whose text path adds protected-span restoration, rather than checking
+out a floating branch. Functional revision
 `7d7eba9960b657f0460fb0daaaaebaaa609f39b1` passed Native Linux run `29604269568` (job
 `87963611054`) and repository-foundation run `29604269516`; it includes the no-credential
 OpenAI-compatible loopback regression, secure onboarding fixtures, strict Clippy, both display

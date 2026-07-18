@@ -32,14 +32,21 @@ Assumption: enabling gtk-rs `v4_10` is an existing-dependency API feature, not a
 package. Ubuntu 24.04 native CI is the compatibility gate for this GTK 4.10-or-newer surface;
 older distributions and future Flatpak runtimes require separate packaging validation.
 
+Assumption: Core automatic protected-span scanning covers common URLs, email addresses, Markdown
+code, and placeholder forms. User-managed glossaries, product names, and provider-specific syntax
+remain outside this Linux slice until a versioned configuration contract is specified.
+
 ## Implemented
 
 - Rust 1.93.0 Cargo package at `0.1.0-alpha.2`, with locked Core alpha.2 path dependencies and
   optional `demo-provider`/`gui` features. Native CI pins Core functional revision
-  `fbf3e9b5927049dccaa19f8c36013495ffebba12`.
+  `031b20cd6f4ddc7635057d1b2d949db4ac7d1f39`.
 - Startup rejects any Core other than semantic version `0.1.0-alpha.2`, ABI 1, protocol 1, provider
   catalog `0.1.0`, with the required cancellation, compatibility, typed Rust host-secret broker,
-  model-discovery, streaming-text, and text-translation features.
+  model-discovery, protected-span, streaming-text, and text-translation features.
+- Core's `protected_spans_v1` contract shields common structured spans before provider prompt
+  construction, restores them across split streamed deltas, and fails closed on missing, duplicate,
+  or changed markers; Linux negotiates the feature before starting provider work.
 - Toolkit-independent state starts disconnected and uses canonical Core `ProviderProfile` and
   `ProviderProfileId` values. It atomically restores a sorted multi-profile snapshot, keeps the
   selected form row, persisted default, connected saved row, and pending deletion distinct, and
@@ -144,7 +151,7 @@ older distributions and future Flatpak runtimes require separate packaging valid
 Validated on 2026-07-18 with Rust 1.93.0:
 
 - The pinned global-goal SHA-256 matched the sibling authoritative file.
-- Core functional revision `fbf3e9b5927049dccaa19f8c36013495ffebba12` is the reviewed source
+- Core functional revision `031b20cd6f4ddc7635057d1b2d949db4ac7d1f39` is the reviewed source
   pin, and every direct Core dependency is constrained to `=0.1.0-alpha.2`. The clean local Core
   HEAD was a documentation-only descendant whose scoped compiled-source diff from that revision
   was empty.

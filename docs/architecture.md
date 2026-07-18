@@ -26,14 +26,16 @@ confirmation, or rollback.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `fbf3e9b5927049dccaa19f8c36013495ffebba12`; compared with the prior
-alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW`. The required contract
+functional revision is `031b20cd6f4ddc7635057d1b2d949db4ac7d1f39`; compared with the prior
+alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW` and adds streamed
+protected-span restoration. The required contract
 is exact Core `0.1.0-alpha.2`, ABI 1, protocol 1, provider catalog `0.1.0`, and these features:
 
 - `cancellation_v1`
 - `compatibility_negotiation_v1`
 - `typed_rust_host_secret_broker_v1`
 - `model_discovery_v1`
+- `protected_spans_v1`
 - `streaming_text_v1`
 - `text_translation_v1`
 
@@ -52,6 +54,11 @@ are reachable outside the bounded command queue, so a full queue cannot prevent 
 Translation commands receive ordered Core events, preserve partial output, and terminate with a
 typed terminal result. Provider URL policy, HTTP, SSE parsing, prompts, credential use, and
 translation cancellation remain in Core.
+
+The pinned Core also protects common URLs, email addresses, Markdown code, and placeholders before
+prompt construction. The adapter restores those spans across split streamed deltas and rejects
+missing, duplicate, or changed markers as typed malformed responses; Linux therefore never renders
+provider output that structurally drops one of these spans.
 
 With `gui`, `src/main.rs` binds this state and worker to GTK 4/libadwaita widgets. GTK objects remain
 on the main context, which processes at most 64 queued events per timer tick without performing

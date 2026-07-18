@@ -5,16 +5,16 @@
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`fbf3e9b5927049dccaa19f8c36013495ffebba12`. This revision changes file-backed Core storage to add
-SQLite's `SQLITE_OPEN_NOFOLLOW` flag and includes its Unix symlink-rejection regression test. On
+`031b20cd6f4ddc7635057d1b2d949db4ac7d1f39`. This revision changes file-backed Core storage to add
+SQLite's `SQLITE_OPEN_NOFOLLOW` flag and adds protected-span restoration for streamed text. On
 Linux's default Unix VFS, any symbolic-link path component is rejected. A clean documentation-only
 descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e fbf3e9b5927049dccaa19f8c36013495ffebba12^{commit}
+git -C ../linguamesh-core cat-file -e 031b20cd6f4ddc7635057d1b2d949db4ac7d1f39^{commit}
 git -C ../linguamesh-core diff --quiet \
-  fbf3e9b5927049dccaa19f8c36013495ffebba12..HEAD -- \
+  031b20cd6f4ddc7635057d1b2d949db4ac7d1f39..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
