@@ -340,10 +340,11 @@ first focusability assertion because GTK dropdowns defaulted to non-focusable; t
 sets every labelled control and action explicitly focusable.
 
 The Incognito policy checkpoint is Core `225d1edc0316b11ea0791c658adc14bd811dc865`, Linux
-`PENDING`, and l10n `e5c51a046e01c51b106ba3d177e33e41a69b8aa0`. Local Core workspace Clippy and
+`78293684227b40af0b26442d9d23e2ff71d3d36d`, and l10n `e5c51a046e01c51b106ba3d177e33e41a69b8aa0`. Local Core workspace Clippy and
 all-feature tests passed, Linux all-target Clippy and the 54 portable tests passed, and l10n
-`make check` passed with 225 messages. The host still lacks GTK development libraries, so the
-all-feature Linux binary link and real GTK Incognito toggle remain remote native-CI evidence.
+`make check` passed with 225 messages. Native run `29635954249` (job `88058210096`), Foundation
+run `29635954224`, and Flatpak run `29635954240` (job `88058210082`) passed the all-feature Linux
+binary link and real GTK Incognito toggle coverage.
 
 ## Repository foundation check
 
