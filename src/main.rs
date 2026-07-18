@@ -2096,6 +2096,9 @@ fn begin_source_file_open(
     filter.add_suffix("markdown");
     filter.add_suffix("srt");
     filter.add_suffix("vtt");
+    filter.add_mime_type("text/html");
+    filter.add_suffix("html");
+    filter.add_suffix("htm");
     filter.add_mime_type("text/csv");
     filter.add_suffix("csv");
     filter.add_mime_type("application/json");

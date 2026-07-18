@@ -26,7 +26,7 @@ confirmation, or rollback.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `ae8e437ff51fb045a6961604db6a19ebe488e0ba`; compared with the prior
+functional revision is `912780f21d8dbb19571c9b991879778a053272f8`; compared with the prior
 alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW` and adds streamed
 protected-span and request-level glossary restoration. The required contract
 is exact Core `0.1.0-alpha.2`, ABI 1, protocol 1, provider catalog `0.1.0`, and these features:
@@ -85,12 +85,12 @@ protected-span policy, prompt-template version, and quality mode. Incognito bypa
 write; **View translation memory** supports inspection, escaped TSV export, exact deletion, and
 clear-all.
 
-The native text-file path delegates TXT/Markdown/CSV/JSON/SRT/WebVTT format detection and bounded UTF-8/BOM handling to
+The native text-file path delegates TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT format detection and bounded UTF-8/BOM handling to
 Core's `bounded_text_document_v1` contract. It preserves the original LF/CRLF/CR line endings and
 classifies Markdown fenced code and blank structure as verbatim segments before the editor receives
 the source text. Core schema 9 and the worker persist bounded pending/running/paused job snapshots
 and segment progress without source paths or credentials. Schema 8 also stores validated non-secret
-source/target locales, provider/model IDs, and optional glossary rules. Imported TXT/Markdown/CSV/JSON/SRT/WebVTT files
+source/target locales, provider/model IDs, and optional glossary rules. Imported TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT files
 become these snapshots before translation; the worker translates pending prose segments sequentially,
 writes each completed segment, and routes safe reconstruction back to the editor. Resume and Retry
 reuse saved options only after the active runtime matches. Archive codecs and multi-job queue
@@ -115,7 +115,7 @@ Selecting a restored profile prefills only its non-secret form fields without co
 changing the active runtime model. New persistent profiles use a GLib random UUID validated as a
 Core `ProviderProfileId`; display names are never database keys. Pending connection, model
 selection, translation, or deletion disables conflicting controls. Text import uses GTK's native
-`FileDialog` and GIO's bounded partial asynchronous read; only UTF-8 TXT/Markdown/CSV/JSON/SRT/WebVTT content up to
+`FileDialog` and GIO's bounded partial asynchronous read; only UTF-8 TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT content up to
 4 MiB is accepted, and file paths/content are excluded from diagnostics.
 
 The GTK boundary also owns baseline accessibility semantics. The workspace uses the `Main` role;

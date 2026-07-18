@@ -128,6 +128,14 @@ mod tests {
             decode_document_contents("payload.json", br#"{"name":"bad\q"}"#),
             Err(TextImportError::InvalidStructure)
         );
+        assert_eq!(
+            decode_document_contents("page.html", b"<p>Hello</p>"),
+            Ok("<p>Hello</p>".to_owned())
+        );
+        assert_eq!(
+            decode_document_contents("page.html", b"<p>Hello"),
+            Err(TextImportError::InvalidStructure)
+        );
     }
 
     #[test]
@@ -170,5 +178,18 @@ mod tests {
             .position(|segment| segment.source_text == "\"Alice\"")
             .expect("json value");
         assert_eq!(job.translation_source_text(index).unwrap(), "Alice");
+    }
+
+    #[test]
+    fn returns_html_jobs_with_visible_text_segments() {
+        let job = decode_document_job("page.html", b"<p>Hello <strong>world</strong></p>")
+            .expect("html job");
+        let prose = job
+            .segments
+            .iter()
+            .filter(|segment| segment.kind == linguamesh_document::DocumentSegmentKind::Prose)
+            .map(|segment| segment.source_text.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(prose, vec!["Hello ", "world"]);
     }
 }
