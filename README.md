@@ -39,8 +39,9 @@ The current GTK surface includes baseline accessibility semantics: the main work
 status, and errors expose explicit roles; source/output editors expose names, multi-line and
 read-only properties; editable fields and dropdowns are labelled by visible mnemonic labels; the
 output region reports translation busy state; empty errors are hidden from the accessibility tree;
-and Stop has the explicit accessible name “Stop translation”. Focusable controls retain the visual
-tab order. This is semantic widget wiring, not a claim of Orca/AT-SPI or physical-keyboard coverage.
+and Stop has the explicit accessible name “Stop translation”. A CI fixture reads the running
+application through AT-SPI and verifies the named Stop control plus both text-editor roles. This
+does not claim Orca speech, physical-keyboard, high-contrast, or physical-compositor coverage.
 
 ## Build and run
 

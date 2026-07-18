@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, a headless GTK keyboard traversal fixture for tested controls, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF document-job translation with sequential segment persistence, bounded DOCX/PPTX/XLSX/EPUB package reconstruction and resource retention, page-aware text-PDF reconstruction with structured HTML fallback, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; provider-form default Tab-chain coverage, AT-SPI/Orca narration, end-user prompt acceptance, multi-job GUI queue presentation, OCR, and release artifacts remain open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, live AT-SPI tree export checks, a headless GTK keyboard traversal fixture for tested controls, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF document-job translation with sequential segment persistence, bounded DOCX/PPTX/XLSX/EPUB package reconstruction and resource retention, page-aware text-PDF reconstruction with structured HTML fallback, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; Orca speech, provider-form default Tab-chain coverage, end-user prompt acceptance, multi-job GUI queue presentation, OCR, and release artifacts remain open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -138,9 +138,11 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
   `Alert` roles; named multi-line source/output `TextBox` editors with output read-only; visible
   label-to-control `LabelledBy` and mnemonic relations; focusable editor and action controls; an
   explicit `Stop translation` accessible name; output `Busy` state during translation with terminal
-  reset; and an accessibility-hidden empty error label. These are semantic wiring guarantees, not
-  AT-SPI/Orca, provider-form default Tab-chain, RTL, high-contrast, or full desktop accessibility
-  evidence. A CI-only focus probe records widget focus events without changing normal runtime behavior.
+  reset; and an accessibility-hidden empty error label. The `tools/run-gtk-atspi-test.sh` fixture
+  additionally reads the live Xvfb application through `python3-pyatspi` and verifies the named Stop
+  button plus two text-editor roles. This is AT-SPI semantic export evidence, not Orca speech,
+  provider-form default Tab-chain, RTL, high-contrast, or full desktop accessibility evidence. A
+  CI-only focus probe records widget focus events without changing normal runtime behavior.
 - The Linux host now uses existing GIO D-Bus bindings for Secret Service `OpenSession`, item search,
   create/update, and `GetSecret` resolution. Persistent profiles retain only a SecretRef; the
   one-shot credential is passed through the existing typed broker and is never written to SQLite.
@@ -694,6 +696,33 @@ Validated locally:
 - `git diff --check` passed.
 - Native GUI linking remains CI-only because this host lacks the GTK 4.10 symbols required by the
   current system libraries.
+
+## 2026-07-18 — Linux AT-SPI semantic export checkpoint
+
+Assumption: the smallest reproducible screen-reader slice is live AT-SPI tree export for the
+primary translation controls. This verifies names and roles through the Linux accessibility bus;
+it does not claim Orca speech output, manual desktop review, or high-contrast/compositor coverage.
+
+Implemented:
+
+- Added `tools/run-gtk-atspi-test.sh`, which starts an isolated Xvfb/xfwm4 session and the AT-SPI
+  bus, then launches the real GTK binary without source text or credentials in diagnostics.
+- Added `tools/gtk-atspi-inspect.py`, which waits for the application to register and verifies the
+  exported `Stop translation` push button plus two text-editor roles through `python3-pyatspi`.
+- Added the pinned `python3-pyatspi` CI dependency and Foundation required-file checks; existing
+  GTK helper assertions continue to cover label relations, editor properties, and state changes.
+
+Validated:
+
+- Native Linux run `29664268158` (job `88131961550`) passed the AT-SPI fixture, all existing GTK,
+  portal, Secret Service, storage, X11, and Wayland gates.
+- Repository Foundation run `29664268165` and Flatpak run `29664268145` passed for Linux head
+  `c0fddf471377444b9a565ec762bec949a8d3055d`.
+- Local `git diff --check`, Bash syntax, and Python AST checks passed; this host cannot run the
+  GUI fixture because Xvfb/GTK 4.10 symbols are unavailable locally.
+
+Orca speech, provider-form default Tab-chain review, physical desktop accessibility, OCR, other
+clients, and stable-release evidence remain open.
 
 ## 2026-07-18 — Linux subtitle document checkpoint
 

@@ -293,8 +293,11 @@ direction without replacing the source editor buffer before restoring English. G
 semantic presence and reset behavior. The dedicated `tools/run-gtk-keyboard-focus-test.sh` also runs
 the real binary under Xvfb and `xfwm4`, injects Tab/Shift+Tab events, and asserts focus events for
 the tested onboarding and workspace controls. It records provider fields as enabled, mapped, and
-focusable; those fields are not yet in the default Tab chain. The fixture does not prove AT-SPI
-export, Orca speech, physical-compositor behavior, RTL/high-contrast presentation, or GPU rendering.
+focusable; those fields are not yet in the default Tab chain. `tools/run-gtk-atspi-test.sh` starts
+the AT-SPI bus, reads the live accessibility tree with `python3-pyatspi`, and verifies the named
+Stop button plus two exported text-editor roles. This proves AT-SPI semantic export only; it does
+not prove Orca speech, physical-compositor behavior, RTL/high-contrast presentation, or GPU
+rendering.
 
 The GitHub Actions native workflow pins Core revision
 `fbf3e9b5927049dccaa19f8c36013495ffebba12`, installs the headers plus D-Bus, Xvfb, test-only
