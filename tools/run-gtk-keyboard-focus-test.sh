@@ -63,6 +63,8 @@ XDG_CACHE_HOME="$workspace/cache" \
     xdotool windowfocus --sync "$app_window" >/dev/null 2>&1 || true
     : >"$LINGUAMESH_KEYBOARD_FOCUS_START"
     sleep 0.1
+    xdotool key --clearmodifiers alt+p
+    sleep 0.1
     for _ in {1..8}; do
       xdotool key --clearmodifiers Shift+Tab
       sleep 0.04
