@@ -5,7 +5,7 @@
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`225d1edc0316b11ea0791c658adc14bd811dc865`. This revision carries the explicit request-level
+`8cd65c5846a677e70c4828e4b4a5192319d775d5`. This revision carries the explicit request-level
 Incognito privacy policy and changes file-backed Core storage to add SQLite's `SQLITE_OPEN_NOFOLLOW`
 flag, adds protected-span restoration and request-level glossary
 protection for streamed text, and adds bounded semantic chunking. On
@@ -14,9 +14,9 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 225d1edc0316b11ea0791c658adc14bd811dc865^{commit}
+git -C ../linguamesh-core cat-file -e 8cd65c5846a677e70c4828e4b4a5192319d775d5^{commit}
 git -C ../linguamesh-core diff --quiet \
-  225d1edc0316b11ea0791c658adc14bd811dc865..HEAD -- \
+  8cd65c5846a677e70c4828e4b4a5192319d775d5..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -58,7 +58,7 @@ Ready identity, pending-model confirmation that cannot claim Ready, worker-unava
 storage-unavailable fallback, runtime persistence degradation that retains the confirmed session,
 and diagnostics that omit content, endpoints, IDs, model IDs, and secret references.
 
-The ordinary `demo-provider` run passes 80 tests and reports one intentionally ignored namespace
+The ordinary `demo-provider` run passes 83 tests and reports one intentionally ignored namespace
 test. Its worker tests validate the exact Core
 compatibility contract including `long_text_chunking_v1`, prove that fake-service readiness does not auto-connect, require explicit
 Connect and model selection, exercise real loopback HTTP/SSE streaming, consume an authenticated
@@ -70,7 +70,9 @@ and `session:` canaries, deletes inactive/missing/connected rows, keeps a delete
 usable without recreating it, verifies exact `0700`/`0600` permissions, rejects a permissive parent,
 symbolic ancestor, and hard-linked database without following static unsafe paths, preserves every
 restart row/default across session switches, failed persistent changes, and public connection
-cancellation, and keeps session mode usable after storage initialization fails. A Linux-side
+cancellation, and keeps session mode usable after storage initialization fails. It also verifies
+that a completed standard translation is recorded in bounded history, an Incognito completion is
+skipped, and the startup count/clear command path uses the same database. A Linux-side
 Scenario 5 regression authenticates and saves distinct providers A and B with independent models,
 then uses one Connect action per remembered switch and proves each next translation reaches only
 the newly confirmed provider. It rejects B with A's credential without changing the active B/model
@@ -339,12 +341,17 @@ both display gates, and the all-target all-feature build. Its predecessor `e483a
 first focusability assertion because GTK dropdowns defaulted to non-focusable; the final revision
 sets every labelled control and action explicitly focusable.
 
-The Incognito policy checkpoint is Core `225d1edc0316b11ea0791c658adc14bd811dc865`, Linux
-`78293684227b40af0b26442d9d23e2ff71d3d36d`, and l10n `e5c51a046e01c51b106ba3d177e33e41a69b8aa0`. Local Core workspace Clippy and
-all-feature tests passed, Linux all-target Clippy and the 54 portable tests passed, and l10n
-`make check` passed with 225 messages. Native run `29635954249` (job `88058210096`), Foundation
-run `29635954224`, and Flatpak run `29635954240` (job `88058210082`) passed the all-feature Linux
-binary link and real GTK Incognito toggle coverage.
+The bounded-history checkpoint is Core `8cd65c5846a677e70c4828e4b4a5192319d775d5`, Linux
+`dbec42349b4bebc57f56f8e63d2391c4e2318b0a`, and l10n `4678fc3810b1e21e5ab8c1095e552930b8649687`.
+Local Core workspace tests, Clippy, offline build, and cargo-deny passed; Linux passed all-target
+Clippy, 54 portable tests, and 82 demo-provider tests with one intentional ignore; l10n `make check`
+passed with 230 messages and bundle checksum `03889105a74aec819ae716ee577f78e1da8a235d42be4918aa0fb6f9c5e194b8`.
+Core CI `29636624648`, Native SDK `29636624656`, l10n Localization `29636630359`, l10n Foundation
+`29636630348`, Linux Native `29636710260` (job `88060223294`), Linux Foundation `29636710261`, and
+Flatpak `29636710259` (job `88060223278`) passed bounded standard-history persistence, Incognito
+skip, startup count restoration, clear-all wiring, the all-feature Linux binary link, and the real
+GTK/Flatpak gates. History inspection/export, per-entry deletion, and translation-memory storage
+remain open.
 
 ## Repository foundation check
 

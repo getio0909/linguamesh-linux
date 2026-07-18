@@ -20,9 +20,9 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `225d1edc0316b11ea0791c658adc14bd811dc865`, which adds
+reviewed Core functional revision `8cd65c5846a677e70c4828e4b4a5192319d775d5`, which adds
 `SQLITE_OPEN_NOFOLLOW` to file-backed storage, protected-span and request-level glossary
-restoration, and bounded semantic chunking for long streamed text.
+restoration, bounded semantic chunking for long streamed text, and bounded translation history.
 
 ## Native stack
 
@@ -125,7 +125,8 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`e5c51a046e01c51b106ba3d177e33e41a69b8aa0` and validated with `msgfmt`. The locale selector
+`4678fc3810b1e21e5ab8c1095e552930b8649687` and validated with `msgfmt`; the 230-message bundle
+checksum is `03889105a74aec819ae716ee577f78e1da8a235d42be4918aa0fb6f9c5e194b8`. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
 active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, and construction-stage provider/default-control copy without replacing active source text;
 Arabic also switches the GTK workspace root to right-to-left direction. Stable Linux worker startup,
@@ -147,10 +148,11 @@ the deterministic Core CSV schema to a user-selected file without persisting cre
 glossary content in provider profiles or SQLite.
 
 The **Incognito mode** toggle carries an explicit Core privacy policy on the next translation
-request. It prevents request source/output data from being written to local history or translation
-memory; this checkpoint does not yet add history or translation-memory stores, so the standard path
-also has no such persistence today. The toggle remains visible in the status note and is disabled
-while a conflicting operation is active.
+request. Standard completed translations now persist in bounded local SQLite history (100 entries,
+with a 4 MiB source/output limit); startup restores only the count and **Clear history** removes all
+entries. Incognito requests skip history writes. History inspection, per-entry deletion/export, and
+translation-memory storage remain future slices. The toggle remains visible in the status note and
+is disabled while a conflicting operation is active.
 
 When a translation completes, the registered Linux application sends a desktop notification with
 localized generic copy only; source and translated content are never included in notification

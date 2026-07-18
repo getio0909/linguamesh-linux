@@ -26,7 +26,7 @@ confirmation, or rollback.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `225d1edc0316b11ea0791c658adc14bd811dc865`; compared with the prior
+functional revision is `8cd65c5846a677e70c4828e4b4a5192319d775d5`; compared with the prior
 alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW` and adds streamed
 protected-span and request-level glossary restoration. The required contract
 is exact Core `0.1.0-alpha.2`, ABI 1, protocol 1, provider catalog `0.1.0`, and these features:
@@ -72,9 +72,10 @@ conservative byte estimate, not a tokenizer-derived model capacity claim.
 
 The request reducer carries `TranslationPrivacyMode` explicitly. The GTK Incognito mode toggle
 maps to `TranslationRequest::privacy_mode = Incognito`, and Core's serde default keeps older request
-payloads equivalent to `Standard`. The current Linux worker has no history or translation-memory
-write path; this policy is therefore an enforced boundary for the next storage slice, not a claim
-that those stores already exist.
+payloads equivalent to `Standard`. Completed standard translations are persisted through Core's
+bounded SQLite history migration (100 entries, 4 MiB source/output limit); startup restores the count
+and **Clear history** deletes all entries. Incognito completion skips the history write. History
+inspection/export, per-entry deletion, and translation-memory storage are not implemented yet.
 
 With `gui`, `src/main.rs` binds this state and worker to GTK 4/libadwaita widgets. GTK objects remain
 on the main context, which processes at most 64 queued events per timer tick without performing
@@ -83,7 +84,8 @@ credential, explicit Connect, **Remember profile, model, and credential in Secre
 **Remove saved profile**,
 model selection, source and target locales, source and streamed output editors, native **Open text
 file** import, single-file drag-and-drop onto the source editor, Translate/Stop,
-typed errors, appearance, runtime catalog-backed locale preference, and redacted diagnostics.
+typed errors, appearance, runtime catalog-backed locale preference, **Clear history**, and redacted
+diagnostics.
 An always-current Provider setup card explains the next required action, warns when saved-profile
 storage is unavailable, distinguishes fatal worker shutdown from startup, and identifies the
 confirmed provider stable ID/model that will receive the next request. It never connects, selects,
