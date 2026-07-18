@@ -756,8 +756,16 @@ fn install_keyboard_focus_probe(
         });
     }
     let initial_focus = bindings.provider_name.clone();
+    let ready_logged = Rc::new(Cell::new(false));
+    let ready_log = Rc::clone(&log);
     let focus_deadline = Instant::now() + Duration::from_secs(5);
     glib::timeout_add_local(Duration::from_millis(50), move || {
+        if initial_focus.is_sensitive() && !ready_logged.get() {
+            let mut log = ready_log.borrow_mut();
+            let _ = writeln!(log, "__ready__");
+            let _ = log.flush();
+            ready_logged.set(true);
+        }
         let focused = initial_focus.grab_focus();
         if focused || Instant::now() >= focus_deadline {
             glib::ControlFlow::Break
