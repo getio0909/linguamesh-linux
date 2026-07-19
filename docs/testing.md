@@ -335,6 +335,12 @@ to `SHA256SUMS`. This is a repository-only source snapshot; it still requires th
 localization repositories for a build. The binary, source archive, `SHA256SUMS`, `SBOM.spdx.json`,
 and `BUILD-INFO.txt` are unsigned prerelease evidence only, not a stable or distributable release.
 
+The Native workflow also runs `tools/run-performance-baseline.sh` for representative DOCX
+reconstruction, XLSX reconstruction, and saved-profile routing dispatch tests. It records the
+kernel, CPU, memory, Rust, Core, and localization context with elapsed seconds in
+`LINUX-PERFORMANCE-BASELINE.tsv`. These are machine-specific trend baselines and must not be quoted
+as portable performance numbers.
+
 These commands bypass sys-crate discovery and do not validate headers, ABI, linking, launch, or
 display behavior. Their cached sys-crate output can also make a later ordinary Cargo check look
 successful. The `pkg-config` commands below are therefore mandatory native-gate prerequisites;

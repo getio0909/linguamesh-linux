@@ -1,5 +1,17 @@
 # Implementation Status
 
+## 2026-07-19 — Linux performance baseline checkpoint
+
+Assumption: release hardening needs reproducible, machine-contextual measurements before a stable
+performance budget can be set; no portable number is inferred from one runner.
+
+- Linux adds `tools/run-performance-baseline.sh`, which times exact DOCX reconstruction, XLSX
+  reconstruction, and saved-routing dispatch tests and records kernel, CPU, memory, Rust, Core, and
+  localization context in `LINUX-PERFORMANCE-BASELINE.tsv`.
+- Native CI runs this baseline beside the release binary and uploads it in the non-expired native
+  evidence artifact. The output is a trend baseline only, not a cross-machine claim or stable-release
+  performance guarantee.
+
 ## 2026-07-19 — Linux native release-mode evidence checkpoint
 
 Assumption: the next Linux release-engineering slice should make the native binary reproducible in

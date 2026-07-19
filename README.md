@@ -167,6 +167,8 @@ Wayland/headless Weston are documented in
 with SHA-256, SPDX 2.3, build-context, and repository-only source-archive sidecars; this is
 unsigned prerelease evidence, not a stable or distributable release. The source archive records the
 Linux checkout only and still requires the pinned Core and localization repositories for a build.
+Native CI also records a machine-specific performance baseline for representative DOCX, XLSX, and
+routing-dispatch tests; the measurements are evidence for trend review, not cross-machine claims.
 
 The repository now includes a reproducible Flatpak manifest, pinned Cargo source set, desktop
 entry, AppStream metadata, and icon under [`packaging/flatpak`](packaging/flatpak). Run

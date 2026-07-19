@@ -156,6 +156,11 @@ jobs:
       - name: Build release-mode native application
         working-directory: linguamesh-linux
         run: cargo build --release --bin linguamesh-linux --features gui --locked
+      - name: Run Linux performance baseline
+        working-directory: linguamesh-linux
+        env:
+          L10N_REVISION: 3362732be198450ff1ca00f30ec092aab2cf4189
+        run: bash tools/run-performance-baseline.sh native-evidence
       - name: Create native checksum and SBOM evidence
         working-directory: linguamesh-linux
         run: >-
@@ -170,7 +175,7 @@ jobs:
           --prefix="linguamesh-linux-${GITHUB_SHA}/" "$GITHUB_SHA"
           > native-evidence/linguamesh-linux-source.tar.gz
           && sha256sum native-evidence/linguamesh-linux-source.tar.gz >> native-evidence/SHA256SUMS
-          && printf 'Linux native CI evidence\nLinux revision: %s\nCore revision: %s\nLocalization revision: %s\nArtifact status: unsigned release-mode prerelease evidence\n'
+          && printf 'Linux native CI evidence\nLinux revision: %s\nCore revision: %s\nLocalization revision: %s\nPerformance baseline: LINUX-PERFORMANCE-BASELINE.tsv\nArtifact status: unsigned release-mode prerelease evidence\n'
           "$GITHUB_SHA" "$CORE_REVISION" "3362732be198450ff1ca00f30ec092aab2cf4189"
           > native-evidence/BUILD-INFO.txt
       - name: Upload native checksum and SBOM evidence

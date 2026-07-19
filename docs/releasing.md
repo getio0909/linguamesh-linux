@@ -11,9 +11,10 @@ real `dunst` notification daemon under Xvfb, but no physical compositor/GPU rend
 distributable release has been verified. The
 vertical slice must not be tagged or published as a product release, and no packaging claim beyond
 the recorded CI build is valid. Native CI now uploads the release-mode Linux binary together with
-SHA-256, deterministic SPDX 2.3, build-context, and repository-only source-archive sidecars; these
-files remain unsigned CI evidence and are not distributable release artifacts. The source snapshot
-still requires the pinned Core and localization repositories for a build. Its bundled fake provider is development-only behavior. The optional
+SHA-256, deterministic SPDX 2.3, build-context, repository-only source-archive, and machine-specific
+performance-baseline sidecars; these files remain unsigned CI evidence and are not distributable
+release artifacts. The source snapshot still requires the pinned Core and localization repositories
+for a build. Its bundled fake provider is development-only behavior. The optional
 OpenAI-compatible endpoint form accepts a one-shot session credential, clears the field
 immediately, and never persists the credential value. A saved-profile dropdown and explicit remember
 checkbox can create, update, activate, switch, and remove multiple rows containing provider names,
