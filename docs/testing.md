@@ -50,7 +50,8 @@ reading speed; the default UI warning test verifies cue-number-only output.
 
 The reviewed Core pin also rejects an OOXML ZIP entry whose uncompressed size is more than 200 times
 its compressed size once the entry reaches 1 KiB. This decompression-bomb guard is exercised by the
-Core document fixture and is applied to DOCX, PPTX, and XLSX imports before worker translation.
+Core document fixture and the Linux `rejects_docx_archive_with_suspicious_compression_ratio` wrapper
+fixture; it is applied to DOCX, PPTX, and XLSX imports before worker translation.
 
 A sibling `../linguamesh-l10n` checkout at the revision pinned by `tools/sync-l10n.sh` is required
 to verify the checked-in PO catalogs.

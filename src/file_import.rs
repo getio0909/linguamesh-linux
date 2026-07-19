@@ -254,6 +254,29 @@ mod tests {
         writer.finish().expect("docx archive").into_inner()
     }
 
+    fn suspicious_compression_ratio_docx_fixture() -> Vec<u8> {
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        let options =
+            SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+        writer
+            .start_file("[Content_Types].xml", options)
+            .expect("content types");
+        writer.write_all(b"<Types/>").expect("content types bytes");
+        writer
+            .start_file("word/document.xml", options)
+            .expect("document");
+        writer
+            .write_all(br#"<w:document xmlns:w="urn:w"><w:body><w:p><w:r><w:t>Safe</w:t></w:r></w:p></w:body></w:document>"#)
+            .expect("document bytes");
+        writer
+            .start_file("word/repetitive.bin", options)
+            .expect("repetitive resource");
+        writer
+            .write_all(&vec![b'x'; 512 * 1024])
+            .expect("repetitive resource bytes");
+        writer.finish().expect("docx archive").into_inner()
+    }
+
     #[test]
     fn decodes_utf8_and_removes_bom() {
         assert_eq!(decode_text_contents(b"\xef\xbb\xbfHello").unwrap(), "Hello");
@@ -517,6 +540,17 @@ mod tests {
     fn rejects_docx_archive_with_oversized_uncompressed_entry() {
         assert_eq!(
             decode_document_job("oversized.docx", &oversized_docx_fixture()),
+            Err(TextImportError::TooLarge)
+        );
+    }
+
+    #[test]
+    fn rejects_docx_archive_with_suspicious_compression_ratio() {
+        assert_eq!(
+            decode_document_job(
+                "suspicious-ratio.docx",
+                &suspicious_compression_ratio_docx_fixture(),
+            ),
             Err(TextImportError::TooLarge)
         );
     }

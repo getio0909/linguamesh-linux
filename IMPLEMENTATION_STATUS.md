@@ -4,6 +4,22 @@ Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline 
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
+## 2026-07-19 — Linux compression-ratio import boundary checkpoint
+
+Assumption: mandatory Scenario 15 evidence must prove that the Linux native import wrapper maps the
+reviewed Core compression-ratio rejection to its bounded user-facing error before worker persistence.
+
+- Linux adds `rejects_docx_archive_with_suspicious_compression_ratio`, an in-memory DOCX fixture with
+  a 512 KiB repetitive deflated resource. The wrapper returns `TextImportError::TooLarge`; no output
+  path is opened and the source fixture remains in memory.
+- Local `cargo test --features demo-provider --offline` passed 116 tests with 2 ignored; the focused
+  fixture passed independently. Formatting, GUI check, strict Clippy, 215-key audit, l10n sync,
+  Flatpak metadata validation, and diff checks passed.
+- The six remote Native/Foundation/Flatpak push and PR gates are required for the published checkpoint.
+
+This extends Scenario 15 integration evidence without claiming macro/signature behavior, visual review,
+other clients, packaging artifacts, or a stable release.
+
 ## 2026-07-19 — Core OOXML compression-ratio pin checkpoint
 
 Assumption: Linux should consume the reviewed Core archive guard through the same immutable
