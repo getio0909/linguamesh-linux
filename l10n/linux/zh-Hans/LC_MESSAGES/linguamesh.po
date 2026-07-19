@@ -950,6 +950,12 @@ msgctxt "error.storage.secure_unavailable"
 msgid "Secure credential storage is unavailable."
 msgstr "安全凭据存储不可用。"
 
+#. Secure-storage error shown when the user dismisses the Secret Service prompt.
+#, fuzzy
+msgctxt "error.storage.prompt_dismissed"
+msgid "The Secret Service prompt was dismissed."
+msgstr "Secret Service 提示已被关闭。"
+
 #. Storage guidance shown when only session-only mode is available.
 #, fuzzy
 msgctxt "error.storage.session_only"

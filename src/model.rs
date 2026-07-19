@@ -1725,6 +1725,10 @@ fn additional_state_error_message(message: &str) -> Option<(&'static str, &'stat
             "error.storage.secure_unavailable",
             "Secure credential storage is unavailable.",
         ),
+        "The Secret Service prompt was dismissed." => (
+            "error.storage.prompt_dismissed",
+            "The Secret Service prompt was dismissed.",
+        ),
         "Profile storage is unavailable; use session-only mode." => (
             "error.storage.session_only",
             "Profile storage is unavailable; use session-only mode.",

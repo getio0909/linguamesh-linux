@@ -1,17 +1,23 @@
 use gtk::gio;
 use gtk::glib::{
-    Variant,
+    MainContext, Variant,
     variant::{ObjectPath, ToVariant},
 };
 use linguamesh_domain::{ErrorKind, SecretRef, SecretValue, TranslationError};
+use std::cell::Cell;
 use std::collections::BTreeMap;
+use std::rc::Rc;
+use std::thread;
+use std::time::{Duration, Instant};
 
 const SERVICE_NAME: &str = "org.freedesktop.secrets";
 const SERVICE_PATH: &str = "/org/freedesktop/secrets";
 const SERVICE_INTERFACE: &str = "org.freedesktop.Secret.Service";
 const COLLECTION_INTERFACE: &str = "org.freedesktop.Secret.Collection";
 const ITEM_INTERFACE: &str = "org.freedesktop.Secret.Item";
+const PROMPT_INTERFACE: &str = "org.freedesktop.Secret.Prompt";
 const CALL_TIMEOUT_MS: i32 = 5_000;
+const PROMPT_TIMEOUT: Duration = Duration::from_secs(300);
 const SECRET_ATTRIBUTE: &str = "linguamesh-secret-ref";
 const SECRET_LABEL: &str = "LinguaMesh provider credential";
 
@@ -25,6 +31,7 @@ pub enum LookupError {
     Unavailable,
     Missing,
     Locked,
+    PromptDismissed,
 }
 
 struct SecretSession {
@@ -74,6 +81,58 @@ impl SecretSession {
                 None::<&gio::Cancellable>,
             )
             .map_err(|_| LookupError::Unavailable)
+    }
+
+    // 调用 Secret Service 提示对象并等待用户完成或拒绝交互。
+    fn prompt(&self, prompt: &ObjectPath) -> Result<(), LookupError> {
+        if prompt.as_str() == "/" {
+            return Ok(());
+        }
+        let completed = Rc::new(Cell::new(None));
+        let completed_result = Rc::clone(&completed);
+        let subscription = self.connection.subscribe_to_signal(
+            Some(SERVICE_NAME),
+            Some(PROMPT_INTERFACE),
+            Some("Completed"),
+            Some(prompt.as_str()),
+            None,
+            gio::DBusSignalFlags::NONE,
+            move |signal| {
+                let Some((dismissed, _result)) = signal.parameters.get::<(bool, Variant)>() else {
+                    return;
+                };
+                completed_result.set(Some(dismissed));
+            },
+        );
+        let parameters = ("",).to_variant();
+        self.connection
+            .call_sync(
+                Some(SERVICE_NAME),
+                prompt.as_str(),
+                PROMPT_INTERFACE,
+                "Prompt",
+                Some(&parameters),
+                None,
+                gio::DBusCallFlags::NONE,
+                CALL_TIMEOUT_MS,
+                None::<&gio::Cancellable>,
+            )
+            .map_err(|_| LookupError::Unavailable)?;
+
+        let context = MainContext::default();
+        let deadline = Instant::now() + PROMPT_TIMEOUT;
+        while completed.get().is_none() && Instant::now() < deadline {
+            let dispatched = context.iteration(false);
+            if !dispatched {
+                thread::sleep(Duration::from_millis(10));
+            }
+        }
+        drop(subscription);
+        match completed.get() {
+            Some(false) => Ok(()),
+            Some(true) => Err(LookupError::PromptDismissed),
+            None => Err(LookupError::Unavailable),
+        }
     }
 }
 
@@ -178,12 +237,7 @@ pub fn store_secret(secret_ref: &SecretRef, secret: &SecretValue) -> Result<(), 
     let (_, prompt): (ObjectPath, ObjectPath) = response
         .get()
         .ok_or_else(|| map_store_error(LookupError::Unavailable))?;
-    if prompt.as_str() != "/" {
-        return Err(TranslationError::new(
-            ErrorKind::SecureStorageUnavailable,
-            "Secret Service requires an interactive prompt.",
-        ));
-    }
+    session.prompt(&prompt).map_err(map_store_error)?;
     Ok(())
 }
 
@@ -223,12 +277,7 @@ pub fn delete_secret(secret_ref: &SecretRef) -> Result<(), TranslationError> {
         let (prompt,): (ObjectPath,) = response
             .get()
             .ok_or_else(|| map_store_error(LookupError::Unavailable))?;
-        if prompt.as_str() != "/" {
-            return Err(TranslationError::new(
-                ErrorKind::SecureStorageUnavailable,
-                "Secret Service requires an interactive prompt.",
-            ));
-        }
+        session.prompt(&prompt).map_err(map_store_error)?;
     }
     Ok(())
 }
@@ -238,6 +287,7 @@ fn map_store_error(error: LookupError) -> TranslationError {
         LookupError::Unavailable => "Secret Service is unavailable.",
         LookupError::Missing => "The provider credential is not stored in Secret Service.",
         LookupError::Locked => "The Secret Service item is locked.",
+        LookupError::PromptDismissed => "The Secret Service prompt was dismissed.",
     };
     TranslationError::new(ErrorKind::SecureStorageUnavailable, message)
 }
@@ -325,16 +375,28 @@ mod tests {
 
     #[test]
     #[ignore = "requires the isolated Secret Service prompt fixture"]
+    fn secret_service_prompt_is_accepted_when_storing() {
+        let secret_ref = persistent_fixture_ref();
+        let secret = SecretValue::new("linguamesh-prompt-fixture");
+        store_secret(&secret_ref, &secret).expect("approved prompted store");
+    }
+
+    #[test]
+    #[ignore = "requires the isolated Secret Service prompt fixture"]
+    fn secret_service_prompt_is_accepted_when_deleting() {
+        let secret_ref = persistent_fixture_ref();
+        delete_secret(&secret_ref).expect("approved prompted delete");
+    }
+
+    #[test]
+    #[ignore = "requires the isolated Secret Service prompt fixture"]
     fn secret_service_prompt_is_rejected_when_storing() {
         let secret_ref = persistent_fixture_ref();
         let secret = SecretValue::new("linguamesh-prompt-fixture");
         let error =
             store_secret(&secret_ref, &secret).expect_err("prompted store must fail closed");
         assert_eq!(error.kind, ErrorKind::SecureStorageUnavailable);
-        assert_eq!(
-            error.message,
-            "Secret Service requires an interactive prompt."
-        );
+        assert_eq!(error.message, "The Secret Service prompt was dismissed.");
     }
 
     #[test]
@@ -343,10 +405,7 @@ mod tests {
         let secret_ref = persistent_fixture_ref();
         let error = delete_secret(&secret_ref).expect_err("prompted delete must fail closed");
         assert_eq!(error.kind, ErrorKind::SecureStorageUnavailable);
-        assert_eq!(
-            error.message,
-            "Secret Service requires an interactive prompt."
-        );
+        assert_eq!(error.message, "The Secret Service prompt was dismissed.");
     }
 
     #[test]

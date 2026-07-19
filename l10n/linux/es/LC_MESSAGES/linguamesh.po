@@ -952,6 +952,12 @@ msgctxt "error.storage.secure_unavailable"
 msgid "Secure credential storage is unavailable."
 msgstr "Secure credential storage is unavailable."
 
+#. Secure-storage error shown when the user dismisses the Secret Service prompt.
+#, fuzzy
+msgctxt "error.storage.prompt_dismissed"
+msgid "The Secret Service prompt was dismissed."
+msgstr "Se cerró la solicitud de Secret Service."
+
 #. Storage guidance shown when only session-only mode is available.
 #, fuzzy
 msgctxt "error.storage.session_only"

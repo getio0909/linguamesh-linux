@@ -15,6 +15,7 @@ dbus-run-session -- bash -c '
 
   start_service() {
     LINGUAMESH_SECRET_SERVICE_PROMPT_OPERATION="$1" \
+      LINGUAMESH_SECRET_SERVICE_PROMPT_DISMISSED="${2:-0}" \
       python3 tools/secret-service-prompt-fixture.py &
     service_pid=$!
     sleep 0.2
@@ -40,11 +41,19 @@ dbus-run-session -- bash -c '
   }
 
   trap stop_service EXIT
-  start_service store
+  start_service store 0
+  cargo test --features gui --lib secret_service::tests::secret_service_prompt_is_accepted_when_storing \
+    --locked -- --ignored --exact
+  stop_service
+  start_service store 1
   cargo test --features gui --lib secret_service::tests::secret_service_prompt_is_rejected_when_storing \
     --locked -- --ignored --exact
   stop_service
-  start_service delete
+  start_service delete 0
+  cargo test --features gui --lib secret_service::tests::secret_service_prompt_is_accepted_when_deleting \
+    --locked -- --ignored --exact
+  stop_service
+  start_service delete 1
   cargo test --features gui --lib secret_service::tests::secret_service_prompt_is_rejected_when_deleting \
     --locked -- --ignored --exact
 '
