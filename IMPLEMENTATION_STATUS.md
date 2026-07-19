@@ -19,6 +19,21 @@ This revalidates Linux's optional image-only PDF OCR evidence without claiming p
 reconstruction, non-English OCR quality, visual review, other clients, release artifacts, or a
 stable release.
 
+## 2026-07-19 — Linux cancelled document-job retry checkpoint
+
+Assumption: retrying an interrupted document job must reuse its persisted provider/model options,
+retain all still-pending segments, and never silently restart or overwrite completed work.
+
+- The worker regression `cancelled_document_job_can_be_retried_without_losing_pending_segments`
+  starts a bounded TXT job, cancels after a streamed partial event, verifies the cancelled snapshot
+  still has two pending segments, then retries through the saved options and reconstructs both
+  translated lines.
+- The regression rejects worker action errors and failed segment events, so a false successful
+  state cannot hide a retry failure.
+
+This strengthens Linux Scenario 12 recovery evidence without claiming concurrent document execution,
+physical interruption recovery, other clients, release artifacts, or a stable release.
+
 ## 2026-07-19 — Linux macro/signature package boundary checkpoint
 
 Assumption: unsupported OOXML macro and digital-signature parts must be rejected before XML

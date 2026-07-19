@@ -37,7 +37,9 @@ sequential prose-segment translation, per-segment persistence, safe reconstructi
 to a persisted cancelled snapshot. The GTK surface now exposes per-job progress and
 pause/resume/retry controls, and the worker regression
 `document_job_list_returns_multiple_saved_jobs_for_queue_selection` verifies that two pending jobs
-are listed together for explicit selection. The worker regressions
+are listed together for explicit selection. `cancelled_document_job_can_be_retried_without_losing_pending_segments`
+verifies that a cancelled job retains both pending segments and can be retried to completion with
+the saved provider/model options. The worker regressions
 `imports_pptx_and_preserves_notes_and_resources`,
 `document_job_translation_reconstructs_docx_and_preserves_binary_parts` and
 `document_job_translation_reconstructs_xlsx_and_preserves_formulas_and_numbers`,

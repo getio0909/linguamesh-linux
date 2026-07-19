@@ -4904,6 +4904,105 @@ mod tests {
     }
 
     #[test]
+    fn cancelled_document_job_can_be_retried_without_losing_pending_segments() {
+        let database = TestDatabase::new();
+        let (worker, _, endpoint) = started_worker_with_database(database.path());
+        connect(
+            &worker,
+            profile("document-retry-provider", &endpoint, None, None),
+            None,
+            PersistenceIntent::SessionOnly,
+        )
+        .expect("connection");
+        select(&worker, "document-retry-provider", "fake-slow-translator");
+        worker
+            .try_send(WorkerCommand::CreateDocumentJob {
+                job_id: "document-retry-1".to_owned(),
+                job: DocumentJob::from_text("notes.txt", DocumentFormat::Txt, "one\ntwo"),
+            })
+            .expect("create document job");
+        assert!(matches!(
+            worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("created event"),
+            WorkerEvent::DocumentJobUpdated(snapshot)
+                if snapshot.state == DocumentJobState::Pending
+        ));
+        worker
+            .try_send(WorkerCommand::TranslateDocumentJob {
+                job_id: "document-retry-1".to_owned(),
+                source_locale: Some("en".to_owned()),
+                target_locale: "zh-CN".to_owned(),
+                glossary: None,
+                privacy_mode: TranslationPrivacyMode::Standard,
+            })
+            .expect("start document job");
+        let mut cancel_sent = false;
+        let cancelled = loop {
+            match worker
+                .events
+                .recv_timeout(Duration::from_secs(10))
+                .expect("cancelled event")
+            {
+                WorkerEvent::DocumentJobSegment { event, .. } => {
+                    if matches!(event, TranslationEvent::TextDelta { .. }) && !cancel_sent {
+                        worker
+                            .try_send(WorkerCommand::CancelDocumentJob {
+                                job_id: "document-retry-1".to_owned(),
+                            })
+                            .expect("cancel document job");
+                        cancel_sent = true;
+                    }
+                }
+                WorkerEvent::DocumentJobUpdated(snapshot)
+                    if snapshot.state == DocumentJobState::Cancelled =>
+                {
+                    break snapshot;
+                }
+                WorkerEvent::DocumentJobActionRejected(error) => {
+                    panic!("document retry setup rejected: {error}");
+                }
+                _ => {}
+            }
+        };
+        assert!(cancel_sent);
+        assert_eq!(cancelled.job.pending_count(), 2);
+
+        worker
+            .try_send(WorkerCommand::RetryDocumentJob {
+                job_id: "document-retry-1".to_owned(),
+            })
+            .expect("retry cancelled document job");
+        let completed = loop {
+            match worker
+                .events
+                .recv_timeout(Duration::from_secs(20))
+                .expect("retry event")
+            {
+                WorkerEvent::DocumentJobUpdated(snapshot)
+                    if snapshot.state == DocumentJobState::Completed =>
+                {
+                    break snapshot;
+                }
+                WorkerEvent::DocumentJobSegment { event, .. } => {
+                    assert!(!matches!(event, TranslationEvent::Failed { .. }));
+                }
+                WorkerEvent::DocumentJobActionRejected(error) => {
+                    panic!("document retry rejected: {error}");
+                }
+                _ => {}
+            }
+        };
+        assert_eq!(completed.job.pending_count(), 0);
+        assert_eq!(
+            completed.job.reconstruct().expect("reconstruct"),
+            "你好，LinguaMesh！\n你好，LinguaMesh！"
+        );
+        shutdown(&worker);
+    }
+
+    #[test]
     fn document_job_translation_can_pause_resume_and_retry() {
         let database = TestDatabase::new();
         let (worker, _, endpoint) = started_worker_with_database(database.path());
