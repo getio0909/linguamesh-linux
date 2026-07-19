@@ -2033,3 +2033,9 @@ msgstr "⁧⟦Unavailable⟧⁩"
 msgctxt "fixture.drag_file"
 msgid "Drag fixture"
 msgstr "⁧⟦Drag fixture⟧⁩"
+
+#. Default display name for the built-in Linux native Ollama provider profile.
+#, fuzzy
+msgctxt "profile.default_ollama_name"
+msgid "Local Ollama provider"
+msgstr "⁧⟦Local Ollama provider⟧⁩"

@@ -182,6 +182,19 @@ fn provider_endpoint_tooltip(locale: UiLocale, preset_index: u32) -> String {
     }
 }
 
+// 根据界面语言生成内置提供商的默认显示名称。
+fn localized_provider_default_name(locale: UiLocale, preset_index: u32) -> String {
+    if preset_index == 1 {
+        localization::text(
+            locale,
+            "profile.default_ollama_name",
+            DEFAULT_OLLAMA_PROVIDER_NAME,
+        )
+    } else {
+        localization::text(locale, "profile.default_name", DEFAULT_PROVIDER_NAME)
+    }
+}
+
 // 判断端点是否仍是预设提供的默认值，以避免覆盖用户自定义地址。
 fn endpoint_matches_preset_default(endpoint: &str, preset_index: u32) -> bool {
     let endpoint = endpoint.trim();
@@ -1849,7 +1862,9 @@ fn show_new_profile_in_form(
     bindings.provider_preset.set_selected(0);
     bindings.provider_preset_previous.set(0);
     bindings.provider_preset_guard.set(false);
-    bindings.provider_name.set_text(DEFAULT_PROVIDER_NAME);
+    bindings
+        .provider_name
+        .set_text(&localized_provider_default_name(state.locale(), 0));
     bindings
         .provider_endpoint
         .set_text(DEFAULT_PROVIDER_ENDPOINT);
@@ -1989,16 +2004,21 @@ fn connect_provider_preset_handler(bindings: &UiBindings) {
             if selected == previous {
                 return;
             }
-            let (_, _, default_name, default_endpoint) = provider_preset_config(selected);
+            let locale = UiLocale::from_index(preset_bindings.locale.selected() as usize);
+            let (_, _, _, default_endpoint) = provider_preset_config(selected);
             if endpoint_matches_preset_default(&preset_bindings.provider_endpoint.text(), previous)
             {
                 preset_bindings.provider_endpoint.set_text(default_endpoint);
             }
             let (_, _, previous_name, _) = provider_preset_config(previous);
-            if preset_bindings.provider_name.text().trim() == previous_name {
-                preset_bindings.provider_name.set_text(default_name);
+            let localized_previous_name = localized_provider_default_name(locale, previous);
+            if preset_bindings.provider_name.text().trim() == previous_name
+                || preset_bindings.provider_name.text().trim() == localized_previous_name
+            {
+                preset_bindings
+                    .provider_name
+                    .set_text(&localized_provider_default_name(locale, selected));
             }
-            let locale = UiLocale::from_index(preset_bindings.locale.selected() as usize);
             preset_bindings
                 .provider_endpoint
                 .set_tooltip_text(Some(&provider_endpoint_tooltip(locale, selected)));
@@ -5560,8 +5580,8 @@ mod tests {
         connect_selection_handlers, create_window, custom_provider_profile,
         destination_matches_source, document_format_label, endpoint_matches_preset_default,
         generate_custom_provider_id, localized_document_job_state, localized_document_warnings,
-        localized_template, provider_preset_config, provider_preset_index, refresh_ui,
-        start_event_pump,
+        localized_provider_default_name, localized_template, provider_preset_config,
+        provider_preset_index, refresh_ui, start_event_pump,
     };
     use adw::prelude::*;
     use gtk::glib;
@@ -5741,6 +5761,26 @@ mod tests {
             "https://api.example.test/api/",
             1
         ));
+    }
+
+    #[test]
+    fn built_in_provider_default_names_follow_the_active_locale() {
+        assert_eq!(
+            localized_provider_default_name(UiLocale::English, 0),
+            DEFAULT_PROVIDER_NAME
+        );
+        assert_eq!(
+            localized_provider_default_name(UiLocale::English, 1),
+            DEFAULT_OLLAMA_PROVIDER_NAME
+        );
+        assert_eq!(
+            localized_provider_default_name(UiLocale::SimplifiedChinese, 0),
+            "本地 OpenAI 兼容提供商"
+        );
+        assert_eq!(
+            localized_provider_default_name(UiLocale::SimplifiedChinese, 1),
+            "本地 Ollama 提供商"
+        );
     }
 
     fn spin_main_context_until(

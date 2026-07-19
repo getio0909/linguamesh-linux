@@ -2025,3 +2025,9 @@ msgstr "［Ûñåṽåïŀåƀŀë~~~］"
 msgctxt "fixture.drag_file"
 msgid "Drag fixture"
 msgstr "［Ðŕåĝ ƒïẋŧûŕë~~~~］"
+
+#. Default display name for the built-in Linux native Ollama provider profile.
+#, fuzzy
+msgctxt "profile.default_ollama_name"
+msgid "Local Ollama provider"
+msgstr "［Ŀøçåŀ Øŀŀåṁå þŕøṽïðëŕ~~~~~~~］"
