@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-19 — Linux editor text-metrics checkpoint
+
+Assumption: users need a non-sensitive size summary while editing, but tokenization remains
+provider/model dependent, so the UI must label the token value as approximate and never log text.
+
+- Linux now shows localized source and output character counts plus a clearly approximate token
+  estimate; source-buffer changes update immediately and output metrics refresh with translated UI.
+- l10n `8adb1f4558e4b1d93a00ce03cf026a98d4a1a5ed` adds `status.text_metrics` to all twelve official
+  packs; the deterministic bundle contains 360 messages and the Linux source audit covers 236 keys.
+- Local validation passed formatting, GUI all-target checks, strict Clippy, demo-provider tests,
+  localization synchronization/key audit, Flatpak metadata, and diff checks.
+
+This improves editing feedback without claiming provider-specific token accuracy, full Orca speech,
+manual visual review, other clients, release artifacts, or a stable release.
+
 ## 2026-07-19 — Linux duplicate routing-profile ID checkpoint
 
 Assumption: allowing multiple profile IDs must not turn a new-profile action into an accidental

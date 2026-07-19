@@ -257,7 +257,7 @@ remain outside the automated boundary.
 
 `l10n/linux/` is a byte-for-byte consumer snapshot of the canonical PO/MO catalogs at the revision
 enforced by `tools/sync-l10n.sh`. The GTK host parses all twelve official MO catalogs at runtime,
-switches translated action, workspace-widget, active-provider, status summary/partial-output, text-file import, provider-profile, source/target language, and onboarding stage/detail controls plus System/Light/Dark theme
+switches translated action, workspace-widget, active-provider, status summary/partial-output, text-file import, provider-profile, source/target language, editor text-metrics, and onboarding stage/detail controls plus System/Light/Dark theme
 labels without replacing active source text, applies RTL root direction for Arabic, and maps stable
 worker startup, Core compatibility, and profile-storage error sentences through the same catalog.
 Provider-specific diagnostic detail remains an explicit English fallback.

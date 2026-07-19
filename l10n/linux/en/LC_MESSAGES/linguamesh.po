@@ -286,6 +286,12 @@ msgctxt "status.partial_output"
 msgid "Partial output"
 msgstr "Partial output"
 
+#. Live source or translation text size summary with a clearly approximate token estimate.
+#, python-brace-format
+msgctxt "status.text_metrics"
+msgid "Characters: {characters} · Estimated tokens: {tokens}"
+msgstr "Characters: {characters} · Estimated tokens: {tokens}"
+
 #. Status shown while the application is starting.
 msgctxt "status.starting"
 msgid "Starting"

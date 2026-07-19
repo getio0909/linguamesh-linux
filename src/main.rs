@@ -88,6 +88,8 @@ struct UiBindings {
     output_view: gtk::TextView,
     source_label: gtk::Label,
     output_label: gtk::Label,
+    source_metrics: gtk::Label,
+    output_metrics: gtk::Label,
     translate: gtk::Button,
     retry_translation: gtk::Button,
     export_output: gtk::Button,
@@ -222,6 +224,8 @@ struct EditorBindings {
     output_view: gtk::TextView,
     source_label: gtk::Label,
     output_label: gtk::Label,
+    source_metrics: gtk::Label,
+    output_metrics: gtk::Label,
 }
 
 fn main() -> glib::ExitCode {
@@ -723,6 +727,8 @@ fn create_window(
         output_view: editor_bindings.output_view,
         source_label: editor_bindings.source_label,
         output_label: editor_bindings.output_label,
+        source_metrics: editor_bindings.source_metrics,
+        output_metrics: editor_bindings.output_metrics,
         translate,
         retry_translation,
         export_output,
@@ -1102,8 +1108,8 @@ fn create_editors() -> EditorBindings {
     editors.set_wide_handle(true);
     let source_label = localized_mnemonic(locale, "field.source_text", "Source text");
     let output_label = localized_mnemonic(locale, "field.translation", "Translation");
-    let (source_panel, source_label) = editor_panel(&source_label, &source_view);
-    let (output_panel, output_label) = editor_panel(&output_label, &output_view);
+    let (source_panel, source_label, source_metrics) = editor_panel(&source_label, &source_view);
+    let (output_panel, output_label, output_metrics) = editor_panel(&output_label, &output_view);
     editors.set_start_child(Some(&source_panel));
     editors.set_end_child(Some(&output_panel));
     editors.set_vexpand(true);
@@ -1115,6 +1121,8 @@ fn create_editors() -> EditorBindings {
         output_view,
         source_label,
         output_label,
+        source_metrics,
+        output_metrics,
     }
 }
 
@@ -1943,7 +1951,7 @@ fn custom_provider_profile(
     })
 }
 
-fn editor_panel(label: &str, editor: &gtk::TextView) -> (gtk::Box, gtk::Label) {
+fn editor_panel(label: &str, editor: &gtk::TextView) -> (gtk::Box, gtk::Label, gtk::Label) {
     let container = gtk::Box::new(gtk::Orientation::Vertical, 6);
     let label = gtk::Label::with_mnemonic(label);
     label.set_xalign(0.0);
@@ -1956,9 +1964,47 @@ fn editor_panel(label: &str, editor: &gtk::TextView) -> (gtk::Box, gtk::Label) {
         .vscrollbar_policy(gtk::PolicyType::Automatic)
         .build();
     scroller.set_vexpand(true);
+    let metrics = gtk::Label::new(Some(&text_metrics_label(UiLocale::default(), "")));
+    metrics.set_xalign(0.0);
+    metrics.add_css_class("dim-label");
     container.append(&label);
     container.append(&scroller);
-    (container, label)
+    container.append(&metrics);
+    (container, label, metrics)
+}
+
+// 根据文本内容生成非敏感的字符数和近似 token 数提示。
+fn text_metrics_label(locale: UiLocale, text: &str) -> String {
+    let characters = text.chars().count().to_string();
+    let estimated_tokens = text.len().saturating_add(3) / 4;
+    let estimated_tokens_text = estimated_tokens.to_string();
+    localized_template(
+        locale,
+        "status.text_metrics",
+        "Characters: {characters} · Estimated tokens: {tokens}",
+        &[
+            ("{characters}", &characters),
+            ("{tokens}", &estimated_tokens_text),
+        ],
+    )
+}
+
+// 读取 GTK 文本缓冲区内容，供计数提示使用而不影响翻译状态。
+fn text_buffer_contents(buffer: &gtk::TextBuffer) -> String {
+    let (start, end) = buffer.bounds();
+    buffer.text(&start, &end, true).to_string()
+}
+
+// 同步源文本和译文的计数提示，并随界面语言刷新其模板。
+fn refresh_text_metrics(bindings: &UiBindings, locale: UiLocale) {
+    bindings.source_metrics.set_label(&text_metrics_label(
+        locale,
+        &text_buffer_contents(&bindings.source),
+    ));
+    bindings.output_metrics.set_label(&text_metrics_label(
+        locale,
+        &text_buffer_contents(&bindings.output),
+    ));
 }
 
 fn confirmed_model_index(state: &AppState) -> u32 {
@@ -2194,6 +2240,15 @@ fn connect_action_handlers(
             *source_job_bindings.document_job_id.borrow_mut() = None;
             source_job_bindings.document_warnings.borrow_mut().clear();
         }
+    });
+
+    let source_metrics_bindings = bindings.clone();
+    let source_metrics_state = Rc::clone(state);
+    bindings.source.connect_changed(move |buffer| {
+        let locale = source_metrics_state.borrow().locale();
+        source_metrics_bindings
+            .source_metrics
+            .set_label(&text_metrics_label(locale, &text_buffer_contents(buffer)));
     });
 
     let incognito_bindings = bindings.clone();
@@ -5988,6 +6043,7 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             gtk::TextDirection::Ltr
         });
     bindings.output.set_text(state.output());
+    refresh_text_metrics(bindings, state.locale());
     let document_state = bindings.document_job_state.get();
     let status_label = if bindings.ocr_pending.get() {
         localization::text(state.locale(), "status.ocr_running", "Running OCR")
@@ -6359,7 +6415,7 @@ mod tests {
         generate_custom_provider_id, localized_document_job_state, localized_document_warnings,
         localized_provider_default_name, localized_template, provider_preset_config,
         provider_preset_index, refresh_ui, routing_profile_id_conflicts, show_new_profile_in_form,
-        start_event_pump, valid_routing_profile_id,
+        start_event_pump, text_metrics_label, valid_routing_profile_id,
     };
     use adw::prelude::*;
     use gtk::glib;
@@ -6405,6 +6461,18 @@ mod tests {
             None,
             "team-apac"
         ));
+    }
+
+    #[test]
+    fn text_metrics_report_characters_and_approximate_tokens() {
+        assert_eq!(
+            text_metrics_label(UiLocale::English, "abcd"),
+            "Characters: 4 · Estimated tokens: 1"
+        );
+        assert_eq!(
+            text_metrics_label(UiLocale::English, "中a"),
+            "Characters: 2 · Estimated tokens: 1"
+        );
     }
 
     #[test]

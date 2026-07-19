@@ -328,6 +328,12 @@ msgctxt "status.partial_output"
 msgid "Partial output"
 msgstr "आंशिक आउटपुट"
 
+#. Live source or translation text size summary with a clearly approximate token estimate.
+#, fuzzy, python-brace-format
+msgctxt "status.text_metrics"
+msgid "Characters: {characters} · Estimated tokens: {tokens}"
+msgstr "Characters: {characters} · Estimated tokens: {tokens}"
+
 #. Status shown while the application is starting.
 #, fuzzy
 msgctxt "status.starting"

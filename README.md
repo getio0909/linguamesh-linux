@@ -178,8 +178,8 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`712c4b1ac814ffbab265e4d0d40629d9d2bba02d` and validated with `msgfmt`; the 359-message bundle
-adds Linux routing-profile persistence/editor, profile-ID validation and duplicate protection, and ordinary-text selection labels. The locale selector
+`8adb1f4558e4b1d93a00ce03cf026a98d4a1a5ed` and validated with `msgfmt`; the 360-message bundle
+adds Linux routing-profile persistence/editor, profile-ID validation and duplicate protection, ordinary-text selection labels, and source/output character plus approximate-token metrics. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
 active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, construction-stage provider/default-control copy, and diagnostics labels/state values without replacing active source text;
 Arabic also switches the GTK workspace root to right-to-left direction. Document-job actions,
