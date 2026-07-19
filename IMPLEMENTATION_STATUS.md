@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, live AT-SPI tree export checks, a headless GTK keyboard traversal fixture for tested controls, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF document-job translation with sequential segment persistence, bounded DOCX/PPTX/XLSX/EPUB package reconstruction and resource retention, bounded optional image-only PDF OCR with page-marked text output, page-aware text-PDF reconstruction with structured HTML fallback, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; source-referenced Linux gettext keys are statically checked against the canonical catalog; Orca speech, end-user prompt acceptance, visual/translated copy review, other clients, and release artifacts remain open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics including accessible document progress, live AT-SPI tree export checks, a headless GTK keyboard traversal fixture for tested controls, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF document-job translation with sequential segment persistence, bounded DOCX/PPTX/XLSX/EPUB package reconstruction and resource retention, bounded optional image-only PDF OCR with page-marked text output, page-aware text-PDF reconstruction with structured HTML fallback, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; source-referenced Linux gettext keys are statically checked against the canonical catalog; Orca speech, end-user prompt acceptance, visual/translated copy review, other clients, and release artifacts remain open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -1158,3 +1158,23 @@ by the existing runtime localization tests.
 The audit makes source-to-catalog coverage reproducible but does not replace translated-copy,
 plural, visual locale/RTL, or Orca speech review. Native, Foundation, and Flatpak CI gates remain
 required for the pushed revision.
+
+## 2026-07-19 — Linux accessible document-progress checkpoint
+
+Assumption: persisted document-job progress is user-visible state and must be exposed through a
+native GTK progress-bar role, not only a textual status label. Completed and total counts remain
+bounded by the Core document-job contract.
+
+- Added a GTK `ProgressBar` beside the document status. It exposes localized completed/total text,
+  a clamped fraction, and the `ProgressBar` accessibility role; it is hidden when no document job
+  is selected and no longer duplicates the partial-output label.
+- Extended the GTK regression test to assert the role, hidden initial state, 2/4 fraction and
+  localized text, then reset to hidden state. Existing AT-SPI and keyboard fixtures remain
+  unchanged and still cover live semantic export and focus traversal.
+- Local `cargo fmt --all --check`, all-target/all-feature `cargo check`, strict Clippy, locked
+  no-default tests (64 passed, 1 ignored), and demo-provider tests (102 passed, 2 ignored) passed.
+  The native GTK binary test remains CI-linked on this host because installed GTK symbols cannot
+  link the test binary; CI is required to execute the new widget assertions.
+
+Orca speech, manual high-contrast/RTL/reduced-motion review, end-user Secret Service prompt
+approval, other clients, and release artifacts remain open.

@@ -38,7 +38,8 @@ background scheduling, and widgets.
 The current GTK surface includes baseline accessibility semantics: the main workspace, headings,
 status, and errors expose explicit roles; source/output editors expose names, multi-line and
 read-only properties; editable fields and dropdowns are labelled by visible mnemonic labels; the
-output region reports translation busy state; empty errors are hidden from the accessibility tree;
+output region reports translation busy state; document-job progress exposes a native progress-bar
+role with a bounded completed/total fraction; empty errors are hidden from the accessibility tree;
 and Stop has the explicit accessible name “Stop translation”. A CI fixture reads the running
 application through AT-SPI and verifies the named Stop control plus both text-editor roles. This
 does not claim Orca speech, physical-keyboard, high-contrast, or physical-compositor coverage.

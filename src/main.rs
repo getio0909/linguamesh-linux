@@ -89,6 +89,7 @@ struct UiBindings {
     resume_document: gtk::Button,
     retry_document: gtk::Button,
     status: gtk::Label,
+    progress: gtk::ProgressBar,
     partial: gtk::Label,
     error: gtk::Label,
     locale_note: gtk::Label,
@@ -523,6 +524,18 @@ fn create_window(
     status.set_xalign(0.0);
     status.set_hexpand(true);
     action_row.append(&status);
+    let progress = gtk::ProgressBar::new();
+    progress.set_accessible_role(gtk::AccessibleRole::ProgressBar);
+    progress.set_show_text(true);
+    progress.set_hexpand(true);
+    progress.set_visible(false);
+    progress.update_property(&[gtk::accessible::Property::Label(&localized_template(
+        display_locale,
+        "status.document_progress",
+        "Document progress: {completed}/{total}",
+        &[("{completed}", "0"), ("{total}", "0")],
+    ))]);
+    action_row.append(&progress);
     let partial = gtk::Label::new(None);
     partial.add_css_class("dim-label");
     action_row.append(&partial);
@@ -607,6 +620,7 @@ fn create_window(
         resume_document,
         retry_document,
         status,
+        progress,
         partial,
         error,
         locale_note,
@@ -5009,8 +5023,8 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         "{}: {status_label}",
         localization::text(state.locale(), "status.label", "Status")
     ));
-    let partial_label = if let Some((completed, total)) = bindings.document_progress.get() {
-        localized_template(
+    if let Some((completed, total)) = bindings.document_progress.get() {
+        let progress_label = localized_template(
             state.locale(),
             "status.document_progress",
             "Document progress: {completed}/{total}",
@@ -5018,13 +5032,32 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
                 ("{completed}", &completed.to_string()),
                 ("{total}", &total.to_string()),
             ],
-        )
-    } else if state.has_partial_output() {
-        localization::text(state.locale(), "status.partial_output", "Partial output")
+        );
+        let fraction = if total == 0 {
+            0.0
+        } else {
+            let completed = u32::try_from(completed.min(total)).unwrap_or(u32::MAX);
+            let total = u32::try_from(total).unwrap_or(u32::MAX);
+            (f64::from(completed) / f64::from(total)).clamp(0.0, 1.0)
+        };
+        bindings.progress.set_fraction(fraction);
+        bindings.progress.set_text(Some(&progress_label));
+        bindings
+            .progress
+            .update_property(&[gtk::accessible::Property::Label(&progress_label)]);
+        bindings.progress.set_visible(true);
+        bindings.partial.set_label("");
     } else {
-        String::new()
-    };
-    bindings.partial.set_label(&partial_label);
+        bindings.progress.set_fraction(0.0);
+        bindings.progress.set_text(None);
+        bindings.progress.set_visible(false);
+        let partial_label = if state.has_partial_output() {
+            localization::text(state.locale(), "status.partial_output", "Partial output")
+        } else {
+            String::new()
+        };
+        bindings.partial.set_label(&partial_label);
+    }
     let error_text = state.localized_error_text(state.locale());
     let has_error = error_text.is_some();
     bindings
@@ -5719,6 +5752,22 @@ mod tests {
             &bindings.error,
             gtk::AccessibleRole::Alert
         ));
+        assert!(gtk::test_accessible_has_role(
+            &bindings.progress,
+            gtk::AccessibleRole::ProgressBar
+        ));
+        assert!(!bindings.progress.is_visible());
+        bindings.document_progress.set(Some((2, 4)));
+        refresh_ui(&bindings, &state.borrow());
+        assert!(bindings.progress.is_visible());
+        assert!((bindings.progress.fraction() - 0.5).abs() < f64::EPSILON);
+        assert_eq!(
+            bindings.progress.text().as_deref(),
+            Some("Document progress: 2/4")
+        );
+        bindings.document_progress.set(None);
+        refresh_ui(&bindings, &state.borrow());
+        assert!(!bindings.progress.is_visible());
         for control in [
             bindings.saved_profile.upcast_ref::<gtk::Widget>(),
             bindings.provider_name.upcast_ref::<gtk::Widget>(),
