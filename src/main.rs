@@ -2998,6 +2998,42 @@ fn begin_glossary_export(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
     );
 }
 
+// 判断导出目标是否通过相同路径、符号链接或硬链接指向源文件。
+fn destination_matches_source(source_uri: Option<&str>, destination: &gtk::gio::File) -> bool {
+    let Some(source_uri) = source_uri else {
+        return false;
+    };
+    let source = gtk::gio::File::for_uri(source_uri);
+    if source.equal(destination) {
+        return true;
+    }
+    let (Some(source_path), Some(destination_path)) = (source.path(), destination.path()) else {
+        return false;
+    };
+    if source_path == destination_path {
+        return true;
+    }
+    if let (Ok(source_path), Ok(destination_path)) = (
+        fs::canonicalize(&source_path),
+        fs::canonicalize(&destination_path),
+    ) && source_path == destination_path
+    {
+        return true;
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+
+        if let (Ok(source_metadata), Ok(destination_metadata)) =
+            (fs::metadata(source_path), fs::metadata(destination_path))
+        {
+            return source_metadata.dev() == destination_metadata.dev()
+                && source_metadata.ino() == destination_metadata.ino();
+        }
+    }
+    false
+}
+
 // 将译文异步写入用户选择的新文件，并拒绝覆盖已导入的源文件。
 fn begin_translation_export(
     bindings: &UiBindings,
@@ -3049,7 +3085,7 @@ fn begin_translation_export(
         move |result| match result {
             Ok(file) => {
                 let destination_uri = file.uri().to_string();
-                if source_uri.as_deref() == Some(destination_uri.as_str()) {
+                if destination_matches_source(source_uri.as_deref(), &file) {
                     show_file_export_error(
                         &export_bindings,
                         &localization::text(
@@ -3131,7 +3167,7 @@ fn begin_document_binary_export(
         move |result| match result {
             Ok(file) => {
                 let destination_uri = file.uri().to_string();
-                if source_uri.as_deref() == Some(destination_uri.as_str()) {
+                if destination_matches_source(source_uri.as_deref(), &file) {
                     show_file_export_error(
                         &export_bindings,
                         &localization::text(
@@ -5517,10 +5553,11 @@ mod tests {
         OLLAMA_ADAPTER_TYPE, OLLAMA_PROVIDER_PRESET_ID, OPENAI_ADAPTER_TYPE, OnboardingStage,
         ProviderProfileId, SecretRef, SecretRefNamespace, SecretValue, TranslationError, UiLocale,
         WorkerCommand, WorkerEvent, apply_worker_event, connect_action_handlers,
-        connect_selection_handlers, create_window, custom_provider_profile, document_format_label,
-        endpoint_matches_preset_default, generate_custom_provider_id, localized_document_job_state,
-        localized_document_warnings, localized_template, provider_preset_config,
-        provider_preset_index, refresh_ui, start_event_pump,
+        connect_selection_handlers, create_window, custom_provider_profile,
+        destination_matches_source, document_format_label, endpoint_matches_preset_default,
+        generate_custom_provider_id, localized_document_job_state, localized_document_warnings,
+        localized_template, provider_preset_config, provider_preset_index, refresh_ui,
+        start_event_pump,
     };
     use adw::prelude::*;
     use gtk::glib;
@@ -5536,6 +5573,47 @@ mod tests {
     use std::time::{Duration, Instant};
     use tokio::runtime::Builder;
     use tokio::sync::oneshot;
+
+    #[test]
+    fn output_export_rejects_same_file_aliases() {
+        let directory =
+            std::env::temp_dir().join(format!("linguamesh-linux-export-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).expect("directory");
+        let source_path = directory.join("source.txt");
+        fs::write(&source_path, "source").expect("source");
+        let source_file = gtk::gio::File::for_path(&source_path);
+        let source_uri = source_file.uri().to_string();
+
+        assert!(destination_matches_source(
+            Some(source_uri.as_str()),
+            &gtk::gio::File::for_path(&source_path),
+        ));
+
+        let different_path = directory.join("different.txt");
+        assert!(!destination_matches_source(
+            Some(source_uri.as_str()),
+            &gtk::gio::File::for_path(&different_path),
+        ));
+
+        #[cfg(unix)]
+        {
+            let symlink_path = directory.join("source-link.txt");
+            std::os::unix::fs::symlink(&source_path, &symlink_path).expect("symlink");
+            assert!(destination_matches_source(
+                Some(source_uri.as_str()),
+                &gtk::gio::File::for_path(&symlink_path),
+            ));
+
+            let hard_link_path = directory.join("source-hard-link.txt");
+            fs::hard_link(&source_path, &hard_link_path).expect("hard link");
+            assert!(destination_matches_source(
+                Some(source_uri.as_str()),
+                &gtk::gio::File::for_path(&hard_link_path),
+            ));
+        }
+        let _ = fs::remove_dir_all(directory);
+    }
 
     #[test]
     fn document_job_metadata_uses_stable_format_and_localized_state_labels() {

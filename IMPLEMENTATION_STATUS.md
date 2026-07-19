@@ -4,6 +4,30 @@ Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline 
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
+## 2026-07-19 — Linux output-safety alias checkpoint
+
+Assumption: rejecting only byte-for-byte equal destination URIs is insufficient for Scenario 18,
+because a save target may be a symbolic link or hard link to the imported source file.
+
+- Linux now compares GIO file identity, canonical native paths, and Unix device/inode metadata
+  before both text and binary export writes. Source aliases are rejected before asynchronous
+  replacement begins, preserving the source on failure and cancellation paths.
+- Added a regression covering the exact source path, a distinct target, and Unix symbolic/hard-link
+  aliases. No source contents are written by the guard.
+
+Validated locally:
+
+- `cargo fmt --all` — passed.
+- `cargo check --features gui --all-targets --offline` — passed.
+- `cargo clippy --all-targets --all-features --offline -- -D warnings` — passed.
+- `cargo test --features demo-provider --offline` — passed: 107 tests, 2 ignored, 0 failed.
+- `python3 tools/check-localization-keys.py` — passed: 213 Linux source keys.
+- `bash tools/sync-l10n.sh --check` and `git diff --check` — passed.
+
+The GTK binary test cannot link on this host because installed GTK/libadwaita symbols are older
+than the gtk-rs headers; Native and Flatpak CI remain required for the GUI regression. Physical
+desktop review, Orca speech, other clients, and stable-release evidence remain open.
+
 ## 2026-07-19 — Linux plural UI wiring checkpoint
 
 Assumption: pluralized catalog support must be exercised by a visible GTK surface, not only by
