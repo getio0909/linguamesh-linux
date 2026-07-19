@@ -13,7 +13,9 @@ default to disabled for newly created profiles.
   reused.
 - Local Linux validation passed: GUI all-target check, 130 demo-provider tests (`128 passed; 2
   ignored`), strict Clippy, formatting, localization sync/audit, Flatpak metadata, and diff checks.
-  Remote push/PR checks for this checkpoint are pending publication of the commit below.
+  Remote push Native/Flatpak/Foundation runs `29696147534`/`29696147536`/`29696147528` and PR
+  Native/Flatpak/Foundation runs `29696149519`/`29696149493`/`29696149499` all passed for this
+  published head.
 
 This advances the Linux routing configuration surface without claiming complete candidate editing,
 third-party-provider interoperability, other clients, visual/Orca review, release artifacts, or a
