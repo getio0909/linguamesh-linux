@@ -13,6 +13,8 @@ functional pin used by Native CI and Flatpak metadata; no Linux-local duplicate 
   archive boundary rejects entries at least 1 KiB whose uncompressed size exceeds 200 times the
   compressed size, in addition to the existing size, count, path, duplicate, encrypted, and
   symlink checks.
+- The reviewed Linux pin and documentation are recorded at `be0bad0`; the Flatpak source update
+  will point at this immutable revision while its own metadata commit is validated.
 - Core local workspace tests, strict Clippy, formatting, and locked build passed at this revision;
   Core CI run `29682666941` and Native SDK run `29682666929` completed successfully.
 - Linux validation remains required after this pin update: the worker OOXML tests, local full suite,
