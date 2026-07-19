@@ -12,8 +12,9 @@ editing remains a later accessibility-reviewed slice.
   through the existing fixed, catalog-backed no-candidate error.
 - Regression `routing_candidate_selection_preserves_order_and_rejects_unknown_profiles` covers
   deterministic filtering and order preservation without exposing endpoints, credentials, or content.
-- Remote validation is pending this candidate-selection commit; the preceding routing-mode head had
-  all six Linux push/PR Native, Flatpak, and Foundation gates passing.
+- Remote push Native/Flatpak/Foundation runs `29696815328`/`29696815363`/`29696815337` and PR
+  Native/Flatpak/Foundation runs `29696816705`/`29696816704`/`29696816734` all passed for this
+  candidate-selection head.
 
 This advances Linux candidate inclusion without claiming drag/drop reordering, complete candidate
 management, other clients, visual/Orca review, release artifacts, or a stable release.
