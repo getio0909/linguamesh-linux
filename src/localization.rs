@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
 struct Catalog {
-    messages: BTreeMap<String, String>,
+    messages: BTreeMap<String, Vec<String>>,
 }
 
 #[cfg(test)]
@@ -80,13 +80,15 @@ impl Catalog {
             let Some((context, _message_id)) = original.split_once('\x04') else {
                 continue;
             };
-            let translation = String::from_utf8_lossy(translation)
+            let translations = String::from_utf8_lossy(translation)
                 .split('\0')
-                .next()
-                .unwrap_or_default()
-                .to_owned();
-            if !translation.is_empty() {
-                messages.insert(context.to_owned(), translation);
+                .map(ToOwned::to_owned)
+                .collect::<Vec<_>>();
+            if translations
+                .iter()
+                .any(|translation| !translation.is_empty())
+            {
+                messages.insert(context.to_owned(), translations);
             }
         }
         Self { messages }
@@ -107,7 +109,7 @@ impl Catalog {
                     && !message_id.is_empty()
                     && !message.is_empty()
                 {
-                    messages.insert(context, message);
+                    messages.insert(context, vec![message]);
                 }
                 field = None;
                 continue;
@@ -143,7 +145,26 @@ impl Catalog {
     fn get(&self, key: &str, fallback: &str) -> String {
         self.messages
             .get(key)
-            .cloned()
+            .and_then(|translations| translations.first().cloned())
+            .unwrap_or_else(|| fallback.to_owned())
+    }
+
+    // 按目录提供的复数槽位选择翻译，缺失槽位时回退到可用的首个槽位。
+    fn get_plural(&self, key: &str, singular: &str, plural: &str, index: usize) -> String {
+        let fallback = if index == 0 { singular } else { plural };
+        self.messages
+            .get(key)
+            .and_then(|translations| {
+                translations
+                    .get(index)
+                    .filter(|translation| !translation.is_empty())
+                    .or_else(|| {
+                        translations
+                            .first()
+                            .filter(|translation| !translation.is_empty())
+                    })
+                    .cloned()
+            })
             .unwrap_or_else(|| fallback.to_owned())
     }
 }
@@ -263,9 +284,61 @@ pub fn text(locale: UiLocale, key: &str, fallback: &str) -> String {
     catalog(locale).get(key, fallback)
 }
 
+// 根据 Linux 目录的 gettext 规则计算稳定的复数槽位。
+fn plural_index(locale: UiLocale, count: u64) -> usize {
+    match locale {
+        UiLocale::Arabic => {
+            if count == 0 {
+                0
+            } else if count == 1 {
+                1
+            } else if count == 2 {
+                2
+            } else if (3..=10).contains(&(count % 100)) {
+                3
+            } else if (11..=99).contains(&(count % 100)) {
+                4
+            } else {
+                5
+            }
+        }
+        UiLocale::French => usize::from(count > 1),
+        UiLocale::Russian => {
+            if count % 10 == 1 && count % 100 != 11 {
+                0
+            } else if (2..=4).contains(&(count % 10)) && !(12..=14).contains(&(count % 100)) {
+                1
+            } else {
+                2
+            }
+        }
+        UiLocale::SimplifiedChinese
+        | UiLocale::TraditionalChinese
+        | UiLocale::Japanese
+        | UiLocale::Korean => 0,
+        UiLocale::English
+        | UiLocale::Spanish
+        | UiLocale::German
+        | UiLocale::BrazilianPortuguese
+        | UiLocale::Hindi => usize::from(count != 1),
+    }
+}
+
+// 返回带有当前界面语言复数形式的本地化模板。
+#[must_use]
+pub fn text_plural(
+    locale: UiLocale,
+    key: &str,
+    singular: &str,
+    plural: &str,
+    count: u64,
+) -> String {
+    catalog(locale).get_plural(key, singular, plural, plural_index(locale, count))
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{Catalog, text};
+    use super::{Catalog, text, text_plural};
     use crate::model::UiLocale;
 
     #[test]
@@ -293,6 +366,60 @@ mod tests {
         assert_eq!(
             text(UiLocale::SimplifiedChinese, "action.translate", "Translate"),
             "翻译"
+        );
+    }
+
+    #[test]
+    fn resolves_gettext_plural_slots_for_runtime_locales() {
+        assert_eq!(
+            text_plural(
+                UiLocale::English,
+                "document.file_count",
+                "{count} file",
+                "{count} files",
+                1,
+            ),
+            "{count} file"
+        );
+        assert_eq!(
+            text_plural(
+                UiLocale::English,
+                "document.file_count",
+                "{count} file",
+                "{count} files",
+                2,
+            ),
+            "{count} files"
+        );
+        assert_eq!(
+            text_plural(
+                UiLocale::SimplifiedChinese,
+                "document.file_count",
+                "{count} file",
+                "{count} files",
+                2,
+            ),
+            "已选择 {count} 个文件"
+        );
+        assert_eq!(
+            text_plural(
+                UiLocale::Russian,
+                "document.file_count",
+                "{count} file",
+                "{count} files",
+                5,
+            ),
+            "{count} файлов"
+        );
+        assert_eq!(
+            text_plural(
+                UiLocale::Arabic,
+                "document.file_count",
+                "{count} file",
+                "{count} files",
+                2,
+            ),
+            "تم تحديد ملفين ({count})"
         );
     }
 

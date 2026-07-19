@@ -4,6 +4,31 @@ Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline 
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
+## 2026-07-19 — Linux gettext plural runtime checkpoint
+
+Assumption: the pinned gettext catalogs are the runtime source of truth for plural selection, so
+the GTK client must preserve every generated translation slot and apply the locale-specific rule
+before replacing `{count}` or other non-sensitive placeholders.
+
+- The MO loader now retains all NUL-separated plural translations instead of discarding every slot
+  after the first. `text_plural` selects the correct slot for English, French, Russian, Arabic,
+  Hindi, Brazilian Portuguese, and the one-form Chinese/Japanese/Korean catalogs, with safe
+  fallback behavior for incomplete translations.
+- Regression coverage exercises English singular/plural, Simplified Chinese one-form behavior,
+  Russian three-form selection, and Arabic dual-form selection using the pinned Linux catalogs.
+
+Validated locally:
+
+- `cargo fmt --all -- --check` — passed.
+- `cargo check --features gui --all-targets --offline` — passed.
+- `cargo clippy --all-targets --all-features --offline -- -D warnings` — passed.
+- `cargo test --features demo-provider --offline` — passed: 106 tests, 2 ignored, 0 failed.
+- `python3 tools/check-localization-keys.py` — passed: 213 Linux source keys.
+- `bash tools/sync-l10n.sh --check` and `git diff --check` — passed.
+
+The catalog translations remain machine-generated or source-reviewed according to their existing
+metadata; visual locale/RTL review, Orca speech, other clients, and release artifacts remain open.
+
 ## 2026-07-19 — Native Ollama `/api` GTK preset checkpoint
 
 Assumption: the verified native Ollama worker path is ready for explicit Linux user selection, while
