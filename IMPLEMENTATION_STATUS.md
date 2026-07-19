@@ -18,8 +18,11 @@ boundaries until their routing semantics are specified and tested.
   to the next ordinary text translation; the diagnostics panel records the safe decision summary.
 - l10n `fade545ec14793893de2603c62e0994689d9c4df` contains 352 messages, including the routing
   selection and decision labels. Local l10n checks, Linux routing/model regressions, formatting,
-  GUI check, strict Clippy, localization sync/audit, Flatpak metadata, and diff checks remain the
-  required evidence set.
+  GUI check, strict Clippy, localization sync/audit, Flatpak metadata, and diff checks passed.
+- Remote Linux push Native/Foundation/Flatpak runs `29692199045`/`29692199022`/`29692199030`
+  passed; duplicate PR-triggered Native/Foundation/Flatpak runs
+  `29692200873`/`29692200865`/`29692200912` also passed. l10n Foundation/Localization runs
+  `29691938103`/`29691938112` passed.
 
 This advances actual Linux ordinary-text routing execution without claiming a complete automatic or
 ordered fallback chain, document-job routing, other clients, visual/Orca review, release artifacts,
