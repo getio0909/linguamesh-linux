@@ -57,8 +57,8 @@ and secret references.
 
 The dependency-free `tools/check-localization-keys.py` audit verifies literal catalog keys,
 `tools/check-localization-placeholders.py` checks every literal fallback template against the
-canonical placeholder contract, and `tools/check-visible-localization.py` rejects non-empty
-hard-coded GTK labels, titles, tooltips,
+canonical English template and placeholder contract, and `tools/check-visible-localization.py`
+rejects non-empty hard-coded GTK labels, titles, tooltips,
 placeholders, dialog actions, and list options. Native and Foundation CI run all three audits before
 building the client; empty label assignments used to clear transient UI state remain allowed.
 

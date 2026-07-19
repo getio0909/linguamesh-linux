@@ -548,7 +548,7 @@ fn create_window(
     document_jobs.set_tooltip_text(Some(&localization::text(
         display_locale,
         "tooltip.document_jobs",
-        "View and select persisted document jobs",
+        "Inspect persisted document jobs and their progress",
     )));
     let translate = gtk::Button::with_mnemonic(&localized_mnemonic(
         display_locale,
@@ -648,7 +648,7 @@ fn create_window(
     progress.update_property(&[gtk::accessible::Property::Label(&localized_template(
         display_locale,
         "status.document_progress",
-        "Document progress: {completed}/{total}",
+        "{completed} of {total} segments translated",
         &[("{completed}", "0"), ("{total}", "0")],
     ))]);
     action_row.append(&progress);
@@ -1688,7 +1688,7 @@ fn current_document_options(
                 localization::text(
                     state.locale(),
                     "error.glossary_import",
-                    "The imported glossary is no longer available.",
+                    "The glossary CSV could not be imported.",
                 ),
             )
         })
@@ -4070,8 +4070,8 @@ fn show_routing_profiles_dialog(
     mode.set_focusable(true);
     mode.set_tooltip_text(Some(&localization::text(
         locale,
-        "dialog.routing_profiles",
-        "Choose Manual, Ordered, or Automatic routing",
+        "tooltip.routing_profiles",
+        "Create, inspect, and delete non-secret routing planner profiles",
     )));
     let allow_fallback = gtk::CheckButton::with_mnemonic(&localized_mnemonic(
         locale,
@@ -4083,7 +4083,7 @@ fn show_routing_profiles_dialog(
     allow_fallback.set_tooltip_text(Some(&localization::text(
         locale,
         "tooltip.fallback",
-        "Permit the selected routing profile to try another eligible saved provider after a retryable failure",
+        "Retry only retryable network failures with this saved provider; document jobs, cancellation, and credential failures never fall back",
     )));
     actions.append(&mode);
     actions.append(&allow_fallback);
@@ -4608,7 +4608,7 @@ fn show_document_jobs_dialog(
         let empty = gtk::Label::new(Some(&localization::text(
             locale,
             "status.document_jobs_empty",
-            "No persisted document jobs are available.",
+            "No document jobs yet",
         )));
         empty.set_xalign(0.0);
         empty.add_css_class("dim-label");
@@ -4643,7 +4643,7 @@ fn show_document_jobs_dialog(
             let select = gtk::Button::with_mnemonic(&localized_mnemonic(
                 locale,
                 "action.select_document_job",
-                "Select",
+                "Select document job",
             ));
             select.set_focusable(true);
             let selected = snapshot.clone();
@@ -5985,7 +5985,7 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
         .set_tooltip_text(Some(&localization::text(
             locale,
             "tooltip.document_jobs",
-            "View and select persisted document jobs",
+            "Inspect persisted document jobs and their progress",
         )));
     bindings.translate.set_label(&translate_label);
     bindings
@@ -6499,7 +6499,7 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         let progress_label = localized_template(
             state.locale(),
             "status.document_progress",
-            "Document progress: {completed}/{total}",
+            "{completed} of {total} segments translated",
             &[
                 ("{completed}", &completed.to_string()),
                 ("{total}", &total.to_string()),
@@ -7618,7 +7618,7 @@ mod tests {
         let expected_progress = localized_template(
             UiLocale::English,
             "status.document_progress",
-            "Document progress: {completed}/{total}",
+            "{completed} of {total} segments translated",
             &[("{completed}", "2"), ("{total}", "4")],
         );
         assert_eq!(

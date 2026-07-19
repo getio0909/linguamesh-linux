@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-19 — Linux localization fallback-template consistency checkpoint
+
+Assumption: a catalog-backed key must use its canonical English source text as the literal runtime
+fallback; placeholder-only checks are insufficient when copy drifts between Rust and l10n.
+
+- Linux aligns literal fallback strings for document-job controls/progress, glossary import errors,
+  routing-profile tooltips, and document-job selection with the canonical catalog. The routing mode
+  tooltip now uses the dedicated `tooltip.routing_profiles` key instead of overloading the dialog
+  title key.
+- `tools/check-localization-placeholders.py` now rejects canonical-text drift in addition to malformed
+  braces and placeholder identity drift. The dependency-free audit still skips dynamic keys and
+  non-literal constants, which remain covered by the key audit and runtime tests.
+- The initial full local suite had one transient HTTP 502 in an unrelated profile-restore test; the
+  exact test rerun passed. Final full-suite and remote evidence will be recorded after this slice.
+
 ## 2026-07-19 — Linux localization placeholder audit checkpoint
 
 Assumption: catalog-backed fallback templates are part of the Linux visible-string contract, so

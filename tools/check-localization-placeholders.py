@@ -119,6 +119,16 @@ def expected_placeholders(message: dict) -> set[str] | None:
     return set(message["placeholders"])
 
 
+def canonical_fallbacks(message: dict) -> list[str]:
+    """返回 canonical message 允许的英文回退模板。"""
+    value = message["value"]
+    if value["type"] == "text":
+        return [value["template"]]
+    if value["type"] == "plural":
+        return [value["variants"]["one"], value["variants"]["other"]]
+    return list(value["variants"].values())
+
+
 def main() -> int:
     """执行源码回退模板占位符审计。"""
     root = Path(__file__).resolve().parents[1]
@@ -137,11 +147,17 @@ def main() -> int:
                 continue
             call_count += 1
             expected = expected_placeholders(messages[key])
+            canonical = canonical_fallbacks(messages[key])
             fallback_arguments = arguments[2:4] if name == "localization::text_plural" else arguments[2:3]
             for offset, fallback_argument in enumerate(fallback_arguments):
                 fallback = rust_string(fallback_argument)
                 if fallback is None:
                     continue
+                if fallback not in canonical:
+                    failures.append(
+                        f"{source_path}:{line}: {key} fallback {offset + 1} "
+                        "does not match a canonical English template"
+                    )
                 actual = placeholder_names(fallback)
                 if actual is None:
                     failures.append(f"{source_path}:{line}: {key} fallback contains malformed placeholder braces")
