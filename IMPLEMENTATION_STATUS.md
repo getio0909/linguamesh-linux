@@ -4,6 +4,23 @@ Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline 
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
+## 2026-07-19 — Linux PPTX worker end-to-end checkpoint
+
+Assumption: Linux Milestone 6 evidence must exercise persisted worker translation for PPTX, not only
+the native import wrapper and shared Core reconstruction fixture; the package remains bounded and
+contains no user paths or credentials.
+
+- Linux adds `document_job_translation_reconstructs_pptx_and_preserves_notes_and_resources`, which
+  persists a PPTX job, translates slide and speaker-note segments through the fake provider, rebuilds
+  the completed package, and verifies the binary image part remains unchanged.
+- Local `cargo test --features demo-provider --offline` passed 118 tests with 2 ignored; the focused
+  worker fixture passed independently. Formatting, GUI check, strict Clippy, 215-key audit, l10n
+  sync, Flatpak metadata validation, and diff checks passed.
+- The six remote Native/Foundation/Flatpak push and PR gates are required for this published checkpoint.
+
+This completes Linux worker evidence for bounded PPTX reconstruction without claiming macros/signatures,
+visual review, other clients, packaging artifacts, or a stable release.
+
 ## 2026-07-19 — Linux PPTX import/reconstruction checkpoint
 
 Assumption: the Linux document slice should exercise every currently supported OOXML family through

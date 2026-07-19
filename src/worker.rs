@@ -3608,6 +3608,42 @@ mod tests {
         writer.finish().expect("xlsx archive").into_inner()
     }
 
+    fn pptx_worker_fixture() -> Vec<u8> {
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        let options = SimpleFileOptions::default();
+        writer
+            .start_file("[Content_Types].xml", options)
+            .expect("content types");
+        writer.write_all(b"<Types/>").expect("content types bytes");
+        writer
+            .start_file("ppt/presentation.xml", options)
+            .expect("presentation");
+        writer
+            .write_all(br#"<p:presentation xmlns:p="urn:ppt"><p:sldMasterIdLst/></p:presentation>"#)
+            .expect("presentation bytes");
+        writer
+            .start_file("ppt/slides/slide1.xml", options)
+            .expect("slide");
+        writer
+            .write_all(
+                br#"<p:sld xmlns:p="urn:ppt" xmlns:a="urn:dml"><p:cSld><p:spTree><a:p><a:r><a:t>Slide title</a:t></a:r></a:p></p:spTree></p:cSld></p:sld>"#,
+            )
+            .expect("slide bytes");
+        writer
+            .start_file("ppt/notesSlides/notesSlide1.xml", options)
+            .expect("notes");
+        writer
+            .write_all(
+                br#"<p:notes xmlns:p="urn:ppt" xmlns:a="urn:dml"><a:p><a:r><a:t>Speaker note</a:t></a:r></a:p></p:notes>"#,
+            )
+            .expect("notes bytes");
+        writer
+            .start_file("ppt/media/image.bin", options)
+            .expect("image");
+        writer.write_all(&[5, 6, 7]).expect("image bytes");
+        writer.finish().expect("pptx archive").into_inner()
+    }
+
     static TEST_DATABASE_COUNTER: AtomicUsize = AtomicUsize::new(0);
     const LINUX_ENOSPC: i32 = 28;
 
@@ -4719,6 +4755,85 @@ mod tests {
             .read_to_end(&mut image)
             .expect("image bytes");
         assert_eq!(image, [8, 9, 10]);
+        shutdown(&worker);
+    }
+
+    #[test]
+    fn document_job_translation_reconstructs_pptx_and_preserves_notes_and_resources() {
+        let database = TestDatabase::new();
+        let (worker, _, endpoint) = started_worker_with_database(database.path());
+        connect(
+            &worker,
+            profile("document-pptx-provider", &endpoint, None, None),
+            None,
+            PersistenceIntent::SessionOnly,
+        )
+        .expect("connection");
+        select(&worker, "document-pptx-provider", "fake-translator");
+        worker
+            .try_send(WorkerCommand::CreateDocumentJob {
+                job_id: "document-pptx-1".to_owned(),
+                job: DocumentJob::from_utf8("sample.pptx", &pptx_worker_fixture())
+                    .expect("pptx job"),
+            })
+            .expect("create document job");
+        assert!(matches!(
+            worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("created event"),
+            WorkerEvent::DocumentJobUpdated(snapshot)
+                if snapshot.state == DocumentJobState::Pending
+        ));
+        worker
+            .try_send(WorkerCommand::TranslateDocumentJob {
+                job_id: "document-pptx-1".to_owned(),
+                source_locale: Some("en".to_owned()),
+                target_locale: "zh-CN".to_owned(),
+                glossary: None,
+                privacy_mode: TranslationPrivacyMode::Standard,
+            })
+            .expect("translate document job");
+        let completed = loop {
+            match worker
+                .events
+                .recv_timeout(Duration::from_secs(10))
+                .expect("document translation event")
+            {
+                WorkerEvent::DocumentJobUpdated(snapshot)
+                    if snapshot.state == DocumentJobState::Completed =>
+                {
+                    break snapshot;
+                }
+                WorkerEvent::DocumentJobSegment { event, .. } => {
+                    assert!(!matches!(event, TranslationEvent::Failed { .. }));
+                }
+                _ => {}
+            }
+        };
+        let rebuilt = completed.job.reconstruct_bytes().expect("reconstruct pptx");
+        let mut archive = ZipArchive::new(Cursor::new(rebuilt)).expect("rebuilt pptx archive");
+        let mut slide = String::new();
+        archive
+            .by_name("ppt/slides/slide1.xml")
+            .expect("slide entry")
+            .read_to_string(&mut slide)
+            .expect("slide xml");
+        assert!(slide.contains("你好，LinguaMesh！"));
+        let mut notes = String::new();
+        archive
+            .by_name("ppt/notesSlides/notesSlide1.xml")
+            .expect("notes entry")
+            .read_to_string(&mut notes)
+            .expect("notes xml");
+        assert!(notes.contains("你好，LinguaMesh！"));
+        let mut image = Vec::new();
+        archive
+            .by_name("ppt/media/image.bin")
+            .expect("image entry")
+            .read_to_end(&mut image)
+            .expect("image bytes");
+        assert_eq!(image, [5, 6, 7]);
         shutdown(&worker);
     }
 

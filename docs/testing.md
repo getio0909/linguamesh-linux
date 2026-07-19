@@ -40,7 +40,8 @@ pause/resume/retry controls, and the worker regression
 are listed together for explicit selection. The worker regressions
 `imports_pptx_and_preserves_notes_and_resources`,
 `document_job_translation_reconstructs_docx_and_preserves_binary_parts` and
-`document_job_translation_reconstructs_xlsx_and_preserves_formulas_and_numbers` drive the
+`document_job_translation_reconstructs_xlsx_and_preserves_formulas_and_numbers`,
+`document_job_translation_reconstructs_pptx_and_preserves_notes_and_resources` drive the
 persisted-job translation path end to end, then inspect reconstructed OOXML while checking that
 binary resources, formulas, and numeric cells survive. Concurrent translation remains outside the
 validation gate. PDF imports
