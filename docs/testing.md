@@ -12,7 +12,7 @@ Ollama daemon.
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`123d5c4d7a76873e597895763ca5d78e1ea42ea0`. This revision carries the explicit request-level
+`63fc0ca62e2b1d9bd168a60e6c9051ac338f6486`. This revision carries the explicit request-level
 Incognito privacy policy and changes file-backed Core storage to add SQLite's `SQLITE_OPEN_NOFOLLOW`
 flag, adds protected-span restoration and request-level glossary
 protection for streamed text, and adds bounded semantic chunking. On
@@ -21,9 +21,9 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 123d5c4d7a76873e597895763ca5d78e1ea42ea0^{commit}
+git -C ../linguamesh-core cat-file -e 63fc0ca62e2b1d9bd168a60e6c9051ac338f6486^{commit}
 git -C ../linguamesh-core diff --quiet \
-  123d5c4d7a76873e597895763ca5d78e1ea42ea0..HEAD -- \
+  63fc0ca62e2b1d9bd168a60e6c9051ac338f6486..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -47,6 +47,10 @@ also expose bounded structured warnings for image-only pages, uncertain reading 
 reconstruction; the UI warning test verifies that only page numbers and fixed text are shown, never
 source content. Subtitle imports also expose configurable Core thresholds for line length and
 reading speed; the default UI warning test verifies cue-number-only output.
+
+The reviewed Core pin also rejects an OOXML ZIP entry whose uncompressed size is more than 200 times
+its compressed size once the entry reaches 1 KiB. This decompression-bomb guard is exercised by the
+Core document fixture and is applied to DOCX, PPTX, and XLSX imports before worker translation.
 
 A sibling `../linguamesh-l10n` checkout at the revision pinned by `tools/sync-l10n.sh` is required
 to verify the checked-in PO catalogs.
@@ -332,7 +336,7 @@ Core ABI/protocol header, localizes fixed labels and state values through the Li
 keys, and keeps source content, endpoints, identifiers, and secret references redacted.
 
 The GitHub Actions native workflow pins Core revision
-`123d5c4d7a76873e597895763ca5d78e1ea42ea0`, installs the headers plus D-Bus, Xvfb, test-only
+`63fc0ca62e2b1d9bd168a60e6c9051ac338f6486`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
 namespace test through the unprivileged path.

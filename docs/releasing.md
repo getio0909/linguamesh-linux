@@ -28,9 +28,10 @@ The GTK form now exposes the native Ollama preset and its `ollama_chat` adapter,
 secret references use the Linux GIO Secret Service adapter and fail closed when the desktop keyring
 is unavailable or requires an interactive prompt. The native workflow
 pins reviewed Core functional revision
-`123d5c4d7a76873e597895763ca5d78e1ea42ea0`, whose storage delta adds
-`SQLITE_OPEN_NOFOLLOW` and whose text path adds protected-span, request-level glossary, and
-bounded long-text restoration, and the bounded SRT/WebVTT/CSV/JSON/HTML document contract, rather than checking
+`63fc0ca62e2b1d9bd168a60e6c9051ac338f6486`, whose storage delta adds
+`SQLITE_OPEN_NOFOLLOW`, rejects suspicious OOXML compression ratios before XML inspection, and whose
+text path adds protected-span, request-level glossary, and bounded long-text restoration, and the
+bounded SRT/WebVTT/CSV/JSON/HTML document contract, rather than checking
 out a floating branch. Functional revision
 `7d7eba9960b657f0460fb0daaaaebaaa609f39b1` passed Native Linux run `29604269568` (job
 `87963611054`) and repository-foundation run `29604269516`; it includes the no-credential
@@ -43,7 +44,7 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `123d5c4d7a76873e597895763ca5d78e1ea42ea0` and l10n
+The current Linux gate consumes Core `63fc0ca62e2b1d9bd168a60e6c9051ac338f6486` and l10n
 `85b9d45569ce840c17dc0acc7d7366d6810be48e` (334 catalog messages, bundle SHA-256
 `028d25b3637fbc19d41d497a860b414353615b9576db6f852a9f236bcbe770ce`). Request-level glossary rules, bounded CSV,
 interchange are implemented in the Linux slice; persistent glossary libraries and TBX import

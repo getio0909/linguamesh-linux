@@ -4,6 +4,23 @@ Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline 
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
+## 2026-07-19 — Core OOXML compression-ratio pin checkpoint
+
+Assumption: Linux should consume the reviewed Core archive guard through the same immutable
+functional pin used by Native CI and Flatpak metadata; no Linux-local duplicate parser is added.
+
+- Linux now pins Core `63fc0ca62e2b1d9bd168a60e6c9051ac338f6486`, whose shared DOCX/PPTX/XLSX
+  archive boundary rejects entries at least 1 KiB whose uncompressed size exceeds 200 times the
+  compressed size, in addition to the existing size, count, path, duplicate, encrypted, and
+  symlink checks.
+- Core local workspace tests, strict Clippy, formatting, and locked build passed at this revision;
+  Core CI run `29682666941` and Native SDK run `29682666929` completed successfully.
+- Linux validation remains required after this pin update: the worker OOXML tests, local full suite,
+  localization and Flatpak metadata checks, then all Native, Foundation, and Flatpak remote gates.
+
+This checkpoint strengthens mandatory Scenario 15 archive safety without claiming macro/signature,
+visual review, other clients, packaging artifacts, or a stable release.
+
 ## 2026-07-19 — Linux worker OOXML end-to-end checkpoint
 
 Assumption: Linux document acceptance must exercise the persisted worker command path, not only
