@@ -12,6 +12,10 @@ addition to tooltips, while full screen-reader speech and visual review remain s
 - Local Linux validation passed with GUI check, strict Clippy, 132 tests (`130 passed; 2 ignored`),
   localization sync/audit, Flatpak metadata, and diff checks. The l10n repository passed its 26 tests,
   generated-resource checks, and Foundation validation at commit `0d2d8c0`.
+- Final Linux push gates passed at `0894b87`: Foundation `29698567260`, Native `29698567247`, and
+  Flatpak `29698567253`; PR gates passed with Foundation `29698569197`, Native `29698569232`, and
+  Flatpak `29698569229`. The preceding `3d60123` run stopped only because CI still pinned the old
+  l10n revision; `0894b87` updates that workflow pin before the successful gates.
 
 This strengthens icon-control semantics without claiming complete candidate management, Orca speech,
 manual visual review, other clients, release artifacts, or a stable release.
