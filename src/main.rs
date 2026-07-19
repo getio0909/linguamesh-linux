@@ -3505,11 +3505,10 @@ fn localized_routing_mode(locale: UiLocale, mode: RoutingMode) -> String {
     localization::text(locale, key, fallback)
 }
 
+type RoutingCandidateControls = Rc<RefCell<Vec<(ProviderProfileId, gtk::Box, gtk::CheckButton)>>>;
+
 // 清空并按当前顺序重建路由候选行，避免 GTK 列表顺序与持久化顺序分离。
-fn rebuild_routing_candidate_rows(
-    container: &gtk::Box,
-    controls: &Rc<RefCell<Vec<(ProviderProfileId, gtk::Box, gtk::CheckButton)>>>,
-) {
+fn rebuild_routing_candidate_rows(container: &gtk::Box, controls: &RoutingCandidateControls) {
     while let Some(child) = container.first_child() {
         container.remove(&child);
     }
@@ -3522,7 +3521,7 @@ fn rebuild_routing_candidate_rows(
 // 按按钮方向移动候选行，并把新顺序留给配置创建闭包读取。
 fn move_routing_candidate_row(
     container: &gtk::Box,
-    controls: &Rc<RefCell<Vec<(ProviderProfileId, gtk::Box, gtk::CheckButton)>>>,
+    controls: &RoutingCandidateControls,
     profile_id: &ProviderProfileId,
     offset: isize,
 ) {
@@ -3665,8 +3664,7 @@ fn show_routing_profiles_dialog(
     )));
     actions.append(&mode);
     actions.append(&allow_fallback);
-    let candidate_controls: Rc<RefCell<Vec<(ProviderProfileId, gtk::Box, gtk::CheckButton)>>> =
-        Rc::new(RefCell::new(Vec::new()));
+    let candidate_controls: RoutingCandidateControls = Rc::new(RefCell::new(Vec::new()));
     let candidates_box = gtk::Box::new(gtk::Orientation::Vertical, 4);
     for profile in state
         .borrow()
