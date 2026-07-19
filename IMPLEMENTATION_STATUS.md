@@ -1247,7 +1247,11 @@ must use the same catalog-backed error rendering as other worker failures.
   passed, 1 ignored), and demo-provider tests (103 passed, 2 ignored) passed. The native GTK binary
   test remains CI-linked because this host's installed GTK symbols cannot link it.
 
-Remote Native, Foundation, and Flatpak validation for this revision remains required. Complete
-visible-string gettext coverage beyond this error path, translated-copy/plural review, Orca speech,
-manual high-contrast/RTL/reduced-motion review, end-user Secret Service prompt approval, other
-clients, and release artifacts remain open.
+Linux revision `1d96c9825b83cdc1cd6a2783b61fdd678b89e510` passed push Native `29672046465`
+(job `88152770602`), Foundation `29672046491` (job `88152770643`), and Flatpak `29672046488`
+(job `88152770610`). PR reruns Native `29672047299` (job `88152772830`), Foundation
+`29672047295` (job `88152772869`), and Flatpak `29672047296` (job `88152772851`) also passed.
+
+Complete visible-string gettext coverage beyond this error path, translated-copy/plural review,
+Orca speech, manual high-contrast/RTL/reduced-motion review, end-user Secret Service prompt
+approval, other clients, and release artifacts remain open.
