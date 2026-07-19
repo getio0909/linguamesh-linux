@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-19 — Linux native release-mode evidence checkpoint
+
+Assumption: the next Linux release-engineering slice should make the native binary reproducible in
+CI and expose integrity metadata without implying that an unsigned build is stable or distributable.
+
+- Linux adds `tools/create-native-evidence.py`, a dependency-free generator for a release-mode
+  binary's SHA-256 sidecar and deterministic SPDX 2.3 SBOM from `Cargo.lock`. Native CI builds
+  `linguamesh-linux` with `--release`, uploads the binary with `SHA256SUMS`, `SBOM.spdx.json`, and
+  a fixed-context `BUILD-INFO.txt`, and the foundation gate requires the generator.
+- Local self-checks validate Python compilation, the SHA-256 sidecar, SPDX schema, and the 230-package
+  locked dependency set. Remote Native/Flatpak/Foundation and PR gates are required before this
+  checkpoint is considered verified.
+- This remains unsigned prerelease evidence; source archives, signing, rollback, and stable-release
+  authorization remain open.
+
 ## 2026-07-19 — Flatpak checksum and SBOM evidence checkpoint
 
 Assumption: Linux prerelease packaging should emit reproducible integrity evidence without implying

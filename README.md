@@ -163,7 +163,9 @@ custom endpoint edits when switching between them. This proves the bounded local
 a running third-party daemon. Full
 validation commands, the header-free local path, and the GTK gates for X11/Xvfb and forced
 Wayland/headless Weston are documented in
-[`docs/testing.md`](docs/testing.md). No release artifact is implemented yet.
+[`docs/testing.md`](docs/testing.md). Native CI also builds a release-mode binary and uploads it
+with SHA-256, SPDX 2.3, and build-context sidecars; this is unsigned prerelease evidence, not a
+stable or distributable release.
 
 The repository now includes a reproducible Flatpak manifest, pinned Cargo source set, desktop
 entry, AppStream metadata, and icon under [`packaging/flatpak`](packaging/flatpak). Run

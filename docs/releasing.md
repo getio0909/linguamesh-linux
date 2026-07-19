@@ -10,7 +10,9 @@ FileDialog callback, a real source-editor drag/drop gesture, and visible desktop
 real `dunst` notification daemon under Xvfb, but no physical compositor/GPU rendering, signed artifact, or
 distributable release has been verified. The
 vertical slice must not be tagged or published as a product release, and no packaging claim beyond
-the recorded CI build is valid. Its bundled fake provider is development-only behavior. The optional
+the recorded CI build is valid. Native CI now uploads the release-mode Linux binary together with
+SHA-256, deterministic SPDX 2.3, and build-context sidecars; these files remain unsigned CI evidence
+and are not distributable release artifacts. Its bundled fake provider is development-only behavior. The optional
 OpenAI-compatible endpoint form accepts a one-shot session credential, clears the field
 immediately, and never persists the credential value. A saved-profile dropdown and explicit remember
 checkbox can create, update, activate, switch, and remove multiple rows containing provider names,
@@ -92,6 +94,8 @@ A Linux release may be prepared only after:
 2. LinguaMesh Core, protocol, provider catalog, persistence, and localization versions match the central release manifest;
 3. real desktop Secret Service CRUD/cleanup, the session-only fallback, complete SecretRef-backed profile lifecycle, multi-profile management, bounded native text import (including source-editor drag-and-drop), XDG paths, document-portal leases and interactive file workflows, accessibility, Wayland, practical X11 support, desktop notification delivery, migrations, and packaging smoke tests are verified;
 4. dependency and LGPL compliance review, third-party notices, privacy/security review, changelog, checksums, source archive, and rollback information are complete;
-5. protected release infrastructure produces reproducible artifacts without exposing credentials.
+5. protected release infrastructure produces reproducible artifacts without exposing credentials;
+   the native binary and Flatpak evidence sidecars are promoted only after signing, source archive,
+   rollback, and release-manifest checks are complete.
 
 Flatpak is the primary intended packaging format. Additional AppImage, DEB, or RPM artifacts require documented reproducibility and dependency handling. Never promote a prerelease to stable until the central release train records compatible tested versions. Do not imply distribution endorsement or platform support without executed evidence.

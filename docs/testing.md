@@ -316,6 +316,23 @@ After the SDK build, the workflow runs `tools/create-flatpak-evidence.py` to emi
 sidecar and deterministic SPDX 2.3 SBOM from the bundle and locked Cargo dependency set. These
 uploads are CI-only evidence and are not a stable release or signature.
 
+The native workflow also builds the GTK binary in release mode and uploads it with deterministic
+integrity sidecars. To reproduce the generator locally after a successful native build:
+
+```sh
+cargo build --release --bin linguamesh-linux --features gui --locked
+mkdir -p native-evidence
+cp target/release/linguamesh-linux native-evidence/linguamesh-linux
+python3 tools/create-native-evidence.py \
+  --binary native-evidence/linguamesh-linux \
+  --cargo-lock Cargo.lock \
+  --output-dir native-evidence
+(cd native-evidence && sha256sum -c SHA256SUMS)
+```
+
+The uploaded native binary, `SHA256SUMS`, `SBOM.spdx.json`, and `BUILD-INFO.txt` are unsigned
+prerelease evidence only; they are not a stable or distributable release.
+
 These commands bypass sys-crate discovery and do not validate headers, ABI, linking, launch, or
 display behavior. Their cached sys-crate output can also make a later ordinary Cargo check look
 successful. The `pkg-config` commands below are therefore mandatory native-gate prerequisites;
@@ -346,6 +363,7 @@ GDK_BACKEND=x11 dbus-run-session -- xvfb-run --auto-servernum \
 bash tools/run-storage-fault-test.sh
 dbus-run-session -- bash tools/run-wayland-test.sh
 cargo build --all-targets --all-features --locked
+cargo build --release --bin linguamesh-linux --features gui --locked
 ```
 
 Run the development slice with:

@@ -153,3 +153,25 @@ jobs:
       - name: Build native application
         working-directory: linguamesh-linux
         run: cargo build --all-targets --all-features --locked
+      - name: Build release-mode native application
+        working-directory: linguamesh-linux
+        run: cargo build --release --bin linguamesh-linux --features gui --locked
+      - name: Create native checksum and SBOM evidence
+        working-directory: linguamesh-linux
+        run: >-
+          mkdir -p native-evidence
+          && cp target/release/linguamesh-linux native-evidence/linguamesh-linux
+          &&
+          python3 tools/create-native-evidence.py
+          --binary native-evidence/linguamesh-linux
+          --cargo-lock Cargo.lock
+          --output-dir native-evidence
+          && printf 'Linux native CI evidence\nLinux revision: %s\nCore revision: %s\nLocalization revision: %s\nArtifact status: unsigned release-mode prerelease evidence\n'
+          "$GITHUB_SHA" "$CORE_REVISION" "3362732be198450ff1ca00f30ec092aab2cf4189"
+          > native-evidence/BUILD-INFO.txt
+      - name: Upload native checksum and SBOM evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: linguamesh-linux-native-evidence-${{ github.sha }}
+          path: linguamesh-linux/native-evidence/
+          if-no-files-found: error
