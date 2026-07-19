@@ -41,11 +41,29 @@ git_sources = [source for source in module["sources"] if isinstance(source, dict
 assert len(git_sources) == 2
 for source in git_sources:
     assert re.fullmatch(r"[0-9a-f]{40}", source["commit"])
+# CI 容器可能因 checkout 所属用户不同而拒绝直接读取 Git 工作树。
 linux_root = pathlib.Path(sys.argv[1]).resolve().parents[2]
-linux_revision = subprocess.check_output(
-    ["git", "-C", str(linux_root), "rev-parse", "HEAD"], text=True
-).strip()
-assert any(source["dest"] == "linguamesh-linux" and source["commit"] == linux_revision for source in git_sources)
+git_command = ["git", "-c", f"safe.directory={linux_root}", "-C", str(linux_root)]
+linux_revision = subprocess.check_output([*git_command, "rev-parse", "HEAD"], text=True).strip()
+assert re.fullmatch(r"[0-9a-f]{40}", linux_revision)
+linux_source = next(source for source in git_sources if source["dest"] == "linguamesh-linux")
+source_revision = linux_source["commit"]
+assert re.fullmatch(r"[0-9a-f]{40}", source_revision)
+if source_revision != linux_revision:
+    subprocess.run([*git_command, "merge-base", "--is-ancestor", source_revision, linux_revision], check=True)
+    build_paths = [
+        "Cargo.toml",
+        "Cargo.lock",
+        "rust-toolchain.toml",
+        "rustfmt.toml",
+        "src",
+        "l10n",
+        "packaging/flatpak/cargo-config.toml",
+        "packaging/flatpak/dev.linguamesh.LinguaMesh.desktop",
+        "packaging/flatpak/dev.linguamesh.LinguaMesh.metainfo.xml",
+        "packaging/flatpak/dev.linguamesh.LinguaMesh.svg",
+    ]
+    subprocess.run([*git_command, "diff", "--quiet", f"{source_revision}..{linux_revision}", "--", *build_paths], check=True)
 assert any(source == "cargo-sources.json" for source in module["sources"])
 assert sources
 for source in sources:

@@ -8,7 +8,8 @@ manifest must not silently build an older remote commit.
 - Updated `packaging/flatpak/dev.linguamesh.LinguaMesh.yml` to pin the Linux source to the current
   checkout `2386d495123d3aeacf2b5815d0c45577808c7a44`.
 - `tools/validate-flatpak-metadata.sh` now verifies that the manifest's `linguamesh-linux` git
-  source commit equals `git rev-parse HEAD`; the Flatpak workflow runs this check before building.
+  source commit equals the current checkout or an ancestor with unchanged build inputs; the
+  Flatpak workflow runs this check before building.
 - Local metadata validation and diff checks passed. Remote evidence is pending for this packaging
   pin correction; no distributable or stable release artifact is claimed.
 

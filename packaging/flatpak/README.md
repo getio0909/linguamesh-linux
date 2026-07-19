@@ -26,5 +26,5 @@ with the GNOME 49 SDK and runs a bounded Xvfb/private-D-Bus startup smoke; metad
 not prove portal lease, notification delivery, or a distributable release artifact. Regenerate
 `cargo-sources.json` from the checked-in `Cargo.lock` whenever dependencies change, then update the
 Linux source commit in the manifest after packaging files are committed. The metadata validator
-requires that commit to equal the current checkout, so a Flatpak gate cannot silently build an old
-Linux revision.
+requires that commit to equal the current checkout or an ancestor with no build-input changes, so
+a Flatpak gate cannot silently build an older application revision.
