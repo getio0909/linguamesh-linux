@@ -17,8 +17,10 @@ inspection or worker persistence; preserving them silently would overstate the s
   checkout at the exact pin.
 - Local `cargo test --features demo-provider --offline` passed 119 tests with 2 ignored; GUI check,
   strict Clippy, formatting, l10n synchronization, 215-key audit, Flatpak metadata validation, and
-  diff checks also passed. The six remote Native/Foundation/Flatpak push and PR gates are pending for
-  this checkpoint.
+  diff checks also passed. Core CI `29685742893` and Native SDK `29685742897` passed all jobs.
+- Linux push Native `29686029877` (job `88190303661`), Foundation `29686029880` (job `88190303628`),
+  and Flatpak `29686029899` (job `88190303740`) passed. PR Native `29686027664` (job `88190298389`),
+  Foundation `29686027668` (job `88190298119`), and Flatpak `29686027665` (job `88190298083`) passed.
 
 This advances Linux Scenario 15 and the Milestone 6 unsupported-format boundary without claiming
 macro execution, digital-signature preservation, visual review, other clients, artifacts, or stable
