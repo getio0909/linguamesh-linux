@@ -4,6 +4,21 @@ Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline 
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
+## 2026-07-19 — Linux image-only PDF OCR toolchain revalidation
+
+Assumption: the opt-in OCR boundary is only claimable when the current Linux checkout can drive
+the real `pdftoppm` and `tesseract` processes against a generated image-only PDF fixture.
+
+- `bash tools/run-ocr-test.sh` passed locally on the current Linux head. The fixture was generated
+  with ImageMagick, rendered with Poppler, and recognized with the installed English Tesseract
+  language pack; the page text assertion completed successfully.
+- The test keeps the OCR path opt-in and bounded. Ordinary Linux tests continue to cover malformed
+  input and unavailable-tool fail-closed behavior without invoking external processes.
+
+This revalidates Linux's optional image-only PDF OCR evidence without claiming pixel-identical PDF
+reconstruction, non-English OCR quality, visual review, other clients, release artifacts, or a
+stable release.
+
 ## 2026-07-19 — Linux macro/signature package boundary checkpoint
 
 Assumption: unsupported OOXML macro and digital-signature parts must be rejected before XML
