@@ -3527,6 +3527,7 @@ mod tests {
     use linguamesh_testkit::FakeProviderServer;
     use std::fs;
     use std::io::Write;
+    use std::net::TcpListener;
     use std::os::unix::fs::{MetadataExt, PermissionsExt, symlink};
     use std::path::{Path, PathBuf};
     use std::process::Command;
@@ -6234,6 +6235,46 @@ mod tests {
             PersistenceIntent::SessionOnly,
         )
         .expect_err("unavailable provider");
+        assert_eq!(error.kind, ErrorKind::Network);
+
+        let (output, terminal) = translate(&worker, "fake-translator");
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+    }
+
+    #[test]
+    fn offline_provider_failure_is_prompt_and_keeps_confirmed_session() {
+        let (worker, endpoint) = started_worker();
+        connect(
+            &worker,
+            profile("offline-working-provider", &endpoint, None, None),
+            None,
+            PersistenceIntent::SessionOnly,
+        )
+        .expect("working connection");
+        select(&worker, "offline-working-provider", "fake-translator");
+
+        // 使用刚释放的回环端口模拟离线连接，避免依赖外部网络状态。
+        let listener = TcpListener::bind(("127.0.0.1", 0)).expect("offline fixture listener");
+        let unavailable_endpoint = format!(
+            "http://{}/v1/",
+            listener.local_addr().expect("offline fixture address")
+        );
+        drop(listener);
+        let started = Instant::now();
+        let error = connect(
+            &worker,
+            profile(
+                "offline-unavailable-provider",
+                &unavailable_endpoint,
+                None,
+                None,
+            ),
+            None,
+            PersistenceIntent::SessionOnly,
+        )
+        .expect_err("offline provider");
+        assert!(started.elapsed() < Duration::from_secs(5));
         assert_eq!(error.kind, ErrorKind::Network);
 
         let (output, terminal) = translate(&worker, "fake-translator");

@@ -4,6 +4,26 @@ Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline 
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
+## 2026-07-19 — Linux offline-provider preservation checkpoint
+
+Assumption: offline behavior must fail within a bounded user-visible interval while preserving the
+last confirmed provider, model, and request path; the test uses a just-released loopback port so it
+does not depend on external network availability or a live service.
+
+- Added a worker regression that connects a confirmed fake provider, attempts a session-only
+  connection to the released loopback port, requires a `Network` rejection in under five seconds,
+  and then completes a translation through the previously confirmed provider.
+- This extends Linux evidence for mandatory Scenario 17 (offline behavior) without claiming a
+  physical network outage or third-party provider interoperability.
+
+Validated locally:
+
+- `cargo fmt --all -- --check` — passed.
+- `cargo test --features demo-provider offline_provider_failure_is_prompt_and_keeps_confirmed_session --offline` — passed.
+
+The full Linux test suite, native/Flatpak CI, actual offline network conditions, Orca speech,
+visual review, other clients, and stable-release evidence remain open.
+
 ## 2026-07-19 — Linux gettext plural runtime checkpoint
 
 Assumption: the pinned gettext catalogs are the runtime source of truth for plural selection, so
