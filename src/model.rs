@@ -12,6 +12,23 @@ use std::fmt;
 /// 当前检查点提供的本地提供商标识。
 pub const LOCAL_FAKE_PROVIDER_ID: &str = "local-fake-provider";
 
+/// 记录最近一次普通文本请求的非敏感路由决策摘要。
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RoutingDecisionSummary {
+    /// 使用的路由配置标识。
+    pub profile_id: String,
+    /// 选中的提供商标识。
+    pub provider_id: String,
+    /// 选中的模型标识。
+    pub model_id: String,
+    /// 通过约束的候选数量。
+    pub eligible_count: usize,
+    /// 被约束拒绝的候选数量。
+    pub rejected_count: usize,
+    /// 配置允许的显式回退候选数量。
+    pub fallback_count: usize,
+}
+
 /// 描述原生客户端的可见操作状态。
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AppStatus {
@@ -366,6 +383,7 @@ pub struct AppState {
     theme: ThemePreference,
     locale: UiLocale,
     last_sequence: Option<u64>,
+    routing_decision: Option<RoutingDecisionSummary>,
 }
 
 impl Default for AppState {
@@ -400,6 +418,7 @@ impl Default for AppState {
             theme: ThemePreference::System,
             locale: UiLocale::English,
             last_sequence: None,
+            routing_decision: None,
         }
     }
 }
@@ -553,6 +572,17 @@ impl AppState {
     #[must_use]
     pub fn selected_model(&self) -> Option<&str> {
         self.selected_model.as_deref()
+    }
+
+    /// 返回最近一次普通文本请求的非敏感路由决策摘要。
+    #[must_use]
+    pub const fn routing_decision(&self) -> Option<&RoutingDecisionSummary> {
+        self.routing_decision.as_ref()
+    }
+
+    /// 记录一次普通文本请求的路由决策摘要。
+    pub fn record_routing_decision(&mut self, decision: RoutingDecisionSummary) {
+        self.routing_decision = Some(decision);
     }
 
     /// 返回正在等待工作线程确认的模型标识。
@@ -1358,7 +1388,7 @@ impl AppState {
     #[must_use]
     pub fn diagnostics_text(&self) -> String {
         format!(
-            "Core protocol: {PROTOCOL_VERSION}\nOnboarding: {}\nProvider: {}\nProvider saved: {}\nProfile storage: {}\nSaved profiles: {}\nSaved profile: {}\nPersisted active profile: {}\nSaved model: {}\nModel selected: {}\nModel selection pending: {}\nProfile deletion pending: {}\nStatus: {}\nTheme: {}\nLocale: {}\nOutput bytes: {}",
+            "Core protocol: {PROTOCOL_VERSION}\nOnboarding: {}\nProvider: {}\nProvider saved: {}\nProfile storage: {}\nSaved profiles: {}\nSaved profile: {}\nPersisted active profile: {}\nSaved model: {}\nModel selected: {}\nModel selection pending: {}\nProfile deletion pending: {}\nRouting decision: {}\nStatus: {}\nTheme: {}\nLocale: {}\nOutput bytes: {}",
             self.onboarding_stage().label(),
             yes_no(self.active_provider.is_some()),
             yes_no(self.active_provider_is_saved()),
@@ -1381,6 +1411,7 @@ impl AppState {
                 "No"
             },
             yes_no(self.pending_profile_deletion.is_some()),
+            routing_decision_text(self.routing_decision.as_ref()),
             self.status.label(),
             self.theme.label(),
             self.locale.language_tag(),
@@ -1472,6 +1503,12 @@ impl AppState {
         ));
         lines.push(diagnostic_line(
             locale,
+            "diagnostics.routing_decision",
+            "Routing decision",
+            routing_decision_text(self.routing_decision.as_ref()),
+        ));
+        lines.push(diagnostic_line(
+            locale,
             "diagnostics.status",
             "Status",
             localized_status(locale, self.status),
@@ -1496,6 +1533,23 @@ impl AppState {
         ));
         lines.join("\n")
     }
+}
+
+// 将路由决策限制为标识和计数，避免诊断摘要包含端点、秘密或文本内容。
+fn routing_decision_text(decision: Option<&RoutingDecisionSummary>) -> String {
+    decision.map_or_else(
+        || "None".to_owned(),
+        |decision| {
+            format!(
+                "{} -> {} (eligible {}, rejected {}, fallback {})",
+                decision.profile_id,
+                decision.provider_id,
+                decision.eligible_count,
+                decision.rejected_count,
+                decision.fallback_count
+            )
+        },
+    )
 }
 
 // 使用目录中的标签拼接非敏感诊断字段。
@@ -1974,7 +2028,7 @@ const fn yes_no(value: bool) -> &'static str {
 mod tests {
     use super::{
         AppState, AppStatus, OnboardingStage, ProfileStorageStatus, ProviderProfile,
-        ProviderProfileId, StateError, ThemePreference, UiLocale,
+        ProviderProfileId, RoutingDecisionSummary, StateError, ThemePreference, UiLocale,
     };
     use linguamesh_domain::{
         ErrorKind, Glossary, GlossaryEntry, ModelDescriptor, ModelSource, SecretRef,
@@ -2243,6 +2297,25 @@ mod tests {
         assert!(diagnostics.contains("提供商: 否"));
         assert!(diagnostics.contains("配置存储: 待处理"));
         assert!(!diagnostics.contains("diagnostic source must not appear"));
+    }
+
+    #[test]
+    fn routing_decision_diagnostics_keep_only_safe_identifiers_and_counts() {
+        let mut state = AppState::default();
+        state.record_routing_decision(RoutingDecisionSummary {
+            profile_id: "route-local".to_owned(),
+            provider_id: "provider-local".to_owned(),
+            model_id: "model-local".to_owned(),
+            eligible_count: 2,
+            rejected_count: 1,
+            fallback_count: 1,
+        });
+
+        let diagnostics = state.localized_diagnostics_text(UiLocale::SimplifiedChinese);
+        assert!(diagnostics.contains("路由决策: route-local -> provider-local"));
+        assert!(diagnostics.contains("eligible 2, rejected 1, fallback 1"));
+        assert!(!diagnostics.contains("127.0.0.1"));
+        assert!(!diagnostics.contains("secret"));
     }
 
     fn state_with_profile_storage() -> AppState {

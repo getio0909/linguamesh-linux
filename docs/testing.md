@@ -8,7 +8,7 @@ credential. These tests do not replace interoperability testing against a runnin
 Ollama daemon.
 
 The Linux checkout consumes the canonical gettext bundle from immutable l10n revision
-`5f98f8bf760bb552c5d9e6cc7ace575e427bae10`. The bundle contains 350 messages, and
+`fade545ec14793893de2603c62e0994689d9c4df`. The bundle contains 352 messages, and
 `bash tools/sync-l10n.sh --check` verifies every PO/MO catalog and the generated manifest before
 the native build. History/memory row metadata, document-job IDs, active-provider mode summaries,
 unavailable provider/model labels, and routing-profile actions/mode labels are asserted through
@@ -16,9 +16,12 @@ catalog keys rather than concatenated English UI fragments; non-English packs re
 machine-generated drafts pending human review.
 
 The routing-profile worker regression saves, lists, and deletes a Core `routing_planner_v1` profile
-without persisting provider endpoints, credentials, or translation content. The GTK dialog creates
-only a bounded local-preferred default from saved provider/model selections; automatic and ordered
-dispatch remain a later validation slice.
+without persisting provider endpoints, credentials, or translation content. A separate regression
+selects a saved candidate, reconnects it through the host secret broker, and completes an ordinary
+text request while asserting the typed decision event. The GTK dialog creates only a bounded
+local-preferred default from saved provider/model selections; document jobs and complete automatic
+or ordered fallback chains remain later validation slices. When a routing profile is selected, it
+takes precedence over the separate explicit fallback checkbox for that ordinary text request.
 
 ## Host prerequisites
 

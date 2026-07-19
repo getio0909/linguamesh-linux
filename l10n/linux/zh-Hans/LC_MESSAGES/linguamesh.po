@@ -1976,6 +1976,12 @@ msgctxt "diagnostics.profile_deletion_pending"
 msgid "Profile deletion pending"
 msgstr "配置删除待处理"
 
+#. Label for the most recent ordinary-text routing decision.
+#, fuzzy
+msgctxt "diagnostics.routing_decision"
+msgid "Routing decision"
+msgstr "路由决策"
+
 #. Label for the application status in diagnostics.
 #, fuzzy
 msgctxt "diagnostics.status"
@@ -2077,6 +2083,12 @@ msgstr "Create local-first profile"
 msgctxt "action.delete_routing_profile"
 msgid "Delete"
 msgstr "Delete"
+
+#. Selects one saved Linux routing planner profile for ordinary text translation.
+#, fuzzy
+msgctxt "action.use_routing_profile"
+msgid "Use"
+msgstr "使用"
 
 #. Title of the Linux routing planner profile dialog.
 #, fuzzy

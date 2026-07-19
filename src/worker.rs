@@ -7,8 +7,8 @@ use linguamesh_application::{
 use linguamesh_document::{DocumentError, DocumentJob, DocumentJobState};
 use linguamesh_domain::{
     CompatibilityRequirements, CoreCompatibility, ErrorKind, Glossary, ModelDescriptor,
-    RoutingProfile, SecretValue, TranslationError, TranslationEvent, TranslationPrivacyMode,
-    TranslationRequest,
+    RoutingCandidate, RoutingContext, RoutingProfile, SecretValue, TranslationError,
+    TranslationEvent, TranslationPrivacyMode, TranslationRequest,
 };
 use linguamesh_engine::{CancellationHandle, TranslationOperation, core_compatibility};
 use linguamesh_storage::{
@@ -195,6 +195,13 @@ pub enum WorkerCommand {
         /// 用户明确批准的保存配置标识。
         fallback_profile_id: ProviderProfileId,
     },
+    /// 使用已保存的路由配置选择普通文本请求的实际提供商。
+    TranslateWithRouting {
+        /// 主翻译请求。
+        request: TranslationRequest,
+        /// 已保存路由配置标识。
+        routing_profile_id: String,
+    },
     /// 取消当前连接或翻译。
     Cancel,
     /// 停止工作线程和本地提供商。
@@ -293,6 +300,21 @@ pub enum WorkerEvent {
     },
     /// 路由配置操作被精确拒绝。
     RoutingProfileActionRejected(TranslationError),
+    /// 路由配置已为一次普通文本请求选择候选。
+    RoutingDecisionSelected {
+        /// 使用的路由配置标识。
+        profile_id: String,
+        /// 选中的提供商标识。
+        provider_id: String,
+        /// 选中的模型标识。
+        model_id: String,
+        /// 通过约束的候选数量。
+        eligible_count: usize,
+        /// 被约束拒绝的候选数量。
+        rejected_count: usize,
+        /// 配置允许的显式回退候选数量。
+        fallback_count: usize,
+    },
     /// 读取或删除本地翻译记忆被拒绝。
     TranslationMemoryActionRejected(TranslationError),
     /// 本地翻译记忆写入失败，但翻译结果仍已完成。
@@ -599,6 +621,10 @@ enum QueuedCommand {
         request: TranslationRequest,
         fallback_profile_id: ProviderProfileId,
     },
+    TranslateWithRouting {
+        request: TranslationRequest,
+        routing_profile_id: String,
+    },
     Cancel,
     Shutdown,
 }
@@ -854,6 +880,16 @@ impl CoreWorker {
                     fallback_profile_id,
                 })
                 .map_err(|_| WorkerSendError),
+            WorkerCommand::TranslateWithRouting {
+                request,
+                routing_profile_id,
+            } => self
+                .commands
+                .try_send(QueuedCommand::TranslateWithRouting {
+                    request,
+                    routing_profile_id,
+                })
+                .map_err(|_| WorkerSendError),
             WorkerCommand::Shutdown => {
                 let result = self.commands.try_send(QueuedCommand::Shutdown);
                 self.shutdown_cancellation.cancel();
@@ -889,6 +925,8 @@ impl Drop for CoreWorker {
     }
 }
 
+// 命令队列需要携带完整请求和配置，保留枚举直观匹配并接受其受控大小差异。
+#[allow(clippy::large_enum_variant)]
 enum ActiveStep {
     Shutdown,
     Command(Option<QueuedCommand>),
@@ -1095,6 +1133,7 @@ async fn run_worker(
     }
 
     let mut manager = ProviderManager::new(secret_broker.clone());
+    let mut routing_manager: Option<ProviderManager> = None;
     let mut fallback_manager: Option<ProviderManager> = None;
     let mut fallback_profile: Option<ProviderProfile> = None;
     let mut active_profile: Option<ProviderProfile> = None;
@@ -1236,7 +1275,9 @@ async fn run_worker(
                     ));
                 }
                 ActiveStep::Command(Some(
-                    QueuedCommand::Translate(_) | QueuedCommand::TranslateWithFallback { .. },
+                    QueuedCommand::Translate(_)
+                    | QueuedCommand::TranslateWithFallback { .. }
+                    | QueuedCommand::TranslateWithRouting { .. },
                 )) => {
                     let _ = events.send(WorkerEvent::Rejected(TranslationError::new(
                         ErrorKind::InvalidConfiguration,
@@ -1392,6 +1433,9 @@ async fn run_worker(
                         active = None;
                         fallback_manager = None;
                         fallback_profile = None;
+                        if let Some(mut selected_manager) = routing_manager.take() {
+                            selected_manager.disconnect();
+                        }
                         if stop_after_active {
                             shutting_down = true;
                         }
@@ -1400,6 +1444,9 @@ async fn run_worker(
                 ActiveStep::Event(None) => {
                     clear_active_cancellation(&active_cancellation);
                     active = None;
+                    if let Some(mut selected_manager) = routing_manager.take() {
+                        selected_manager.disconnect();
+                    }
                     let _ = events.send(WorkerEvent::OperationFailed(TranslationError::new(
                         ErrorKind::Internal,
                         "The core event stream ended without a terminal event.",
@@ -2651,23 +2698,151 @@ async fn run_worker(
             }
             Some(
                 command @ (QueuedCommand::Translate(_)
-                | QueuedCommand::TranslateWithFallback { .. }),
+                | QueuedCommand::TranslateWithFallback { .. }
+                | QueuedCommand::TranslateWithRouting { .. }),
             ) => {
-                let (request, fallback_profile_id) = match command {
-                    QueuedCommand::Translate(request) => (request, None),
+                let (mut request, fallback_profile_id, routing_profile_id) = match command {
+                    QueuedCommand::Translate(request) => (request, None, None),
                     QueuedCommand::TranslateWithFallback {
                         request,
                         fallback_profile_id,
-                    } => (request, Some(fallback_profile_id)),
+                    } => (request, Some(fallback_profile_id), None),
+                    QueuedCommand::TranslateWithRouting {
+                        request,
+                        routing_profile_id,
+                    } => (request, None, Some(routing_profile_id)),
                     _ => unreachable!(),
                 };
-                let request = active_profile.as_ref().map_or(request.clone(), |profile| {
-                    request.clone().with_provider_identity(format!(
+                if routing_profile_id.is_none()
+                    && let Some(mut previous) = routing_manager.take()
+                {
+                    previous.disconnect();
+                }
+                let mut routing_selected_model = None;
+                if let Some(routing_id) = routing_profile_id.as_deref() {
+                    if let Some(mut previous) = routing_manager.take() {
+                        previous.disconnect();
+                    }
+                    let profile = match storage.as_ref() {
+                        Some(storage) => storage.routing_profile(routing_id),
+                        None => Err(TranslationError::new(
+                            ErrorKind::Persistence,
+                            "Local routing profile storage is unavailable.",
+                        )),
+                    };
+                    let profile = match profile {
+                        Ok(Some(record)) => record.profile,
+                        Ok(None) => {
+                            let error = TranslationError::new(
+                                ErrorKind::InvalidConfiguration,
+                                "The selected routing profile no longer exists.",
+                            );
+                            if events
+                                .send(WorkerEvent::TranslationRejected(error))
+                                .is_err()
+                            {
+                                shutting_down = true;
+                            }
+                            continue;
+                        }
+                        Err(error) => {
+                            if events
+                                .send(WorkerEvent::TranslationRejected(error))
+                                .is_err()
+                            {
+                                shutting_down = true;
+                            }
+                            continue;
+                        }
+                    };
+                    let context = RoutingContext {
+                        source_locale: request.source_locale.clone(),
+                        target_locale: request.target_locale.clone(),
+                        request_bytes: request.source_text.len(),
+                        require_streaming: true,
+                        require_document: false,
+                        privacy_sensitive: request.is_incognito(),
+                    };
+                    let decision = match profile.select(&context) {
+                        Ok(decision) => decision,
+                        Err(error) => {
+                            let error = TranslationError::new(
+                                ErrorKind::InvalidConfiguration,
+                                error.to_string(),
+                            );
+                            if events
+                                .send(WorkerEvent::TranslationRejected(error))
+                                .is_err()
+                            {
+                                shutting_down = true;
+                            }
+                            continue;
+                        }
+                    };
+                    let selected = decision.selected.clone();
+                    let active_matches = active_profile.as_ref().is_some_and(|profile| {
+                        profile.id().as_str() == selected.provider_id
+                            && manager
+                                .models()
+                                .iter()
+                                .any(|model| model.id == selected.model_id)
+                    });
+                    if !active_matches {
+                        let cancellation = shutdown_cancellation.child_token();
+                        set_active_cancellation(
+                            &active_cancellation,
+                            ActiveCancellation::Connection(cancellation.clone()),
+                        );
+                        let result = connect_routing_candidate(
+                            secret_broker.clone(),
+                            storage.as_mut(),
+                            &selected,
+                            &cancellation,
+                            &mut secret_requests,
+                        )
+                        .await;
+                        clear_active_cancellation(&active_cancellation);
+                        match result {
+                            Ok((candidate_manager, _profile, _model)) => {
+                                routing_manager = Some(candidate_manager);
+                            }
+                            Err(error) => {
+                                if events
+                                    .send(WorkerEvent::TranslationRejected(error))
+                                    .is_err()
+                                {
+                                    shutting_down = true;
+                                }
+                                continue;
+                            }
+                        }
+                    }
+                    routing_selected_model = Some(selected.model_id.clone());
+                    request = request.with_provider_identity(format!(
+                        "{}@{}",
+                        selected.provider_id, selected.model_id
+                    ));
+                    if events
+                        .send(WorkerEvent::RoutingDecisionSelected {
+                            profile_id: profile.id,
+                            provider_id: selected.provider_id,
+                            model_id: selected.model_id,
+                            eligible_count: decision.eligible_candidates.len(),
+                            rejected_count: decision.rejected_candidates.len(),
+                            fallback_count: decision.fallback_order.len(),
+                        })
+                        .is_err()
+                    {
+                        shutting_down = true;
+                        continue;
+                    }
+                } else if let Some(profile) = active_profile.as_ref() {
+                    request = request.with_provider_identity(format!(
                         "{}@{}",
                         profile.id().as_str(),
                         profile.base_endpoint()
-                    ))
-                });
+                    ));
+                }
                 if let Some(storage) = storage.as_mut() {
                     match storage.lookup_translation_memory(&request) {
                         Ok(Some(entry)) => {
@@ -2722,6 +2897,9 @@ async fn run_worker(
                                     .is_err()
                             {
                                 shutting_down = true;
+                                if let Some(mut selected_manager) = routing_manager.take() {
+                                    selected_manager.disconnect();
+                                }
                                 continue;
                             }
                             continue;
@@ -2791,9 +2969,18 @@ async fn run_worker(
                         }
                     }
                 }
-                match begin_translation(&manager, selected_model.as_deref(), request) {
+                let translation_manager =
+                    routing_manager.as_ref().map_or(&manager, |manager| manager);
+                let translation_model = routing_selected_model
+                    .as_deref()
+                    .or(selected_model.as_deref());
+                match begin_translation(translation_manager, translation_model, request) {
                     Ok(mut active_translation) => {
-                        active_translation.fallback_profile_id = fallback_profile_id;
+                        active_translation.fallback_profile_id = if routing_profile_id.is_some() {
+                            None
+                        } else {
+                            fallback_profile_id
+                        };
                         active_translation.fallback_model = fallback_model;
                         set_active_cancellation(
                             &active_cancellation,
@@ -2824,6 +3011,9 @@ async fn run_worker(
     reject_queued_commands_for_shutdown(&mut commands, &events);
     clear_active_cancellation(&active_cancellation);
     manager.disconnect();
+    if let Some(mut routing_manager) = routing_manager {
+        routing_manager.disconnect();
+    }
     if let Some(mut fallback_manager) = fallback_manager {
         fallback_manager.disconnect();
     }
@@ -2893,10 +3083,11 @@ fn reject_queued_commands_for_shutdown(
             | QueuedCommand::CancelDocumentJob { .. } => events.send(
                 WorkerEvent::DocumentJobActionRejected(TranslationError::cancelled()),
             ),
-            QueuedCommand::Translate(_) | QueuedCommand::TranslateWithFallback { .. } => events
-                .send(WorkerEvent::TranslationRejected(
-                    TranslationError::cancelled(),
-                )),
+            QueuedCommand::Translate(_)
+            | QueuedCommand::TranslateWithFallback { .. }
+            | QueuedCommand::TranslateWithRouting { .. } => events.send(
+                WorkerEvent::TranslationRejected(TranslationError::cancelled()),
+            ),
             QueuedCommand::Cancel | QueuedCommand::Shutdown => continue,
         };
         if result.is_err() {
@@ -3359,6 +3550,46 @@ async fn connect_fallback_candidate(
         ));
     }
     Ok((manager, profile, model))
+}
+
+// 只从本地保存配置建立路由候选连接，并验证候选模型仍可用。
+async fn connect_routing_candidate(
+    secret_broker: HostSecretBroker,
+    storage: Option<&mut Storage>,
+    candidate: &RoutingCandidate,
+    cancellation: &CancellationToken,
+    requests: &mut HostSecretRequests,
+) -> Result<(ProviderManager, ProviderProfile, String), TranslationError> {
+    let profile_id = ProviderProfileId::parse(candidate.provider_id.clone()).map_err(|_| {
+        TranslationError::new(
+            ErrorKind::InvalidConfiguration,
+            "The routing candidate provider identifier is invalid.",
+        )
+    })?;
+    let profile = storage
+        .ok_or_else(|| {
+            TranslationError::new(
+                ErrorKind::Persistence,
+                "Local routing profile storage is unavailable.",
+            )
+        })?
+        .provider_profile(&profile_id)?
+        .ok_or_else(|| {
+            TranslationError::new(
+                ErrorKind::InvalidConfiguration,
+                "The routing candidate provider profile is no longer saved.",
+            )
+        })?;
+    let mut manager = ProviderManager::new(secret_broker);
+    let models = connect_candidate(&mut manager, &profile, None, cancellation, requests).await?;
+    if !models.iter().any(|model| model.id == candidate.model_id) {
+        manager.disconnect();
+        return Err(TranslationError::new(
+            ErrorKind::ModelUnavailable,
+            "The routing candidate model is not available from its provider.",
+        ));
+    }
+    Ok((manager, profile, candidate.model_id.clone()))
 }
 
 fn select_model(
@@ -4649,6 +4880,100 @@ mod tests {
                 .expect("routing delete event"),
             WorkerEvent::RoutingProfileDeleted { profile_id } if profile_id == "linux-local-first"
         ));
+        shutdown(&worker);
+    }
+
+    #[test]
+    fn routing_profile_selects_saved_candidate_for_ordinary_translation() {
+        let database = TestDatabase::new();
+        let (worker, _, endpoint) = started_worker_with_database(database.path());
+        connect(
+            &worker,
+            profile("routing-provider", &endpoint, None, None),
+            None,
+            PersistenceIntent::Persistent,
+        )
+        .expect("routing provider connection");
+        select(&worker, "routing-provider", "fake-translator");
+        connect(
+            &worker,
+            profile("active-provider", &endpoint, None, None),
+            None,
+            PersistenceIntent::SessionOnly,
+        )
+        .expect("active provider connection");
+        select(&worker, "active-provider", "fake-translator");
+
+        let candidate = RoutingCandidate::new("routing-provider", "fake-translator", true, 4096)
+            .expect("routing candidate");
+        let profile = RoutingProfile::new(
+            "ordinary-text-route",
+            RoutingMode::Automatic,
+            vec![candidate],
+            RoutingConstraints {
+                local_only: true,
+                preference: RoutingPreference::Local,
+                ..RoutingConstraints::default()
+            },
+        )
+        .expect("routing profile");
+        worker
+            .try_send(WorkerCommand::SaveRoutingProfile { profile })
+            .expect("save routing profile");
+        assert!(matches!(
+            worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("routing save event"),
+            WorkerEvent::RoutingProfileSaved(_)
+        ));
+
+        worker
+            .try_send(WorkerCommand::TranslateWithRouting {
+                request: TranslationRequest::new("Hello", "zh-CN", "fake-translator"),
+                routing_profile_id: "ordinary-text-route".to_owned(),
+            })
+            .expect("routing translation command");
+        let deadline = Instant::now() + Duration::from_secs(10);
+        let mut output = String::new();
+        let mut selected = false;
+        let terminal = loop {
+            assert!(Instant::now() < deadline, "routing translation timed out");
+            let event = worker
+                .events
+                .recv_timeout(Duration::from_millis(500))
+                .expect("routing translation event");
+            match event {
+                WorkerEvent::RoutingDecisionSelected {
+                    profile_id,
+                    provider_id,
+                    model_id,
+                    eligible_count,
+                    rejected_count,
+                    fallback_count,
+                } => {
+                    assert_eq!(profile_id, "ordinary-text-route");
+                    assert_eq!(provider_id, "routing-provider");
+                    assert_eq!(model_id, "fake-translator");
+                    assert_eq!(eligible_count, 1);
+                    assert_eq!(rejected_count, 0);
+                    assert_eq!(fallback_count, 0);
+                    selected = true;
+                }
+                WorkerEvent::Translation(TranslationEvent::TextDelta { text, .. }) => {
+                    output.push_str(&text);
+                }
+                WorkerEvent::Translation(event) if event.is_terminal() => break event,
+                WorkerEvent::Translation(_)
+                | WorkerEvent::TranslationHistoryUpdated { .. }
+                | WorkerEvent::TranslationMemoryPersistenceFailed(_)
+                | WorkerEvent::TranslationHistoryPersistenceFailed(_) => {}
+                _ => panic!("unexpected routing translation event"),
+            }
+        };
+        assert!(selected);
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
         shutdown(&worker);
     }
 

@@ -13,8 +13,8 @@ use linguamesh_domain::{
 use linguamesh_linux::file_import;
 use linguamesh_linux::localization;
 use linguamesh_linux::model::{
-    AppState, AppStatus, OnboardingStage, ProfileStorageStatus, ProviderProfile, StateError,
-    ThemePreference, UiLocale,
+    AppState, AppStatus, OnboardingStage, ProfileStorageStatus, ProviderProfile,
+    RoutingDecisionSummary, StateError, ThemePreference, UiLocale,
 };
 use linguamesh_linux::secret_service;
 use linguamesh_linux::worker::{
@@ -112,6 +112,7 @@ struct UiBindings {
     source_uri: Rc<RefCell<Option<String>>>,
     output_uri: Rc<RefCell<Option<String>>>,
     fallback_profile_ids: Rc<RefCell<Vec<Option<ProviderProfileId>>>>,
+    selected_routing_profile_id: Rc<RefCell<Option<String>>>,
     document_job_id: Rc<RefCell<Option<String>>>,
     document_job_guard: Rc<Cell<bool>>,
     document_job_state: Rc<Cell<Option<DocumentJobState>>>,
@@ -746,6 +747,7 @@ fn create_window(
         source_uri: Rc::new(RefCell::new(None)),
         output_uri: Rc::new(RefCell::new(None)),
         fallback_profile_ids: Rc::new(RefCell::new(vec![None])),
+        selected_routing_profile_id: Rc::new(RefCell::new(None)),
         document_job_id: Rc::new(RefCell::new(None)),
         document_job_guard: Rc::new(Cell::new(false)),
         document_job_state: Rc::new(Cell::new(None)),
@@ -2603,6 +2605,10 @@ fn connect_action_handlers(
             Ok((source_locale, target_locale, glossary)) => {
                 let document_job_id = translate_bindings.document_job_id.borrow().clone();
                 let fallback_enabled = translate_bindings.fallback_enabled.is_active();
+                let routing_profile_id = translate_bindings
+                    .selected_routing_profile_id
+                    .borrow()
+                    .clone();
                 let fallback_profile_id = if fallback_enabled {
                     selected_fallback_profile_id(&translate_bindings)
                 } else {
@@ -2635,7 +2641,10 @@ fn connect_action_handlers(
                             Err(error) => state.record_client_error(error.to_string()),
                         }
                     }
-                } else if fallback_enabled && fallback_profile_id.is_none() {
+                } else if routing_profile_id.is_none()
+                    && fallback_enabled
+                    && fallback_profile_id.is_none()
+                {
                     let message = localization::text(
                         state.locale(),
                         "error.fallback_profile_required",
@@ -2645,13 +2654,20 @@ fn connect_action_handlers(
                 } else {
                     match state.begin_translation() {
                         Ok(request) => {
-                            let command = fallback_profile_id.map_or(
-                                WorkerCommand::Translate(request.clone()),
-                                |fallback_profile_id| WorkerCommand::TranslateWithFallback {
+                            let command = if let Some(routing_profile_id) = routing_profile_id {
+                                WorkerCommand::TranslateWithRouting {
                                     request,
-                                    fallback_profile_id,
-                                },
-                            );
+                                    routing_profile_id,
+                                }
+                            } else {
+                                fallback_profile_id.map_or(
+                                    WorkerCommand::Translate(request.clone()),
+                                    |fallback_profile_id| WorkerCommand::TranslateWithFallback {
+                                        request,
+                                        fallback_profile_id,
+                                    },
+                                )
+                            };
                             if let Err(error) = translate_worker.try_send(command) {
                                 state.record_client_error(error.to_string());
                             }
@@ -3597,6 +3613,21 @@ fn show_routing_profiles_dialog(
             label.set_xalign(0.0);
             label.set_hexpand(true);
             label.add_css_class("dim-label");
+            let use_button = gtk::Button::with_mnemonic(&localized_mnemonic(
+                locale,
+                "action.use_routing_profile",
+                "Use",
+            ));
+            use_button.set_focusable(true);
+            let use_bindings = bindings.clone();
+            let use_dialog = dialog.clone();
+            let use_profile_id = record.id.clone();
+            use_button.connect_clicked(move |_| {
+                use_bindings
+                    .selected_routing_profile_id
+                    .replace(Some(use_profile_id.clone()));
+                use_dialog.close();
+            });
             let delete = gtk::Button::with_mnemonic(&localized_mnemonic(
                 locale,
                 "action.delete_routing_profile",
@@ -3620,6 +3651,7 @@ fn show_routing_profiles_dialog(
                 }
             });
             row.append(&label);
+            row.append(&use_button);
             row.append(&delete);
             list.append(&row);
         }
@@ -4505,7 +4537,35 @@ fn apply_worker_event(
             let routing_worker = worker.command_handle();
             show_routing_profiles_dialog(bindings, state, &routing_worker, profiles);
         }
-        WorkerEvent::RoutingProfileSaved(_) | WorkerEvent::RoutingProfileDeleted { .. } => {
+        WorkerEvent::RoutingDecisionSelected {
+            profile_id,
+            provider_id,
+            model_id,
+            eligible_count,
+            rejected_count,
+            fallback_count,
+        } => {
+            state
+                .borrow_mut()
+                .record_routing_decision(RoutingDecisionSummary {
+                    profile_id,
+                    provider_id,
+                    model_id,
+                    eligible_count,
+                    rejected_count,
+                    fallback_count,
+                });
+        }
+        WorkerEvent::RoutingProfileSaved(_) => {
+            if let Err(error) = worker.command_handle().list_routing_profiles() {
+                state.borrow_mut().record_client_error(error.to_string());
+            }
+        }
+        WorkerEvent::RoutingProfileDeleted { profile_id } => {
+            if bindings.selected_routing_profile_id.borrow().as_deref() == Some(profile_id.as_str())
+            {
+                bindings.selected_routing_profile_id.replace(None);
+            }
             if let Err(error) = worker.command_handle().list_routing_profiles() {
                 state.borrow_mut().record_client_error(error.to_string());
             }
