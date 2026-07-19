@@ -26,6 +26,17 @@ localization pins remain explicit, but it must not be presented as a standalone 
 - This source snapshot is unsigned CI evidence; stable source archives, signing, rollback, and
   distributable release authorization remain open until the coordinated release train is complete.
 
+## 2026-07-19 — Linux source-archive remote verification
+
+- The first source-archive push run `29705840151` failed after all AT-SPI assertions passed because
+  asynchronous portal files made the fixture's final `rm` return non-zero. The cleanup now retries
+  bounded deletion of its exact temporary directory; no product assertion was weakened.
+- Linux `0edefcf464d4a81a4f4ae76595a750225eca887d` then passed push Native/Flatpak/Foundation
+  `29705945663`/`29705945669`/`29705945658` and PR Native/Flatpak/Foundation
+  `29705946524`/`29705946525`/`29705946526`. Native push and PR evidence artifacts were non-expired
+  (5,584,223 and 5,584,054 bytes) and include the binary, source archive, checksum, SBOM, and
+  build context; Flatpak bundle/evidence artifacts were also non-expired.
+
 ## 2026-07-19 — Linux native evidence remote verification
 
 - Linux `8896aaa6e91e9ee482590701c925dabab96435de` passed the complete push gates: Native
