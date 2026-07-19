@@ -5807,7 +5807,11 @@ mod tests {
         spin_main_context_until(&context, Duration::from_secs(5), || {
             state.borrow().status() == AppStatus::Ready
                 && state.borrow().active_provider().is_some()
-                && state.borrow().selected_model().is_some()
+                && !state.borrow().models().is_empty()
+        });
+        bindings.model.set_selected(1);
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().selected_model().is_some()
         });
         let active = state
             .borrow()
