@@ -2043,3 +2043,21 @@ msgstr "Drag fixture"
 msgctxt "profile.default_ollama_name"
 msgid "Local Ollama provider"
 msgstr "Local Ollama provider"
+
+#. Localized metadata summary for a stored translation entry.
+#, fuzzy, python-brace-format
+msgctxt "status.translation_entry_metadata"
+msgid "{source} → {target} · {model} · {created_at}"
+msgstr "{source} → {target} · {model} · {created_at}"
+
+#. Identifies a persisted Linux document job without exposing its source path.
+#, fuzzy, python-brace-format
+msgctxt "status.document_job_id"
+msgid "Job: {id}"
+msgstr "Job: {id}"
+
+#. Active provider summary with the localized persistence mode.
+#, fuzzy, python-brace-format
+msgctxt "provider.active_with_mode"
+msgid "Active provider: {provider} ({mode})"
+msgstr "Active provider: {provider} ({mode})"

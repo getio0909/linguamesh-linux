@@ -27,6 +27,28 @@ This advances Linux Text Workspace retry evidence without claiming retry classif
 automatic/ordered routing UI, other clients, visual/Orca review, release artifacts, or a stable
 release.
 
+## 2026-07-19 — Linux visible-string gettext coverage checkpoint
+
+Assumption: compound summaries visible to users must localize their complete template rather than
+concatenating an English prefix with data. Technical identifiers, filenames, model IDs, and
+translation content remain data and are not translated.
+
+- Linux now routes history and translation-memory metadata through
+  `status.translation_entry_metadata`, document queue identifiers through
+  `status.document_job_id`, and active-provider persistence mode through
+  `provider.active_with_mode`. Missing provider/model values use the existing catalog-backed
+  `status.unavailable` label.
+- l10n revision `bd06a76bcd498748b520143c61964a92727d1b51` contains 339 messages and regenerated
+  all 59 deterministic native resources plus both pseudo-locales. Non-English values remain
+  explicit machine-generated drafts.
+- Local `make check` in l10n, Linux formatting, 121 demo-provider tests with 2 ignored, GUI
+  all-target check, strict Clippy, l10n synchronization, 219-key audit, Flatpak metadata, and
+  diff checks passed. The host GTK all-target test-link limitation remains unchanged.
+
+This closes the current Linux source-level compound-summary localization gap without claiming
+human translated-copy review, Orca speech, automatic/ordered routing controls, other clients,
+release artifacts, or a stable release.
+
 ## 2026-07-19 — Core routing planner compatibility checkpoint
 
 Assumption: Linux must reject a Core that does not expose the shared routing contract before

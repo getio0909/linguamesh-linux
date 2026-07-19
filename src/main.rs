@@ -3529,8 +3529,13 @@ fn show_document_jobs_dialog(
             header.append(&metadata);
             header.append(&select);
             row.append(&header);
-            let job_prefix = localization::text(locale, "dialog.document_jobs", "Document jobs");
-            let id = gtk::Label::new(Some(&format!("{job_prefix}: {}", snapshot.job_id)));
+            let id_text = localized_template(
+                locale,
+                "status.document_job_id",
+                "Job: {id}",
+                &[("{id}", snapshot.job_id.as_str())],
+            );
+            let id = gtk::Label::new(Some(&id_text));
             id.set_xalign(0.0);
             id.add_css_class("dim-label");
             row.append(&id);
@@ -3652,13 +3657,24 @@ fn show_history_dialog(
             row.set_margin_top(8);
             row.set_margin_bottom(8);
             let header = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-            let metadata = gtk::Label::new(Some(&format!(
-                "{} → {} · {} · {}",
-                entry.source_locale.as_deref().unwrap_or("auto"),
-                entry.target_locale,
-                entry.model_id,
-                entry.created_at,
-            )));
+            let auto_locale = localization::text(locale, "option.source.auto", "Auto");
+            let source_locale = entry
+                .source_locale
+                .as_deref()
+                .unwrap_or(auto_locale.as_str());
+            let created_at = entry.created_at.to_string();
+            let metadata_text = localized_template(
+                locale,
+                "status.translation_entry_metadata",
+                "{source} → {target} · {model} · {created_at}",
+                &[
+                    ("{source}", source_locale),
+                    ("{target}", entry.target_locale.as_str()),
+                    ("{model}", entry.model_id.as_str()),
+                    ("{created_at}", created_at.as_str()),
+                ],
+            );
+            let metadata = gtk::Label::new(Some(&metadata_text));
             metadata.set_xalign(0.0);
             metadata.set_hexpand(true);
             metadata.add_css_class("dim-label");
@@ -3871,13 +3887,24 @@ fn show_memory_dialog(
             row.set_margin_top(8);
             row.set_margin_bottom(8);
             let header = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-            let metadata = gtk::Label::new(Some(&format!(
-                "{} → {} · {} · {}",
-                entry.source_locale.as_deref().unwrap_or("auto"),
-                entry.target_locale,
-                entry.model_id,
-                entry.created_at,
-            )));
+            let auto_locale = localization::text(locale, "option.source.auto", "Auto");
+            let source_locale = entry
+                .source_locale
+                .as_deref()
+                .unwrap_or(auto_locale.as_str());
+            let created_at = entry.created_at.to_string();
+            let metadata_text = localized_template(
+                locale,
+                "status.translation_entry_metadata",
+                "{source} → {target} · {model} · {created_at}",
+                &[
+                    ("{source}", source_locale),
+                    ("{target}", entry.target_locale.as_str()),
+                    ("{model}", entry.model_id.as_str()),
+                    ("{created_at}", created_at.as_str()),
+                ],
+            );
+            let metadata = gtk::Label::new(Some(&metadata_text));
             metadata.set_xalign(0.0);
             metadata.set_hexpand(true);
             metadata.add_css_class("dim-label");
@@ -4539,15 +4566,15 @@ fn refresh_active_provider_label(bindings: &UiBindings, state: &AppState) {
             &[("{provider}", pending.display_name()), ("{mode}", &pending_mode)],
         )),
         (Some(active), None) => {
-            let template = localization::text(
+            bindings.active_provider.set_label(&localized_template(
                 state.locale(),
-                "provider.active",
-                "Active provider: {provider}",
-            );
-            let active_label = template.replace("{provider}", active.display_name());
-            bindings
-                .active_provider
-                .set_label(&format!("{active_label} ({active_mode})"));
+                "provider.active_with_mode",
+                "Active provider: {provider} ({mode})",
+                &[
+                    ("{provider}", active.display_name()),
+                    ("{mode}", &active_mode),
+                ],
+            ));
         }
         (None, None) if !state.saved_profiles().is_empty() => {
             bindings.active_provider.set_label(&localization::text(
@@ -4674,10 +4701,12 @@ fn refresh_onboarding(bindings: &UiBindings, state: &AppState) {
         }
         OnboardingStage::Ready => {
             let provider = state.active_provider().map_or_else(
-                || "Unavailable".to_owned(),
+                || localization::text(state.locale(), "status.unavailable", "Unavailable"),
                 |profile| format!("{} [{}]", profile.display_name(), profile.id().as_str()),
             );
-            let model = state.selected_model().unwrap_or("Unavailable");
+            let unavailable =
+                localization::text(state.locale(), "status.unavailable", "Unavailable");
+            let model = state.selected_model().unwrap_or(unavailable.as_str());
             (
                 localization::text(
                     state.locale(),

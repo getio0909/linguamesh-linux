@@ -7,6 +7,13 @@ fragmented UTF-8 handling, cancellation, and the translated `你好，Ollama！`
 credential. These tests do not replace interoperability testing against a running third-party
 Ollama daemon.
 
+The Linux checkout consumes the canonical gettext bundle from immutable l10n revision
+`bd06a76bcd498748b520143c61964a92727d1b51`. The bundle contains 339 messages, and
+`bash tools/sync-l10n.sh --check` verifies every PO/MO catalog and the generated manifest before
+the native build. History/memory row metadata, document-job IDs, active-provider mode summaries,
+and unavailable provider/model labels are asserted through catalog keys rather than concatenated
+English UI fragments; non-English packs remain machine-generated drafts pending human review.
+
 ## Host prerequisites
 
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
