@@ -303,6 +303,7 @@ mod tests {
             assert!(!text(locale, "action.translate", "").is_empty());
             assert!(!text(locale, "status.disconnected", "").is_empty());
             assert!(!text(locale, "status.label", "").is_empty());
+            assert!(!text(locale, "diagnostics.summary", "").is_empty());
             assert!(!text(locale, "action.open_source", "").is_empty());
             assert!(!text(locale, "dialog.open", "").is_empty());
             assert!(!text(locale, "section.provider_profiles", "").is_empty());

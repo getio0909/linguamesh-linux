@@ -42,7 +42,9 @@ output region reports translation busy state; document-job progress exposes a na
 role with a bounded completed/total fraction; empty errors are hidden from the accessibility tree;
 and Stop has the explicit accessible name “Stop translation”. A CI fixture reads the running
 application through AT-SPI and verifies the named Stop control plus both text-editor roles. This
-does not claim Orca speech, physical-keyboard, high-contrast, or physical-compositor coverage.
+does not claim Orca speech, physical-keyboard, high-contrast, or physical-compositor coverage. The
+non-sensitive Diagnostics panel localizes its Core ABI/protocol summary through the runtime catalog
+while omitting source text, endpoints, and secret references.
 
 ## Build and run
 

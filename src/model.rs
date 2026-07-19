@@ -4,7 +4,7 @@ use linguamesh_domain::{
     TranslationPrivacyMode, TranslationRequest,
 };
 pub use linguamesh_domain::{ProviderProfile, ProviderProfileId};
-use linguamesh_protocol::PROTOCOL_VERSION;
+use linguamesh_protocol::{ABI_VERSION_MAJOR, PROTOCOL_VERSION};
 use std::collections::HashSet;
 use std::error::Error;
 use std::fmt;
@@ -1381,6 +1381,47 @@ impl AppState {
             self.output.len()
         )
     }
+
+    /// 返回带有当前界面语言的非敏感诊断摘要。
+    #[must_use]
+    pub fn localized_diagnostics_text(&self, locale: UiLocale) -> String {
+        let summary = localization::text(
+            locale,
+            "diagnostics.summary",
+            "Core ABI {core_abi} · Protocol {protocol}",
+        )
+        .replace("{core_abi}", &ABI_VERSION_MAJOR.to_string())
+        .replace("{protocol}", &PROTOCOL_VERSION.to_string());
+        format!(
+            "{summary}\nOnboarding: {}\nProvider: {}\nProvider saved: {}\nProfile storage: {}\nSaved profiles: {}\nSaved profile: {}\nPersisted active profile: {}\nSaved model: {}\nModel selected: {}\nModel selection pending: {}\nProfile deletion pending: {}\nStatus: {}\nTheme: {}\nLocale: {}\nOutput bytes: {}",
+            self.onboarding_stage().label(),
+            yes_no(self.active_provider.is_some()),
+            yes_no(self.active_provider_is_saved()),
+            self.profile_storage_status.label(),
+            self.saved_profiles.len(),
+            yes_no(self.selected_saved_profile_id.is_some()),
+            yes_no(self.persisted_active_profile_id.is_some()),
+            yes_no(
+                self.selected_saved_profile()
+                    .is_some_and(|profile| profile.selected_model().is_some())
+            ),
+            if self.selected_model.is_some() {
+                "Yes"
+            } else {
+                "No"
+            },
+            if self.pending_model_selection.is_some() {
+                "Yes"
+            } else {
+                "No"
+            },
+            yes_no(self.pending_profile_deletion.is_some()),
+            self.status.label(),
+            self.theme.label(),
+            self.locale.language_tag(),
+            self.output.len()
+        )
+    }
 }
 
 fn error_category(kind: ErrorKind) -> (&'static str, &'static str) {
@@ -1995,6 +2036,16 @@ mod tests {
                 Some(expected)
             );
         }
+    }
+
+    #[test]
+    fn localized_diagnostics_use_catalog_summary_without_sensitive_values() {
+        let mut state = AppState::default();
+        state.set_source_text("diagnostic source must not appear");
+        let diagnostics = state.localized_diagnostics_text(UiLocale::SimplifiedChinese);
+        assert!(diagnostics.starts_with("Core ABI 1 · 协议 1"));
+        assert!(diagnostics.contains("Onboarding: Starting"));
+        assert!(!diagnostics.contains("diagnostic source must not appear"));
     }
 
     fn state_with_profile_storage() -> AppState {

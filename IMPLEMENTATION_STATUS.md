@@ -1185,3 +1185,21 @@ bounded by the Core document-job contract.
 
 Orca speech, manual high-contrast/RTL/reduced-motion review, end-user Secret Service prompt
 approval, other clients, and release artifacts remain open.
+
+## 2026-07-19 — Linux localized diagnostics checkpoint
+
+Assumption: the non-sensitive diagnostics panel is user-visible UI and its compatibility summary
+must follow runtime locale changes without exposing source text, endpoints, or secret references.
+
+- Routed the diagnostics summary through the canonical `diagnostics.summary` catalog template,
+  including the Core ABI and protocol versions, while retaining the existing redacted state fields.
+- Added official-locale coverage for the summary and a regression that verifies Simplified Chinese
+  rendering and source-content exclusion.
+- Local formatting, locked all-target checks, strict Clippy, no-default tests (65 passed, 1 ignored),
+  demo-provider tests (103 passed, 2 ignored), localization-key audit (188 keys), l10n sync, shell
+  syntax, and diff checks passed. The native GTK binary test remains CI-linked because this host's
+  installed GTK symbols cannot link it.
+
+Complete visible-string gettext coverage, translated-copy/plural review, Orca speech, manual
+high-contrast/RTL/reduced-motion review, end-user Secret Service prompt approval, other clients,
+and release artifacts remain open.

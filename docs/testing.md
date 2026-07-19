@@ -311,7 +311,8 @@ Stop button plus two exported text-editor roles. The GTK unit test also verifies
 progress uses the native progress-bar role, exposes a bounded completed/total fraction, and hides
 the progress control when no document job is selected. This proves AT-SPI semantic export only; it does
 not prove Orca speech, physical-compositor behavior, RTL/high-contrast presentation, or GPU
-rendering.
+rendering. The diagnostics panel uses the catalog-backed `diagnostics.summary` template for its
+Core ABI/protocol header and keeps the remaining fields redacted.
 
 The GitHub Actions native workflow pins Core revision
 `fbf3e9b5927049dccaa19f8c36013495ffebba12`, installs the headers plus D-Bus, Xvfb, test-only

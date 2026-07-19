@@ -5185,7 +5185,9 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         )
     };
     bindings.locale_note.set_label(&locale_note);
-    bindings.diagnostics.set_label(&state.diagnostics_text());
+    bindings
+        .diagnostics
+        .set_label(&state.localized_diagnostics_text(state.locale()));
     let translation_busy = matches!(
         state.status(),
         AppStatus::Translating | AppStatus::Cancelling
