@@ -102,8 +102,11 @@ the source text. Core schema 14 and the worker persist bounded pending/running/p
 and segment progress without source paths or credentials. Schema 8 also stores validated non-secret
 source/target locales, provider/model IDs, and optional glossary rules. Imported TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF files
 become these snapshots before translation; the worker translates pending prose segments sequentially,
-writes each completed segment, and routes safe reconstruction back to the editor. Resume and Retry
-reuse saved options only after the active runtime matches. DOCX/PPTX/XLSX/EPUB package resources remain intact while
+writes each completed segment through the confirmed provider or selected saved document-capable
+routing candidate, emits a typed non-sensitive routing decision, and routes safe reconstruction back
+to the editor. Document jobs keep fallback disabled even when a routing profile permits explicit
+fallback. Resume and Retry reuse saved options only after the active runtime matches.
+DOCX/PPTX/XLSX/EPUB package resources remain intact while
 supported text parts are rewritten under the same 4 MiB package and 512-entry limits. PDF extraction
 keeps page association, coordinates where available, and uncertain reading-order boundaries; ASCII
 text streams are rewritten when safe and other text encodings use a structured page-aware HTML

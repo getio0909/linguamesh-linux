@@ -28,7 +28,9 @@ restoration, bounded semantic chunking for long streamed text, bounded translati
 optional translation-memory storage with versioned request identity, and the bounded TXT/Markdown/
 SRT/WebVTT/CSV/JSON/HTML document contract with preserved line endings, verbatim Markdown fences, and validated
 subtitle timing, bounded DOCX/PPTX/XLSX/EPUB package reconstruction, bounded text-PDF page extraction and reconstruction with structured HTML fallback, plus schema-14 document job snapshots that survive worker restart without persisting source paths or credentials, plus
-validated non-secret provider/model/glossary options reused by Resume and Retry after restart.
+validated non-secret provider/model/glossary options reused by Resume and Retry after restart. A
+selected saved routing profile can dispatch document segments through a document-capable candidate;
+document jobs keep fallback disabled by policy.
 The same Core document boundary rejects suspicious OOXML compression ratios before XML inspection
 and rejects unsupported OOXML macro and digital-signature parts before import or reconstruction.
 

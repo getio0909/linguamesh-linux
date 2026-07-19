@@ -150,6 +150,21 @@ pub enum WorkerCommand {
         /// 本地隐私策略；隐身模式禁止写入文档任务状态。
         privacy_mode: TranslationPrivacyMode,
     },
+    /// 使用已保存的路由配置顺序翻译一个文档任务；文档任务不启用自动回退。
+    TranslateDocumentJobWithRouting {
+        /// 文档任务标识。
+        job_id: String,
+        /// 可选的源语言标签。
+        source_locale: Option<String>,
+        /// 目标语言标签。
+        target_locale: String,
+        /// 请求级词汇表。
+        glossary: Option<Glossary>,
+        /// 本地隐私策略；隐身模式禁止写入文档任务状态。
+        privacy_mode: TranslationPrivacyMode,
+        /// 已保存路由配置标识。
+        routing_profile_id: String,
+    },
     /// 按最近更新时间读取本地文档任务。
     ListDocumentJobs,
     /// 从已持久化的文档任务重建二进制输出。
@@ -606,6 +621,14 @@ enum QueuedCommand {
         glossary: Option<Glossary>,
         privacy_mode: TranslationPrivacyMode,
     },
+    TranslateDocumentJobWithRouting {
+        job_id: String,
+        source_locale: Option<String>,
+        target_locale: String,
+        glossary: Option<Glossary>,
+        privacy_mode: TranslationPrivacyMode,
+        routing_profile_id: String,
+    },
     ListDocumentJobs,
     ExportDocumentJob {
         job_id: String,
@@ -841,6 +864,24 @@ impl CoreWorker {
                     privacy_mode,
                 })
                 .map_err(|_| WorkerSendError),
+            WorkerCommand::TranslateDocumentJobWithRouting {
+                job_id,
+                source_locale,
+                target_locale,
+                glossary,
+                privacy_mode,
+                routing_profile_id,
+            } => self
+                .commands
+                .try_send(QueuedCommand::TranslateDocumentJobWithRouting {
+                    job_id,
+                    source_locale,
+                    target_locale,
+                    glossary,
+                    privacy_mode,
+                    routing_profile_id,
+                })
+                .map_err(|_| WorkerSendError),
             WorkerCommand::ListDocumentJobs => self
                 .commands
                 .try_send(QueuedCommand::ListDocumentJobs)
@@ -973,6 +1014,8 @@ struct ActiveDocumentTranslation {
     target_locale: String,
     glossary: Option<Glossary>,
     privacy_mode: TranslationPrivacyMode,
+    model_id: String,
+    provider_identity: Option<String>,
     operation: TranslationOperation,
     output: String,
     cancel_requested: bool,
@@ -985,6 +1028,17 @@ struct DocumentTranslationOptions {
     target_locale: String,
     glossary: Option<Glossary>,
     privacy_mode: TranslationPrivacyMode,
+    provider_identity: Option<String>,
+}
+
+struct RoutedDocumentStart {
+    translation: ActiveDocumentTranslation,
+    manager: ProviderManager,
+    profile: ProviderProfile,
+    provider_id: String,
+    model_id: String,
+    eligible_count: usize,
+    rejected_count: usize,
 }
 
 // 集中保留命令与事件优先级，避免拆分后破坏单一活动操作约束。
@@ -1156,6 +1210,8 @@ async fn run_worker(
     let mut selected_model: Option<String> = None;
     let mut active: Option<ActiveTranslation> = None;
     let mut active_document: Option<ActiveDocumentTranslation> = None;
+    let mut document_profile: Option<ProviderProfile> = None;
+    let mut document_model: Option<String> = None;
     let mut shutting_down = false;
     let mut stop_after_active = false;
     while !shutting_down {
@@ -1274,6 +1330,7 @@ async fn run_worker(
                     QueuedCommand::CreateDocumentJob { .. }
                     | QueuedCommand::OcrDocumentJob { .. }
                     | QueuedCommand::TranslateDocumentJob { .. }
+                    | QueuedCommand::TranslateDocumentJobWithRouting { .. }
                     | QueuedCommand::ListDocumentJobs
                     | QueuedCommand::ExportDocumentJob { .. }
                     | QueuedCommand::UpdateDocumentSegment { .. }
@@ -1684,10 +1741,13 @@ async fn run_worker(
                                     {
                                         shutting_down |= document_translation.stop_after_active;
                                     } else {
+                                        let document_manager = routing_manager
+                                            .as_ref()
+                                            .map_or(&manager, |manager| manager);
                                         match begin_document_segment(
-                                            &manager,
+                                            document_manager,
                                             active_profile.as_ref(),
-                                            selected_model.as_deref(),
+                                            Some(document_translation.model_id.as_str()),
                                             &document_translation.job_id,
                                             &snapshot.job,
                                             DocumentTranslationOptions {
@@ -1699,6 +1759,9 @@ async fn run_worker(
                                                     .clone(),
                                                 glossary: document_translation.glossary.clone(),
                                                 privacy_mode: document_translation.privacy_mode,
+                                                provider_identity: document_translation
+                                                    .provider_identity
+                                                    .clone(),
                                             },
                                         ) {
                                             Ok(next) => {
@@ -2422,6 +2485,83 @@ async fn run_worker(
                     }
                 }
             }
+            Some(QueuedCommand::TranslateDocumentJobWithRouting {
+                job_id,
+                source_locale,
+                target_locale,
+                glossary,
+                privacy_mode,
+                routing_profile_id,
+            }) => {
+                if let Some(mut previous) = routing_manager.take() {
+                    previous.disconnect();
+                }
+                document_profile = None;
+                document_model = None;
+                let cancellation = shutdown_cancellation.child_token();
+                set_active_cancellation(
+                    &active_cancellation,
+                    ActiveCancellation::Connection(cancellation.clone()),
+                );
+                let result = match storage.as_mut() {
+                    Some(storage) => {
+                        start_routed_document_job_translation(
+                            secret_broker.clone(),
+                            storage,
+                            &job_id,
+                            source_locale,
+                            target_locale,
+                            glossary,
+                            privacy_mode,
+                            &routing_profile_id,
+                            &cancellation,
+                            &mut secret_requests,
+                        )
+                        .await
+                    }
+                    None => Err(TranslationError::new(
+                        ErrorKind::Persistence,
+                        "Local document job storage is unavailable.",
+                    )),
+                };
+                clear_active_cancellation(&active_cancellation);
+                match result {
+                    Ok(start) => {
+                        let document_model_id = start.model_id.clone();
+                        if events
+                            .send(WorkerEvent::RoutingDecisionSelected {
+                                profile_id: routing_profile_id,
+                                provider_id: start.provider_id,
+                                model_id: start.model_id,
+                                eligible_count: start.eligible_count,
+                                rejected_count: start.rejected_count,
+                                fallback_count: 0,
+                            })
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                        routing_manager = Some(start.manager);
+                        document_profile = Some(start.profile);
+                        document_model = Some(document_model_id);
+                        set_active_cancellation(
+                            &active_cancellation,
+                            ActiveCancellation::Translation(
+                                start.translation.operation.cancellation_handle(),
+                            ),
+                        );
+                        active_document = Some(start.translation);
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::DocumentJobActionRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
             Some(QueuedCommand::TranslateDocumentJob {
                 job_id,
                 source_locale,
@@ -2429,6 +2569,11 @@ async fn run_worker(
                 glossary,
                 privacy_mode,
             }) => {
+                if let Some(mut previous) = routing_manager.take() {
+                    previous.disconnect();
+                }
+                document_profile = None;
+                document_model = None;
                 if privacy_mode == TranslationPrivacyMode::Incognito {
                     let _ = events.send(WorkerEvent::DocumentJobActionRejected(
                         TranslationError::new(
@@ -2493,6 +2638,7 @@ async fn run_worker(
                                 target_locale,
                                 glossary,
                                 privacy_mode,
+                                provider_identity: None,
                             },
                         )
                     });
@@ -2647,6 +2793,9 @@ async fn run_worker(
                 }
             }
             Some(QueuedCommand::ResumeDocumentJob { job_id }) => {
+                let document_manager = routing_manager.as_ref().map_or(&manager, |manager| manager);
+                let resume_profile = document_profile.as_ref().or(active_profile.as_ref());
+                let resume_model = document_model.as_deref().or(selected_model.as_deref());
                 let result = storage
                     .as_mut()
                     .ok_or_else(|| {
@@ -2658,9 +2807,9 @@ async fn run_worker(
                     .and_then(|storage| {
                         start_persisted_document_job_translation(
                             storage,
-                            &manager,
-                            active_profile.as_ref(),
-                            selected_model.as_deref(),
+                            document_manager,
+                            resume_profile,
+                            resume_model,
                             &job_id,
                             false,
                         )
@@ -2686,6 +2835,9 @@ async fn run_worker(
                 }
             }
             Some(QueuedCommand::RetryDocumentJob { job_id }) => {
+                let document_manager = routing_manager.as_ref().map_or(&manager, |manager| manager);
+                let resume_profile = document_profile.as_ref().or(active_profile.as_ref());
+                let resume_model = document_model.as_deref().or(selected_model.as_deref());
                 let result = storage
                     .as_mut()
                     .ok_or_else(|| {
@@ -2697,9 +2849,9 @@ async fn run_worker(
                     .and_then(|storage| {
                         start_persisted_document_job_translation(
                             storage,
-                            &manager,
-                            active_profile.as_ref(),
-                            selected_model.as_deref(),
+                            document_manager,
+                            resume_profile,
+                            resume_model,
                             &job_id,
                             true,
                         )
@@ -2820,6 +2972,8 @@ async fn run_worker(
                     } => (request, None, Some(routing_profile_id)),
                     _ => unreachable!(),
                 };
+                document_profile = None;
+                document_model = None;
                 if routing_profile_id.is_none()
                     && let Some(mut previous) = routing_manager.take()
                 {
@@ -3223,6 +3377,7 @@ fn reject_queued_commands_for_shutdown(
             QueuedCommand::CreateDocumentJob { .. }
             | QueuedCommand::OcrDocumentJob { .. }
             | QueuedCommand::TranslateDocumentJob { .. }
+            | QueuedCommand::TranslateDocumentJobWithRouting { .. }
             | QueuedCommand::ListDocumentJobs
             | QueuedCommand::ExportDocumentJob { .. }
             | QueuedCommand::UpdateDocumentSegment { .. }
@@ -3867,12 +4022,12 @@ fn begin_document_segment(
     if let Some(source_locale) = options.source_locale.as_deref() {
         request.source_locale = Some(source_locale.to_owned());
     }
-    if let Some(profile) = active_profile {
-        request = request.with_provider_identity(format!(
-            "{}@{}",
-            profile.id().as_str(),
-            profile.base_endpoint()
-        ));
+    let provider_identity = options.provider_identity.clone().or_else(|| {
+        active_profile
+            .map(|profile| format!("{}@{}", profile.id().as_str(), profile.base_endpoint()))
+    });
+    if let Some(provider_identity) = provider_identity.as_deref() {
+        request = request.with_provider_identity(provider_identity);
     }
     let active_translation = begin_translation(manager, selected_model, request)?;
     Ok(ActiveDocumentTranslation {
@@ -3882,6 +4037,8 @@ fn begin_document_segment(
         target_locale: options.target_locale,
         glossary: options.glossary,
         privacy_mode: options.privacy_mode,
+        model_id: model_id.to_owned(),
+        provider_identity,
         operation: active_translation.operation,
         output: String::new(),
         cancel_requested: false,
@@ -3956,6 +4113,132 @@ fn persisted_document_options(
     })
 }
 
+// 使用保存的路由配置为文档任务选择一个候选；文档任务不启用自动回退链。
+#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
+async fn start_routed_document_job_translation(
+    secret_broker: HostSecretBroker,
+    storage: &mut Storage,
+    job_id: &str,
+    source_locale: Option<String>,
+    target_locale: String,
+    glossary: Option<Glossary>,
+    privacy_mode: TranslationPrivacyMode,
+    routing_profile_id: &str,
+    cancellation: &CancellationToken,
+    requests: &mut HostSecretRequests,
+) -> Result<RoutedDocumentStart, TranslationError> {
+    if privacy_mode == TranslationPrivacyMode::Incognito {
+        return Err(TranslationError::new(
+            ErrorKind::InvalidConfiguration,
+            "Incognito mode cannot persist document job progress.",
+        ));
+    }
+    let routing_profile = storage
+        .routing_profile(routing_profile_id)?
+        .ok_or_else(|| {
+            TranslationError::new(
+                ErrorKind::InvalidConfiguration,
+                "The selected routing profile no longer exists.",
+            )
+        })?
+        .profile;
+    let snapshot = storage.document_job(job_id)?.ok_or_else(|| {
+        TranslationError::new(
+            ErrorKind::InvalidConfiguration,
+            "The document job was not found.",
+        )
+    })?;
+    if !snapshot.state.is_resumable() {
+        return Err(TranslationError::new(
+            ErrorKind::InvalidConfiguration,
+            "The document job is not ready to translate.",
+        ));
+    }
+    let segment = snapshot
+        .job
+        .segments
+        .iter()
+        .find(|segment| {
+            segment.kind == linguamesh_document::DocumentSegmentKind::Prose
+                && segment.translated_text.is_none()
+        })
+        .ok_or_else(|| {
+            TranslationError::new(
+                ErrorKind::InvalidConfiguration,
+                "The document job has no pending prose segment.",
+            )
+        })?;
+    let request_bytes = snapshot
+        .job
+        .translation_source_text(segment.index)
+        .map_err(|error| TranslationError::new(ErrorKind::InvalidConfiguration, error.to_string()))?
+        .len();
+    let decision = routing_profile
+        .select(&RoutingContext {
+            source_locale: source_locale.clone(),
+            target_locale: target_locale.clone(),
+            request_bytes,
+            require_streaming: true,
+            require_document: true,
+            privacy_sensitive: false,
+        })
+        .map_err(|error| {
+            TranslationError::new(ErrorKind::InvalidConfiguration, error.to_string())
+        })?;
+    let selected = decision.selected.clone();
+    let (mut manager, profile, model_id) = connect_routing_candidate(
+        secret_broker,
+        Some(storage),
+        &selected,
+        cancellation,
+        requests,
+    )
+    .await?;
+    let persisted_options = DocumentJobOptions {
+        source_locale: source_locale.clone(),
+        target_locale: target_locale.clone(),
+        model_id: model_id.clone(),
+        provider_id: profile.id().as_str().to_owned(),
+        glossary: glossary.clone(),
+    };
+    let result = storage
+        .save_document_job_options(job_id, &persisted_options)
+        .and_then(|_| storage.set_document_job_state(job_id, DocumentJobState::Running))
+        .and_then(|running| {
+            let provider_identity = format!("{}@{}", selected.provider_id, selected.model_id);
+            begin_document_segment(
+                &manager,
+                Some(&profile),
+                Some(&model_id),
+                job_id,
+                &running.job,
+                DocumentTranslationOptions {
+                    source_locale,
+                    target_locale,
+                    glossary,
+                    privacy_mode,
+                    provider_identity: Some(provider_identity),
+                },
+            )
+        });
+    match result {
+        Ok(translation) => Ok(RoutedDocumentStart {
+            translation,
+            manager,
+            profile,
+            provider_id: selected.provider_id,
+            model_id,
+            eligible_count: decision.eligible_candidates.len(),
+            rejected_count: decision.rejected_candidates.len(),
+        }),
+        Err(error) => {
+            manager.disconnect();
+            let _ = storage.set_document_job_state(job_id, DocumentJobState::Pending);
+            Err(error)
+        }
+    }
+}
+
 // 为无法直接编码非 ASCII PDF 文本的任务生成结构化 HTML 文件名。
 fn alternative_pdf_source_name(source_name: &str) -> String {
     source_name.rsplit_once('.').map_or_else(
@@ -4013,6 +4296,7 @@ fn start_persisted_document_job_translation(
             target_locale: options.target_locale,
             glossary: options.glossary,
             privacy_mode: TranslationPrivacyMode::Standard,
+            provider_identity: None,
         },
         retry,
     )
@@ -5454,6 +5738,135 @@ mod tests {
         assert_eq!(completed.job.pending_count(), 0);
         assert_eq!(
             completed.job.reconstruct().expect("reconstruct"),
+            "你好，LinguaMesh！\n你好，LinguaMesh！"
+        );
+        shutdown(&worker);
+    }
+
+    #[allow(clippy::too_many_lines)]
+    #[test]
+    fn document_job_translation_uses_saved_routing_profile_without_fallback() {
+        let database = TestDatabase::new();
+        let (worker, _, endpoint) = started_worker_with_database(database.path());
+        connect(
+            &worker,
+            profile("document-route-provider", &endpoint, None, None),
+            None,
+            PersistenceIntent::Persistent,
+        )
+        .expect("routing provider connection");
+        select(&worker, "document-route-provider", "fake-translator");
+        connect(
+            &worker,
+            profile("document-active-provider", &endpoint, None, None),
+            None,
+            PersistenceIntent::SessionOnly,
+        )
+        .expect("active provider connection");
+        select(&worker, "document-active-provider", "fake-translator");
+        worker
+            .try_send(WorkerCommand::CreateDocumentJob {
+                job_id: "document-route-1".to_owned(),
+                job: DocumentJob::from_text("routed.txt", DocumentFormat::Txt, "one\ntwo"),
+            })
+            .expect("create routed document job");
+        assert!(matches!(
+            worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("routed document created event"),
+            WorkerEvent::DocumentJobUpdated(snapshot)
+                if snapshot.state == DocumentJobState::Pending
+        ));
+        let mut candidate = RoutingCandidate::new(
+            "document-route-provider",
+            "fake-translator",
+            true,
+            64 * 1024,
+        )
+        .expect("document routing candidate");
+        candidate.supports_document = true;
+        let routing_profile = RoutingProfile::new(
+            "document-route",
+            RoutingMode::Automatic,
+            vec![candidate],
+            RoutingConstraints {
+                require_document: true,
+                explicit_fallback_allowed: true,
+                ..RoutingConstraints::default()
+            },
+        )
+        .expect("document routing profile");
+        worker
+            .try_send(WorkerCommand::SaveRoutingProfile {
+                profile: routing_profile,
+            })
+            .expect("save document routing profile");
+        assert!(matches!(
+            worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("document routing profile saved event"),
+            WorkerEvent::RoutingProfileSaved(_)
+        ));
+        worker
+            .try_send(WorkerCommand::TranslateDocumentJobWithRouting {
+                job_id: "document-route-1".to_owned(),
+                source_locale: Some("en".to_owned()),
+                target_locale: "zh-CN".to_owned(),
+                glossary: None,
+                privacy_mode: TranslationPrivacyMode::Standard,
+                routing_profile_id: "document-route".to_owned(),
+            })
+            .expect("translate routed document job");
+        let deadline = Instant::now() + Duration::from_secs(10);
+        let mut decision_seen = false;
+        let completed = loop {
+            assert!(
+                Instant::now() < deadline,
+                "routed document translation timed out"
+            );
+            let event = match worker.events.recv_timeout(Duration::from_millis(500)) {
+                Ok(event) => event,
+                Err(mpsc::RecvTimeoutError::Timeout) => continue,
+                Err(mpsc::RecvTimeoutError::Disconnected) => {
+                    panic!("routed document event channel disconnected")
+                }
+            };
+            match event {
+                WorkerEvent::RoutingDecisionSelected {
+                    profile_id,
+                    provider_id,
+                    model_id,
+                    eligible_count,
+                    rejected_count,
+                    fallback_count,
+                } => {
+                    assert_eq!(profile_id, "document-route");
+                    assert_eq!(provider_id, "document-route-provider");
+                    assert_eq!(model_id, "fake-translator");
+                    assert_eq!(eligible_count, 1);
+                    assert_eq!(rejected_count, 0);
+                    assert_eq!(fallback_count, 0);
+                    decision_seen = true;
+                }
+                WorkerEvent::DocumentJobUpdated(snapshot)
+                    if snapshot.state == DocumentJobState::Completed =>
+                {
+                    break snapshot;
+                }
+                WorkerEvent::DocumentJobSegment { event, .. } => {
+                    assert!(!matches!(event, TranslationEvent::Failed { .. }));
+                }
+                _ => {}
+            }
+        };
+        assert!(decision_seen);
+        assert_eq!(
+            completed
+                .job
+                .reconstruct()
+                .expect("routed document reconstruct"),
             "你好，LinguaMesh！\n你好，LinguaMesh！"
         );
         shutdown(&worker);

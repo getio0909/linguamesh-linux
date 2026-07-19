@@ -22,9 +22,12 @@ text request while asserting the typed decision event. The ordered-chain regress
 saved provider before dispatch, verifies the next eligible candidate is selected, and asserts the
 typed routing-fallback event and translated output. The worker also retries a retryable stream
 failure across remaining automatic or ordered candidates, preserving event ordering and partial
-output. The GTK dialog creates only a bounded local-preferred default from saved provider/model
-selections. When a routing profile is selected, it takes precedence over the separate explicit
-fallback checkbox for that ordinary text request.
+output. A document-job regression selects a saved document-capable routing candidate while a
+different provider is active, translates every pending segment through that candidate, and asserts
+that the document decision reports no fallback even when the profile permits explicit fallback.
+The GTK dialog creates only a bounded local-preferred default from saved provider/model selections.
+When a routing profile is selected, it takes precedence over the separate explicit fallback
+checkbox for both ordinary text and document dispatch; document jobs never auto-fallback.
 
 ## Host prerequisites
 

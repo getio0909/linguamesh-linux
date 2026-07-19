@@ -2622,12 +2622,24 @@ fn connect_action_handlers(
                     } else {
                         match state.begin_document_translation() {
                             Ok(()) => {
-                                let command = WorkerCommand::TranslateDocumentJob {
-                                    job_id,
-                                    source_locale,
-                                    target_locale,
-                                    glossary,
-                                    privacy_mode: state.privacy_mode(),
+                                let command = match routing_profile_id {
+                                    Some(routing_profile_id) => {
+                                        WorkerCommand::TranslateDocumentJobWithRouting {
+                                            job_id,
+                                            source_locale,
+                                            target_locale,
+                                            glossary,
+                                            privacy_mode: state.privacy_mode(),
+                                            routing_profile_id,
+                                        }
+                                    }
+                                    None => WorkerCommand::TranslateDocumentJob {
+                                        job_id,
+                                        source_locale,
+                                        target_locale,
+                                        glossary,
+                                        privacy_mode: state.privacy_mode(),
+                                    },
                                 };
                                 match translate_worker.try_send(command) {
                                     Ok(()) => {
