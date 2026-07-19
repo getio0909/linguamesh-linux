@@ -1863,3 +1863,123 @@ msgstr "OCR did not find readable text."
 msgctxt "error.ocr_failed"
 msgid "The optional OCR process failed."
 msgstr "The optional OCR process failed."
+
+#. Label for the onboarding stage in the non-sensitive diagnostics panel.
+#, fuzzy
+msgctxt "diagnostics.onboarding"
+msgid "Onboarding"
+msgstr "Onboarding"
+
+#. Label for the active-provider state in the diagnostics panel.
+#, fuzzy
+msgctxt "diagnostics.provider"
+msgid "Provider"
+msgstr "Provider"
+
+#. Label for whether the active provider is saved.
+#, fuzzy
+msgctxt "diagnostics.provider_saved"
+msgid "Provider saved"
+msgstr "Provider saved"
+
+#. Label for the profile storage state in diagnostics.
+#, fuzzy
+msgctxt "diagnostics.profile_storage"
+msgid "Profile storage"
+msgstr "Profile storage"
+
+#. Label for the saved-profile count in diagnostics.
+#, fuzzy
+msgctxt "diagnostics.saved_profiles"
+msgid "Saved profiles"
+msgstr "Saved profiles"
+
+#. Label for whether a saved profile is selected.
+#, fuzzy
+msgctxt "diagnostics.saved_profile"
+msgid "Saved profile"
+msgstr "Saved profile"
+
+#. Label for the persisted active-profile marker.
+#, fuzzy
+msgctxt "diagnostics.persisted_active_profile"
+msgid "Persisted active profile"
+msgstr "Persisted active profile"
+
+#. Label for whether a saved model is present.
+#, fuzzy
+msgctxt "diagnostics.saved_model"
+msgid "Saved model"
+msgstr "Saved model"
+
+#. Label for whether a model is selected.
+#, fuzzy
+msgctxt "diagnostics.model_selected"
+msgid "Model selected"
+msgstr "Model selected"
+
+#. Label for pending model selection in diagnostics.
+#, fuzzy
+msgctxt "diagnostics.model_selection_pending"
+msgid "Model selection pending"
+msgstr "Model selection pending"
+
+#. Label for pending profile deletion in diagnostics.
+#, fuzzy
+msgctxt "diagnostics.profile_deletion_pending"
+msgid "Profile deletion pending"
+msgstr "Profile deletion pending"
+
+#. Label for the application status in diagnostics.
+#, fuzzy
+msgctxt "diagnostics.status"
+msgid "Status"
+msgstr "Status"
+
+#. Label for the selected theme in diagnostics.
+#, fuzzy
+msgctxt "diagnostics.theme"
+msgid "Theme"
+msgstr "Theme"
+
+#. Label for the active locale in diagnostics.
+#, fuzzy
+msgctxt "diagnostics.locale"
+msgid "Locale"
+msgstr "Locale"
+
+#. Label for output byte count in diagnostics.
+#, fuzzy
+msgctxt "diagnostics.output_bytes"
+msgid "Output bytes"
+msgstr "Output bytes"
+
+#. Affirmative value in the diagnostics panel.
+#, fuzzy
+msgctxt "diagnostics.yes"
+msgid "Yes"
+msgstr "Yes"
+
+#. Negative value in the diagnostics panel.
+#, fuzzy
+msgctxt "diagnostics.no"
+msgid "No"
+msgstr "No"
+
+#. Diagnostic label for pending profile storage initialization.
+#, fuzzy
+msgctxt "diagnostics.profile_storage_pending"
+msgid "Pending"
+msgstr "Pending"
+
+#. Diagnostic label for available profile storage.
+#, fuzzy
+msgctxt "diagnostics.profile_storage_available"
+msgid "Available"
+msgstr "Available"
+
+#. Diagnostic label for unavailable profile storage.
+#, fuzzy
+msgctxt "diagnostics.profile_storage_unavailable"
+msgid "Unavailable"
+msgstr "Unavailable"

@@ -16,6 +16,30 @@ CALL_PATTERN = re.compile(
 )
 KEY_PATTERN = re.compile(r'"([a-z][a-z0-9_.-]+)"')
 
+# 补充检查通过映射表传入本地化辅助函数的诊断 key。
+DIAGNOSTICS_KEYS = {
+    "diagnostics.onboarding",
+    "diagnostics.provider",
+    "diagnostics.provider_saved",
+    "diagnostics.profile_storage",
+    "diagnostics.saved_profiles",
+    "diagnostics.saved_profile",
+    "diagnostics.persisted_active_profile",
+    "diagnostics.saved_model",
+    "diagnostics.model_selected",
+    "diagnostics.model_selection_pending",
+    "diagnostics.profile_deletion_pending",
+    "diagnostics.status",
+    "diagnostics.theme",
+    "diagnostics.locale",
+    "diagnostics.output_bytes",
+    "diagnostics.yes",
+    "diagnostics.no",
+    "diagnostics.profile_storage_pending",
+    "diagnostics.profile_storage_available",
+    "diagnostics.profile_storage_unavailable",
+}
+
 
 def load_catalog(path: Path) -> set[str]:
     """读取 canonical JSON catalog 的消息 key。"""
@@ -58,6 +82,7 @@ def main() -> int:
         except OSError as error:
             print(f"Localization key audit could not read {source_path}: {error}", file=sys.stderr)
             return 2
+    used.update(DIAGNOSTICS_KEYS)
 
     missing = sorted(used - known)
     if missing:

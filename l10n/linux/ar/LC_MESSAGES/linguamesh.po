@@ -1871,3 +1871,123 @@ msgstr "OCR did not find readable text."
 msgctxt "error.ocr_failed"
 msgid "The optional OCR process failed."
 msgstr "The optional OCR process failed."
+
+#. Label for the onboarding stage in the non-sensitive diagnostics panel.
+#, fuzzy
+msgctxt "diagnostics.onboarding"
+msgid "Onboarding"
+msgstr "الإعداد"
+
+#. Label for the active-provider state in the diagnostics panel.
+#, fuzzy
+msgctxt "diagnostics.provider"
+msgid "Provider"
+msgstr "المزوّد"
+
+#. Label for whether the active provider is saved.
+#, fuzzy
+msgctxt "diagnostics.provider_saved"
+msgid "Provider saved"
+msgstr "المزوّد محفوظ"
+
+#. Label for the profile storage state in diagnostics.
+#, fuzzy
+msgctxt "diagnostics.profile_storage"
+msgid "Profile storage"
+msgstr "تخزين الملف الشخصي"
+
+#. Label for the saved-profile count in diagnostics.
+#, fuzzy
+msgctxt "diagnostics.saved_profiles"
+msgid "Saved profiles"
+msgstr "الملفات الشخصية المحفوظة"
+
+#. Label for whether a saved profile is selected.
+#, fuzzy
+msgctxt "diagnostics.saved_profile"
+msgid "Saved profile"
+msgstr "الملف الشخصي المحفوظ"
+
+#. Label for the persisted active-profile marker.
+#, fuzzy
+msgctxt "diagnostics.persisted_active_profile"
+msgid "Persisted active profile"
+msgstr "الملف الشخصي النشط المحفوظ"
+
+#. Label for whether a saved model is present.
+#, fuzzy
+msgctxt "diagnostics.saved_model"
+msgid "Saved model"
+msgstr "النموذج المحفوظ"
+
+#. Label for whether a model is selected.
+#, fuzzy
+msgctxt "diagnostics.model_selected"
+msgid "Model selected"
+msgstr "النموذج المحدد"
+
+#. Label for pending model selection in diagnostics.
+#, fuzzy
+msgctxt "diagnostics.model_selection_pending"
+msgid "Model selection pending"
+msgstr "اختيار النموذج قيد الانتظار"
+
+#. Label for pending profile deletion in diagnostics.
+#, fuzzy
+msgctxt "diagnostics.profile_deletion_pending"
+msgid "Profile deletion pending"
+msgstr "حذف الملف الشخصي قيد الانتظار"
+
+#. Label for the application status in diagnostics.
+#, fuzzy
+msgctxt "diagnostics.status"
+msgid "Status"
+msgstr "الحالة"
+
+#. Label for the selected theme in diagnostics.
+#, fuzzy
+msgctxt "diagnostics.theme"
+msgid "Theme"
+msgstr "السمة"
+
+#. Label for the active locale in diagnostics.
+#, fuzzy
+msgctxt "diagnostics.locale"
+msgid "Locale"
+msgstr "اللغة المحلية"
+
+#. Label for output byte count in diagnostics.
+#, fuzzy
+msgctxt "diagnostics.output_bytes"
+msgid "Output bytes"
+msgstr "بايتات الإخراج"
+
+#. Affirmative value in the diagnostics panel.
+#, fuzzy
+msgctxt "diagnostics.yes"
+msgid "Yes"
+msgstr "نعم"
+
+#. Negative value in the diagnostics panel.
+#, fuzzy
+msgctxt "diagnostics.no"
+msgid "No"
+msgstr "لا"
+
+#. Diagnostic label for pending profile storage initialization.
+#, fuzzy
+msgctxt "diagnostics.profile_storage_pending"
+msgid "Pending"
+msgstr "معلّق"
+
+#. Diagnostic label for available profile storage.
+#, fuzzy
+msgctxt "diagnostics.profile_storage_available"
+msgid "Available"
+msgstr "متاح"
+
+#. Diagnostic label for unavailable profile storage.
+#, fuzzy
+msgctxt "diagnostics.profile_storage_unavailable"
+msgid "Unavailable"
+msgstr "غير متاح"

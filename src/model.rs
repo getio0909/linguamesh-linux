@@ -1384,6 +1384,7 @@ impl AppState {
 
     /// 返回带有当前界面语言的非敏感诊断摘要。
     #[must_use]
+    #[allow(clippy::too_many_lines)]
     pub fn localized_diagnostics_text(&self, locale: UiLocale) -> String {
         let summary = localization::text(
             locale,
@@ -1392,36 +1393,205 @@ impl AppState {
         )
         .replace("{core_abi}", &ABI_VERSION_MAJOR.to_string())
         .replace("{protocol}", &PROTOCOL_VERSION.to_string());
-        format!(
-            "{summary}\nOnboarding: {}\nProvider: {}\nProvider saved: {}\nProfile storage: {}\nSaved profiles: {}\nSaved profile: {}\nPersisted active profile: {}\nSaved model: {}\nModel selected: {}\nModel selection pending: {}\nProfile deletion pending: {}\nStatus: {}\nTheme: {}\nLocale: {}\nOutput bytes: {}",
-            self.onboarding_stage().label(),
-            yes_no(self.active_provider.is_some()),
-            yes_no(self.active_provider_is_saved()),
-            self.profile_storage_status.label(),
-            self.saved_profiles.len(),
-            yes_no(self.selected_saved_profile_id.is_some()),
-            yes_no(self.persisted_active_profile_id.is_some()),
-            yes_no(
+        let mut lines = vec![summary];
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.onboarding",
+            "Onboarding",
+            localized_onboarding_stage(locale, self.onboarding_stage()),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.provider",
+            "Provider",
+            localized_yes_no(locale, self.active_provider.is_some()),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.provider_saved",
+            "Provider saved",
+            localized_yes_no(locale, self.active_provider_is_saved()),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.profile_storage",
+            "Profile storage",
+            localized_profile_storage(locale, self.profile_storage_status),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.saved_profiles",
+            "Saved profiles",
+            self.saved_profiles.len().to_string(),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.saved_profile",
+            "Saved profile",
+            localized_yes_no(locale, self.selected_saved_profile_id.is_some()),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.persisted_active_profile",
+            "Persisted active profile",
+            localized_yes_no(locale, self.persisted_active_profile_id.is_some()),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.saved_model",
+            "Saved model",
+            localized_yes_no(
+                locale,
                 self.selected_saved_profile()
-                    .is_some_and(|profile| profile.selected_model().is_some())
+                    .is_some_and(|profile| profile.selected_model().is_some()),
             ),
-            if self.selected_model.is_some() {
-                "Yes"
-            } else {
-                "No"
-            },
-            if self.pending_model_selection.is_some() {
-                "Yes"
-            } else {
-                "No"
-            },
-            yes_no(self.pending_profile_deletion.is_some()),
-            self.status.label(),
-            self.theme.label(),
-            self.locale.language_tag(),
-            self.output.len()
-        )
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.model_selected",
+            "Model selected",
+            localized_yes_no(locale, self.selected_model.is_some()),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.model_selection_pending",
+            "Model selection pending",
+            localized_yes_no(locale, self.pending_model_selection.is_some()),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.profile_deletion_pending",
+            "Profile deletion pending",
+            localized_yes_no(locale, self.pending_profile_deletion.is_some()),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.status",
+            "Status",
+            localized_status(locale, self.status),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.theme",
+            "Theme",
+            localized_theme(locale, self.theme),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.locale",
+            "Locale",
+            localized_locale(locale, self.locale),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.output_bytes",
+            "Output bytes",
+            self.output.len().to_string(),
+        ));
+        lines.join("\n")
     }
+}
+
+// 使用目录中的标签拼接非敏感诊断字段。
+fn diagnostic_line(
+    locale: UiLocale,
+    key: &str,
+    fallback: &str,
+    value: impl fmt::Display,
+) -> String {
+    format!("{}: {value}", localization::text(locale, key, fallback))
+}
+
+// 将布尔诊断值映射到当前界面语言。
+fn localized_yes_no(locale: UiLocale, value: bool) -> String {
+    let (key, fallback) = if value {
+        ("diagnostics.yes", "Yes")
+    } else {
+        ("diagnostics.no", "No")
+    };
+    localization::text(locale, key, fallback)
+}
+
+// 将引导阶段映射到已有的本地化阶段标签。
+fn localized_onboarding_stage(locale: UiLocale, stage: OnboardingStage) -> String {
+    let (key, fallback) = match stage {
+        OnboardingStage::Starting => ("onboarding.stage.starting", "Provider setup · Starting"),
+        OnboardingStage::Unavailable => (
+            "onboarding.stage.unavailable",
+            "Provider setup · Unavailable",
+        ),
+        OnboardingStage::ConfigureProvider => {
+            ("onboarding.stage.configure", "Provider setup · Step 1 of 2")
+        }
+        OnboardingStage::Connecting => {
+            ("onboarding.stage.connecting", "Provider setup · Connecting")
+        }
+        OnboardingStage::SelectModel => (
+            "onboarding.stage.select_model",
+            "Provider setup · Step 2 of 2",
+        ),
+        OnboardingStage::Ready => ("onboarding.stage.ready", "Provider setup · Ready"),
+    };
+    localization::text(locale, key, fallback)
+}
+
+// 将应用状态映射到已有的本地化状态标签。
+fn localized_status(locale: UiLocale, status: AppStatus) -> String {
+    let (key, fallback) = match status {
+        AppStatus::Disconnected => ("status.disconnected", "Disconnected"),
+        AppStatus::Connecting => ("status.connecting", "Connecting"),
+        AppStatus::Ready => ("status.ready", "Ready"),
+        AppStatus::Translating => ("status.translating", "Translating…"),
+        AppStatus::Cancelling => ("status.cancelling", "Cancelling"),
+        AppStatus::Completed => ("status.completed", "Completed"),
+        AppStatus::Cancelled => (
+            "status.cancelled",
+            "Translation cancelled. Partial output was kept.",
+        ),
+        AppStatus::Failed => ("status.failed", "Failed"),
+    };
+    localization::text(locale, key, fallback)
+}
+
+// 将主题偏好映射到已有的本地化主题标签。
+fn localized_theme(locale: UiLocale, theme: ThemePreference) -> String {
+    let (key, fallback) = match theme {
+        ThemePreference::System => ("theme.system", "System"),
+        ThemePreference::Light => ("theme.light", "Light"),
+        ThemePreference::Dark => ("theme.dark", "Dark"),
+    };
+    localization::text(locale, key, fallback)
+}
+
+// 将界面语言映射到已有的本地化语言名称。
+fn localized_locale(locale: UiLocale, selected: UiLocale) -> String {
+    let (key, fallback) = match selected {
+        UiLocale::English => ("locale.name.en", "English"),
+        UiLocale::SimplifiedChinese => ("locale.name.zh_hans", "Simplified Chinese"),
+        UiLocale::TraditionalChinese => ("locale.name.zh_hant", "Traditional Chinese"),
+        UiLocale::Spanish => ("locale.name.es", "Spanish"),
+        UiLocale::French => ("locale.name.fr", "French"),
+        UiLocale::German => ("locale.name.de", "German"),
+        UiLocale::Japanese => ("locale.name.ja", "Japanese"),
+        UiLocale::Korean => ("locale.name.ko", "Korean"),
+        UiLocale::BrazilianPortuguese => ("locale.name.pt_br", "Portuguese (Brazil)"),
+        UiLocale::Russian => ("locale.name.ru", "Russian"),
+        UiLocale::Arabic => ("locale.name.ar", "Arabic"),
+        UiLocale::Hindi => ("locale.name.hi", "Hindi"),
+    };
+    localization::text(locale, key, fallback)
+}
+
+// 将配置存储状态映射到诊断专用目录标签。
+fn localized_profile_storage(locale: UiLocale, status: ProfileStorageStatus) -> String {
+    let (key, fallback) = match status {
+        ProfileStorageStatus::Pending => ("diagnostics.profile_storage_pending", "Pending"),
+        ProfileStorageStatus::Available => ("diagnostics.profile_storage_available", "Available"),
+        ProfileStorageStatus::Unavailable => {
+            ("diagnostics.profile_storage_unavailable", "Unavailable")
+        }
+    };
+    localization::text(locale, key, fallback)
 }
 
 fn error_category(kind: ErrorKind) -> (&'static str, &'static str) {
@@ -2044,7 +2214,9 @@ mod tests {
         state.set_source_text("diagnostic source must not appear");
         let diagnostics = state.localized_diagnostics_text(UiLocale::SimplifiedChinese);
         assert!(diagnostics.starts_with("Core ABI 1 · 协议 1"));
-        assert!(diagnostics.contains("Onboarding: Starting"));
+        assert!(diagnostics.contains("引导: 提供商设置 · 正在启动"));
+        assert!(diagnostics.contains("提供商: 否"));
+        assert!(diagnostics.contains("配置存储: 待处理"));
         assert!(!diagnostics.contains("diagnostic source must not appear"));
     }
 

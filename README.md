@@ -43,8 +43,9 @@ role with a bounded completed/total fraction; empty errors are hidden from the a
 and Stop has the explicit accessible name “Stop translation”. A CI fixture reads the running
 application through AT-SPI and verifies the named Stop control plus both text-editor roles. This
 does not claim Orca speech, physical-keyboard, high-contrast, or physical-compositor coverage. The
-non-sensitive Diagnostics panel localizes its Core ABI/protocol summary through the runtime catalog
-while omitting source text, endpoints, and secret references.
+non-sensitive Diagnostics panel localizes its Core ABI/protocol summary, fixed field labels, state
+values, and profile-storage status through the runtime catalog while omitting source text, endpoints,
+and secret references.
 
 ## Build and run
 
@@ -165,10 +166,10 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`3f3c1a1154b66d25f2936a02b8a08d2a8fc8a878` and validated with `msgfmt`; the 306-message bundle
-checksum is `d2f4fd439b5fbc8fc6d48f1be0a91ee92f558c70b851271d643829cfe8590e9b`. The locale selector
+`32bef261f5f0deb9f6a0426231e365d0bae72b62` and validated with `msgfmt`; the 326-message bundle
+checksum is `054d6749397cbbf652e099784f2c7d0e3650779a3c17c98e68d25560d286b2d3`. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
-active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, and construction-stage provider/default-control copy without replacing active source text;
+active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, construction-stage provider/default-control copy, and diagnostics labels/state values without replacing active source text;
 Arabic also switches the GTK workspace root to right-to-left direction. Document-job actions,
 dialogue, empty/paused/progress statuses, and queue tooltips are now catalog-backed across the
 same twelve packs; document-job row metadata and lifecycle states, exported-output open and failure actions are localized as well. Stable Linux worker startup,

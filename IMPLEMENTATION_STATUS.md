@@ -149,8 +149,8 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
 - The Linux host now uses existing GIO D-Bus bindings for Secret Service `OpenSession`, item search,
   create/update, and `GetSecret` resolution. Persistent profiles retain only a SecretRef; the
   one-shot credential is passed through the existing typed broker and is never written to SQLite.
-- Fourteen canonical official/pseudo PO/MO catalog pairs containing 222 messages pinned to l10n revision
-  `8fd778a5869c8b8c91610c22241883fff2e41c99`. Sync rejects a different revision, dirty generated
+- Fourteen canonical official/pseudo PO/MO catalog pairs containing 326 messages pinned to l10n revision
+  `32bef261f5f0deb9f6a0426231e365d0bae72b62`. Sync rejects a different revision, dirty generated
   source artifacts, stale copies, and unexpected catalog counts. The GTK locale selector exposes
   the twelve official packs, runtime action, workspace-widget, active-provider, status summary,
   partial-output, text-file import/export, provider-profile, source/target language, onboarding stage/detail,
@@ -1207,3 +1207,27 @@ must follow runtime locale changes without exposing source text, endpoints, or s
 Complete visible-string gettext coverage, translated-copy/plural review, Orca speech, manual
 high-contrast/RTL/reduced-motion review, end-user Secret Service prompt approval, other clients,
 and release artifacts remain open.
+
+## 2026-07-19 — Linux diagnostics-label localization checkpoint
+
+Assumption: the non-sensitive diagnostics panel is Linux-visible UI, so fixed field labels,
+boolean values, onboarding/status/theme/locale values, and profile-storage states must resolve
+through the canonical catalog while provider identifiers, paths, endpoints, and output content
+remain excluded.
+
+- Linux routes all fixed diagnostics labels and state values through the catalog, including the
+  20 new Linux-only diagnostics keys. The l10n bundle now has 326 messages, checksum
+  `054d6749397cbbf652e099784f2c7d0e3650779a3c17c98e68d25560d286b2d3`, and is pinned at
+  `32bef261f5f0deb9f6a0426231e365d0bae72b62`; non-English values remain explicitly unreviewed
+  drafts.
+- Local `cargo fmt --all --check`, locked all-target checks, strict Clippy, no-default tests,
+  demo-provider tests, the 208-key localization audit, l10n sync, shell syntax, and diff checks
+  passed. The native GTK binary test remains CI-linked because this host's installed GTK symbols
+  cannot link it.
+- l10n Foundation run `29671276786` and Localization run `29671276797` passed for the pinned
+  catalog revision. Linux Native, Foundation, and Flatpak gates remain required for this client
+  revision.
+
+Complete visible-string gettext coverage beyond the diagnostics slice, translated-copy/plural
+review, Orca speech, manual high-contrast/RTL/reduced-motion review, end-user Secret Service prompt
+approval, other clients, and release artifacts remain open.

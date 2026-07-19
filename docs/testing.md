@@ -312,14 +312,18 @@ progress uses the native progress-bar role, exposes a bounded completed/total fr
 the progress control when no document job is selected. This proves AT-SPI semantic export only; it does
 not prove Orca speech, physical-compositor behavior, RTL/high-contrast presentation, or GPU
 rendering. The diagnostics panel uses the catalog-backed `diagnostics.summary` template for its
-Core ABI/protocol header and keeps the remaining fields redacted.
+Core ABI/protocol header, localizes fixed labels and state values through the Linux diagnostics
+keys, and keeps source content, endpoints, identifiers, and secret references redacted.
 
 The GitHub Actions native workflow pins Core revision
 `fbf3e9b5927049dccaa19f8c36013495ffebba12`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
 namespace test through the unprivileged path.
-The current fixed-error localization revision `b6d2503`
+The current Linux diagnostics localization revision `32bef261f5f0deb9f6a0426231e365d0bae72b62`
+contains 326 catalog messages and bundle SHA-256
+`054d6749397cbbf652e099784f2c7d0e3650779a3c17c98e68d25560d286b2d3`; the source-level catalog
+audit and runtime locale tests cover the diagnostics labels. The current fixed-error localization revision `b6d2503`
 passed Native Linux run `29627668119`, Foundation run `29627668093`, and
 Flatpak run `29627668108`; the native job validated the pinned 117-message catalog and GTK
 Simplified Chinese provider-card/source-target assertions in addition to the existing storage,
