@@ -15,6 +15,16 @@ their placeholder identities must be checked at source level before GTK or relea
 - This closes source-level fallback-template validation only; human translated-copy review, Orca
   speech, broader runtime locale coverage, other clients, signing, and stable release remain open.
 
+## 2026-07-19 — Linux localization placeholder audit remote verification
+
+- Linux `3a20620eb95806baadb1b22ef4833302d0438fea` passed push Native/Flatpak/Foundation
+  `29707410914`/`29707410888`/`29707410893` and PR Native/Flatpak/Foundation
+  `29707412487`/`29707412476`/`29707412474`.
+- The push Native evidence artifact was non-expired at 5,589,644 bytes; the push Flatpak bundle and
+  evidence artifacts were non-expired at 3,021,899 and 4,936 bytes. PR Native and Flatpak artifacts
+  were also non-expired. This verifies CI enforcement of the source-level placeholder audit without
+  claiming reviewed translations, Orca speech, other clients, signing, or a stable release.
+
 ## 2026-07-19 — Linux performance baseline checkpoint
 
 Assumption: release hardening needs reproducible, machine-contextual measurements before a stable
