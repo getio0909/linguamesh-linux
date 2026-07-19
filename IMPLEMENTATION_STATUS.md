@@ -15,6 +15,11 @@ The Linux worker now exercises a deterministic fixture that returns `llama3.2:la
 `/v1/chat/completions` without a credential. The test uses the existing `local-loopback` preset
 and keeps Android, Windows, and macOS deferred.
 
+The Core pin is `0d0d475d22129e8211333ee8f664a7669948ce3a`. Push validation passed in Native Linux
+run `29673591852` (job `88156804870`) and Flatpak Linux run `29673591888` (job `88156804894`); the
+pull-request gates also passed in Native Linux run `29673593375` (job `88156808424`) and Flatpak
+Linux run `29673593421` (job `88156808624`).
+
 Assumption: canonical generated PO/MO resources are synchronized and format-validated. The GTK host
 now parses all twelve pinned official Linux MO catalogs at runtime, exposes BCP 47 locale choices,
 switches the root direction for Arabic, and preserves the source editor buffer during a locale
