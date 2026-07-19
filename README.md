@@ -162,7 +162,7 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`cacc1577bc1a19a94c11faeffa7a63016d54d64e` and validated with `msgfmt`; the 306-message bundle
+`3f3c1a1154b66d25f2936a02b8a08d2a8fc8a878` and validated with `msgfmt`; the 306-message bundle
 checksum is `d2f4fd439b5fbc8fc6d48f1be0a91ee92f558c70b851271d643829cfe8590e9b`. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
 active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, and construction-stage provider/default-control copy without replacing active source text;

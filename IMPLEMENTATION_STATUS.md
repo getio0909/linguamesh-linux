@@ -1131,7 +1131,7 @@ source PDF or claims pixel-identical reconstruction.
   toggle only for image-only PDF pages and keeps the original source URI unchanged.
 - Added page-marked OCR job conversion, worker persistence, localized progress/error rendering, and
   a private generated ImageMagick PDF fixture runner for the external plugin.
-- Synchronized Linux PO/MO resources to l10n `cacc1577bc1a19a94c11faeffa7a63016d54d64e`.
+- Synchronized Linux PO/MO resources to l10n `3f3c1a1154b66d25f2936a02b8a08d2a8fc8a878`.
 - Local `cargo fmt --all --check`, all-target/all-feature `cargo check`, strict Clippy, locked
   no-default tests (64 passed, 1 ignored), demo-provider tests (102 passed, 2 ignored), OCR
   fixture, l10n sync check, shell syntax, and `git diff --check` passed.
