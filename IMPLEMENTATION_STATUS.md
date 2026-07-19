@@ -1274,7 +1274,10 @@ dismissal to localized storage guidance, and fail closed on prompt-call or timeo
   audit, l10n sync, prompt fixture, shell syntax, and diff checks passed.
 
 The first CI attempt stopped at the expected localization checkout because the workflow still
-referenced the previous l10n revision; the workflow pin is now updated to this checkpoint and
-must pass Native, Flatpak, and pull-request reruns before this slice is considered remotely
-verified. Manual Secret Service approval UX, broader storage-fault coverage, translated-copy
-review, Orca speech, other clients, and release artifacts remain open.
+referenced the previous l10n revision. After updating that pin, push Native `29672741665`
+(job `88154536172`), Foundation `29672741666` (job `88154536162`), and Flatpak `29672741675`
+(job `88154536212`) passed. Pull-request reruns Native `29672743058` (job `88154539551`),
+Foundation `29672742959` (job `88154539322`), and Flatpak `29672742990` (job `88154539432`)
+also passed, including both prompted-flow cases. Manual Secret Service approval UX, broader
+storage-fault coverage, translated-copy review, Orca speech, other clients, and release
+artifacts remain open.
