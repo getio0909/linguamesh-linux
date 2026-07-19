@@ -2084,6 +2084,18 @@ msgctxt "action.delete_routing_profile"
 msgid "Delete"
 msgstr "Delete"
 
+#. Accessible label for moving a Linux routing candidate down in the Ordered sequence.
+#, fuzzy
+msgctxt "action.move_candidate_down"
+msgid "Move candidate down"
+msgstr "下移候选"
+
+#. Accessible label for moving a Linux routing candidate up in the Ordered sequence.
+#, fuzzy
+msgctxt "action.move_candidate_up"
+msgid "Move candidate up"
+msgstr "上移候选"
+
 #. Selects one saved Linux routing planner profile for ordinary text translation.
 #, fuzzy
 msgctxt "action.use_routing_profile"

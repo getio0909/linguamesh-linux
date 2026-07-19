@@ -1,5 +1,21 @@
 # Implementation Status
 
+## 2026-07-19 — Linux routing candidate accessibility-label checkpoint
+
+Assumption: icon-only candidate movement controls must expose catalog-backed accessible names in
+addition to tooltips, while full screen-reader speech and visual review remain separate manual gates.
+
+- Linux GTK up/down controls now use `action.move_candidate_up` and `action.move_candidate_down`
+  labels for both tooltips and the GTK accessible `Label` property.
+- Localization revision `0d2d8c08f3dec5cd3044558b0b7c75f669a9535d` adds the two Linux-only keys to
+  all twelve official packs and regenerated PO/MO resources; the source audit now covers 230 keys.
+- Local Linux validation passed with GUI check, strict Clippy, 132 tests (`130 passed; 2 ignored`),
+  localization sync/audit, Flatpak metadata, and diff checks. The l10n repository passed its 26 tests,
+  generated-resource checks, and Foundation validation at commit `0d2d8c0`.
+
+This strengthens icon-control semantics without claiming complete candidate management, Orca speech,
+manual visual review, other clients, release artifacts, or a stable release.
+
 ## 2026-07-19 — Linux routing candidate-order checkpoint
 
 Assumption: Ordered routing needs an explicit, keyboard-focusable way to change the sequence of

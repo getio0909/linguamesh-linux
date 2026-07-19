@@ -3687,19 +3687,16 @@ fn show_routing_profiles_dialog(
         let up = gtk::Button::from_icon_name("go-up-symbolic");
         up.set_focusable(true);
         up.set_has_frame(false);
-        up.set_tooltip_text(Some(&localization::text(
-            locale,
-            "tooltip.routing_profiles",
-            "Create, inspect, and delete non-secret routing planner profiles",
-        )));
+        let up_label = localization::text(locale, "action.move_candidate_up", "Move candidate up");
+        up.set_tooltip_text(Some(&up_label));
+        up.update_property(&[gtk::accessible::Property::Label(&up_label)]);
         let down = gtk::Button::from_icon_name("go-down-symbolic");
         down.set_focusable(true);
         down.set_has_frame(false);
-        down.set_tooltip_text(Some(&localization::text(
-            locale,
-            "tooltip.routing_profiles",
-            "Create, inspect, and delete non-secret routing planner profiles",
-        )));
+        let down_label =
+            localization::text(locale, "action.move_candidate_down", "Move candidate down");
+        down.set_tooltip_text(Some(&down_label));
+        down.update_property(&[gtk::accessible::Property::Label(&down_label)]);
         let row = gtk::Box::new(gtk::Orientation::Horizontal, 4);
         row.append(&check);
         row.append(&up);

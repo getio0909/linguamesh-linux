@@ -203,7 +203,8 @@ The routing-profile dialog also lets the user choose Core's **Manual**, **Ordere
 mode before saving a profile. Fallback consent is separate, explicit, and disabled by default; a
 manual profile never falls through to another candidate. The candidate editor lists saved provider/
 model pairs as focusable checkboxes, so a profile can include only the approved candidates; adjacent
-up/down controls reorder them for Ordered mode.
+up/down controls reorder them for Ordered mode and expose localized accessible labels for screen
+readers and keyboard users.
 
 When an ordinary text request ends in a failed or cancelled state, **Retry translation** becomes
 available. It reuses the current source, target, glossary, privacy mode, confirmed provider, and
