@@ -1225,8 +1225,11 @@ remain excluded.
   passed. The native GTK binary test remains CI-linked because this host's installed GTK symbols
   cannot link it.
 - l10n Foundation run `29671276786` and Localization run `29671276797` passed for the pinned
-  catalog revision. Linux Native, Foundation, and Flatpak gates remain required for this client
-  revision.
+  catalog revision. Linux revision `355481d937b3722e509dbd05cc1575c4e71be143` passed push Native
+  `29671444706` (job `88151076586`), Foundation `29671444731` (job `88151076725`), and Flatpak
+  `29671444733` (job `88151076695`); PR reruns Native `29671445475` (job `88151078773`),
+  Foundation `29671445499` (job `88151078854`), and Flatpak `29671445495` (job `88151078857`)
+  also passed.
 
 Complete visible-string gettext coverage beyond the diagnostics slice, translated-copy/plural
 review, Orca speech, manual high-contrast/RTL/reduced-motion review, end-user Secret Service prompt
