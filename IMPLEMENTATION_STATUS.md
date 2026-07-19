@@ -4,6 +4,26 @@ Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline 
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
+## 2026-07-19 — Linux macro/signature package boundary checkpoint
+
+Assumption: unsupported OOXML macro and digital-signature parts must be rejected before XML
+inspection or worker persistence; preserving them silently would overstate the supported format.
+
+- Core `14cee83a650610b3a9a79a460c7c6f54ae9d21d4` rejects `vbaProject.bin` and `_xmlsignatures/`
+  package parts with `DocumentError::UnsupportedFormat` for DOCX, PPTX, and XLSX inspection and
+  reconstruction.
+- Core focused unit test passed locally. Linux's native wrapper now maps the same boundary to
+  `TextImportError::UnsupportedFormat`; its focused regression passed locally with the sibling Core
+  checkout at the exact pin.
+- Local `cargo test --features demo-provider --offline` passed 119 tests with 2 ignored; GUI check,
+  strict Clippy, formatting, l10n synchronization, 215-key audit, Flatpak metadata validation, and
+  diff checks also passed. The six remote Native/Foundation/Flatpak push and PR gates are pending for
+  this checkpoint.
+
+This advances Linux Scenario 15 and the Milestone 6 unsupported-format boundary without claiming
+macro execution, digital-signature preservation, visual review, other clients, artifacts, or stable
+release evidence.
+
 ## 2026-07-19 — GTK AT-SPI fixture cleanup checkpoint
 
 Assumption: a successful AT-SPI assertion must also terminate its private GTK/D-Bus/Xvfb processes
