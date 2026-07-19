@@ -1199,6 +1199,10 @@ must follow runtime locale changes without exposing source text, endpoints, or s
   demo-provider tests (103 passed, 2 ignored), localization-key audit (188 keys), l10n sync, shell
   syntax, and diff checks passed. The native GTK binary test remains CI-linked because this host's
   installed GTK symbols cannot link it.
+- Linux revision `cf9c2d8` passed Native push run `29670504285` (job `88148480525`), Foundation
+  push run `29670505177` (job `88148482823`), and Flatpak push run `29670505111`
+  (job `88148482618`). PR reruns Native `29670505097`, Foundation `29670504255`, and Flatpak
+  `29670504265` also passed.
 
 Complete visible-string gettext coverage, translated-copy/plural review, Orca speech, manual
 high-contrast/RTL/reduced-motion review, end-user Secret Service prompt approval, other clients,
