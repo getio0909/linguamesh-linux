@@ -5886,6 +5886,58 @@ mod tests {
         shutdown(&worker);
     }
 
+    // 数据库损坏时拒绝持久化操作，但保留当前进程的会话翻译能力。
+    #[test]
+    fn corrupt_database_reports_error_but_session_mode_still_works() {
+        let database = TestDatabase::new();
+        fs::create_dir(&database.directory).expect("database directory");
+        fs::set_permissions(&database.directory, fs::Permissions::from_mode(0o700))
+            .expect("database directory permissions");
+        let original = b"not a SQLite database";
+        fs::write(&database.path, original).expect("corrupt database");
+        fs::set_permissions(&database.path, fs::Permissions::from_mode(0o600))
+            .expect("database permissions");
+
+        let worker = CoreWorker::spawn_with_database(database.path());
+        let storage_event = worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("storage event");
+        assert!(matches!(
+            storage_event,
+            WorkerEvent::ProfileStorageUnavailable(error)
+                if error.kind == ErrorKind::Persistence
+        ));
+        let ready_event = worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("demo provider event");
+        let WorkerEvent::DemoProviderReady { endpoint } = ready_event else {
+            panic!("expected demo provider readiness");
+        };
+
+        connect(
+            &worker,
+            profile("corrupt-database-provider", &endpoint, None, None),
+            None,
+            PersistenceIntent::SessionOnly,
+        )
+        .expect("session fallback connection");
+        select(&worker, "corrupt-database-provider", "fake-translator");
+        let (output, terminal) = translate(&worker, "fake-translator");
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        let error = delete_event(&worker, "corrupt-database-provider")
+            .expect_err("delete requires profile storage");
+        assert_eq!(error.kind, ErrorKind::Persistence);
+        shutdown(&worker);
+
+        assert_eq!(
+            fs::read(&database.path).expect("corrupt database bytes"),
+            original
+        );
+    }
+
     #[test]
     fn active_translation_rejects_saved_profile_deletion() {
         let database = TestDatabase::new();

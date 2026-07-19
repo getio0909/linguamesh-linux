@@ -4,6 +4,29 @@ Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline 
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
+## 2026-07-19 — Linux corrupt-database fail-closed checkpoint
+
+Assumption: a corrupted local SQLite file must not be repaired or overwritten implicitly; the
+client should report persistence failure, preserve the bytes for recovery, and keep session-only
+translation available.
+
+- Added a worker regression with a private, malformed SQLite file. Startup emits typed
+  `Persistence` storage-unavailable evidence, the demo provider remains available, a session-only
+  translation completes, and saved-profile deletion remains rejected.
+- The test verifies the malformed database bytes are unchanged after shutdown.
+
+Validated locally:
+
+- `cargo fmt --all -- --check` — passed.
+- `cargo check --features gui --all-targets --offline` — passed.
+- `cargo clippy --all-targets --all-features --offline -- -D warnings` — passed.
+- `cargo test --features demo-provider --offline` — passed: 108 tests, 2 ignored, 0 failed.
+- `python3 tools/check-localization-keys.py` — passed: 213 Linux source keys.
+- `bash tools/sync-l10n.sh --check` and `git diff --check` — passed.
+
+Physical database corruption recovery, desktop accessibility review, other clients, and stable
+release evidence remain open.
+
 ## 2026-07-19 — Linux output-safety alias checkpoint
 
 Assumption: rejecting only byte-for-byte equal destination URIs is insufficient for Scenario 18,
