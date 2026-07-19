@@ -35,7 +35,9 @@ persists pending/running/paused document jobs and validated non-secret translati
 restart recovery. The Linux worker tests also cover
 sequential prose-segment translation, per-segment persistence, safe reconstruction (including DOCX/PPTX/XLSX/EPUB package resources and PDF page association), structured HTML fallback for unsupported PDF encodings, and cancellation
 to a persisted cancelled snapshot. The GTK surface now exposes per-job progress and
-pause/resume/retry controls; multi-job selection remains outside the validation gate. PDF imports
+pause/resume/retry controls, and the worker regression
+`document_job_list_returns_multiple_saved_jobs_for_queue_selection` verifies that two pending jobs
+are listed together for explicit selection; concurrent translation remains outside the validation gate. PDF imports
 also expose bounded structured warnings for image-only pages, uncertain reading order, and limited
 reconstruction; the UI warning test verifies that only page numbers and fixed text are shown, never
 source content. Subtitle imports also expose configurable Core thresholds for line length and
