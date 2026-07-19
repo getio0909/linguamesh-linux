@@ -5775,21 +5775,11 @@ mod tests {
         assert_eq!(label.mnemonic_widget().as_ref(), Some(control));
     }
 
-    #[test]
-    fn gtk_native_ollama_preset_connects_and_translates() {
-        adw::init().expect("initialize GTK and libadwaita");
-        let application = adw::Application::builder()
-            .application_id("dev.linguamesh.LinguaMesh.NativeOllamaTest")
-            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
-            .build();
-        application
-            .register(None::<&gtk::gio::Cancellable>)
-            .expect("register GTK test application");
-
+    fn run_gtk_native_ollama_preset_flow(application: &adw::Application) {
         let external = NativeOllamaFakeProvider::start();
         let state = Rc::new(RefCell::new(AppState::default()));
         let worker = Rc::new(CoreWorker::spawn());
-        let (window, bindings, theme, locale) = create_window(&application);
+        let (window, bindings, theme, locale) = create_window(application);
         connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
         connect_action_handlers(&bindings, &state, &worker);
         start_event_pump(&bindings, &state, &worker);
@@ -6709,6 +6699,7 @@ mod tests {
         let _ = restored_worker.try_send(WorkerCommand::Shutdown);
         restored_window.close();
 
+        run_gtk_native_ollama_preset_flow(&application);
         let _ = worker.try_send(WorkerCommand::Shutdown);
         window.close();
         let _ = fs::remove_dir_all(restored_database_directory);
