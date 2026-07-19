@@ -22,6 +22,23 @@ pub const fn routing_mode_for_selection(index: u32) -> RoutingMode {
     }
 }
 
+// 按界面候选顺序筛选已保存的提供商标识，拒绝不存在的标识。
+#[must_use]
+pub fn ordered_routing_profile_ids(
+    saved_profiles: &[ProviderProfile],
+    selected_ids: &[ProviderProfileId],
+) -> Vec<ProviderProfileId> {
+    selected_ids
+        .iter()
+        .filter(|selected_id| {
+            saved_profiles
+                .iter()
+                .any(|profile| profile.id() == *selected_id)
+        })
+        .cloned()
+        .collect()
+}
+
 /// 记录最近一次普通文本请求的非敏感路由决策摘要。
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RoutingDecisionSummary {
@@ -2039,7 +2056,7 @@ mod tests {
     use super::{
         AppState, AppStatus, OnboardingStage, ProfileStorageStatus, ProviderProfile,
         ProviderProfileId, RoutingDecisionSummary, RoutingMode, StateError, ThemePreference,
-        UiLocale, routing_mode_for_selection,
+        UiLocale, ordered_routing_profile_ids, routing_mode_for_selection,
     };
     use linguamesh_domain::{
         ErrorKind, Glossary, GlossaryEntry, ModelDescriptor, ModelSource, SecretRef,
@@ -2081,6 +2098,36 @@ mod tests {
         assert_eq!(routing_mode_for_selection(1), RoutingMode::Ordered);
         assert_eq!(routing_mode_for_selection(2), RoutingMode::Automatic);
         assert_eq!(routing_mode_for_selection(99), RoutingMode::Automatic);
+    }
+
+    #[test]
+    fn routing_candidate_selection_preserves_order_and_rejects_unknown_profiles() {
+        let saved = vec![
+            profile(
+                "provider-a",
+                "Provider A",
+                "http://127.0.0.1:11434",
+                Some("model-a"),
+            ),
+            profile(
+                "provider-b",
+                "Provider B",
+                "http://127.0.0.1:11435",
+                Some("model-b"),
+            ),
+        ];
+        let selected = vec![
+            ProviderProfileId::parse("provider-b").expect("provider ID"),
+            ProviderProfileId::parse("missing-provider").expect("provider ID"),
+            ProviderProfileId::parse("provider-a").expect("provider ID"),
+        ];
+        assert_eq!(
+            ordered_routing_profile_ids(&saved, &selected),
+            vec![
+                ProviderProfileId::parse("provider-b").expect("provider ID"),
+                ProviderProfileId::parse("provider-a").expect("provider ID"),
+            ]
+        );
     }
 
     fn discovered_model(id: &str) -> ModelDescriptor {

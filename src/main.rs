@@ -14,7 +14,8 @@ use linguamesh_linux::file_import;
 use linguamesh_linux::localization;
 use linguamesh_linux::model::{
     AppState, AppStatus, OnboardingStage, ProfileStorageStatus, ProviderProfile,
-    RoutingDecisionSummary, StateError, ThemePreference, UiLocale, routing_mode_for_selection,
+    RoutingDecisionSummary, StateError, ThemePreference, UiLocale, ordered_routing_profile_ids,
+    routing_mode_for_selection,
 };
 use linguamesh_linux::secret_service;
 use linguamesh_linux::worker::{
@@ -3533,10 +3534,17 @@ fn default_routing_profile(
     state: &AppState,
     mode: RoutingMode,
     explicit_fallback_allowed: bool,
+    selected_candidate_ids: &[ProviderProfileId],
 ) -> Result<RoutingProfile, TranslationError> {
-    let candidates = state
-        .saved_profiles()
+    let candidate_ids = ordered_routing_profile_ids(state.saved_profiles(), selected_candidate_ids);
+    let candidates = candidate_ids
         .iter()
+        .filter_map(|id| {
+            state
+                .saved_profiles()
+                .iter()
+                .find(|profile| profile.id() == id)
+        })
         .map(routing_candidate_for_profile)
         .collect::<Result<Vec<_>, _>>()?;
     if candidates.is_empty() {
@@ -3613,6 +3621,37 @@ fn show_routing_profiles_dialog(
     )));
     actions.append(&mode);
     actions.append(&allow_fallback);
+    let candidate_controls = Rc::new(
+        state
+            .borrow()
+            .saved_profiles()
+            .iter()
+            .filter(|profile| profile.enabled() && profile.selected_model().is_some())
+            .map(|profile| {
+                let model = profile.selected_model().unwrap_or_default();
+                let check = gtk::CheckButton::with_label(&format!(
+                    "{} · {}",
+                    profile.display_name(),
+                    model
+                ));
+                check.set_active(true);
+                check.set_focusable(true);
+                check.set_hexpand(true);
+                check.set_halign(gtk::Align::Fill);
+                check.set_tooltip_text(Some(&localization::text(
+                    locale,
+                    "tooltip.routing_profiles",
+                    "Create, inspect, and delete non-secret routing planner profiles",
+                )));
+                (profile.id().clone(), check)
+            })
+            .collect::<Vec<_>>(),
+    );
+    let candidates_box = gtk::Box::new(gtk::Orientation::Vertical, 4);
+    for (_, check) in candidate_controls.iter() {
+        candidates_box.append(check);
+    }
+    root.append(&candidates_box);
     let create = gtk::Button::with_mnemonic(&localized_mnemonic(
         locale,
         "action.create_routing_profile",
@@ -3711,11 +3750,18 @@ fn show_routing_profiles_dialog(
     let create_state = Rc::clone(state);
     let create_worker = worker.clone();
     let create_dialog = dialog.clone();
+    let create_candidate_controls = Rc::clone(&candidate_controls);
     create.connect_clicked(move |_| {
+        let selected_candidate_ids = create_candidate_controls
+            .iter()
+            .filter(|(_, check)| check.is_active())
+            .map(|(id, _)| id.clone())
+            .collect::<Vec<_>>();
         match default_routing_profile(
             &create_state.borrow(),
             routing_mode_for_selection(mode.selected()),
             allow_fallback.is_active(),
+            &selected_candidate_ids,
         ) {
             Ok(profile) => {
                 if let Err(error) = create_worker.save_routing_profile(profile) {

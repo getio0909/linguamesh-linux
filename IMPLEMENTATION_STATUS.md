@@ -1,5 +1,23 @@
 # Implementation Status
 
+## 2026-07-19 — Linux routing candidate-selection checkpoint
+
+Assumption: a routing profile must let the user restrict dispatch to explicitly approved saved
+provider/model pairs; the displayed candidate order is the Ordered-mode order, while full drag/drop
+editing remains a later accessibility-reviewed slice.
+
+- The GTK routing-profile dialog now renders enabled saved provider/model pairs as focusable
+  checkboxes. Only checked candidates are serialized into the Core profile, in the displayed order.
+- Unknown candidate IDs are filtered before profile construction, and an empty selection is rejected
+  through the existing fixed, catalog-backed no-candidate error.
+- Regression `routing_candidate_selection_preserves_order_and_rejects_unknown_profiles` covers
+  deterministic filtering and order preservation without exposing endpoints, credentials, or content.
+- Remote validation is pending this candidate-selection commit; the preceding routing-mode head had
+  all six Linux push/PR Native, Flatpak, and Foundation gates passing.
+
+This advances Linux candidate inclusion without claiming drag/drop reordering, complete candidate
+management, other clients, visual/Orca review, release artifacts, or a stable release.
+
 ## 2026-07-19 — Linux routing mode and fallback-consent checkpoint
 
 Assumption: routing mode is a user-visible Core contract, while fallback remains opt-in and must

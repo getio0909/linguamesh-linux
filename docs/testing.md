@@ -28,7 +28,9 @@ that the document decision reports no fallback even when the profile permits exp
 The GTK dialog creates a bounded profile from saved provider/model selections and now exposes the
 Core `Manual`, `Ordered`, and `Automatic` modes in a stable order. Its separate explicit fallback
 checkbox is off by default; when a routing profile is selected, it takes precedence over the
-ordinary text fallback path, while document jobs never auto-fallback.
+ordinary text fallback path, while document jobs never auto-fallback. Candidate checkboxes allow a
+profile to include a subset of saved provider/model pairs, preserve the displayed order, and reject
+an empty selection before persistence.
 The restart regression `document_job_resume_reconnects_saved_routing_profile_after_restart`
 interrupts a routed job, reopens the database, reconnects the saved profile through the host secret
 broker, and completes the remaining segments while asserting a zero-fallback decision.

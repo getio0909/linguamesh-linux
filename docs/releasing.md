@@ -23,8 +23,9 @@ required. A derived Provider setup card guides configuration, explicit connectio
 model selection without storing a completion flag, distinguishes worker failure from startup, and
 shows the confirmed next-request stable ID/model identity.
 The routing-profile dialog now persists an explicit Core mode (`Manual`, `Ordered`, or `Automatic`);
-approved fallback remains a separate opt-in checkbox that defaults off. This is configuration-surface
-evidence only and does not satisfy the complete candidate-management release gate.
+approved fallback remains a separate opt-in checkbox that defaults off, and candidate checkboxes limit
+the saved provider/model pairs included in a profile. This is configuration-surface evidence only and
+does not satisfy the complete candidate-management release gate.
 The external-provider path includes deterministic Ollama-compatible OpenAI `/v1/` and native
 `/api/` loopback fixtures; they do not claim interoperability with a running third-party daemon.
 The GTK form now exposes the native Ollama preset and its `ollama_chat` adapter, while persistent

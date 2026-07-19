@@ -79,7 +79,8 @@ profiles or SQLite persistence.
 The GTK routing-profile dialog maps a stable dropdown order to Core's `Manual`, `Ordered`, and
 `Automatic` modes. A separate **Allow approved fallback** checkbox records explicit consent and is
 disabled by default; the worker still applies Core's policy that manual and document dispatches do
-not fall through to another candidate.
+not fall through to another candidate. Saved provider/model pairs are exposed as focusable
+candidate checkboxes; the selected list is persisted in the displayed order for Ordered mode.
 
 Core also performs bounded long-text chunking before provider calls. It prefers paragraph, sentence,
 and whitespace boundaries, treats protected markers as indivisible, streams chunks in source order,
