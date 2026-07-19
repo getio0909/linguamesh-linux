@@ -15,7 +15,16 @@ cleanup() {
     kill "$a11y_pid" >/dev/null 2>&1 || true
     wait "$a11y_pid" >/dev/null 2>&1 || true
   fi
-  rm -rf -- "$workspace"
+  # 清理可能由异步桌面服务延迟创建的临时文件。
+  for _ in {1..20}; do
+    if [[ ! -e "$workspace" ]]; then
+      return
+    fi
+    find "$workspace" -depth -delete >/dev/null 2>&1 || true
+    [[ ! -e "$workspace" ]] && return
+    sleep 0.1
+  done
+  printf '%s\n' 'GTK AT-SPI fixture cleanup left temporary files.' >&2
 }
 trap cleanup EXIT
 
