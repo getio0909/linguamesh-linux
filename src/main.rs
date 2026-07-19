@@ -2457,13 +2457,16 @@ fn connect_action_handlers(
     });
 
     let pause_bindings = bindings.clone();
+    let pause_state = Rc::clone(state);
     let pause_worker = Rc::clone(worker);
     bindings.pause_document.connect_clicked(move |_| {
         let Some(job_id) = pause_bindings.document_job_id.borrow().clone() else {
             return;
         };
         if let Err(error) = pause_worker.try_send(WorkerCommand::PauseDocumentJob { job_id }) {
-            pause_bindings.error.set_label(&error.to_string());
+            let mut state = pause_state.borrow_mut();
+            state.record_client_error(error.to_string());
+            refresh_ui(&pause_bindings, &state);
         }
     });
 

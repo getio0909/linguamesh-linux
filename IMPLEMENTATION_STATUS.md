@@ -1234,3 +1234,20 @@ remain excluded.
 Complete visible-string gettext coverage beyond the diagnostics slice, translated-copy/plural
 review, Orca speech, manual high-contrast/RTL/reduced-motion review, end-user Secret Service prompt
 approval, other clients, and release artifacts remain open.
+
+## 2026-07-19 — Linux document-pause error localization checkpoint
+
+Assumption: a document-pause command rejected by the bounded worker queue is user-visible UI and
+must use the same catalog-backed error rendering as other worker failures.
+
+- Queue-send failures from the GTK Pause action now enter the reducer's client-error path instead
+  of writing raw English directly into the error label. The existing
+  `error.worker.command_queue_unavailable` catalog mapping therefore applies consistently.
+- Local `cargo fmt --all --check`, locked all-target checks, strict Clippy, no-default tests (65
+  passed, 1 ignored), and demo-provider tests (103 passed, 2 ignored) passed. The native GTK binary
+  test remains CI-linked because this host's installed GTK symbols cannot link it.
+
+Remote Native, Foundation, and Flatpak validation for this revision remains required. Complete
+visible-string gettext coverage beyond this error path, translated-copy/plural review, Orca speech,
+manual high-contrast/RTL/reduced-motion review, end-user Secret Service prompt approval, other
+clients, and release artifacts remain open.
