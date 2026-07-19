@@ -1135,4 +1135,7 @@ source PDF or claims pixel-identical reconstruction.
 - Local `cargo fmt --all --check`, all-target/all-feature `cargo check`, strict Clippy, locked
   no-default tests (64 passed, 1 ignored), demo-provider tests (102 passed, 2 ignored), OCR
   fixture, l10n sync check, shell syntax, and `git diff --check` passed.
-- Native, Foundation, and Flatpak CI evidence remains required for this new revision.
+- Native Linux run `29668533941` (job `88143262465`), Repository Foundation run `29668533939`,
+  and Flatpak Linux run `29668533922` (job `88143262421`) passed. Native exercised the new OCR
+  fixture after installing ImageMagick, Poppler, and Tesseract; Flatpak continued to pass its
+  sandbox smoke without enabling OCR by default.
