@@ -211,6 +211,26 @@ mod tests {
         writer.finish().expect("xlsx archive").into_inner()
     }
 
+    fn traversal_docx_fixture() -> Vec<u8> {
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        let options = SimpleFileOptions::default();
+        writer
+            .start_file("[Content_Types].xml", options)
+            .expect("content types");
+        writer.write_all(b"<Types/>").expect("content types bytes");
+        writer
+            .start_file("../outside.txt", options)
+            .expect("traversal entry");
+        writer.write_all(b"unsafe").expect("traversal bytes");
+        writer
+            .start_file("word/document.xml", options)
+            .expect("document");
+        writer
+            .write_all(br#"<w:document xmlns:w="urn:w"><w:body><w:p><w:r><w:t>Safe</w:t></w:r></w:p></w:body></w:document>"#)
+            .expect("document bytes");
+        writer.finish().expect("docx archive").into_inner()
+    }
+
     #[test]
     fn decodes_utf8_and_removes_bom() {
         assert_eq!(decode_text_contents(b"\xef\xbb\xbfHello").unwrap(), "Hello");
@@ -460,5 +480,13 @@ mod tests {
             .read_to_end(&mut image)
             .expect("image bytes");
         assert_eq!(image, [8, 9, 10]);
+    }
+
+    #[test]
+    fn rejects_docx_archive_path_traversal_before_import() {
+        assert_eq!(
+            decode_document_job("unsafe.docx", &traversal_docx_fixture()),
+            Err(TextImportError::InvalidStructure)
+        );
     }
 }
