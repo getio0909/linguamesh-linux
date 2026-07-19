@@ -11,6 +11,13 @@ performance budget can be set; no portable number is inferred from one runner.
 - Native CI runs this baseline beside the release binary and uploads it in the non-expired native
   evidence artifact. The output is a trend baseline only, not a cross-machine claim or stable-release
   performance guarantee.
+- Local baseline evidence on this host measured DOCX reconstruction at `0.404s`, XLSX reconstruction
+  at `0.382s`, and saved-routing dispatch at `0.399s`; these values are retained only as host context.
+- Linux `a511ea4ab5e95d3c94c6076b740471242fc4670c` passed push Native/Flatpak/Foundation
+  `29706528034`/`29706528033`/`29706528037` and PR Native/Flatpak/Foundation
+  `29706529098`/`29706529114`/`29706529109`. Native push/PR artifacts were non-expired (5,585,827
+  and 5,587,044 bytes); downloaded push evidence contained the binary, source archive, checksums,
+  SBOM, build context, and `LINUX-PERFORMANCE-BASELINE.tsv`.
 
 ## 2026-07-19 — Linux native release-mode evidence checkpoint
 
