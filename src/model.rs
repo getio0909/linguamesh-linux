@@ -39,6 +39,30 @@ pub fn ordered_routing_profile_ids(
         .collect()
 }
 
+// 移动路由候选并保持边界安全，供 GTK 上下移动按钮复用。
+#[must_use]
+pub fn move_routing_profile_id(
+    ids: &mut [ProviderProfileId],
+    profile_id: &ProviderProfileId,
+    offset: isize,
+) -> bool {
+    let Some(index) = ids.iter().position(|id| id == profile_id) else {
+        return false;
+    };
+    let Ok(index) = isize::try_from(index) else {
+        return false;
+    };
+    let target = index.saturating_add(offset);
+    if target < 0 || target >= isize::try_from(ids.len()).unwrap_or(isize::MAX) {
+        return false;
+    }
+    let Ok(target) = usize::try_from(target) else {
+        return false;
+    };
+    ids.swap(index.cast_unsigned(), target);
+    true
+}
+
 /// 记录最近一次普通文本请求的非敏感路由决策摘要。
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RoutingDecisionSummary {
@@ -2056,7 +2080,7 @@ mod tests {
     use super::{
         AppState, AppStatus, OnboardingStage, ProfileStorageStatus, ProviderProfile,
         ProviderProfileId, RoutingDecisionSummary, RoutingMode, StateError, ThemePreference,
-        UiLocale, ordered_routing_profile_ids, routing_mode_for_selection,
+        UiLocale, move_routing_profile_id, ordered_routing_profile_ids, routing_mode_for_selection,
     };
     use linguamesh_domain::{
         ErrorKind, Glossary, GlossaryEntry, ModelDescriptor, ModelSource, SecretRef,
@@ -2128,6 +2152,26 @@ mod tests {
                 ProviderProfileId::parse("provider-a").expect("provider ID"),
             ]
         );
+    }
+
+    #[test]
+    fn routing_candidate_reordering_is_bounded() {
+        let mut ids = vec![
+            ProviderProfileId::parse("provider-a").expect("provider ID"),
+            ProviderProfileId::parse("provider-b").expect("provider ID"),
+            ProviderProfileId::parse("provider-c").expect("provider ID"),
+        ];
+        let provider_b = ProviderProfileId::parse("provider-b").expect("provider ID");
+        assert!(move_routing_profile_id(&mut ids, &provider_b, 1));
+        assert_eq!(ids[1].as_str(), "provider-c");
+        assert!(!move_routing_profile_id(&mut ids, &provider_b, 1));
+        assert!(move_routing_profile_id(&mut ids, &provider_b, -1));
+        assert_eq!(ids[0].as_str(), "provider-a");
+        assert!(!move_routing_profile_id(
+            &mut ids,
+            &ProviderProfileId::parse("missing-provider").expect("provider ID"),
+            1
+        ));
     }
 
     fn discovered_model(id: &str) -> ModelDescriptor {

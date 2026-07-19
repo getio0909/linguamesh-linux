@@ -14,8 +14,8 @@ use linguamesh_linux::file_import;
 use linguamesh_linux::localization;
 use linguamesh_linux::model::{
     AppState, AppStatus, OnboardingStage, ProfileStorageStatus, ProviderProfile,
-    RoutingDecisionSummary, StateError, ThemePreference, UiLocale, ordered_routing_profile_ids,
-    routing_mode_for_selection,
+    RoutingDecisionSummary, StateError, ThemePreference, UiLocale, move_routing_profile_id,
+    ordered_routing_profile_ids, routing_mode_for_selection,
 };
 use linguamesh_linux::secret_service;
 use linguamesh_linux::worker::{
@@ -3505,6 +3505,50 @@ fn localized_routing_mode(locale: UiLocale, mode: RoutingMode) -> String {
     localization::text(locale, key, fallback)
 }
 
+// 清空并按当前顺序重建路由候选行，避免 GTK 列表顺序与持久化顺序分离。
+fn rebuild_routing_candidate_rows(
+    container: &gtk::Box,
+    controls: &Rc<RefCell<Vec<(ProviderProfileId, gtk::Box, gtk::CheckButton)>>>,
+) {
+    while let Some(child) = container.first_child() {
+        container.remove(&child);
+    }
+    let controls = controls.borrow();
+    for (_, row, _) in controls.iter() {
+        container.append(row);
+    }
+}
+
+// 按按钮方向移动候选行，并把新顺序留给配置创建闭包读取。
+fn move_routing_candidate_row(
+    container: &gtk::Box,
+    controls: &Rc<RefCell<Vec<(ProviderProfileId, gtk::Box, gtk::CheckButton)>>>,
+    profile_id: &ProviderProfileId,
+    offset: isize,
+) {
+    let mut controls_mut = controls.borrow_mut();
+    let mut ids = controls_mut
+        .iter()
+        .map(|(id, _, _)| id.clone())
+        .collect::<Vec<_>>();
+    if !move_routing_profile_id(&mut ids, profile_id, offset) {
+        return;
+    }
+    let mut remaining = std::mem::take(&mut *controls_mut);
+    let mut reordered = Vec::with_capacity(remaining.len());
+    for id in ids {
+        if let Some(index) = remaining
+            .iter()
+            .position(|(candidate_id, _, _)| *candidate_id == id)
+        {
+            reordered.push(remaining.swap_remove(index));
+        }
+    }
+    *controls_mut = reordered;
+    drop(controls_mut);
+    rebuild_routing_candidate_rows(container, controls);
+}
+
 // 从用户明确保存的提供商配置生成不含端点和秘密的路由候选。
 fn routing_candidate_for_profile(
     profile: &ProviderProfile,
@@ -3621,36 +3665,65 @@ fn show_routing_profiles_dialog(
     )));
     actions.append(&mode);
     actions.append(&allow_fallback);
-    let candidate_controls = Rc::new(
-        state
-            .borrow()
-            .saved_profiles()
-            .iter()
-            .filter(|profile| profile.enabled() && profile.selected_model().is_some())
-            .map(|profile| {
-                let model = profile.selected_model().unwrap_or_default();
-                let check = gtk::CheckButton::with_label(&format!(
-                    "{} · {}",
-                    profile.display_name(),
-                    model
-                ));
-                check.set_active(true);
-                check.set_focusable(true);
-                check.set_hexpand(true);
-                check.set_halign(gtk::Align::Fill);
-                check.set_tooltip_text(Some(&localization::text(
-                    locale,
-                    "tooltip.routing_profiles",
-                    "Create, inspect, and delete non-secret routing planner profiles",
-                )));
-                (profile.id().clone(), check)
-            })
-            .collect::<Vec<_>>(),
-    );
+    let candidate_controls: Rc<RefCell<Vec<(ProviderProfileId, gtk::Box, gtk::CheckButton)>>> =
+        Rc::new(RefCell::new(Vec::new()));
     let candidates_box = gtk::Box::new(gtk::Orientation::Vertical, 4);
-    for (_, check) in candidate_controls.iter() {
-        candidates_box.append(check);
+    for profile in state
+        .borrow()
+        .saved_profiles()
+        .iter()
+        .filter(|profile| profile.enabled() && profile.selected_model().is_some())
+    {
+        let model = profile.selected_model().unwrap_or_default();
+        let check =
+            gtk::CheckButton::with_label(&format!("{} · {}", profile.display_name(), model));
+        check.set_active(true);
+        check.set_focusable(true);
+        check.set_hexpand(true);
+        check.set_halign(gtk::Align::Fill);
+        check.set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.routing_profiles",
+            "Create, inspect, and delete non-secret routing planner profiles",
+        )));
+        let up = gtk::Button::from_icon_name("go-up-symbolic");
+        up.set_focusable(true);
+        up.set_has_frame(false);
+        up.set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.routing_profiles",
+            "Create, inspect, and delete non-secret routing planner profiles",
+        )));
+        let down = gtk::Button::from_icon_name("go-down-symbolic");
+        down.set_focusable(true);
+        down.set_has_frame(false);
+        down.set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.routing_profiles",
+            "Create, inspect, and delete non-secret routing planner profiles",
+        )));
+        let row = gtk::Box::new(gtk::Orientation::Horizontal, 4);
+        row.append(&check);
+        row.append(&up);
+        row.append(&down);
+        let profile_id = profile.id().clone();
+        let up_controls = Rc::clone(&candidate_controls);
+        let up_container = candidates_box.clone();
+        let up_id = profile_id.clone();
+        up.connect_clicked(move |_| {
+            move_routing_candidate_row(&up_container, &up_controls, &up_id, -1);
+        });
+        let down_controls = Rc::clone(&candidate_controls);
+        let down_container = candidates_box.clone();
+        let down_id = profile_id.clone();
+        down.connect_clicked(move |_| {
+            move_routing_candidate_row(&down_container, &down_controls, &down_id, 1);
+        });
+        candidate_controls
+            .borrow_mut()
+            .push((profile_id, row, check.clone()));
     }
+    rebuild_routing_candidate_rows(&candidates_box, &candidate_controls);
     root.append(&candidates_box);
     let create = gtk::Button::with_mnemonic(&localized_mnemonic(
         locale,
@@ -3753,9 +3826,10 @@ fn show_routing_profiles_dialog(
     let create_candidate_controls = Rc::clone(&candidate_controls);
     create.connect_clicked(move |_| {
         let selected_candidate_ids = create_candidate_controls
+            .borrow()
             .iter()
-            .filter(|(_, check)| check.is_active())
-            .map(|(id, _)| id.clone())
+            .filter(|(_, _, check)| check.is_active())
+            .map(|(id, _, _)| id.clone())
             .collect::<Vec<_>>();
         match default_routing_profile(
             &create_state.borrow(),

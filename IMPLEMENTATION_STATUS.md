@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-19 — Linux routing candidate-order checkpoint
+
+Assumption: Ordered routing needs an explicit, keyboard-focusable way to change the sequence of
+selected candidates; drag/drop and screen-reader copy review remain separate accessibility work.
+
+- Candidate rows now include focusable up/down controls. The in-memory order is rebuilt before
+  persistence, so the Core profile receives the exact Ordered-mode sequence the user selected.
+- The bounded `move_routing_profile_id` helper rejects unknown IDs and out-of-range moves; its
+  regression covers forward, reverse, boundary, and missing-candidate behavior.
+- Local validation is pending publication of this commit; the preceding candidate-selection head
+  passed 131 tests (`129 passed; 2 ignored`) and all six Linux push/PR gates.
+
+This advances Ordered-mode candidate editing without claiming drag/drop semantics, complete candidate
+management, other clients, visual/Orca review, release artifacts, or a stable release.
+
 ## 2026-07-19 — Linux routing candidate-selection checkpoint
 
 Assumption: a routing profile must let the user restrict dispatch to explicitly approved saved

@@ -202,8 +202,8 @@ errors, and unapproved or session-only profiles; partial primary output is retai
 The routing-profile dialog also lets the user choose Core's **Manual**, **Ordered**, or **Automatic**
 mode before saving a profile. Fallback consent is separate, explicit, and disabled by default; a
 manual profile never falls through to another candidate. The candidate editor lists saved provider/
-model pairs as focusable checkboxes, so a profile can include only the approved candidates; the
-visible order is preserved for Ordered mode.
+model pairs as focusable checkboxes, so a profile can include only the approved candidates; adjacent
+up/down controls reorder them for Ordered mode.
 
 When an ordinary text request ends in a failed or cancelled state, **Retry translation** becomes
 available. It reuses the current source, target, glossary, privacy mode, confirmed provider, and
