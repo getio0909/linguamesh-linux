@@ -3523,6 +3523,15 @@ fn valid_routing_profile_id(value: &str) -> bool {
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-'))
 }
 
+// 防止新建配置静默覆盖已有 ID，同时允许编辑流程更新原记录。
+fn routing_profile_id_conflicts(
+    existing_ids: &[String],
+    editing_profile_id: Option<&str>,
+    profile_id: &str,
+) -> bool {
+    editing_profile_id.is_none() && existing_ids.iter().any(|id| id == profile_id)
+}
+
 type RoutingCandidateControls = Rc<RefCell<Vec<(ProviderProfileId, gtk::Box, gtk::CheckButton)>>>;
 
 // 清空并按当前顺序重建路由候选行，避免 GTK 列表顺序与持久化顺序分离。
@@ -3868,6 +3877,10 @@ fn show_routing_profiles_dialog(
     actions.append(&create);
     actions.append(&close);
     root.append(&actions);
+    let existing_profile_ids = profiles
+        .iter()
+        .map(|record| record.id.clone())
+        .collect::<Vec<_>>();
     let list = gtk::ListBox::new();
     list.set_selection_mode(gtk::SelectionMode::None);
     list.set_vexpand(true);
@@ -3990,6 +4003,7 @@ fn show_routing_profiles_dialog(
     let create_candidate_controls = Rc::clone(&candidate_controls);
     let create_editing_profile = Rc::clone(&editing_profile);
     let create_profile_id = profile_id.clone();
+    let create_existing_profile_ids = existing_profile_ids;
     create.connect_clicked(move |_| {
         let profile_id = create_profile_id.text().trim().to_owned();
         if !valid_routing_profile_id(&profile_id) {
@@ -4002,6 +4016,22 @@ fn show_routing_profiles_dialog(
             refresh_ui(&create_bindings, &create_state.borrow());
             return;
         }
+        let editing_profile = create_editing_profile.borrow();
+        if routing_profile_id_conflicts(
+            &create_existing_profile_ids,
+            editing_profile.as_ref().map(|profile| profile.id.as_str()),
+            &profile_id,
+        ) {
+            let error_message = localization::text(
+                create_state.borrow().locale(),
+                "error.routing_profile_id_exists",
+                "A routing profile with this ID already exists. Edit it or choose another ID.",
+            );
+            create_state.borrow_mut().record_client_error(error_message);
+            refresh_ui(&create_bindings, &create_state.borrow());
+            return;
+        }
+        drop(editing_profile);
         let selected_candidate_ids = create_candidate_controls
             .borrow()
             .iter()
@@ -6328,8 +6358,8 @@ mod tests {
         destination_matches_source, document_format_label, endpoint_matches_preset_default,
         generate_custom_provider_id, localized_document_job_state, localized_document_warnings,
         localized_provider_default_name, localized_template, provider_preset_config,
-        provider_preset_index, refresh_ui, show_new_profile_in_form, start_event_pump,
-        valid_routing_profile_id,
+        provider_preset_index, refresh_ui, routing_profile_id_conflicts, show_new_profile_in_form,
+        start_event_pump, valid_routing_profile_id,
     };
     use adw::prelude::*;
     use gtk::glib;
@@ -6355,6 +6385,26 @@ mod tests {
         assert!(!valid_routing_profile_id("routing profile"));
         assert!(!valid_routing_profile_id("配置"));
         assert!(!valid_routing_profile_id(&"a".repeat(129)));
+    }
+
+    #[test]
+    fn new_routing_profile_id_cannot_replace_existing_record() {
+        let existing_ids = vec!["linux-default".to_owned(), "team-eu".to_owned()];
+        assert!(routing_profile_id_conflicts(
+            &existing_ids,
+            None,
+            "linux-default"
+        ));
+        assert!(!routing_profile_id_conflicts(
+            &existing_ids,
+            Some("linux-default"),
+            "linux-default"
+        ));
+        assert!(!routing_profile_id_conflicts(
+            &existing_ids,
+            None,
+            "team-apac"
+        ));
     }
 
     #[test]

@@ -2156,6 +2156,12 @@ msgctxt "error.routing_profile_id_invalid"
 msgid "Use 1-128 ASCII letters, numbers, '.', '_' or '-' for the routing profile ID."
 msgstr "路由配置 ID 必须使用 1-128 个 ASCII 字母、数字、点、下划线或连字符。"
 
+#. Fixed error shown when a new Linux routing planner profile reuses an existing identifier.
+#, fuzzy
+msgctxt "error.routing_profile_id_exists"
+msgid "A routing profile with this ID already exists. Edit it or choose another ID."
+msgstr "具有此 ID 的路由配置已存在。请编辑它或选择其他 ID。"
+
 #. Localized label for manual routing mode.
 #, fuzzy
 msgctxt "routing.mode.manual"
