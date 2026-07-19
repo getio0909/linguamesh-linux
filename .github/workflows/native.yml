@@ -166,6 +166,10 @@ jobs:
           --binary native-evidence/linguamesh-linux
           --cargo-lock Cargo.lock
           --output-dir native-evidence
+          && git archive --format=tar.gz
+          --prefix="linguamesh-linux-${GITHUB_SHA}/" "$GITHUB_SHA"
+          > native-evidence/linguamesh-linux-source.tar.gz
+          && sha256sum native-evidence/linguamesh-linux-source.tar.gz >> native-evidence/SHA256SUMS
           && printf 'Linux native CI evidence\nLinux revision: %s\nCore revision: %s\nLocalization revision: %s\nArtifact status: unsigned release-mode prerelease evidence\n'
           "$GITHUB_SHA" "$CORE_REVISION" "3362732be198450ff1ca00f30ec092aab2cf4189"
           > native-evidence/BUILD-INFO.txt

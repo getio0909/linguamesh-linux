@@ -330,8 +330,10 @@ python3 tools/create-native-evidence.py \
 (cd native-evidence && sha256sum -c SHA256SUMS)
 ```
 
-The uploaded native binary, `SHA256SUMS`, `SBOM.spdx.json`, and `BUILD-INFO.txt` are unsigned
-prerelease evidence only; they are not a stable or distributable release.
+The workflow also adds `linguamesh-linux-source.tar.gz` to the same artifact and appends its digest
+to `SHA256SUMS`. This is a repository-only source snapshot; it still requires the pinned Core and
+localization repositories for a build. The binary, source archive, `SHA256SUMS`, `SBOM.spdx.json`,
+and `BUILD-INFO.txt` are unsigned prerelease evidence only, not a stable or distributable release.
 
 These commands bypass sys-crate discovery and do not validate headers, ABI, linking, launch, or
 display behavior. Their cached sys-crate output can also make a later ordinary Cargo check look

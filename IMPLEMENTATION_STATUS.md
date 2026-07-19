@@ -15,6 +15,17 @@ CI and expose integrity metadata without implying that an unsigned build is stab
 - This remains unsigned prerelease evidence; source archives, signing, rollback, and stable-release
   authorization remain open.
 
+## 2026-07-19 — Linux source-archive evidence checkpoint
+
+Assumption: a repository-only source snapshot is useful release evidence when its external Core and
+localization pins remain explicit, but it must not be presented as a standalone source release.
+
+- Native CI now adds `linguamesh-linux-source.tar.gz` for the reviewed commit and appends its SHA-256
+  to `SHA256SUMS` beside the native binary evidence. The archive intentionally contains only this
+  Linux repository and still requires the pinned sibling Core and l10n repositories to build.
+- This source snapshot is unsigned CI evidence; stable source archives, signing, rollback, and
+  distributable release authorization remain open until the coordinated release train is complete.
+
 ## 2026-07-19 — Linux native evidence remote verification
 
 - Linux `8896aaa6e91e9ee482590701c925dabab96435de` passed the complete push gates: Native

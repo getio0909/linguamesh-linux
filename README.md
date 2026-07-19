@@ -164,8 +164,9 @@ a running third-party daemon. Full
 validation commands, the header-free local path, and the GTK gates for X11/Xvfb and forced
 Wayland/headless Weston are documented in
 [`docs/testing.md`](docs/testing.md). Native CI also builds a release-mode binary and uploads it
-with SHA-256, SPDX 2.3, and build-context sidecars; this is unsigned prerelease evidence, not a
-stable or distributable release.
+with SHA-256, SPDX 2.3, build-context, and repository-only source-archive sidecars; this is
+unsigned prerelease evidence, not a stable or distributable release. The source archive records the
+Linux checkout only and still requires the pinned Core and localization repositories for a build.
 
 The repository now includes a reproducible Flatpak manifest, pinned Cargo source set, desktop
 entry, AppStream metadata, and icon under [`packaging/flatpak`](packaging/flatpak). Run
