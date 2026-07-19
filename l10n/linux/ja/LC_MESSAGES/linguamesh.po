@@ -2287,3 +2287,63 @@ msgstr "Keep only candidates that advertise document translation"
 msgctxt "tooltip.routing_require_streaming"
 msgid "Reject candidates that cannot return real streamed deltas"
 msgstr "Reject candidates that cannot return real streamed deltas"
+
+#. Label for the provider allowlist routing constraint.
+#, fuzzy
+msgctxt "label.routing_provider_allowlist"
+msgid "Provider allowlist"
+msgstr "Provider allowlist"
+
+#. Label for the provider denylist routing constraint.
+#, fuzzy
+msgctxt "label.routing_provider_denylist"
+msgid "Provider denylist"
+msgstr "Provider denylist"
+
+#. Label for the model allowlist routing constraint.
+#, fuzzy
+msgctxt "label.routing_model_allowlist"
+msgid "Model allowlist"
+msgstr "Model allowlist"
+
+#. Label for the model denylist routing constraint.
+#, fuzzy
+msgctxt "label.routing_model_denylist"
+msgid "Model denylist"
+msgstr "Model denylist"
+
+#. Label for the minimum quality tier routing constraint.
+#, fuzzy
+msgctxt "label.routing_minimum_quality"
+msgid "Minimum quality tier"
+msgstr "Minimum quality tier"
+
+#. Label for the maximum request byte routing constraint.
+#, fuzzy
+msgctxt "label.routing_max_request_bytes"
+msgid "Maximum request bytes"
+msgstr "Maximum request bytes"
+
+#. Tooltip for comma-separated provider and model routing identifier lists.
+#, fuzzy
+msgctxt "tooltip.routing_identifier_list"
+msgid "Comma-separated provider or model identifiers; leave blank for no list"
+msgstr "Comma-separated provider or model identifiers; leave blank for no list"
+
+#. Tooltip for the minimum quality tier routing constraint.
+#, fuzzy
+msgctxt "tooltip.routing_minimum_quality"
+msgid "Leave blank to accept every quality tier"
+msgstr "Leave blank to accept every quality tier"
+
+#. Tooltip for the maximum request byte routing constraint.
+#, fuzzy
+msgctxt "tooltip.routing_max_request_bytes"
+msgid "Leave blank for no profile-level request size limit; otherwise use a positive byte count"
+msgstr "Leave blank for no profile-level request size limit; otherwise use a positive byte count"
+
+#. Error shown when routing list or numeric constraint input is invalid.
+#, fuzzy
+msgctxt "error.routing_constraints_invalid"
+msgid "Use comma-separated ASCII identifiers and positive numeric limits."
+msgstr "Use comma-separated ASCII identifiers and positive numeric limits."

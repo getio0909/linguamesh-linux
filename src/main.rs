@@ -3602,6 +3602,90 @@ struct RoutingEditorWidgets<'a> {
     privacy_sensitive: &'a gtk::CheckButton,
     require_streaming: &'a gtk::CheckButton,
     require_document: &'a gtk::CheckButton,
+    provider_allowlist: &'a gtk::Entry,
+    provider_denylist: &'a gtk::Entry,
+    model_allowlist: &'a gtk::Entry,
+    model_denylist: &'a gtk::Entry,
+    minimum_quality_tier: &'a gtk::Entry,
+    max_request_bytes: &'a gtk::Entry,
+}
+
+// 聚合路由约束的文本输入框，避免保存时混用控件顺序。
+#[derive(Clone, Copy)]
+struct RoutingConstraintTextWidgets<'a> {
+    provider_allowlist: &'a gtk::Entry,
+    provider_denylist: &'a gtk::Entry,
+    model_allowlist: &'a gtk::Entry,
+    model_denylist: &'a gtk::Entry,
+    minimum_quality_tier: &'a gtk::Entry,
+    max_request_bytes: &'a gtk::Entry,
+}
+
+// 聚合已解析前的路由约束文本，供 GTK 和无界面回归测试共同使用。
+#[derive(Clone, Copy)]
+struct RoutingConstraintTextValues<'a> {
+    provider_allowlist: &'a str,
+    provider_denylist: &'a str,
+    model_allowlist: &'a str,
+    model_denylist: &'a str,
+    minimum_quality_tier: &'a str,
+    max_request_bytes: &'a str,
+}
+
+// 将路由标识列表以稳定的逗号格式展示在编辑器中。
+fn routing_identifier_list_text(values: &[String]) -> String {
+    values.join(", ")
+}
+
+// 解析编辑器中的逗号分隔路由标识列表，并拒绝空项或非法标识。
+fn routing_identifier_list_from_text(value: &str) -> Result<Vec<String>, ()> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut values = Vec::new();
+    for item in trimmed.split(',') {
+        let item = item.trim();
+        if !valid_routing_profile_id(item) {
+            return Err(());
+        }
+        values.push(item.to_owned());
+    }
+    Ok(values)
+}
+
+// 将可选的质量等级或字节上限解析为 Core 约束值。
+fn routing_optional_limit_from_text(value: &str) -> Result<Option<usize>, ()> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+    let parsed = trimmed.parse::<usize>().map_err(|_| ())?;
+    if parsed == 0 {
+        return Err(());
+    }
+    Ok(Some(parsed))
+}
+
+// 创建带有本地化标签和提示的路由文本约束输入框。
+fn routing_text_entry(
+    locale: UiLocale,
+    label_key: &str,
+    label_fallback: &str,
+    tooltip_key: &str,
+    tooltip_fallback: &str,
+) -> (gtk::Entry, gtk::Box) {
+    let entry = gtk::Entry::new();
+    entry.set_hexpand(true);
+    entry.set_focusable(true);
+    entry.set_tooltip_text(Some(&localization::text(
+        locale,
+        tooltip_key,
+        tooltip_fallback,
+    )));
+    let label = localized_mnemonic(locale, label_key, label_fallback);
+    let control = labeled_control(&label, entry.upcast_ref::<gtk::Widget>());
+    (entry, control)
 }
 
 // 仅更新编辑器暴露的约束，同时保留核心未来字段以保证编辑回写不丢数据。
@@ -3618,6 +3702,51 @@ fn routing_constraints_from_controls(
     constraints.require_document = selected.require_document;
     constraints.explicit_fallback_allowed = selected.explicit_fallback_allowed;
     constraints
+}
+
+// 从纯文本值更新 Core 的列表和数值约束，并保留未暴露的字段。
+fn routing_constraints_from_text_values(
+    existing: Option<&RoutingConstraints>,
+    selected: &RoutingConstraints,
+    values: RoutingConstraintTextValues<'_>,
+) -> Result<RoutingConstraints, ()> {
+    let mut constraints = routing_constraints_from_controls(existing, selected);
+    constraints.provider_allowlist = routing_identifier_list_from_text(values.provider_allowlist)?;
+    constraints.provider_denylist = routing_identifier_list_from_text(values.provider_denylist)?;
+    constraints.model_allowlist = routing_identifier_list_from_text(values.model_allowlist)?;
+    constraints.model_denylist = routing_identifier_list_from_text(values.model_denylist)?;
+    let minimum_quality_tier = routing_optional_limit_from_text(values.minimum_quality_tier)?;
+    constraints.minimum_quality_tier = minimum_quality_tier
+        .map(|value| u8::try_from(value).map_err(|_| ()))
+        .transpose()?;
+    constraints.max_request_bytes = routing_optional_limit_from_text(values.max_request_bytes)?;
+    Ok(constraints)
+}
+
+// 从 GTK 文本输入框读取路由约束，并复用无界面解析路径。
+fn routing_constraints_from_text_controls(
+    existing: Option<&RoutingConstraints>,
+    selected: &RoutingConstraints,
+    widgets: RoutingConstraintTextWidgets<'_>,
+) -> Result<RoutingConstraints, ()> {
+    let provider_allowlist = widgets.provider_allowlist.text();
+    let provider_denylist = widgets.provider_denylist.text();
+    let model_allowlist = widgets.model_allowlist.text();
+    let model_denylist = widgets.model_denylist.text();
+    let minimum_quality_tier = widgets.minimum_quality_tier.text();
+    let max_request_bytes = widgets.max_request_bytes.text();
+    routing_constraints_from_text_values(
+        existing,
+        selected,
+        RoutingConstraintTextValues {
+            provider_allowlist: provider_allowlist.as_str(),
+            provider_denylist: provider_denylist.as_str(),
+            model_allowlist: model_allowlist.as_str(),
+            model_denylist: model_denylist.as_str(),
+            minimum_quality_tier: minimum_quality_tier.as_str(),
+            max_request_bytes: max_request_bytes.as_str(),
+        },
+    )
 }
 
 // 按 Core 的标识符约束检查路由配置 ID，避免保存时才暴露无效输入。
@@ -3773,6 +3902,38 @@ fn load_routing_profile_editor(
     widgets
         .require_document
         .set_active(profile.constraints.require_document);
+    widgets
+        .provider_allowlist
+        .set_text(&routing_identifier_list_text(
+            &profile.constraints.provider_allowlist,
+        ));
+    widgets
+        .provider_denylist
+        .set_text(&routing_identifier_list_text(
+            &profile.constraints.provider_denylist,
+        ));
+    widgets
+        .model_allowlist
+        .set_text(&routing_identifier_list_text(
+            &profile.constraints.model_allowlist,
+        ));
+    widgets
+        .model_denylist
+        .set_text(&routing_identifier_list_text(
+            &profile.constraints.model_denylist,
+        ));
+    widgets.minimum_quality_tier.set_text(
+        &profile
+            .constraints
+            .minimum_quality_tier
+            .map_or_else(String::new, |value| value.to_string()),
+    );
+    widgets.max_request_bytes.set_text(
+        &profile
+            .constraints
+            .max_request_bytes
+            .map_or_else(String::new, |value| value.to_string()),
+    );
     {
         let controls_ref = controls.borrow();
         for (_, _, check) in controls_ref.iter() {
@@ -4005,6 +4166,48 @@ fn show_routing_profiles_dialog(
         "tooltip.routing_require_document",
         "Keep only candidates that advertise document translation",
     )));
+    let (provider_allowlist, provider_allowlist_control) = routing_text_entry(
+        locale,
+        "label.routing_provider_allowlist",
+        "Provider allowlist",
+        "tooltip.routing_identifier_list",
+        "Comma-separated provider or model identifiers; leave blank for no list",
+    );
+    let (provider_denylist, provider_denylist_control) = routing_text_entry(
+        locale,
+        "label.routing_provider_denylist",
+        "Provider denylist",
+        "tooltip.routing_identifier_list",
+        "Comma-separated provider or model identifiers; leave blank for no list",
+    );
+    let (model_allowlist, model_allowlist_control) = routing_text_entry(
+        locale,
+        "label.routing_model_allowlist",
+        "Model allowlist",
+        "tooltip.routing_identifier_list",
+        "Comma-separated provider or model identifiers; leave blank for no list",
+    );
+    let (model_denylist, model_denylist_control) = routing_text_entry(
+        locale,
+        "label.routing_model_denylist",
+        "Model denylist",
+        "tooltip.routing_identifier_list",
+        "Comma-separated provider or model identifiers; leave blank for no list",
+    );
+    let (minimum_quality_tier, minimum_quality_tier_control) = routing_text_entry(
+        locale,
+        "label.routing_minimum_quality",
+        "Minimum quality tier",
+        "tooltip.routing_minimum_quality",
+        "Leave blank to accept every quality tier",
+    );
+    let (max_request_bytes, max_request_bytes_control) = routing_text_entry(
+        locale,
+        "label.routing_max_request_bytes",
+        "Maximum request bytes",
+        "tooltip.routing_max_request_bytes",
+        "Leave blank for no profile-level request size limit; otherwise use a positive byte count",
+    );
     let constraints = gtk::Box::new(gtk::Orientation::Vertical, 4);
     constraints.append(&preference_control);
     constraints.append(&local_only);
@@ -4012,6 +4215,12 @@ fn show_routing_profiles_dialog(
     constraints.append(&privacy_sensitive);
     constraints.append(&require_streaming);
     constraints.append(&require_document);
+    constraints.append(&provider_allowlist_control);
+    constraints.append(&provider_denylist_control);
+    constraints.append(&model_allowlist_control);
+    constraints.append(&model_denylist_control);
+    constraints.append(&minimum_quality_tier_control);
+    constraints.append(&max_request_bytes_control);
     root.append(&constraints);
     let remote_guard = allow_remote.clone();
     local_only.connect_toggled(move |button| {
@@ -4146,6 +4355,12 @@ fn show_routing_profiles_dialog(
             let edit_privacy_sensitive = privacy_sensitive.clone();
             let edit_require_streaming = require_streaming.clone();
             let edit_require_document = require_document.clone();
+            let edit_provider_allowlist = provider_allowlist.clone();
+            let edit_provider_denylist = provider_denylist.clone();
+            let edit_model_allowlist = model_allowlist.clone();
+            let edit_model_denylist = model_denylist.clone();
+            let edit_minimum_quality_tier = minimum_quality_tier.clone();
+            let edit_max_request_bytes = max_request_bytes.clone();
             let edit_container = candidates_box.clone();
             let edit_controls = Rc::clone(&candidate_controls);
             let edit_save = create.clone();
@@ -4163,6 +4378,12 @@ fn show_routing_profiles_dialog(
                         privacy_sensitive: &edit_privacy_sensitive,
                         require_streaming: &edit_require_streaming,
                         require_document: &edit_require_document,
+                        provider_allowlist: &edit_provider_allowlist,
+                        provider_denylist: &edit_provider_denylist,
+                        model_allowlist: &edit_model_allowlist,
+                        model_denylist: &edit_model_denylist,
+                        minimum_quality_tier: &edit_minimum_quality_tier,
+                        max_request_bytes: &edit_max_request_bytes,
                     },
                     &edit_container,
                     &edit_controls,
@@ -4270,7 +4491,7 @@ fn show_routing_profiles_dialog(
             .map(|(id, _, _)| id.clone())
             .collect::<Vec<_>>();
         let editing_profile = create_editing_profile.borrow();
-        let constraints = routing_constraints_from_controls(
+        let Ok(constraints) = routing_constraints_from_text_controls(
             editing_profile.as_ref().map(|profile| &profile.constraints),
             &RoutingConstraints {
                 preference: routing_preference_for_selection(preference.selected()),
@@ -4282,7 +4503,25 @@ fn show_routing_profiles_dialog(
                 explicit_fallback_allowed: allow_fallback.is_active(),
                 ..RoutingConstraints::default()
             },
-        );
+            RoutingConstraintTextWidgets {
+                provider_allowlist: &provider_allowlist,
+                provider_denylist: &provider_denylist,
+                model_allowlist: &model_allowlist,
+                model_denylist: &model_denylist,
+                minimum_quality_tier: &minimum_quality_tier,
+                max_request_bytes: &max_request_bytes,
+            },
+        ) else {
+            create_state
+                .borrow_mut()
+                .record_client_error(localization::text(
+                    create_state.borrow().locale(),
+                    "error.routing_constraints_invalid",
+                    "Use comma-separated ASCII identifiers and positive numeric limits.",
+                ));
+            refresh_ui(&create_bindings, &create_state.borrow());
+            return;
+        };
         match default_routing_profile(
             &create_state.borrow(),
             &profile_id,
@@ -6596,13 +6835,15 @@ mod tests {
         AppState, AppStatus, CUSTOM_PROVIDER_PRESET_ID, CoreWorker, DEFAULT_OLLAMA_ENDPOINT,
         DEFAULT_OLLAMA_PROVIDER_NAME, DEFAULT_PROVIDER_ENDPOINT, DEFAULT_PROVIDER_NAME, ErrorKind,
         OLLAMA_ADAPTER_TYPE, OLLAMA_PROVIDER_PRESET_ID, OPENAI_ADAPTER_TYPE, OnboardingStage,
-        ProviderProfileId, SecretRef, SecretRefNamespace, SecretValue, TranslationError, UiLocale,
-        WorkerCommand, WorkerEvent, apply_worker_event, connect_action_handlers,
-        connect_selection_handlers, create_window, custom_provider_profile,
-        destination_matches_source, document_format_label, endpoint_matches_preset_default,
-        generate_custom_provider_id, localized_document_job_state, localized_document_warnings,
-        localized_provider_default_name, localized_template, provider_preset_config,
-        provider_preset_index, refresh_ui, routing_constraints_from_controls,
+        ProviderProfileId, RoutingConstraintTextValues, SecretRef, SecretRefNamespace, SecretValue,
+        TranslationError, UiLocale, WorkerCommand, WorkerEvent, apply_worker_event,
+        connect_action_handlers, connect_selection_handlers, create_window,
+        custom_provider_profile, destination_matches_source, document_format_label,
+        endpoint_matches_preset_default, generate_custom_provider_id, localized_document_job_state,
+        localized_document_warnings, localized_provider_default_name, localized_template,
+        provider_preset_config, provider_preset_index, refresh_ui,
+        routing_constraints_from_controls, routing_constraints_from_text_values,
+        routing_identifier_list_from_text, routing_optional_limit_from_text,
         routing_preference_for_selection, routing_preference_selection,
         routing_profile_id_conflicts, show_new_profile_in_form, start_event_pump,
         text_metrics_label, valid_routing_profile_id,
@@ -6715,6 +6956,55 @@ mod tests {
         assert!(updated.require_streaming);
         assert!(!updated.require_document);
         assert!(updated.explicit_fallback_allowed);
+    }
+
+    #[test]
+    fn routing_constraint_text_parsers_reject_unsafe_values() {
+        assert_eq!(
+            routing_identifier_list_from_text("provider-a, model-b"),
+            Ok(vec!["provider-a".to_owned(), "model-b".to_owned()])
+        );
+        assert_eq!(routing_identifier_list_from_text(""), Ok(Vec::new()));
+        assert!(routing_identifier_list_from_text("provider-a,,model-b").is_err());
+        assert!(routing_identifier_list_from_text("provider/a").is_err());
+        assert_eq!(routing_optional_limit_from_text(""), Ok(None));
+        assert_eq!(routing_optional_limit_from_text("4096"), Ok(Some(4096)));
+        assert!(routing_optional_limit_from_text("0").is_err());
+        assert!(routing_optional_limit_from_text("not-a-number").is_err());
+    }
+
+    #[test]
+    fn routing_constraint_text_values_update_visible_core_fields() {
+        let existing = RoutingConstraints {
+            provider_denylist: vec!["legacy-provider".to_owned()],
+            ..RoutingConstraints::default()
+        };
+        let updated = routing_constraints_from_text_values(
+            Some(&existing),
+            &RoutingConstraints {
+                preference: RoutingPreference::Quality,
+                ..RoutingConstraints::default()
+            },
+            RoutingConstraintTextValues {
+                provider_allowlist: "local-loopback, team-eu",
+                provider_denylist: "blocked-provider",
+                model_allowlist: "qwen-2, llama-3",
+                model_denylist: "unsafe-model",
+                minimum_quality_tier: "2",
+                max_request_bytes: "65536",
+            },
+        )
+        .expect("routing text values");
+        assert_eq!(
+            updated.provider_allowlist,
+            vec!["local-loopback", "team-eu"]
+        );
+        assert_eq!(updated.provider_denylist, vec!["blocked-provider"]);
+        assert_eq!(updated.model_allowlist, vec!["qwen-2", "llama-3"]);
+        assert_eq!(updated.model_denylist, vec!["unsafe-model"]);
+        assert_eq!(updated.minimum_quality_tier, Some(2));
+        assert_eq!(updated.max_request_bytes, Some(65536));
+        assert_eq!(updated.preference, RoutingPreference::Quality);
     }
 
     #[test]

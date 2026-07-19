@@ -1,5 +1,19 @@
 # Implementation Status
 
+## 2026-07-19 — Linux complete routing-constraint editor checkpoint
+
+Assumption: the Linux routing-profile editor should expose every non-secret Core constraint that a
+user can safely configure, while blank numeric inputs mean no profile-level limit.
+
+- Linux working revision adds comma-separated provider/model allowlists and denylists, optional
+  minimum quality tier, and optional maximum request bytes to the existing routing editor. Edit
+  restores these values; Save rejects empty list items, unsafe identifiers, zero limits, and values
+  outside the Core quality-tier range.
+- l10n `c366124539d4e8c909c66ca7cc33fb16ed92e8b2` contains 387 messages and all 59 generated
+  resources; Linux consumes the immutable revision and audits the new dynamic labels plus error
+  key against the canonical catalog.
+- Remote evidence will be recorded after the Linux and l10n pins pass their current-head gates.
+
 ## 2026-07-19 — Linux routing constraint controls checkpoint
 
 Assumption: Core's non-secret routing constraints must be user-editable in the native Linux

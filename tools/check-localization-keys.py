@@ -38,6 +38,16 @@ DIAGNOSTICS_KEYS = {
     "diagnostics.profile_storage_pending",
     "diagnostics.profile_storage_available",
     "diagnostics.profile_storage_unavailable",
+    "label.routing_provider_allowlist",
+    "label.routing_provider_denylist",
+    "label.routing_model_allowlist",
+    "label.routing_model_denylist",
+    "label.routing_minimum_quality",
+    "label.routing_max_request_bytes",
+    "tooltip.routing_identifier_list",
+    "tooltip.routing_minimum_quality",
+    "tooltip.routing_max_request_bytes",
+    "error.routing_constraints_invalid",
 }
 
 
