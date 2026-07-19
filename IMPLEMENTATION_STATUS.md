@@ -149,8 +149,8 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
 - The Linux host now uses existing GIO D-Bus bindings for Secret Service `OpenSession`, item search,
   create/update, and `GetSecret` resolution. Persistent profiles retain only a SecretRef; the
   one-shot credential is passed through the existing typed broker and is never written to SQLite.
-- Fourteen canonical official/pseudo PO/MO catalog pairs containing 326 messages pinned to l10n revision
-  `32bef261f5f0deb9f6a0426231e365d0bae72b62`. Sync rejects a different revision, dirty generated
+- Fourteen canonical official/pseudo PO/MO catalog pairs containing 327 messages pinned to l10n revision
+  `f00b00fda307660000b0e4068c5ca1072d266df1`. Sync rejects a different revision, dirty generated
   source artifacts, stale copies, and unexpected catalog counts. The GTK locale selector exposes
   the twelve official packs, runtime action, workspace-widget, active-provider, status summary,
   partial-output, text-file import/export, provider-profile, source/target language, onboarding stage/detail,
@@ -162,7 +162,7 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
 - Foundation and native workflow sources use immutable Node 24-compatible action commits and
   disable persisted checkout credentials. Native CI pins reviewed Core revision
   `7275c5ec195946ea20a2d65e5f42790b2d631ff2` and localization revision
-  `d64d4085fb3c1cc69c9f7965bd97ffca54ca1995`. The revised native gate retains serialized all-target,
+  `f00b00fda307660000b0e4068c5ca1072d266df1`. The revised native gate retains serialized all-target,
   all-feature X11/Xvfb tests, runs the exact ignored storage-fault test in a private user/mount
   namespace when available, then runs the existing GTK binary test under forced Wayland and
   headless Weston before building the application. On restricted Ubuntu hosts, only the private
@@ -1255,3 +1255,26 @@ Linux revision `1d96c9825b83cdc1cd6a2783b61fdd678b89e510` passed push Native `29
 Complete visible-string gettext coverage beyond this error path, translated-copy/plural review,
 Orca speech, manual high-contrast/RTL/reduced-motion review, end-user Secret Service prompt
 approval, other clients, and release artifacts remain open.
+
+## 2026-07-19 — Linux Secret Service prompt approval checkpoint
+
+Assumption: Secret Service `CreateItem` and `Delete` prompt paths represent an explicit user
+security decision. The client must wait for `Completed`, accept only an approved prompt, map a
+dismissal to localized storage guidance, and fail closed on prompt-call or timeout failures.
+
+- Implemented `org.freedesktop.Secret.Prompt.Prompt` plus `Completed` signal handling with a
+  bounded five-minute wait. Approved prompts now complete store/delete operations; dismissed
+  prompts return the catalog-backed `error.storage.prompt_dismissed` message.
+- Extended the isolated D-Bus fixture to cover accepted and dismissed store/delete flows. The
+  prompted-flow script passed all four ignored integration tests locally.
+- Pinned l10n revision `f00b00fda307660000b0e4068c5ca1072d266df1`, containing 327 messages and
+  bundle checksum `53821e2397e6697b7551693c6f5787cc1f88e24d96b3077ac590645a848f1977`.
+- Local `cargo fmt --all --check`, locked all-target checks, strict Clippy, no-default tests
+  (65 passed, 1 ignored), demo-provider tests (103 passed, 2 ignored), 208-key localization
+  audit, l10n sync, prompt fixture, shell syntax, and diff checks passed.
+
+The first CI attempt stopped at the expected localization checkout because the workflow still
+referenced the previous l10n revision; the workflow pin is now updated to this checkpoint and
+must pass Native, Flatpak, and pull-request reruns before this slice is considered remotely
+verified. Manual Secret Service approval UX, broader storage-fault coverage, translated-copy
+review, Orca speech, other clients, and release artifacts remain open.
