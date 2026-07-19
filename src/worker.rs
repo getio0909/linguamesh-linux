@@ -3526,7 +3526,7 @@ mod tests {
     use linguamesh_storage::Storage;
     use linguamesh_testkit::FakeProviderServer;
     use std::fs;
-    use std::io::Write;
+    use std::io::{Cursor, Read, Write};
     use std::net::TcpListener;
     use std::os::unix::fs::{MetadataExt, PermissionsExt, symlink};
     use std::path::{Path, PathBuf};
@@ -3539,6 +3539,8 @@ mod tests {
     use tokio::runtime::Builder;
     use tokio::sync::oneshot;
     use tokio_util::sync::CancellationToken;
+    use zip::write::SimpleFileOptions;
+    use zip::{ZipArchive, ZipWriter};
 
     enum FakeMode {
         Standard,
@@ -3546,6 +3548,64 @@ mod tests {
         Delayed(Duration),
         OllamaCompatible,
         OllamaNative,
+    }
+
+    fn docx_worker_fixture() -> Vec<u8> {
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        let options = SimpleFileOptions::default();
+        writer
+            .start_file("[Content_Types].xml", options)
+            .expect("content types");
+        writer.write_all(b"<Types/>").expect("content types bytes");
+        writer
+            .start_file("word/document.xml", options)
+            .expect("document");
+        writer
+            .write_all(
+                br#"<w:document xmlns:w="urn:w"><w:body><w:p><w:r><w:t>Hello</w:t></w:r></w:p></w:body></w:document>"#,
+            )
+            .expect("document bytes");
+        writer
+            .start_file("word/media/image.bin", options)
+            .expect("image");
+        writer.write_all(&[1, 2, 3, 4]).expect("image bytes");
+        writer.finish().expect("docx archive").into_inner()
+    }
+
+    fn xlsx_worker_fixture() -> Vec<u8> {
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        let options = SimpleFileOptions::default();
+        writer
+            .start_file("[Content_Types].xml", options)
+            .expect("content types");
+        writer.write_all(b"<Types/>").expect("content types bytes");
+        writer
+            .start_file("xl/workbook.xml", options)
+            .expect("workbook");
+        writer
+            .write_all(
+                br#"<workbook xmlns="urn:x"><sheets><sheet name="Sheet1"/></sheets></workbook>"#,
+            )
+            .expect("workbook bytes");
+        writer
+            .start_file("xl/sharedStrings.xml", options)
+            .expect("shared strings");
+        writer
+            .write_all(br#"<sst xmlns="urn:x"><si><t>Hello</t></si></sst>"#)
+            .expect("shared strings bytes");
+        writer
+            .start_file("xl/worksheets/sheet1.xml", options)
+            .expect("worksheet");
+        writer
+            .write_all(
+                br#"<worksheet xmlns="urn:x"><sheetData><row><c t="s"><v>0</v></c><c><f>SUM(A1:A1)</f><v>3</v></c><c><v>42</v></c></row></sheetData></worksheet>"#,
+            )
+            .expect("worksheet bytes");
+        writer
+            .start_file("xl/media/image.bin", options)
+            .expect("image");
+        writer.write_all(&[8, 9, 10]).expect("image bytes");
+        writer.finish().expect("xlsx archive").into_inner()
     }
 
     static TEST_DATABASE_COUNTER: AtomicUsize = AtomicUsize::new(0);
@@ -4507,6 +4567,158 @@ mod tests {
             completed.job.reconstruct().expect("reconstruct"),
             "你好，LinguaMesh！\n你好，LinguaMesh！"
         );
+        shutdown(&worker);
+    }
+
+    #[test]
+    fn document_job_translation_reconstructs_docx_and_preserves_binary_parts() {
+        let database = TestDatabase::new();
+        let (worker, _, endpoint) = started_worker_with_database(database.path());
+        connect(
+            &worker,
+            profile("document-docx-provider", &endpoint, None, None),
+            None,
+            PersistenceIntent::SessionOnly,
+        )
+        .expect("connection");
+        select(&worker, "document-docx-provider", "fake-translator");
+        worker
+            .try_send(WorkerCommand::CreateDocumentJob {
+                job_id: "document-docx-1".to_owned(),
+                job: DocumentJob::from_utf8("sample.docx", &docx_worker_fixture())
+                    .expect("docx job"),
+            })
+            .expect("create document job");
+        assert!(matches!(
+            worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("created event"),
+            WorkerEvent::DocumentJobUpdated(snapshot)
+                if snapshot.state == DocumentJobState::Pending
+        ));
+        worker
+            .try_send(WorkerCommand::TranslateDocumentJob {
+                job_id: "document-docx-1".to_owned(),
+                source_locale: Some("en".to_owned()),
+                target_locale: "zh-CN".to_owned(),
+                glossary: None,
+                privacy_mode: TranslationPrivacyMode::Standard,
+            })
+            .expect("translate document job");
+        let completed = loop {
+            match worker
+                .events
+                .recv_timeout(Duration::from_secs(10))
+                .expect("document translation event")
+            {
+                WorkerEvent::DocumentJobUpdated(snapshot)
+                    if snapshot.state == DocumentJobState::Completed =>
+                {
+                    break snapshot;
+                }
+                WorkerEvent::DocumentJobSegment { event, .. } => {
+                    assert!(!matches!(event, TranslationEvent::Failed { .. }));
+                }
+                _ => {}
+            }
+        };
+        let rebuilt = completed.job.reconstruct_bytes().expect("reconstruct docx");
+        let mut archive = ZipArchive::new(Cursor::new(rebuilt)).expect("rebuilt docx archive");
+        let mut document = String::new();
+        archive
+            .by_name("word/document.xml")
+            .expect("document entry")
+            .read_to_string(&mut document)
+            .expect("document xml");
+        assert!(document.contains("你好，LinguaMesh！"));
+        let mut image = Vec::new();
+        archive
+            .by_name("word/media/image.bin")
+            .expect("image entry")
+            .read_to_end(&mut image)
+            .expect("image bytes");
+        assert_eq!(image, [1, 2, 3, 4]);
+        shutdown(&worker);
+    }
+
+    #[test]
+    fn document_job_translation_reconstructs_xlsx_and_preserves_formulas_and_numbers() {
+        let database = TestDatabase::new();
+        let (worker, _, endpoint) = started_worker_with_database(database.path());
+        connect(
+            &worker,
+            profile("document-xlsx-provider", &endpoint, None, None),
+            None,
+            PersistenceIntent::SessionOnly,
+        )
+        .expect("connection");
+        select(&worker, "document-xlsx-provider", "fake-translator");
+        worker
+            .try_send(WorkerCommand::CreateDocumentJob {
+                job_id: "document-xlsx-1".to_owned(),
+                job: DocumentJob::from_utf8("sample.xlsx", &xlsx_worker_fixture())
+                    .expect("xlsx job"),
+            })
+            .expect("create document job");
+        assert!(matches!(
+            worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("created event"),
+            WorkerEvent::DocumentJobUpdated(snapshot)
+                if snapshot.state == DocumentJobState::Pending
+        ));
+        worker
+            .try_send(WorkerCommand::TranslateDocumentJob {
+                job_id: "document-xlsx-1".to_owned(),
+                source_locale: Some("en".to_owned()),
+                target_locale: "zh-CN".to_owned(),
+                glossary: None,
+                privacy_mode: TranslationPrivacyMode::Standard,
+            })
+            .expect("translate document job");
+        let completed = loop {
+            match worker
+                .events
+                .recv_timeout(Duration::from_secs(10))
+                .expect("document translation event")
+            {
+                WorkerEvent::DocumentJobUpdated(snapshot)
+                    if snapshot.state == DocumentJobState::Completed =>
+                {
+                    break snapshot;
+                }
+                WorkerEvent::DocumentJobSegment { event, .. } => {
+                    assert!(!matches!(event, TranslationEvent::Failed { .. }));
+                }
+                _ => {}
+            }
+        };
+        let rebuilt = completed.job.reconstruct_bytes().expect("reconstruct xlsx");
+        let mut archive = ZipArchive::new(Cursor::new(rebuilt)).expect("rebuilt xlsx archive");
+        let mut shared_strings = String::new();
+        archive
+            .by_name("xl/sharedStrings.xml")
+            .expect("shared strings entry")
+            .read_to_string(&mut shared_strings)
+            .expect("shared strings xml");
+        assert!(shared_strings.contains("你好，LinguaMesh！"));
+        let mut worksheet = String::new();
+        archive
+            .by_name("xl/worksheets/sheet1.xml")
+            .expect("worksheet entry")
+            .read_to_string(&mut worksheet)
+            .expect("worksheet xml");
+        assert!(worksheet.contains("<f>SUM(A1:A1)</f>"));
+        assert!(worksheet.contains("<v>42</v>"));
+        let mut image = Vec::new();
+        archive
+            .by_name("xl/media/image.bin")
+            .expect("image entry")
+            .read_to_end(&mut image)
+            .expect("image bytes");
+        assert_eq!(image, [8, 9, 10]);
         shutdown(&worker);
     }
 
