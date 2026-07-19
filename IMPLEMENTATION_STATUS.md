@@ -1,5 +1,21 @@
 # Implementation Status
 
+## 2026-07-19 — Linux visible-string localization audit checkpoint
+
+Assumption: complete Linux gettext coverage requires a repeatable source check that rejects
+non-empty visible GTK literals, while empty labels used to clear transient state remain valid.
+
+- Added `tools/check-visible-localization.py`, a dependency-free audit for GTK labels, titles,
+  tooltips, placeholders, dialog actions, and direct list options. It passes the current source
+  and its self-check detects both direct literals and localized helper calls correctly.
+- Native and Foundation workflows now run the visible-control audit beside the catalog-key audit;
+  the repository foundation check requires the new script. The l10n consumer pin is synchronized
+  to `3362732be198450ff1ca00f30ec092aab2cf4189`, whose generated resources remain the verified
+  387-message bundle.
+- Local formatting, GUI-feature check, strict Clippy, 131 demo-provider tests with 2 ignored,
+  both localization audits, l10n synchronization, Flatpak metadata, and diff checks passed.
+- Remote Linux and central evidence will be recorded after the current head passes its gates.
+
 ## 2026-07-19 — Linux complete routing-constraint editor checkpoint
 
 Assumption: the Linux routing-profile editor should expose every non-secret Core constraint that a
@@ -9,7 +25,7 @@ user can safely configure, while blank numeric inputs mean no profile-level limi
   minimum quality tier, and optional maximum request bytes to the existing routing editor. Edit
   restores these values; Save rejects empty list items, unsafe identifiers, zero limits, and values
   outside the Core quality-tier range.
-- l10n `c366124539d4e8c909c66ca7cc33fb16ed92e8b2` contains 387 messages and all 59 generated
+- l10n `3362732be198450ff1ca00f30ec092aab2cf4189` contains 387 messages and all 59 generated
   resources; Linux consumes the immutable revision and audits the new dynamic labels plus error
   key against the canonical catalog.
 - Remote evidence will be recorded after the Linux and l10n pins pass their current-head gates.

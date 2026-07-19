@@ -55,6 +55,11 @@ non-sensitive Diagnostics panel localizes its Core ABI/protocol summary, fixed f
 values, and profile-storage status through the runtime catalog while omitting source text, endpoints,
 and secret references.
 
+The dependency-free `tools/check-localization-keys.py` audit verifies literal catalog keys, and
+`tools/check-visible-localization.py` rejects non-empty hard-coded GTK labels, titles, tooltips,
+placeholders, dialog actions, and list options. Native and Foundation CI run both audits before
+building the client; empty label assignments used to clear transient UI state remain allowed.
+
 ## Build and run
 
 On Debian or Ubuntu, install native development headers:
@@ -178,7 +183,7 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`c366124539d4e8c909c66ca7cc33fb16ed92e8b2` and validated with `msgfmt`; the 387-message bundle
+`3362732be198450ff1ca00f30ec092aab2cf4189` and validated with `msgfmt`; the 387-message bundle
 adds Linux routing-profile persistence/editor, profile-ID validation and duplicate protection, ordinary-text selection labels, routing preference/privacy/document constraints, provider/model allowlists and denylists, quality/request-size limits, and source/output character plus approximate-token metrics. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
 active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, construction-stage provider/default-control copy, and diagnostics labels/state values without replacing active source text;

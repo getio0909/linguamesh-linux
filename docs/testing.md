@@ -8,7 +8,7 @@ credential. These tests do not replace interoperability testing against a runnin
 Ollama daemon.
 
 The Linux checkout consumes the canonical gettext bundle from immutable l10n revision
-`c366124539d4e8c909c66ca7cc33fb16ed92e8b2`. The bundle contains 387 messages, and
+`3362732be198450ff1ca00f30ec092aab2cf4189`. The bundle contains 387 messages, and
 `bash tools/sync-l10n.sh --check` verifies every PO/MO catalog and the generated manifest before
 the native build. History/memory row metadata, document-job IDs, active-provider mode summaries,
 unavailable provider/model labels, and routing-profile actions/mode labels are asserted through
@@ -18,6 +18,17 @@ counts and an explicitly approximate token estimate without exposing text in dia
 profile tests also verify preference-index round trips and preservation of hidden Core constraints
 when visible privacy/capability controls are edited. Constraint parser tests cover comma-separated
 provider/model lists, positive numeric limits, and rejection of unsafe or empty values.
+
+The source-level localization checks are reproducible without GTK or third-party packages:
+
+```sh
+python3 -B tools/check-localization-keys.py
+python3 -B tools/check-visible-localization.py
+```
+
+The first command checks catalog key coverage; the second rejects non-empty literal strings passed
+directly to GTK visible-control APIs and direct string-list options. Empty strings used to clear a
+transient label are intentionally permitted.
 
 The routing-profile worker regression saves, lists, and deletes a Core `routing_planner_v1` profile
 without persisting provider endpoints, credentials, or translation content. A separate regression

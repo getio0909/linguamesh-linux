@@ -262,6 +262,12 @@ labels without replacing active source text, applies RTL root direction for Arab
 worker startup, Core compatibility, and profile-storage error sentences through the same catalog.
 Provider-specific diagnostic detail remains an explicit English fallback.
 
+The Linux source also runs two dependency-free localization audits. The key audit verifies every
+literal catalog key and its supplemental dynamic-key table against the canonical catalog. The
+visible-control audit scans GTK labels, titles, tooltips, placeholders, dialog actions, and list
+options and rejects non-empty literals that bypass the localization helper. Empty reset labels are
+allowed because they remove transient text rather than present user-facing copy.
+
 The application state and worker command/event wrappers intentionally do not derive `Debug`, so
 source text and streamed output are not exposed through routine debug formatting. Diagnostics omit
 the provider endpoint, secret reference, selected model identifier, source text, and output content.
