@@ -137,6 +137,79 @@ mod tests {
     };
     use crate::ocr::OcrPage;
     use linguamesh_document::DocumentSegmentKind;
+    use std::io::{Cursor, Read, Write};
+    use zip::ZipArchive;
+    use zip::write::{SimpleFileOptions, ZipWriter};
+
+    fn docx_fixture() -> Vec<u8> {
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        let options = SimpleFileOptions::default();
+        writer
+            .start_file("[Content_Types].xml", options)
+            .expect("content types");
+        writer
+            .write_all(
+                b"<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"/>",
+            )
+            .expect("content types bytes");
+        writer
+            .start_file("word/document.xml", options)
+            .expect("document");
+        writer
+            .write_all(
+                br#"<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="urn:w"><w:body><w:p><w:r><w:t>Hello &amp; world</w:t></w:r></w:p><w:tbl><w:tr><w:tc><w:p><w:r><w:t>Cell</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:body></w:document>"#,
+            )
+            .expect("document bytes");
+        writer
+            .start_file("word/header1.xml", options)
+            .expect("header");
+        writer
+            .write_all(br#"<w:hdr xmlns:w="urn:w"><w:p><w:r><w:t>Header</w:t></w:r></w:p></w:hdr>"#)
+            .expect("header bytes");
+        writer
+            .start_file("word/media/image.bin", options)
+            .expect("image");
+        writer.write_all(&[1, 2, 3, 4]).expect("image bytes");
+        writer.finish().expect("docx archive").into_inner()
+    }
+
+    fn xlsx_fixture() -> Vec<u8> {
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        let options = SimpleFileOptions::default();
+        writer
+            .start_file("[Content_Types].xml", options)
+            .expect("content types");
+        writer.write_all(b"<Types/>").expect("content types bytes");
+        writer
+            .start_file("xl/workbook.xml", options)
+            .expect("workbook");
+        writer
+            .write_all(
+                br#"<workbook xmlns="urn:x"><sheets><sheet name="Sheet1"/></sheets></workbook>"#,
+            )
+            .expect("workbook bytes");
+        writer
+            .start_file("xl/sharedStrings.xml", options)
+            .expect("shared strings");
+        writer
+            .write_all(
+                br#"<sst xmlns="urn:x"><si><t>Hello &amp; world</t></si><si><t>Shared</t></si></sst>"#,
+            )
+            .expect("shared strings bytes");
+        writer
+            .start_file("xl/worksheets/sheet1.xml", options)
+            .expect("worksheet");
+        writer
+            .write_all(
+                br#"<worksheet xmlns="urn:x"><sheetData><row><c t="inlineStr"><is><t>Inline</t></is></c><c t="s"><v>0</v></c><c><f>SUM(A1:A2)</f><v>3</v></c><c><v>42</v></c></row></sheetData></worksheet>"#,
+            )
+            .expect("worksheet bytes");
+        writer
+            .start_file("xl/media/image.bin", options)
+            .expect("image");
+        writer.write_all(&[8, 9, 10]).expect("image bytes");
+        writer.finish().expect("xlsx archive").into_inner()
+    }
 
     #[test]
     fn decodes_utf8_and_removes_bom() {
@@ -293,5 +366,99 @@ mod tests {
         assert_eq!(job.segments[0].source_text, "[OCR page 1]");
         assert_eq!(job.pending_count(), 2);
         assert_eq!(job.segments[2].source_text, "[OCR page 2]");
+    }
+
+    #[test]
+    fn imports_docx_and_rebuilds_text_without_dropping_package_parts() {
+        let source = docx_fixture();
+        let mut job = decode_document_job("sample.docx", &source).expect("docx job");
+        assert_eq!(job.pending_count(), 3);
+        let prose_indices = job
+            .segments
+            .iter()
+            .enumerate()
+            .filter(|(_, segment)| segment.kind == DocumentSegmentKind::Prose)
+            .map(|(index, _)| index)
+            .collect::<Vec<_>>();
+        for (index, translated) in prose_indices
+            .into_iter()
+            .zip(["你好 & 世界", "单元格", "页眉"])
+        {
+            job.apply_translation(index, translated)
+                .expect("translation");
+        }
+        let rebuilt = job.reconstruct_bytes().expect("rebuild docx");
+        let mut archive = ZipArchive::new(Cursor::new(rebuilt)).expect("rebuilt archive");
+        let mut document = String::new();
+        archive
+            .by_name("word/document.xml")
+            .expect("document entry")
+            .read_to_string(&mut document)
+            .expect("document xml");
+        assert!(document.contains("你好 &amp; 世界"));
+        assert!(document.contains("单元格"));
+        let mut header = String::new();
+        archive
+            .by_name("word/header1.xml")
+            .expect("header entry")
+            .read_to_string(&mut header)
+            .expect("header xml");
+        assert!(header.contains("页眉"));
+        let mut image = Vec::new();
+        archive
+            .by_name("word/media/image.bin")
+            .expect("image entry")
+            .read_to_end(&mut image)
+            .expect("image bytes");
+        assert_eq!(image, [1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn imports_xlsx_and_preserves_unselected_values_and_formulas() {
+        let source = xlsx_fixture();
+        let mut job = decode_document_job("sample.xlsx", &source).expect("xlsx job");
+        assert_eq!(job.pending_count(), 3);
+        let prose_segments = job
+            .segments
+            .iter()
+            .enumerate()
+            .filter(|(_, segment)| segment.kind == DocumentSegmentKind::Prose)
+            .map(|(index, segment)| (index, segment.source_text.clone()))
+            .collect::<Vec<_>>();
+        for (index, source_text) in prose_segments {
+            let translated = if source_text == "Hello & world" {
+                "你好 & 世界"
+            } else {
+                source_text.as_str()
+            };
+            job.apply_translation(index, translated)
+                .expect("translation");
+        }
+        let rebuilt = job.reconstruct_bytes().expect("rebuild xlsx");
+        let mut archive = ZipArchive::new(Cursor::new(rebuilt)).expect("rebuilt archive");
+        let mut shared_strings = String::new();
+        archive
+            .by_name("xl/sharedStrings.xml")
+            .expect("shared strings entry")
+            .read_to_string(&mut shared_strings)
+            .expect("shared strings xml");
+        assert!(shared_strings.contains("你好 &amp; 世界"));
+        assert!(shared_strings.contains("Shared"));
+        let mut worksheet = String::new();
+        archive
+            .by_name("xl/worksheets/sheet1.xml")
+            .expect("worksheet entry")
+            .read_to_string(&mut worksheet)
+            .expect("worksheet xml");
+        assert!(worksheet.contains("Inline"));
+        assert!(worksheet.contains("<f>SUM(A1:A2)</f>"));
+        assert!(worksheet.contains("<v>42</v>"));
+        let mut image = Vec::new();
+        archive
+            .by_name("xl/media/image.bin")
+            .expect("image entry")
+            .read_to_end(&mut image)
+            .expect("image bytes");
+        assert_eq!(image, [8, 9, 10]);
     }
 }

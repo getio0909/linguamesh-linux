@@ -1040,6 +1040,7 @@ dependencies = [
  "linguamesh-testkit",
  "tokio",
  "tokio-util",
+ "zip",
 ]
 
 [[package]]

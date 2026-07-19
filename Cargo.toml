@@ -31,6 +31,9 @@ linguamesh-testkit = { version = "=0.1.0-alpha.2", path = "../linguamesh-core/cr
 tokio = { version = "1.46.1", features = ["rt-multi-thread", "sync", "time"], optional = true }
 tokio-util = { version = "0.7.15", features = ["rt"], optional = true }
 
+[dev-dependencies]
+zip = { version = "8.4.0", default-features = false, features = ["deflate"] }
+
 [[bin]]
 name = "linguamesh-linux"
 path = "src/main.rs"
