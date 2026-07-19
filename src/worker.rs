@@ -4383,6 +4383,74 @@ mod tests {
     }
 
     #[test]
+    fn document_job_list_returns_multiple_saved_jobs_for_queue_selection() {
+        let database = TestDatabase::new();
+        let worker = CoreWorker::spawn_with_database(database.path());
+        loop {
+            match worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("startup event")
+            {
+                WorkerEvent::DemoProviderReady { .. } => break,
+                WorkerEvent::ProfileStorageUnavailable(error) => {
+                    panic!("document storage unavailable: {error}");
+                }
+                _ => {}
+            }
+        }
+
+        for (job_id, source_name) in [("queue-job-a", "a.txt"), ("queue-job-b", "b.txt")] {
+            worker
+                .try_send(WorkerCommand::CreateDocumentJob {
+                    job_id: job_id.to_owned(),
+                    job: DocumentJob::from_text(source_name, DocumentFormat::Txt, "one"),
+                })
+                .expect("create document job");
+            loop {
+                match worker
+                    .events
+                    .recv_timeout(Duration::from_secs(5))
+                    .expect("created event")
+                {
+                    WorkerEvent::DocumentJobUpdated(snapshot)
+                        if snapshot.job_id == job_id
+                            && snapshot.state == DocumentJobState::Pending =>
+                    {
+                        break;
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        worker
+            .try_send(WorkerCommand::ListDocumentJobs)
+            .expect("list document jobs");
+        let listed = loop {
+            if let WorkerEvent::DocumentJobsListed { jobs } = worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("document jobs list event")
+            {
+                break jobs;
+            }
+        };
+        let mut listed_ids = listed
+            .iter()
+            .map(|snapshot| snapshot.job_id.as_str())
+            .collect::<Vec<_>>();
+        listed_ids.sort_unstable();
+        assert_eq!(listed_ids, ["queue-job-a", "queue-job-b"]);
+        assert!(
+            listed
+                .iter()
+                .all(|snapshot| snapshot.state == DocumentJobState::Pending)
+        );
+        shutdown(&worker);
+    }
+
+    #[test]
     fn document_job_translation_runs_each_pending_segment_and_reconstructs_output() {
         let database = TestDatabase::new();
         let (worker, _, endpoint) = started_worker_with_database(database.path());
