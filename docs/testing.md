@@ -18,10 +18,13 @@ machine-generated drafts pending human review.
 The routing-profile worker regression saves, lists, and deletes a Core `routing_planner_v1` profile
 without persisting provider endpoints, credentials, or translation content. A separate regression
 selects a saved candidate, reconnects it through the host secret broker, and completes an ordinary
-text request while asserting the typed decision event. The GTK dialog creates only a bounded
-local-preferred default from saved provider/model selections; document jobs and complete automatic
-or ordered fallback chains remain later validation slices. When a routing profile is selected, it
-takes precedence over the separate explicit fallback checkbox for that ordinary text request.
+text request while asserting the typed decision event. The ordered-chain regression stops the first
+saved provider before dispatch, verifies the next eligible candidate is selected, and asserts the
+typed routing-fallback event and translated output. The worker also retries a retryable stream
+failure across remaining automatic or ordered candidates, preserving event ordering and partial
+output. The GTK dialog creates only a bounded local-preferred default from saved provider/model
+selections. When a routing profile is selected, it takes precedence over the separate explicit
+fallback checkbox for that ordinary text request.
 
 ## Host prerequisites
 

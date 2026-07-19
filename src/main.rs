@@ -4556,6 +4556,9 @@ fn apply_worker_event(
                     fallback_count,
                 });
         }
+        WorkerEvent::RoutingFallbackSelected { .. } => {
+            bindings.fallback_notice.set(true);
+        }
         WorkerEvent::RoutingProfileSaved(_) => {
             if let Err(error) = worker.command_handle().list_routing_profiles() {
                 state.borrow_mut().record_client_error(error.to_string());
