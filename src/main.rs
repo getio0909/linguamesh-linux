@@ -6350,8 +6350,10 @@ mod tests {
         assert!(!bindings.remove_saved_profile.is_sensitive());
         assert!(bindings.connect.is_sensitive());
         let demo_endpoint = bindings.provider_endpoint.text().to_string();
-        state.borrow_mut().set_locale(UiLocale::SimplifiedChinese);
-        refresh_ui(&bindings, &state.borrow());
+        bindings.locale.set_selected(1);
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            state.borrow().locale() == UiLocale::SimplifiedChinese
+        });
         show_new_profile_in_form(&bindings, &state.borrow())
             .expect("initialize localized provider profile form");
         assert_eq!(
@@ -6370,8 +6372,10 @@ mod tests {
         });
         assert_eq!(bindings.provider_name.text().as_str(), "用户自定义提供商");
         bindings.provider_endpoint.set_text(&demo_endpoint);
-        state.borrow_mut().set_locale(UiLocale::English);
-        refresh_ui(&bindings, &state.borrow());
+        bindings.locale.set_selected(0);
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            state.borrow().locale() == UiLocale::English
+        });
         apply_worker_event(
             &bindings,
             &state,
