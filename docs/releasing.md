@@ -22,8 +22,10 @@ persistently activated row but never auto-connects, so a credential must be ente
 required. A derived Provider setup card guides configuration, explicit connection, and deliberate
 model selection without storing a completion flag, distinguishes worker failure from startup, and
 shows the confirmed next-request stable ID/model identity.
-The external-provider path includes a deterministic Ollama-compatible OpenAI `/v1/` loopback
-fixture; it does not claim native Ollama `/api` or a running third-party daemon. Persistent
+The external-provider path includes deterministic Ollama-compatible OpenAI `/v1/` and native
+`/api/` loopback fixtures; they do not claim interoperability with a running third-party daemon.
+The native Ollama preset is currently exercised through the worker test path, while the GTK form
+remains a generic endpoint form. Persistent
 secret references use the Linux GIO Secret Service adapter and fail closed when the desktop keyring
 is unavailable or requires an interactive prompt. The native workflow
 pins reviewed Core functional revision

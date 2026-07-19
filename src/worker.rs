@@ -3544,6 +3544,7 @@ mod tests {
         Authenticated(&'static str),
         Delayed(Duration),
         OllamaCompatible,
+        OllamaNative,
     }
 
     static TEST_DATABASE_COUNTER: AtomicUsize = AtomicUsize::new(0);
@@ -3787,6 +3788,7 @@ mod tests {
                     .build()
                     .expect("external provider runtime");
                 runtime.block_on(async move {
+                    let native_ollama = matches!(&mode, FakeMode::OllamaNative);
                     let server = match mode {
                         FakeMode::Standard => FakeProviderServer::start().await,
                         FakeMode::Authenticated(required_secret) => {
@@ -3801,11 +3803,16 @@ mod tests {
                         FakeMode::OllamaCompatible => {
                             FakeProviderServer::start_ollama_compatible().await
                         }
+                        FakeMode::OllamaNative => FakeProviderServer::start_ollama_native().await,
                     }
                     .expect("external fake provider");
                     ready_sender
                         .send((
-                            server.base_url(),
+                            if native_ollama {
+                                server.ollama_base_url()
+                            } else {
+                                server.base_url()
+                            },
                             server.model_request_counter(),
                             server.chat_request_counter(),
                         ))
@@ -3874,7 +3881,11 @@ mod tests {
             ProviderProfileId::parse(id).expect("profile ID"),
             format!("{id} display name"),
             preset_id,
-            "openai_chat_completions",
+            if preset_id == "ollama" {
+                "ollama_chat"
+            } else {
+                "openai_chat_completions"
+            },
             endpoint,
             secret_ref,
         )
@@ -5038,6 +5049,24 @@ mod tests {
             .expect("ollama-compatible provider connection");
         assert!(models.iter().any(|model| model.id == "llama3.2:latest"));
         select_event(&worker, "ollama-loopback", "llama3.2:latest").expect("select Ollama model");
+        let (output, terminal) = translate(&worker, "llama3.2:latest");
+        assert_eq!(output, "你好，Ollama！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        assert_eq!(external.chat_requests.load(Ordering::SeqCst), 1);
+        shutdown(&worker);
+    }
+
+    #[test]
+    fn native_ollama_provider_translates_without_secret() {
+        let external = ExternalFakeProvider::start(FakeMode::OllamaNative);
+        let (worker, _) = started_worker();
+        let runtime =
+            profile_with_preset("ollama-native", "ollama", &external.endpoint, None, None);
+        let models = connect(&worker, runtime, None, PersistenceIntent::SessionOnly)
+            .expect("native Ollama provider connection");
+        assert!(models.iter().any(|model| model.id == "llama3.2:latest"));
+        select_event(&worker, "ollama-native", "llama3.2:latest")
+            .expect("select native Ollama model");
         let (output, terminal) = translate(&worker, "llama3.2:latest");
         assert_eq!(output, "你好，Ollama！");
         assert!(matches!(terminal, TranslationEvent::Completed { .. }));

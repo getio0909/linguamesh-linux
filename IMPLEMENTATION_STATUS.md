@@ -1,8 +1,31 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics including accessible document progress, live AT-SPI tree export checks, a headless GTK keyboard traversal fixture for tested controls, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF document-job translation with sequential segment persistence, bounded DOCX/PPTX/XLSX/EPUB package reconstruction and resource retention, bounded optional image-only PDF OCR with page-marked text output, page-aware text-PDF reconstruction with structured HTML fallback, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, an Ollama-compatible OpenAI loopback discovery and streaming fixture, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; source-referenced Linux gettext keys are statically checked against the canonical catalog; native Ollama `/api` interoperability, Orca speech, end-user prompt acceptance, visual/translated copy review, other clients, and release artifacts remain open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics including accessible document progress, live AT-SPI tree export checks, a headless GTK keyboard traversal fixture for tested controls, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF document-job translation with sequential segment persistence, bounded DOCX/PPTX/XLSX/EPUB package reconstruction and resource retention, bounded optional image-only PDF OCR with page-marked text output, page-aware text-PDF reconstruction with structured HTML fallback, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, both Ollama-compatible OpenAI `/v1/` and native Ollama `/api` deterministic discovery/streaming fixtures, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; source-referenced Linux gettext keys are statically checked against the canonical catalog; a running third-party Ollama daemon, Orca speech, end-user prompt acceptance, visual/translated copy review, other clients, and release artifacts remain open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
+
+## 2026-07-19 — Native Ollama `/api` worker checkpoint
+
+Assumption: Linux-first local-model support needs the native Ollama `/api` contract in addition to
+the already covered OpenAI-compatible `/v1/` surface; a running third-party daemon remains an
+external runtime gate.
+
+The worker now creates an explicit `ollama_chat` profile for the catalog's loopback-only `ollama`
+preset. It discovers `llama3.2:latest` through `/api/tags`, requires deliberate model selection,
+and streams `你好，Ollama！` through `/api/chat` NDJSON without a secret. Core owns endpoint policy,
+bounded response parsing, cancellation, protected-span restoration, and completion validation;
+Linux only supplies the profile and exercises the real worker path against the deterministic
+fixture. The GTK form still exposes the generic OpenAI-compatible endpoint field, so end-user
+preset selection for native Ollama remains a follow-up UI task.
+
+Validated locally:
+
+- `cargo test --features demo-provider --lib --offline` — passed: 105 tests, 2 ignored, 0 failed.
+- Core workspace format, check, Clippy, and all-feature offline tests — passed at the matching Core
+  worktree revision.
+
+The fixture proves the native wire contract and does not claim a third-party daemon, GPU, Orca,
+visual review, or stable release.
 
 ## 2026-07-19 — Ollama-compatible local endpoint checkpoint
 

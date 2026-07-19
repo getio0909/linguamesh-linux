@@ -1,5 +1,12 @@
 # Testing and Validation
 
+The Linux worker tests cover both local-model wire contracts: the `local-loopback` preset uses
+OpenAI-compatible `/v1/` discovery and SSE, while the `ollama` preset uses native `/api/tags`
+discovery and `/api/chat` NDJSON streaming. The native fixture asserts deliberate model selection,
+fragmented UTF-8 handling, cancellation, and the translated `你好，Ollama！` output without a
+credential. These tests do not replace interoperability testing against a running third-party
+Ollama daemon.
+
 ## Host prerequisites
 
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required

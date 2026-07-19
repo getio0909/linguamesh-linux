@@ -61,6 +61,12 @@ prompt construction. The adapter restores those spans across split streamed delt
 missing, duplicate, or changed markers as typed malformed responses; Linux therefore never renders
 provider output that structurally drops one of these spans.
 
+The provider catalog's `local-loopback` preset uses the OpenAI-compatible `/v1/` adapter, while its
+loopback-only `ollama` preset uses Core's native `/api/` adapter. The worker's deterministic native
+fixture covers `/api/tags` model discovery and `/api/chat` NDJSON streaming with explicit model
+selection. The GTK form currently remains a generic endpoint form; native Ollama preset selection
+and interoperability with an independently running daemon are not yet release claims.
+
 The Linux text workspace adds an in-memory request-level glossary field. Core validates duplicate
 rules and credential-shaped terms, selects only locale-matching entries, protects immutable names,
 and restores required target terms after streaming; glossary content is not part of saved provider
