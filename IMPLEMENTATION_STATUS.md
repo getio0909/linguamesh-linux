@@ -4,6 +4,22 @@ Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline 
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
+## 2026-07-19 — GTK AT-SPI fixture cleanup checkpoint
+
+Assumption: a successful AT-SPI assertion must also terminate its private GTK/D-Bus/Xvfb processes
+within a bounded interval; a runner cancellation after the assertion is not valid gate evidence.
+
+- Push Native run `29684324260` printed `GTK AT-SPI fixture passed` at `11:01:38Z`, but its cleanup
+  remained active until the 30-minute job cancellation at `11:29:49Z`; the run is recorded as
+  cancelled, not passed.
+- `tools/run-gtk-atspi-test.sh` now bounds termination and reaping of the application, window manager,
+  and AT-SPI launcher, escalating to `SIGKILL` after five seconds per process so later Wayland/build
+  gates cannot be starved by a successful-but-leaking fixture.
+- Local `bash -n tools/run-gtk-atspi-test.sh` and `git diff --check` passed. The full six remote gates
+  must be rerun for this cleanup fix and the Linux PPTX worker checkpoint.
+
+This records a validation failure and its bounded cleanup correction without claiming remote success.
+
 ## 2026-07-19 — Linux PPTX worker end-to-end checkpoint
 
 Assumption: Linux Milestone 6 evidence must exercise persisted worker translation for PPTX, not only

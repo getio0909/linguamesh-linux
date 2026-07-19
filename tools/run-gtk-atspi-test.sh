@@ -41,9 +41,25 @@ XDG_CACHE_HOME="$workspace/cache" \
     export GDK_BACKEND=x11
     export GTK_A11Y=atspi
     mkdir -p "$XDG_DATA_HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME"
+    terminate_inner_process() {
+      local pid="${1:-}"
+      if [[ -z "$pid" ]]; then
+        return
+      fi
+      kill "$pid" >/dev/null 2>&1 || true
+      for _ in {1..50}; do
+        if ! kill -0 "$pid" >/dev/null 2>&1; then
+          break
+        fi
+        sleep 0.1
+      done
+      kill -KILL "$pid" >/dev/null 2>&1 || true
+      wait "$pid" >/dev/null 2>&1 || true
+    }
     cleanup_inner() {
-      kill "${app_pid:-}" "${wm_pid:-}" "${a11y_pid:-}" >/dev/null 2>&1 || true
-      wait "${app_pid:-}" "${wm_pid:-}" "${a11y_pid:-}" >/dev/null 2>&1 || true
+      terminate_inner_process "${app_pid:-}"
+      terminate_inner_process "${wm_pid:-}"
+      terminate_inner_process "${a11y_pid:-}"
     }
     trap cleanup_inner EXIT
     /usr/libexec/at-spi-bus-launcher --launch-immediately --screen-reader=1 \

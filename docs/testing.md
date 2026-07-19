@@ -343,6 +343,10 @@ The GitHub Actions native workflow pins Core revision
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
 namespace test through the unprivileged path.
+
+The GTK AT-SPI fixture bounds cleanup of its private application, window manager, and accessibility
+launcher processes; a fixture that prints successful accessibility assertions but cannot reap its
+processes is recorded as a failed gate rather than accepted as evidence.
 The current Linux diagnostics localization revision `85b9d45569ce840c17dc0acc7d7366d6810be48e`
 contains 334 catalog messages and bundle SHA-256
 `028d25b3637fbc19d41d497a860b414353615b9576db6f852a9f236bcbe770ce`; the source-level catalog
