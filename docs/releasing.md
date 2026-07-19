@@ -29,7 +29,7 @@ remains a generic endpoint form. Persistent
 secret references use the Linux GIO Secret Service adapter and fail closed when the desktop keyring
 is unavailable or requires an interactive prompt. The native workflow
 pins reviewed Core functional revision
-`0d0d475d22129e8211333ee8f664a7669948ce3a`, whose storage delta adds
+`123d5c4d7a76873e597895763ca5d78e1ea42ea0`, whose storage delta adds
 `SQLITE_OPEN_NOFOLLOW` and whose text path adds protected-span, request-level glossary, and
 bounded long-text restoration, and the bounded SRT/WebVTT/CSV/JSON/HTML document contract, rather than checking
 out a floating branch. Functional revision
