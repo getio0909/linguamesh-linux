@@ -9,8 +9,13 @@ selected candidates; drag/drop and screen-reader copy review remain separate acc
   persistence, so the Core profile receives the exact Ordered-mode sequence the user selected.
 - The bounded `move_routing_profile_id` helper rejects unknown IDs and out-of-range moves; its
   regression covers forward, reverse, boundary, and missing-candidate behavior.
-- Local validation is pending publication of this commit; the preceding candidate-selection head
-  passed 131 tests (`129 passed; 2 ignored`) and all six Linux push/PR gates.
+- Commit `251cdbe99bb5a347a7a7d77f56ba1e35712c063f` passed local GUI compilation, strict Clippy,
+  132 tests (`130 passed; 2 ignored`), localization synchronization/key audit, Flatpak metadata
+  validation, and diff checks.
+- Push gates passed: Foundation `29697585211`, Native Linux `29697585189`, and Flatpak Linux
+  `29697585215`. PR gates passed: Foundation `29697586335`, Native Linux `29697586345`, and
+  Flatpak Linux `29697586336`. The preceding `e939c0a` Native runs exposed only strict Clippy's
+  `type_complexity`; the follow-up type alias is included in this validated commit.
 
 This advances Ordered-mode candidate editing without claiming drag/drop semantics, complete candidate
 management, other clients, visual/Orca review, release artifacts, or a stable release.
