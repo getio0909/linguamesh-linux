@@ -6129,14 +6129,21 @@ mod tests {
         );
         show_new_profile_in_form(&bindings, &state.borrow())
             .expect("initialize localized provider profile form");
+        let context = glib::MainContext::default();
         assert_eq!(
             bindings.provider_name.text().as_str(),
             "本地 OpenAI 兼容提供商"
         );
         bindings.provider_preset.set_selected(1);
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            bindings.provider_name.text().as_str() == "本地 Ollama 提供商"
+        });
         assert_eq!(bindings.provider_name.text().as_str(), "本地 Ollama 提供商");
         bindings.provider_name.set_text("用户自定义提供商");
         bindings.provider_preset.set_selected(0);
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            bindings.provider_name.text().as_str() == "用户自定义提供商"
+        });
         assert_eq!(bindings.provider_name.text().as_str(), "用户自定义提供商");
         assert_eq!(bindings.connect.label().as_deref(), Some("_连接"));
         assert_eq!(
@@ -6336,7 +6343,6 @@ mod tests {
         assert!(!bindings.remove_saved_profile.is_sensitive());
         assert!(!bindings.connect.is_sensitive());
 
-        let context = glib::MainContext::default();
         spin_main_context_until(&context, Duration::from_secs(5), || {
             state.borrow().worker_ready()
                 && bindings.provider_endpoint.text() != DEFAULT_PROVIDER_ENDPOINT
