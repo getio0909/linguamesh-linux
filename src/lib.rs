@@ -4,6 +4,8 @@ pub mod model;
 
 pub mod file_import;
 
+pub mod ocr;
+
 pub mod localization;
 
 #[cfg(feature = "demo-provider")]

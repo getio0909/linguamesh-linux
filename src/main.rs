@@ -82,6 +82,7 @@ struct UiBindings {
     export_output: gtk::Button,
     open_output: gtk::Button,
     open_source: gtk::Button,
+    ocr_enabled: gtk::CheckButton,
     document_jobs: gtk::Button,
     stop: gtk::Button,
     pause_document: gtk::Button,
@@ -103,6 +104,7 @@ struct UiBindings {
     document_job_state: Rc<Cell<Option<DocumentJobState>>>,
     document_progress: Rc<Cell<Option<(usize, usize)>>>,
     document_warnings: Rc<RefCell<Vec<DocumentWarning>>>,
+    ocr_pending: Rc<Cell<bool>>,
     export_notice: Rc<Cell<bool>>,
     fallback_notice: Rc<Cell<bool>>,
     glossary_notice: Rc<Cell<bool>>,
@@ -428,6 +430,17 @@ fn create_window(
         "tooltip.open_source",
         "Load a UTF-8 text file into the source editor",
     )));
+    let ocr_enabled = gtk::CheckButton::with_mnemonic(&localized_mnemonic(
+        display_locale,
+        "settings.enable_ocr",
+        "Enable OCR for image-only PDF",
+    ));
+    ocr_enabled.set_focusable(true);
+    ocr_enabled.set_tooltip_text(Some(&localization::text(
+        display_locale,
+        "tooltip.enable_ocr",
+        "When enabled, use the optional Tesseract plugin for image-only PDF pages and import page-marked text",
+    )));
     let document_jobs = gtk::Button::with_mnemonic(&localized_mnemonic(
         display_locale,
         "action.document_jobs",
@@ -496,6 +509,7 @@ fn create_window(
         "Retry document",
     ));
     action_row.append(&open_source);
+    action_row.append(&ocr_enabled);
     action_row.append(&document_jobs);
     action_row.append(&translate);
     action_row.append(&export_output);
@@ -586,6 +600,7 @@ fn create_window(
         export_output,
         open_output,
         open_source,
+        ocr_enabled,
         document_jobs,
         stop,
         pause_document,
@@ -607,6 +622,7 @@ fn create_window(
         document_job_state: Rc::new(Cell::new(None)),
         document_progress: Rc::new(Cell::new(None)),
         document_warnings: Rc::new(RefCell::new(Vec::new())),
+        ocr_pending: Rc::new(Cell::new(false)),
         export_notice: Rc::new(Cell::new(false)),
         fallback_notice: Rc::new(Cell::new(false)),
         glossary_notice: Rc::new(Cell::new(false)),
@@ -739,6 +755,10 @@ fn install_keyboard_focus_probe(
         (
             "open_source",
             bindings.open_source.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "ocr_enabled",
+            bindings.ocr_enabled.clone().upcast::<gtk::Widget>(),
         ),
         (
             "document_jobs",
@@ -3070,8 +3090,27 @@ fn load_source_file(
                         if std::env::var_os("LINGUAMESH_TEST_FILE_DIALOG").is_some() {
                             println!("GTK file chooser application fixture completed the asynchronous GIO read.");
                         }
-                        let text = job.source_text();
                         let job_id = OperationId::new().as_str().to_owned();
+                        let image_only_pdf = matches!(job.format, DocumentFormat::Pdf)
+                            && job.pending_count() == 0
+                            && warnings.iter().any(|warning| {
+                                warning.kind == DocumentWarningKind::PdfImageOnlyPage
+                            });
+                        *load_bindings.source_uri.borrow_mut() = Some(source_uri.clone());
+                        if image_only_pdf && load_bindings.ocr_enabled.is_active() {
+                            load_bindings.ocr_pending.set(true);
+                            if let Err(error) = load_worker.try_send(WorkerCommand::OcrDocumentJob {
+                                job_id,
+                                source_name: source_name.clone(),
+                                contents: contents.as_ref().to_vec(),
+                            }) {
+                                load_bindings.ocr_pending.set(false);
+                                load_state.borrow_mut().record_client_error(error.to_string());
+                            }
+                            refresh_ui(&load_bindings, &load_state.borrow());
+                            return;
+                        }
+                        let text = job.source_text();
                         if let Err(error) = load_worker.try_send(WorkerCommand::CreateDocumentJob {
                             job_id: job_id.clone(),
                             job,
@@ -3085,7 +3124,6 @@ fn load_source_file(
                         load_bindings.document_job_guard.set(false);
                         *load_bindings.document_job_id.borrow_mut() = Some(job_id);
                         *load_bindings.document_warnings.borrow_mut() = warnings;
-                        *load_bindings.source_uri.borrow_mut() = Some(source_uri.clone());
                         load_bindings.error.set_label("");
                         load_bindings.error.set_visible(false);
                     }
@@ -3888,8 +3926,11 @@ fn apply_worker_event(
         WorkerEvent::TranslationHistoryActionRejected(error)
         | WorkerEvent::SecretCleanupFailed { error, .. }
         | WorkerEvent::TranslationMemoryActionRejected(error)
-        | WorkerEvent::DocumentJobActionRejected(error)
         | WorkerEvent::DocumentJobStorageUnavailable(error) => {
+            state.borrow_mut().record_client_error(error.to_string());
+        }
+        WorkerEvent::DocumentJobActionRejected(error) => {
+            bindings.ocr_pending.set(false);
             state.borrow_mut().record_client_error(error.to_string());
         }
         WorkerEvent::TranslationHistoryPolicyRejected(error) => {
@@ -3983,6 +4024,7 @@ fn apply_worker_event(
             begin_document_binary_export(bindings, state, &source_name, contents);
         }
         WorkerEvent::DocumentJobUpdated(snapshot) => {
+            bindings.ocr_pending.set(false);
             *bindings.document_job_id.borrow_mut() = Some(snapshot.job_id.clone());
             bindings.document_job_state.set(Some(snapshot.state));
             bindings
@@ -4426,6 +4468,16 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     );
     let document_jobs = localization::text(locale, "action.document_jobs", "Document jobs");
     let document_jobs_label = format!("_{document_jobs}");
+    let enable_ocr = localization::text(
+        locale,
+        "settings.enable_ocr",
+        "Enable OCR for image-only PDF",
+    );
+    let enable_ocr_tooltip = localization::text(
+        locale,
+        "tooltip.enable_ocr",
+        "When enabled, use the optional Tesseract plugin for image-only PDF pages and import page-marked text",
+    );
     let translate = localization::text(locale, "action.translate", "Translate");
     let stop = localization::text(locale, "accessibility.stop_translation", "Stop translation");
     let pause = localization::text(locale, "action.pause_document", "Pause document");
@@ -4466,6 +4518,12 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     bindings
         .open_source
         .set_tooltip_text(Some(&open_source_tooltip));
+    bindings
+        .ocr_enabled
+        .set_label(Some(&format!("_{enable_ocr}")));
+    bindings
+        .ocr_enabled
+        .set_tooltip_text(Some(&enable_ocr_tooltip));
     bindings.document_jobs.set_label(&document_jobs_label);
     bindings
         .document_jobs
@@ -4928,7 +4986,9 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         });
     bindings.output.set_text(state.output());
     let document_state = bindings.document_job_state.get();
-    let status_label = if state.worker_unavailable() {
+    let status_label = if bindings.ocr_pending.get() {
+        localization::text(state.locale(), "status.ocr_running", "Running OCR")
+    } else if state.worker_unavailable() {
         localization::text(state.locale(), "status.unavailable", "Unavailable")
     } else if !state.worker_ready() {
         localization::text(state.locale(), "status.starting", "Starting")
@@ -5108,8 +5168,10 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         bindings.workspace.reset_state(gtk::AccessibleState::Busy);
         bindings.output_view.reset_state(gtk::AccessibleState::Busy);
     }
+    let ocr_pending = bindings.ocr_pending.get();
     let blocked = state.pending_profile_deletion().is_some()
         || state.pending_model_selection().is_some()
+        || ocr_pending
         || matches!(
             state.status(),
             AppStatus::Connecting | AppStatus::Translating | AppStatus::Cancelling
@@ -5187,10 +5249,13 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         .set_sensitive(bindings.output_uri.borrow().is_some() && !blocked);
     bindings
         .open_source
-        .set_sensitive(source_import_allowed(state));
+        .set_sensitive(source_import_allowed(state) && !ocr_pending);
     bindings
-        .document_jobs
-        .set_sensitive(state.worker_ready() && !blocked && state.profile_storage_available());
+        .ocr_enabled
+        .set_sensitive(state.worker_ready() && !blocked && !document_job_available && !ocr_pending);
+    bindings.document_jobs.set_sensitive(
+        state.worker_ready() && !blocked && !ocr_pending && state.profile_storage_available(),
+    );
     bindings.import_glossary.set_sensitive(!blocked);
     if bindings.incognito.is_active() != state.is_incognito() {
         bindings.incognito.set_active(state.is_incognito());
@@ -5682,6 +5747,7 @@ mod tests {
         ] {
             assert!(button.is_focusable());
         }
+        assert!(bindings.ocr_enabled.is_focusable());
         assert!(bindings.remember_profile.is_focusable());
         assert!(bindings.fallback_enabled.is_focusable());
         assert!(bindings.fallback_profile.is_focusable());

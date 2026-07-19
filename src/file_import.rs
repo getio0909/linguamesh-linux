@@ -1,6 +1,9 @@
 use std::fmt;
 
-use linguamesh_document::{DocumentError, DocumentJob};
+use crate::ocr::OcrPage;
+use linguamesh_document::{
+    DocumentError, DocumentFormat, DocumentJob, DocumentSegment, DocumentSegmentKind,
+};
 
 /// 限制通过原生文本导入进入编辑器的最大字节数。
 pub const MAX_TEXT_FILE_BYTES: usize = 4 * 1024 * 1024;
@@ -61,6 +64,58 @@ pub fn decode_document_job(
     Ok(job)
 }
 
+/// 将页级 OCR 结果转换成保留页码标记的可恢复文本任务。
+pub fn document_job_from_ocr(
+    source_name: &str,
+    pages: &[OcrPage],
+) -> Result<DocumentJob, TextImportError> {
+    if pages.is_empty() {
+        return Err(TextImportError::InvalidStructure);
+    }
+    let source_name = format!("{source_name}.ocr.txt");
+    let mut segments = Vec::new();
+    let mut index = 0_usize;
+    let mut total_bytes = 0_usize;
+    for page in pages {
+        if page.page == 0 || page.text.is_empty() {
+            return Err(TextImportError::InvalidStructure);
+        }
+        let marker = format!("[OCR page {}]", page.page);
+        total_bytes = total_bytes.saturating_add(marker.len() + 1);
+        segments.push(DocumentSegment {
+            index,
+            kind: DocumentSegmentKind::Verbatim,
+            source_text: marker,
+            translated_text: None,
+            line_ending: "\n".to_owned(),
+        });
+        index = index.saturating_add(1);
+        for line in page.text.lines() {
+            if line.is_empty() {
+                continue;
+            }
+            total_bytes = total_bytes.saturating_add(line.len() + 1);
+            segments.push(DocumentSegment {
+                index,
+                kind: DocumentSegmentKind::Prose,
+                source_text: line.to_owned(),
+                translated_text: None,
+                line_ending: "\n".to_owned(),
+            });
+            index = index.saturating_add(1);
+        }
+    }
+    if segments.is_empty() || total_bytes > MAX_TEXT_FILE_BYTES {
+        return Err(TextImportError::TooLarge);
+    }
+    Ok(DocumentJob {
+        format: DocumentFormat::Txt,
+        source_name,
+        segments,
+        package: None,
+    })
+}
+
 fn map_document_error(error: DocumentError) -> TextImportError {
     match error {
         DocumentError::TooLarge | DocumentError::OutputTooLarge => TextImportError::TooLarge,
@@ -78,8 +133,10 @@ fn map_document_error(error: DocumentError) -> TextImportError {
 mod tests {
     use super::{
         MAX_TEXT_FILE_BYTES, TextImportError, decode_document_contents, decode_document_job,
-        decode_text_contents,
+        decode_text_contents, document_job_from_ocr,
     };
+    use crate::ocr::OcrPage;
+    use linguamesh_document::DocumentSegmentKind;
 
     #[test]
     fn decodes_utf8_and_removes_bom() {
@@ -212,5 +269,29 @@ mod tests {
             .map(|segment| segment.source_text.as_str())
             .collect::<Vec<_>>();
         assert_eq!(prose, vec!["Hello ", "world"]);
+    }
+
+    #[test]
+    fn creates_page_marked_text_jobs_from_ocr() {
+        let job = document_job_from_ocr(
+            "scan.pdf",
+            &[
+                OcrPage {
+                    page: 1,
+                    text: "First page".to_owned(),
+                },
+                OcrPage {
+                    page: 2,
+                    text: "Second page".to_owned(),
+                },
+            ],
+        )
+        .expect("OCR document job");
+        assert_eq!(job.source_name, "scan.pdf.ocr.txt");
+        assert_eq!(job.format, linguamesh_document::DocumentFormat::Txt);
+        assert_eq!(job.segments[0].kind, DocumentSegmentKind::Verbatim);
+        assert_eq!(job.segments[0].source_text, "[OCR page 1]");
+        assert_eq!(job.pending_count(), 2);
+        assert_eq!(job.segments[2].source_text, "[OCR page 2]");
     }
 }

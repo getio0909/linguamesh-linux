@@ -1,4 +1,6 @@
+use crate::file_import;
 use crate::model::{ProviderProfile, ProviderProfileId};
+use crate::ocr::{OcrPlugin, TesseractOcr};
 use linguamesh_application::{
     HostSecretBroker, HostSecretRequests, ProviderManager, host_secret_channel,
 };
@@ -110,6 +112,15 @@ pub enum WorkerCommand {
         job_id: String,
         /// 受限文档快照。
         job: DocumentJob,
+    },
+    /// 使用用户主动启用的可选 OCR 插件导入 image-only PDF。
+    OcrDocumentJob {
+        /// 不包含路径的稳定任务标识。
+        job_id: String,
+        /// 仅用于报告的源文件名。
+        source_name: String,
+        /// 受限 PDF 字节，不写入日志或诊断。
+        contents: Vec<u8>,
     },
     /// 顺序翻译一个已持久化的文档任务。
     TranslateDocumentJob {
@@ -493,6 +504,11 @@ enum QueuedCommand {
         job_id: String,
         job: DocumentJob,
     },
+    OcrDocumentJob {
+        job_id: String,
+        source_name: String,
+        contents: Vec<u8>,
+    },
     TranslateDocumentJob {
         job_id: String,
         source_locale: Option<String>,
@@ -690,6 +706,18 @@ impl CoreWorker {
             WorkerCommand::CreateDocumentJob { job_id, job } => self
                 .commands
                 .try_send(QueuedCommand::CreateDocumentJob { job_id, job })
+                .map_err(|_| WorkerSendError),
+            WorkerCommand::OcrDocumentJob {
+                job_id,
+                source_name,
+                contents,
+            } => self
+                .commands
+                .try_send(QueuedCommand::OcrDocumentJob {
+                    job_id,
+                    source_name,
+                    contents,
+                })
                 .map_err(|_| WorkerSendError),
             WorkerCommand::TranslateDocumentJob {
                 job_id,
@@ -1109,6 +1137,7 @@ async fn run_worker(
                 }
                 ActiveStep::Command(Some(
                     QueuedCommand::CreateDocumentJob { .. }
+                    | QueuedCommand::OcrDocumentJob { .. }
                     | QueuedCommand::TranslateDocumentJob { .. }
                     | QueuedCommand::ListDocumentJobs
                     | QueuedCommand::ExportDocumentJob { .. }
@@ -1972,6 +2001,65 @@ async fn run_worker(
                     }
                 }
             }
+            Some(QueuedCommand::OcrDocumentJob {
+                job_id,
+                source_name,
+                contents,
+            }) => {
+                let result = TesseractOcr::default()
+                    .recognize_pdf(&contents)
+                    .map_err(|error| {
+                        let kind = match error {
+                            crate::ocr::OcrError::Unavailable => ErrorKind::UnsupportedCapability,
+                            crate::ocr::OcrError::InvalidDocument
+                            | crate::ocr::OcrError::TooManyPages
+                            | crate::ocr::OcrError::OutputTooLarge
+                            | crate::ocr::OcrError::NoText
+                            | crate::ocr::OcrError::Failed => ErrorKind::InvalidConfiguration,
+                            crate::ocr::OcrError::TimedOut => ErrorKind::Timeout,
+                        };
+                        TranslationError::new(kind, error.to_string())
+                    })
+                    .and_then(|pages| {
+                        file_import::document_job_from_ocr(&source_name, &pages).map_err(|error| {
+                            TranslationError::new(
+                                ErrorKind::InvalidConfiguration,
+                                error.to_string(),
+                            )
+                        })
+                    })
+                    .and_then(|job| {
+                        storage
+                            .as_mut()
+                            .ok_or_else(|| {
+                                TranslationError::new(
+                                    ErrorKind::Persistence,
+                                    "Local document job storage is unavailable.",
+                                )
+                            })
+                            .and_then(|storage| {
+                                storage.save_document_job(&job_id, &job, DocumentJobState::Pending)
+                            })
+                    });
+                match result {
+                    Ok(snapshot) => {
+                        if events
+                            .send(WorkerEvent::DocumentJobUpdated(snapshot))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::DocumentJobActionRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
             Some(QueuedCommand::CreateDocumentJob { job_id, job }) => {
                 let result = storage
                     .as_mut()
@@ -2612,6 +2700,7 @@ fn reject_queued_commands_for_shutdown(
                 WorkerEvent::TranslationMemoryActionRejected(TranslationError::cancelled()),
             ),
             QueuedCommand::CreateDocumentJob { .. }
+            | QueuedCommand::OcrDocumentJob { .. }
             | QueuedCommand::TranslateDocumentJob { .. }
             | QueuedCommand::ListDocumentJobs
             | QueuedCommand::ExportDocumentJob { .. }

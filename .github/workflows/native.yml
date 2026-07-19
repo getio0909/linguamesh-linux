@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           repository: ${{ github.repository_owner }}/linguamesh-l10n
-          ref: c81728faf8679e7a5e9854537ad7c70c046c7800
+          ref: cacc1577bc1a19a94c11faeffa7a63016d54d64e
           path: linguamesh-l10n
           persist-credentials: false
       - name: Install native development headers
@@ -57,10 +57,13 @@ jobs:
             dunst \
             gettext \
             gnome-keyring \
+            imagemagick \
             mount \
+            poppler-utils \
             pkg-config \
             python3 \
             python3-dbus \
+            tesseract-ocr \
             util-linux \
             x11-utils \
             xdotool \
@@ -139,6 +142,9 @@ jobs:
       - name: Run GTK AT-SPI fixture
         working-directory: linguamesh-linux
         run: bash tools/run-gtk-atspi-test.sh
+      - name: Run optional OCR fixture
+        working-directory: linguamesh-linux
+        run: bash tools/run-ocr-test.sh
       - name: Run GTK test on Wayland
         working-directory: linguamesh-linux
         run: dbus-run-session -- bash tools/run-wayland-test.sh

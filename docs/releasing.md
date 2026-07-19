@@ -55,8 +55,10 @@ non-text package resources and rewrites only supported OOXML text parts; malform
 DTD-bearing, or over-limit packages are rejected. EPUB also requires a first `mimetype` entry,
 preserves navigation and resources, translates XHTML/HTML text, and updates OPF language metadata.
 Text PDFs retain page association and available coordinates; reliable ASCII streams are rewritten in
-place, while unsupported encodings use a page-aware HTML alternative. Pixel-identical output and OCR
-for image-only pages are explicitly outside this release claim.
+place, while unsupported encodings use a page-aware HTML alternative. Image-only PDF OCR is an
+optional Linux development capability: it requires separately installed `pdftoppm` and `tesseract`,
+is explicitly enabled by the user, and produces page-marked TXT rather than a reconstructed PDF.
+It is not a pixel-identical output claim and must not be enabled by packaging defaults.
 The Linux UI surfaces Core's bounded page-level warnings for those limitations and uncertain reading
 order without treating them as OCR or pixel-fidelity guarantees.
 Subtitle imports retain cue IDs and timestamps and surface configurable line-length and reading-speed

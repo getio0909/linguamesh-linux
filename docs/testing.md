@@ -153,6 +153,16 @@ done
 msgunfmt l10n/linux/zh-Hans/LC_MESSAGES/linguamesh.mo >/dev/null
 ```
 
+The opt-in image-only PDF path is validated with a private generated fixture. It requires
+ImageMagick, Poppler, and Tesseract and runs the ignored external-plugin test explicitly:
+
+```sh
+bash tools/run-ocr-test.sh
+```
+
+The fixture proves page text is recovered through the bounded `pdftoppm`/`tesseract` boundary;
+ordinary tests keep OCR disabled and cover unavailable-tool, malformed-PDF, and safety-limit paths.
+
 The notification transport runner starts a private `org.freedesktop.Notifications` fixture service and
 captures the real GTK translation test's `Notify` call on a private D-Bus session. It requires fixed
 generic title and body text and absence of the source and translated strings. This proves the

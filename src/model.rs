@@ -1633,6 +1633,31 @@ fn additional_state_error_message(message: &str) -> Option<(&'static str, &'stat
             "error.storage.path_components_inspect",
             "The profile database path components could not be inspected.",
         ),
+        "Optional OCR tools are unavailable." => (
+            "error.ocr_unavailable",
+            "Optional OCR tools are unavailable.",
+        ),
+        "The PDF could not be rendered for OCR." => (
+            "error.ocr_invalid_document",
+            "The PDF could not be rendered for OCR.",
+        ),
+        "The PDF has too many pages for OCR." => (
+            "error.ocr_too_many_pages",
+            "The PDF has too many pages for OCR.",
+        ),
+        "OCR timed out before completing." => {
+            ("error.ocr_timed_out", "OCR timed out before completing.")
+        }
+        "The OCR output exceeds the safety limit." => (
+            "error.ocr_output_too_large",
+            "The OCR output exceeds the safety limit.",
+        ),
+        "OCR did not find readable text." => {
+            ("error.ocr_no_text", "OCR did not find readable text.")
+        }
+        "The optional OCR process failed." => {
+            ("error.ocr_failed", "The optional OCR process failed.")
+        }
         _ => return None,
     })
 }

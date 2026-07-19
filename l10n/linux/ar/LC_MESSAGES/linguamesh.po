@@ -1811,3 +1811,63 @@ msgstr "Cancelled"
 msgctxt "status.document_job_failed"
 msgid "Failed"
 msgstr "Failed"
+
+#. Opt-in control for OCR of image-only PDF pages.
+#, fuzzy
+msgctxt "settings.enable_ocr"
+msgid "Enable OCR for image-only PDF"
+msgstr "Enable OCR for image-only PDF"
+
+#. Tooltip explaining the optional OCR plugin and page-marked text import.
+#, fuzzy
+msgctxt "tooltip.enable_ocr"
+msgid "When enabled, use the optional Tesseract plugin for image-only PDF pages and import page-marked text"
+msgstr "When enabled, use the optional Tesseract plugin for image-only PDF pages and import page-marked text"
+
+#. Status shown while the optional OCR plugin is processing a PDF.
+#, fuzzy
+msgctxt "status.ocr_running"
+msgid "Running OCR"
+msgstr "Running OCR"
+
+#. Error shown when optional OCR tools are unavailable.
+#, fuzzy
+msgctxt "error.ocr_unavailable"
+msgid "Optional OCR tools are unavailable."
+msgstr "Optional OCR tools are unavailable."
+
+#. Error shown when a PDF cannot be rendered for OCR.
+#, fuzzy
+msgctxt "error.ocr_invalid_document"
+msgid "The PDF could not be rendered for OCR."
+msgstr "The PDF could not be rendered for OCR."
+
+#. Error shown when a PDF exceeds the OCR page limit.
+#, fuzzy
+msgctxt "error.ocr_too_many_pages"
+msgid "The PDF has too many pages for OCR."
+msgstr "The PDF has too many pages for OCR."
+
+#. Error shown when OCR exceeds its time limit.
+#, fuzzy
+msgctxt "error.ocr_timed_out"
+msgid "OCR timed out before completing."
+msgstr "OCR timed out before completing."
+
+#. Error shown when OCR output exceeds its safety limit.
+#, fuzzy
+msgctxt "error.ocr_output_too_large"
+msgid "The OCR output exceeds the safety limit."
+msgstr "The OCR output exceeds the safety limit."
+
+#. Error shown when OCR finds no readable text.
+#, fuzzy
+msgctxt "error.ocr_no_text"
+msgid "OCR did not find readable text."
+msgstr "OCR did not find readable text."
+
+#. Error shown when the optional OCR process fails.
+#, fuzzy
+msgctxt "error.ocr_failed"
+msgid "The optional OCR process failed."
+msgstr "The optional OCR process failed."

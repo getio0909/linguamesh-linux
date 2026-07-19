@@ -104,6 +104,14 @@ OPF language metadata at export. Encrypted, malformed, traversal, and DTD-bearin
 Multi-job queue presentation remains outside
 this slice.
 
+Image-only PDF pages are a separate, explicit opt-in path. The GTK toggle is only used when Core
+reports a PDF with no extractable text. The worker then invokes `pdftoppm` and `tesseract` through
+`src/ocr.rs` without a shell, with safe language identifiers, private `0700` temporary storage,
+`0600` input files, bounded PDF/page/image/text/output sizes, and a 30-second process deadline.
+The plugin returns page-numbered text that Linux stores as a normal TXT document job; it never
+modifies the source PDF. Missing tools, malformed input, empty recognition, timeout, and limit
+breaches become fixed localized errors, and the default path remains unchanged when OCR is off.
+
 With `gui`, `src/main.rs` binds this state and worker to GTK 4/libadwaita widgets. GTK objects remain
 on the main context, which processes at most 64 queued events per timer tick without performing
 network work. The shell exposes a saved-profile dropdown, provider name, endpoint, optional session
@@ -114,6 +122,8 @@ file** import, single-file drag-and-drop onto the source editor, Translate/Stop,
 typed errors, appearance, runtime catalog-backed locale preference, **View history**, **Clear history**,
 **View translation memory**, **Clear translation memory**, and redacted
 diagnostics.
+The native file action also exposes an explicit **OCR** toggle for image-only PDFs; while OCR is
+running, conflicting import and translation controls are disabled and the status is localized.
 An always-current Provider setup card explains the next required action, warns when saved-profile
 storage is unavailable, distinguishes fatal worker shutdown from startup, and identifies the
 confirmed provider stable ID/model that will receive the next request. It never connects, selects,

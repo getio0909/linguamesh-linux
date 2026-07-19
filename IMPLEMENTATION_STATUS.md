@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, live AT-SPI tree export checks, a headless GTK keyboard traversal fixture for tested controls, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF document-job translation with sequential segment persistence, bounded DOCX/PPTX/XLSX/EPUB package reconstruction and resource retention, page-aware text-PDF reconstruction with structured HTML fallback, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; Orca speech, end-user prompt acceptance, multi-job GUI queue presentation, OCR, and release artifacts remain open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, live AT-SPI tree export checks, a headless GTK keyboard traversal fixture for tested controls, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF document-job translation with sequential segment persistence, bounded DOCX/PPTX/XLSX/EPUB package reconstruction and resource retention, bounded optional image-only PDF OCR with page-marked text output, page-aware text-PDF reconstruction with structured HTML fallback, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; Orca speech, end-user prompt acceptance, complete visible-string gettext coverage, other clients, and release artifacts remain open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -130,8 +130,9 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
   DOCX/PPTX/XLSX/EPUB packages retain non-text resources and rewrite supported text parts under bounded
   archive/path/XML checks; binary export uses the original extension and rejects malformed or incomplete jobs.
   PDF pages retain page association and available coordinates; safe ASCII streams are rewritten in place,
-  while unsupported encodings use a page-aware HTML alternative and image-only pages are reported as
-  outside the current OCR scope.
+  while unsupported encodings use a page-aware HTML alternative. Image-only pages remain unchanged
+  unless the user enables the bounded optional OCR plugin, which imports page-marked text without
+  rewriting the source PDF.
   Stop persists cancellation, and Incognito rejects new document jobs rather than creating durable
   progress. The GTK surface still lacks a dedicated multi-job queue.
 - The GTK boundary provides baseline accessibility semantics: `Main`, `Heading`, `Status`, and
@@ -1117,3 +1118,21 @@ messages and bundle checksum `d2f4fd439b5fbc8fc6d48f1be0a91ee92f558c70b851271d64
 
 Complete visible-string gettext coverage, Orca speech, physical desktop review, OCR, other clients,
 and stable-release evidence remain open.
+
+## 2026-07-19 — Linux optional image-only PDF OCR checkpoint
+
+Assumption: OCR is an explicitly enabled Linux capability. The external `pdftoppm` and `tesseract`
+processes receive bounded input and output, run without a shell in a private `0700` temporary
+directory, and are time-limited. OCR creates a page-marked TXT document job and never rewrites the
+source PDF or claims pixel-identical reconstruction.
+
+- Added a Tesseract plugin boundary with fixed localized unavailable, malformed-document, page,
+  timeout, output, no-text, and process-failure errors. The GTK source-file action exposes an OCR
+  toggle only for image-only PDF pages and keeps the original source URI unchanged.
+- Added page-marked OCR job conversion, worker persistence, localized progress/error rendering, and
+  a private generated ImageMagick PDF fixture runner for the external plugin.
+- Synchronized Linux PO/MO resources to l10n `cacc1577bc1a19a94c11faeffa7a63016d54d64e`.
+- Local `cargo fmt --all --check`, all-target/all-feature `cargo check`, strict Clippy, locked
+  no-default tests (64 passed, 1 ignored), demo-provider tests (102 passed, 2 ignored), OCR
+  fixture, l10n sync check, shell syntax, and `git diff --check` passed.
+- Native, Foundation, and Flatpak CI evidence remains required for this new revision.

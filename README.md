@@ -93,7 +93,11 @@ spine, CSS, and binary resources, translate visible XHTML/HTML text, and update 
 metadata at export time. Text PDFs preserve page association and available coordinates; reliable
 ASCII text streams are rewritten in place, while unsupported PDF text encoding exports a page-aware
 HTML file with fidelity limitations rather than claiming pixel-identical reconstruction. Image-only
-pages remain explicit PDF limitations and are not OCR'd by this Linux slice.
+pages remain unchanged by default. When the user enables **OCR**, Linux invokes the optional
+`pdftoppm`/`tesseract` plugin under bounded input, page, output, and timeout limits and imports a
+page-marked TXT document; it never rewrites the original PDF or claims pixel-identical reconstruction.
+If the tools are unavailable or fail, the original image-only PDF remains intact and the fixed error
+is shown in the UI.
 The editor surfaces Core's structured warnings for limited reconstruction, image-only pages, and
 uncertain reading order without including source content in diagnostics.
 
