@@ -84,7 +84,8 @@ candidate checkboxes with adjacent up/down controls; the icon controls use catal
 labels, rows can be dragged before another candidate, and the selected list is persisted in the
 displayed order for Ordered mode. Existing records load their mode, explicit fallback consent,
 candidate order, and stable ID back into the same editor; saving replaces that ID through the
-storage upsert without exposing secrets.
+storage upsert without exposing secrets. New profiles use Core-compatible 1–128 byte ASCII IDs;
+edit mode locks the existing ID so references remain stable.
 
 Core also performs bounded long-text chunking before provider calls. It prefers paragraph, sentence,
 and whitespace boundaries, treats protected markers as indivisible, streams chunks in source order,

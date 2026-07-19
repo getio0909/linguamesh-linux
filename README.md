@@ -178,8 +178,8 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`aea172c15f421da09a0c848accae7c443820fb27` and validated with `msgfmt`; the 356-message bundle
-adds Linux routing-profile persistence/editor and ordinary-text selection labels. The locale selector
+`7b832d765788e5ca64d7ba483b8ad12b3dd382d2` and validated with `msgfmt`; the 358-message bundle
+adds Linux routing-profile persistence/editor, profile-ID validation, and ordinary-text selection labels. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
 active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, construction-stage provider/default-control copy, and diagnostics labels/state values without replacing active source text;
 Arabic also switches the GTK workspace root to right-to-left direction. Document-job actions,
@@ -207,6 +207,8 @@ up/down controls and row drag-and-drop reorder them for Ordered mode and expose 
 labels for screen readers and keyboard users. Existing saved profiles can be loaded with **Edit**;
 the editor restores their mode, fallback consent, candidate checks, and order, then replaces the
 same non-secret profile ID on **Save routing profile**.
+New profiles use a bounded ID field (1–128 ASCII letters, numbers, `.`, `_`, or `-`); editing locks
+the existing ID so references remain stable, while distinct IDs allow multiple saved routing profiles.
 
 When an ordinary text request ends in a failed or cancelled state, **Retry translation** becomes
 available. It reuses the current source, target, glossary, privacy mode, confirmed provider, and

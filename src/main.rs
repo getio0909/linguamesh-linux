@@ -5,10 +5,10 @@ use linguamesh_document::{
     DocumentJobState, DocumentWarning, DocumentWarningKind,
 };
 use linguamesh_domain::{
-    ErrorKind, Glossary, GlossaryEntry, MAX_GLOSSARY_CSV_BYTES, OperationId, ProviderProfileId,
-    RoutingCandidate, RoutingConstraints, RoutingMode, RoutingPreference, RoutingProfile,
-    SecretRef, SecretRefNamespace, SecretValue, TranslationError, TranslationEvent,
-    TranslationPrivacyMode,
+    ErrorKind, Glossary, GlossaryEntry, MAX_GLOSSARY_CSV_BYTES, MAX_ROUTING_IDENTIFIER_BYTES,
+    OperationId, ProviderProfileId, RoutingCandidate, RoutingConstraints, RoutingMode,
+    RoutingPreference, RoutingProfile, SecretRef, SecretRefNamespace, SecretValue,
+    TranslationError, TranslationEvent, TranslationPrivacyMode,
 };
 use linguamesh_linux::file_import;
 use linguamesh_linux::localization;
@@ -3514,6 +3514,15 @@ fn routing_mode_selection(mode: RoutingMode) -> u32 {
     }
 }
 
+// 按 Core 的标识符约束检查路由配置 ID，避免保存时才暴露无效输入。
+fn valid_routing_profile_id(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= MAX_ROUTING_IDENTIFIER_BYTES
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-'))
+}
+
 type RoutingCandidateControls = Rc<RefCell<Vec<(ProviderProfileId, gtk::Box, gtk::CheckButton)>>>;
 
 // 清空并按当前顺序重建路由候选行，避免 GTK 列表顺序与持久化顺序分离。
@@ -3677,6 +3686,7 @@ fn routing_candidate_for_profile(
 // 根据用户选择创建路由配置，并把回退权限保持为显式开关。
 fn default_routing_profile(
     state: &AppState,
+    profile_id: &str,
     mode: RoutingMode,
     explicit_fallback_allowed: bool,
     selected_candidate_ids: &[ProviderProfileId],
@@ -3699,7 +3709,7 @@ fn default_routing_profile(
         ));
     }
     RoutingProfile::new(
-        "linux-default",
+        profile_id,
         mode,
         candidates,
         RoutingConstraints {
@@ -3737,6 +3747,29 @@ fn show_routing_profiles_dialog(
     root.set_margin_bottom(16);
     root.set_margin_start(16);
     root.set_margin_end(16);
+    let profile_id_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let profile_id_label = gtk::Label::with_mnemonic(&localized_mnemonic(
+        locale,
+        "label.routing_profile_id",
+        "Routing profile ID",
+    ));
+    let profile_id = gtk::Entry::new();
+    profile_id.set_text("linux-default");
+    profile_id.set_max_length(
+        i32::try_from(MAX_ROUTING_IDENTIFIER_BYTES)
+            .expect("routing profile identifier limit fits GTK length type"),
+    );
+    profile_id.set_hexpand(true);
+    profile_id.set_focusable(true);
+    profile_id.set_tooltip_text(Some(&localization::text(
+        locale,
+        "error.routing_profile_id_invalid",
+        "Use 1-128 ASCII letters, numbers, '.', '_' or '-' for the routing profile ID.",
+    )));
+    profile_id_label.set_mnemonic_widget(Some(&profile_id));
+    profile_id_row.append(&profile_id_label);
+    profile_id_row.append(&profile_id);
+    root.append(&profile_id_row);
     let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     let mode_labels = [
         localized_routing_mode(locale, RoutingMode::Manual),
@@ -3880,6 +3913,7 @@ fn show_routing_profiles_dialog(
             let edit_container = candidates_box.clone();
             let edit_controls = Rc::clone(&candidate_controls);
             let edit_save = create.clone();
+            let edit_profile_id = profile_id.clone();
             let edit_profile = record.profile.clone();
             let edit_selection = Rc::clone(&editing_profile);
             edit.connect_clicked(move |_| {
@@ -3890,6 +3924,8 @@ fn show_routing_profiles_dialog(
                     &edit_controls,
                     &edit_profile,
                 );
+                edit_profile_id.set_text(&edit_profile.id);
+                edit_profile_id.set_editable(false);
                 edit_selection.replace(Some(edit_profile.clone()));
                 edit_save.set_label(&localized_mnemonic(
                     locale,
@@ -3953,7 +3989,19 @@ fn show_routing_profiles_dialog(
     let create_dialog = dialog.clone();
     let create_candidate_controls = Rc::clone(&candidate_controls);
     let create_editing_profile = Rc::clone(&editing_profile);
+    let create_profile_id = profile_id.clone();
     create.connect_clicked(move |_| {
+        let profile_id = create_profile_id.text().trim().to_owned();
+        if !valid_routing_profile_id(&profile_id) {
+            let error_message = localization::text(
+                create_state.borrow().locale(),
+                "error.routing_profile_id_invalid",
+                "Use 1-128 ASCII letters, numbers, '.', '_' or '-' for the routing profile ID.",
+            );
+            create_state.borrow_mut().record_client_error(error_message);
+            refresh_ui(&create_bindings, &create_state.borrow());
+            return;
+        }
         let selected_candidate_ids = create_candidate_controls
             .borrow()
             .iter()
@@ -3962,6 +4010,7 @@ fn show_routing_profiles_dialog(
             .collect::<Vec<_>>();
         match default_routing_profile(
             &create_state.borrow(),
+            &profile_id,
             routing_mode_for_selection(mode.selected()),
             allow_fallback.is_active(),
             &selected_candidate_ids,
@@ -6280,6 +6329,7 @@ mod tests {
         generate_custom_provider_id, localized_document_job_state, localized_document_warnings,
         localized_provider_default_name, localized_template, provider_preset_config,
         provider_preset_index, refresh_ui, show_new_profile_in_form, start_event_pump,
+        valid_routing_profile_id,
     };
     use adw::prelude::*;
     use gtk::glib;
@@ -6295,6 +6345,17 @@ mod tests {
     use std::time::{Duration, Instant};
     use tokio::runtime::Builder;
     use tokio::sync::oneshot;
+
+    #[test]
+    fn routing_profile_id_matches_core_identifier_bounds() {
+        assert!(valid_routing_profile_id("linux-default"));
+        assert!(valid_routing_profile_id("team.eu_01"));
+        assert!(valid_routing_profile_id(&"a".repeat(128)));
+        assert!(!valid_routing_profile_id(""));
+        assert!(!valid_routing_profile_id("routing profile"));
+        assert!(!valid_routing_profile_id("配置"));
+        assert!(!valid_routing_profile_id(&"a".repeat(129)));
+    }
 
     #[test]
     fn output_export_rejects_same_file_aliases() {

@@ -1,5 +1,22 @@
 # Implementation Status
 
+## 2026-07-19 — Linux routing profile identifier checkpoint
+
+Assumption: multiple saved routing profiles require a user-provided stable identifier, while edits
+must keep the persisted ID immutable so document-job and selection references remain valid.
+
+- Linux adds a localized routing-profile ID entry, validates it with Core's 1–128 byte ASCII
+  identifier rule, and allows distinct IDs for new profiles. Existing-profile edits lock the ID.
+- l10n `7b832d765788e5ca64d7ba483b8ad12b3dd382d2` adds the label and invalid-ID error to all twelve
+  official packs; the deterministic bundle now contains 358 messages and the Linux source audit
+  covers 234 keys.
+- Local validation passed `cargo fmt --all -- --check`, GUI all-target `cargo check`, strict Clippy,
+  131 demo-provider tests with 2 ignored, l10n synchronization, localization-key audit, Flatpak
+  metadata validation, and `git diff --check` before the remote checkpoint commit.
+
+This enables multiple Linux routing-profile IDs without claiming complete fallback-chain editing,
+full Orca speech, manual visual review, other clients, release artifacts, or a stable release.
+
 ## 2026-07-19 — Linux routing profile edit checkpoint
 
 Assumption: complete Linux routing-profile management requires loading an existing non-secret

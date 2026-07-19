@@ -472,6 +472,12 @@ msgctxt "label.saved_profile"
 msgid "Saved profile"
 msgstr "［Šåṽëð þŕøƒïŀë~~~~］"
 
+#. Label for the Linux routing planner profile identifier field.
+#, fuzzy
+msgctxt "label.routing_profile_id"
+msgid "Routing profile ID"
+msgstr "［Ŕøûŧïñĝ þŕøƒïŀë ÏÐ~~~~~~］"
+
 #. Label for the Linux source-language selector.
 #, fuzzy
 msgctxt "label.source_language"
@@ -2145,6 +2151,12 @@ msgstr "［{id} · {mode} · {candidates} çåñðïðåŧëš~~~~~~~~~~~~~］"
 msgctxt "error.routing_profile_no_candidates"
 msgid "Save at least one provider profile before creating a routing profile."
 msgstr "［Šåṽë åŧ ŀëåšŧ øñë þŕøṽïðëŕ þŕøƒïŀë ƀëƒøŕë çŕëåŧïñĝ å ŕøûŧïñĝ þŕøƒïŀë.~~~~~~~~~~~~~~~~~~~~~~~］"
+
+#. Fixed error shown when a Linux routing planner profile identifier violates Core bounds.
+#, fuzzy
+msgctxt "error.routing_profile_id_invalid"
+msgid "Use 1-128 ASCII letters, numbers, '.', '_' or '-' for the routing profile ID."
+msgstr "［Ûšë 1-128 ÅŠÇÏÏ ŀëŧŧëŕš, ñûṁƀëŕš, '.', '_' øŕ '-' ƒøŕ ŧħë ŕøûŧïñĝ þŕøƒïŀë ÏÐ.~~~~~~~~~~~~~~~~~~~~~~~~~］"
 
 #. Localized label for manual routing mode.
 #, fuzzy

@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           repository: ${{ github.repository_owner }}/linguamesh-l10n
-          ref: aea172c15f421da09a0c848accae7c443820fb27
+          ref: 7b832d765788e5ca64d7ba483b8ad12b3dd382d2
           path: linguamesh-l10n
           persist-credentials: false
       - name: Install native development headers

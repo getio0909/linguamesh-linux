@@ -8,7 +8,7 @@ credential. These tests do not replace interoperability testing against a runnin
 Ollama daemon.
 
 The Linux checkout consumes the canonical gettext bundle from immutable l10n revision
-`aea172c15f421da09a0c848accae7c443820fb27`. The bundle contains 356 messages, and
+`7b832d765788e5ca64d7ba483b8ad12b3dd382d2`. The bundle contains 358 messages, and
 `bash tools/sync-l10n.sh --check` verifies every PO/MO catalog and the generated manifest before
 the native build. History/memory row metadata, document-job IDs, active-provider mode summaries,
 unavailable provider/model labels, and routing-profile actions/mode labels are asserted through
@@ -34,6 +34,8 @@ saved provider/model pairs; the icon controls expose localized accessible labels
 selections and invalid drag IDs are rejected before persistence. Each saved profile row also has an
 **Edit** action that restores the persisted mode, fallback consent, candidate selection/order, and
 ID; saving updates the same profile record rather than creating a duplicate.
+New profiles validate IDs against Core's 1–128 byte ASCII identifier rule; edit mode locks the
+existing ID to protect saved references.
 The restart regression `document_job_resume_reconnects_saved_routing_profile_after_restart`
 interrupts a routed job, reopens the database, reconnects the saved profile through the host secret
 broker, and completes the remaining segments while asserting a zero-fallback decision.

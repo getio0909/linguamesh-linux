@@ -26,7 +26,8 @@ The routing-profile dialog now persists an explicit Core mode (`Manual`, `Ordere
 approved fallback remains a separate opt-in checkbox that defaults off, and candidate checkboxes limit
 the saved provider/model pairs included in a profile; adjacent up/down controls and row drag-and-drop
 set their Ordered-mode sequence and expose catalog-backed accessible labels. Existing profiles can
-be edited and saved through the same stable ID. This is configuration-surface evidence only
+be edited and saved through the same stable ID. New profiles use Core-compatible 1–128 byte ASCII
+IDs, and edit mode locks the existing ID so release references do not drift. This is configuration-surface evidence only
 and does not satisfy the complete candidate-management release gate.
 The external-provider path includes deterministic Ollama-compatible OpenAI `/v1/` and native
 `/api/` loopback fixtures; they do not claim interoperability with a running third-party daemon.
