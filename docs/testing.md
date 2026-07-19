@@ -38,6 +38,7 @@ to a persisted cancelled snapshot. The GTK surface now exposes per-job progress 
 pause/resume/retry controls, and the worker regression
 `document_job_list_returns_multiple_saved_jobs_for_queue_selection` verifies that two pending jobs
 are listed together for explicit selection. The worker regressions
+`imports_pptx_and_preserves_notes_and_resources`,
 `document_job_translation_reconstructs_docx_and_preserves_binary_parts` and
 `document_job_translation_reconstructs_xlsx_and_preserves_formulas_and_numbers` drive the
 persisted-job translation path end to end, then inspect reconstructed OOXML while checking that

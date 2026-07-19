@@ -4,6 +4,21 @@ Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline 
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
+## 2026-07-19 — Linux PPTX import/reconstruction checkpoint
+
+Assumption: the Linux document slice should exercise every currently supported OOXML family through
+the native wrapper before claiming Milestone 6 coverage; the PPTX fixture is bounded and in memory.
+
+- Linux adds `imports_pptx_and_preserves_notes_and_resources`, translating slide and speaker-note
+  text while preserving the binary image part and reconstructing a valid PPTX package through Core.
+- Local `cargo test --features demo-provider --offline` passed 117 tests with 2 ignored; the focused
+  PPTX fixture passed independently. Formatting, GUI check, strict Clippy, 215-key audit, l10n sync,
+  Flatpak metadata validation, and diff checks passed.
+- The six remote Native/Foundation/Flatpak push and PR gates are required for this published checkpoint.
+
+This advances Linux Milestone 6 OOXML evidence without claiming macro/signature behavior, visual review,
+other clients, packaging artifacts, or a stable release.
+
 ## 2026-07-19 — Linux compression-ratio import boundary checkpoint
 
 Assumption: mandatory Scenario 15 evidence must prove that the Linux native import wrapper maps the

@@ -211,6 +211,42 @@ mod tests {
         writer.finish().expect("xlsx archive").into_inner()
     }
 
+    fn pptx_fixture() -> Vec<u8> {
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        let options = SimpleFileOptions::default();
+        writer
+            .start_file("[Content_Types].xml", options)
+            .expect("content types");
+        writer.write_all(b"<Types/>").expect("content types bytes");
+        writer
+            .start_file("ppt/presentation.xml", options)
+            .expect("presentation");
+        writer
+            .write_all(br#"<p:presentation xmlns:p="urn:ppt"><p:sldMasterIdLst/></p:presentation>"#)
+            .expect("presentation bytes");
+        writer
+            .start_file("ppt/slides/slide1.xml", options)
+            .expect("slide");
+        writer
+            .write_all(
+                br#"<p:sld xmlns:p="urn:ppt" xmlns:a="urn:dml"><p:cSld><p:spTree><a:p><a:r><a:t>Slide &amp; title</a:t></a:r></a:p><a:p><a:r><a:t>Body</a:t></a:r></a:p></p:spTree></p:cSld></p:sld>"#,
+            )
+            .expect("slide bytes");
+        writer
+            .start_file("ppt/notesSlides/notesSlide1.xml", options)
+            .expect("notes");
+        writer
+            .write_all(
+                br#"<p:notes xmlns:p="urn:ppt" xmlns:a="urn:dml"><a:p><a:r><a:t>Speaker note</a:t></a:r></a:p></p:notes>"#,
+            )
+            .expect("notes bytes");
+        writer
+            .start_file("ppt/media/image.bin", options)
+            .expect("image");
+        writer.write_all(&[5, 6, 7]).expect("image bytes");
+        writer.finish().expect("pptx archive").into_inner()
+    }
+
     fn traversal_docx_fixture() -> Vec<u8> {
         let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
         let options = SimpleFileOptions::default();
@@ -526,6 +562,46 @@ mod tests {
             .read_to_end(&mut image)
             .expect("image bytes");
         assert_eq!(image, [8, 9, 10]);
+    }
+
+    #[test]
+    fn imports_pptx_and_preserves_notes_and_resources() {
+        let source = pptx_fixture();
+        let mut job = decode_document_job("sample.pptx", &source).expect("pptx job");
+        assert_eq!(job.pending_count(), 3);
+        let prose_indices = job
+            .segments
+            .iter()
+            .enumerate()
+            .filter(|(_, segment)| segment.kind == DocumentSegmentKind::Prose)
+            .map(|(index, _)| index)
+            .collect::<Vec<_>>();
+        for index in prose_indices {
+            job.apply_translation(index, "译文").expect("translation");
+        }
+        let rebuilt = job.reconstruct_bytes().expect("rebuild pptx");
+        let mut archive = ZipArchive::new(Cursor::new(rebuilt)).expect("rebuilt archive");
+        let mut slide = String::new();
+        archive
+            .by_name("ppt/slides/slide1.xml")
+            .expect("slide entry")
+            .read_to_string(&mut slide)
+            .expect("slide xml");
+        assert!(slide.contains("译文"));
+        let mut notes = String::new();
+        archive
+            .by_name("ppt/notesSlides/notesSlide1.xml")
+            .expect("notes entry")
+            .read_to_string(&mut notes)
+            .expect("notes xml");
+        assert!(notes.contains("译文"));
+        let mut image = Vec::new();
+        archive
+            .by_name("ppt/media/image.bin")
+            .expect("image entry")
+            .read_to_end(&mut image)
+            .expect("image bytes");
+        assert_eq!(image, [5, 6, 7]);
     }
 
     #[test]
