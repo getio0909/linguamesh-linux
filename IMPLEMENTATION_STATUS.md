@@ -25,6 +25,15 @@ their placeholder identities must be checked at source level before GTK or relea
   were also non-expired. This verifies CI enforcement of the source-level placeholder audit without
   claiming reviewed translations, Orca speech, other clients, signing, or a stable release.
 
+## 2026-07-19 — Linux localization placeholder audit documentation verification
+
+- Documentation-only head `c1ddd0f4b3055dd18f93b44b55d2666629044aa0` passed push
+  Native/Flatpak/Foundation `29707583865`/`29707583895`/`29707583879` and PR
+  Native/Flatpak/Foundation `29707585705`/`29707585670`/`29707585669`.
+- The Native push evidence artifact was non-expired at 5,587,305 bytes; push and PR Flatpak bundle
+  and evidence artifacts were also non-expired. This records CI verification of the documentation
+  checkpoint and does not promote the unsigned artifacts to a stable release.
+
 ## 2026-07-19 — Linux performance baseline checkpoint
 
 Assumption: release hardening needs reproducible, machine-contextual measurements before a stable
