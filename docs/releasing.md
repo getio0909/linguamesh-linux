@@ -27,7 +27,7 @@ fixture; it does not claim native Ollama `/api` or a running third-party daemon.
 secret references use the Linux GIO Secret Service adapter and fail closed when the desktop keyring
 is unavailable or requires an interactive prompt. The native workflow
 pins reviewed Core functional revision
-`81be0b8be9d7115b98eae3f134b4fd0f25411bbb`, whose storage delta adds
+`0d0d475d22129e8211333ee8f664a7669948ce3a`, whose storage delta adds
 `SQLITE_OPEN_NOFOLLOW` and whose text path adds protected-span, request-level glossary, and
 bounded long-text restoration, and the bounded SRT/WebVTT/CSV/JSON/HTML document contract, rather than checking
 out a floating branch. Functional revision
@@ -42,7 +42,7 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `81be0b8be9d7115b98eae3f134b4fd0f25411bbb` and l10n
+The current Linux gate consumes Core `0d0d475d22129e8211333ee8f664a7669948ce3a` and l10n
 `32bef261f5f0deb9f6a0426231e365d0bae72b62` (326 catalog messages, bundle SHA-256
 `054d6749397cbbf652e099784f2c7d0e3650779a3c17c98e68d25560d286b2d3`). Request-level glossary rules, bounded CSV,
 interchange are implemented in the Linux slice; persistent glossary libraries and TBX import
