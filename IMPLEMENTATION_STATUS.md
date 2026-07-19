@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, live AT-SPI tree export checks, a headless GTK keyboard traversal fixture for tested controls, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF document-job translation with sequential segment persistence, bounded DOCX/PPTX/XLSX/EPUB package reconstruction and resource retention, page-aware text-PDF reconstruction with structured HTML fallback, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; Orca speech, provider-form default Tab-chain coverage, end-user prompt acceptance, multi-job GUI queue presentation, OCR, and release artifacts remain open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, live AT-SPI tree export checks, a headless GTK keyboard traversal fixture for tested controls, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF document-job translation with sequential segment persistence, bounded DOCX/PPTX/XLSX/EPUB package reconstruction and resource retention, page-aware text-PDF reconstruction with structured HTML fallback, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; Orca speech, end-user prompt acceptance, multi-job GUI queue presentation, OCR, and release artifacts remain open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -141,8 +141,9 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
   reset; and an accessibility-hidden empty error label. The `tools/run-gtk-atspi-test.sh` fixture
   additionally reads the live Xvfb application through `python3-pyatspi` and verifies the named Stop
   button plus two text-editor roles. This is AT-SPI semantic export evidence, not Orca speech,
-  provider-form default Tab-chain, RTL, high-contrast, or full desktop accessibility evidence. A
-  CI-only focus probe records widget focus events without changing normal runtime behavior.
+  RTL, high-contrast, or full desktop accessibility evidence. The application-window Capture-phase
+  handler provides an explicit provider-form Tab/Shift+Tab order while a CI-only focus probe records
+  widget focus events without changing normal runtime behavior.
 - The Linux host now uses existing GIO D-Bus bindings for Secret Service `OpenSession`, item search,
   create/update, and `GetSecret` resolution. Persistent profiles retain only a SecretRef; the
   one-shot credential is passed through the existing typed broker and is never written to SQLite.
@@ -1075,4 +1076,22 @@ commands and must not introduce a second task state machine.
 
 Native, Foundation, and Flatpak CI gates remain required for the pushed revision. Orca speech,
 physical desktop review, OCR, other platform clients, complete visible-string gettext coverage,
+and stable-release evidence remain open.
+
+## 2026-07-19 — Linux provider-form Tab-chain evidence checkpoint
+
+Assumption: provider onboarding controls require a deterministic application-window Tab/Shift+Tab
+order, while Ctrl/Alt/Super-modified Tab remains native workspace navigation. The existing
+Capture-phase handler owns that provider order and skips controls that are hidden, insensitive, or
+not focusable.
+
+- The Xvfb/xfwm4 keyboard fixture asserts provider name, endpoint, credential, Remember profile,
+  Connect, and the tested workspace controls after real Tab/Shift+Tab input.
+- The current Linux revision `cb22b2052362ce7b4990cc4be99e26a152b07800` passed Native
+  `29666379600`, Foundation `29666379579`, and Flatpak `29666379586`.
+- The local fixture could not link on this host because the installed GTK libraries do not expose
+  the GTK 4 symbols required by the current build; the remote Native gate supplies executable
+  Xvfb/xfwm4 evidence.
+
+Orca speech, physical desktop review, OCR, complete visible-string gettext coverage, other clients,
 and stable-release evidence remain open.

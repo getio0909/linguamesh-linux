@@ -292,8 +292,9 @@ verifies the catalog-backed Translate and Stop labels, then switches to Arabic a
 direction without replacing the source editor buffer before restoring English. GTK's helpers prove
 semantic presence and reset behavior. The dedicated `tools/run-gtk-keyboard-focus-test.sh` also runs
 the real binary under Xvfb and `xfwm4`, injects Tab/Shift+Tab events, and asserts focus events for
-the tested onboarding and workspace controls. It records provider fields as enabled, mapped, and
-focusable; those fields are not yet in the default Tab chain. `tools/run-gtk-atspi-test.sh` starts
+the tested onboarding and workspace controls. The application-window Capture-phase handler keeps
+the provider fields in an explicit Tab/Shift+Tab order while preserving modified shortcuts.
+`tools/run-gtk-atspi-test.sh` starts
 the AT-SPI bus, reads the live accessibility tree with `python3-pyatspi`, and verifies the named
 Stop button plus two exported text-editor roles. This proves AT-SPI semantic export only; it does
 not prove Orca speech, physical-compositor behavior, RTL/high-contrast presentation, or GPU
@@ -398,7 +399,7 @@ asserts Simplified Chinese translations while preserving safe dynamic diagnostic
 
 ## Unimplemented validation
 
-Broader GTK component/UI automation, AT-SPI/Orca, provider-form Tab-chain and broader physical-keyboard coverage,
+Broader GTK component/UI automation, AT-SPI/Orca, and broader physical-keyboard coverage,
 physical-compositor and GPU-backed Wayland coverage, a broader X11/desktop matrix, prompted
 interactive Secret Service flows, broader XDG and portal tests, third-party
 local-server interoperability, Flatpak smoke tests, runtime localization behavior beyond the

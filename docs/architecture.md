@@ -140,11 +140,12 @@ separate private D-Bus session with `GDK_BACKEND=wayland`. The Wayland runner st
 inside a private `0700` `XDG_RUNTIME_DIR`, waits a bounded time for its dedicated socket, removes
 `DISPLAY` to prevent X11 fallback, and always terminates the compositor and removes the runtime
 directory. The X11 path also runs `tools/run-gtk-keyboard-focus-test.sh` under `xfwm4` to exercise
-Tab/Shift+Tab traversal for the tested controls and record provider-field focusability. The
+Tab/Shift+Tab traversal for the tested controls; an application-window Capture-phase handler keeps
+the provider fields in an explicit order while preserving modified shortcuts. The
 `tools/run-gtk-atspi-test.sh` fixture separately reads the live tree through `python3-pyatspi` and
 checks the named Stop control plus both text-editor roles. These are headless protocol/backend and
 AT-SPI semantic gates, not claims about physical compositors, GPU rendering, desktop integration,
-provider-form default Tab-chain completeness, or Orca speech.
+physical desktop keyboard coverage, or Orca speech.
 
 The user-facing endpoint example is loopback. Under its shared endpoint policy, Core accepts
 loopback HTTP and also accepts HTTPS endpoints; the Linux client does not duplicate URL parsing.
