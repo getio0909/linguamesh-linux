@@ -2078,11 +2078,23 @@ msgctxt "action.create_routing_profile"
 msgid "Create local-first profile"
 msgstr "Create local-first profile"
 
+#. Loads one saved Linux routing planner profile into the editor.
+#, fuzzy
+msgctxt "action.edit_routing_profile"
+msgid "Edit"
+msgstr "编辑"
+
 #. Deletes one saved Linux routing planner profile.
 #, fuzzy
 msgctxt "action.delete_routing_profile"
 msgid "Delete"
 msgstr "Delete"
+
+#. Saves the current Linux routing planner profile editor values.
+#, fuzzy
+msgctxt "action.save_routing_profile"
+msgid "Save routing profile"
+msgstr "保存路由配置"
 
 #. Accessible label for moving a Linux routing candidate down in the Ordered sequence.
 #, fuzzy

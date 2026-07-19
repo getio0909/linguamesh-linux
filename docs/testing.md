@@ -8,7 +8,7 @@ credential. These tests do not replace interoperability testing against a runnin
 Ollama daemon.
 
 The Linux checkout consumes the canonical gettext bundle from immutable l10n revision
-`fade545ec14793893de2603c62e0994689d9c4df`. The bundle contains 352 messages, and
+`aea172c15f421da09a0c848accae7c443820fb27`. The bundle contains 356 messages, and
 `bash tools/sync-l10n.sh --check` verifies every PO/MO catalog and the generated manifest before
 the native build. History/memory row metadata, document-job IDs, active-provider mode summaries,
 unavailable provider/model labels, and routing-profile actions/mode labels are asserted through
@@ -31,7 +31,9 @@ checkbox is off by default; when a routing profile is selected, it takes precede
 ordinary text fallback path, while document jobs never auto-fallback. Candidate checkboxes and
 adjacent up/down controls and row drag-and-drop allow a profile to include and order a subset of
 saved provider/model pairs; the icon controls expose localized accessible labels, while empty
-selections and invalid drag IDs are rejected before persistence.
+selections and invalid drag IDs are rejected before persistence. Each saved profile row also has an
+**Edit** action that restores the persisted mode, fallback consent, candidate selection/order, and
+ID; saving updates the same profile record rather than creating a duplicate.
 The restart regression `document_job_resume_reconnects_saved_routing_profile_after_restart`
 interrupts a routed job, reopens the database, reconnects the saved profile through the host secret
 broker, and completes the remaining segments while asserting a zero-fallback decision.

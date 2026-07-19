@@ -5422,6 +5422,7 @@ mod tests {
         shutdown(&worker);
     }
 
+    #[allow(clippy::too_many_lines)]
     #[test]
     fn routing_profiles_persist_without_provider_endpoints_or_secrets() {
         let database = TestDatabase::new();
@@ -5483,6 +5484,49 @@ mod tests {
                 assert_eq!(profiles[0].profile, profile);
             }
             _ => panic!("unexpected routing list event"),
+        }
+        let updated_candidate =
+            RoutingCandidate::new("saved-provider-b", "saved-model-b", false, 8192)
+                .expect("updated routing candidate");
+        let updated_profile = RoutingProfile::new(
+            "linux-local-first",
+            RoutingMode::Ordered,
+            vec![updated_candidate],
+            RoutingConstraints {
+                explicit_fallback_allowed: false,
+                ..RoutingConstraints::default()
+            },
+        )
+        .expect("updated routing profile");
+        worker
+            .try_send(WorkerCommand::SaveRoutingProfile {
+                profile: updated_profile.clone(),
+            })
+            .expect("update routing profile");
+        match worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("routing update event")
+        {
+            WorkerEvent::RoutingProfileSaved(record) => {
+                assert_eq!(record.id, "linux-local-first");
+                assert_eq!(record.profile, updated_profile);
+            }
+            _ => panic!("unexpected routing update event"),
+        }
+        worker
+            .try_send(WorkerCommand::ListRoutingProfiles)
+            .expect("list updated routing profiles");
+        match worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("updated routing list event")
+        {
+            WorkerEvent::RoutingProfilesListed { profiles } => {
+                assert_eq!(profiles.len(), 1);
+                assert_eq!(profiles[0].profile, updated_profile);
+            }
+            _ => panic!("unexpected updated routing list event"),
         }
         worker
             .try_send(WorkerCommand::DeleteRoutingProfile {

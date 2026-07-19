@@ -3505,6 +3505,15 @@ fn localized_routing_mode(locale: UiLocale, mode: RoutingMode) -> String {
     localization::text(locale, key, fallback)
 }
 
+// 将核心路由模式映射回 GTK 下拉框的稳定索引。
+fn routing_mode_selection(mode: RoutingMode) -> u32 {
+    match mode {
+        RoutingMode::Manual => 0,
+        RoutingMode::Ordered => 1,
+        RoutingMode::Automatic => 2,
+    }
+}
+
 type RoutingCandidateControls = Rc<RefCell<Vec<(ProviderProfileId, gtk::Box, gtk::CheckButton)>>>;
 
 // 清空并按当前顺序重建路由候选行，避免 GTK 列表顺序与持久化顺序分离。
@@ -3607,6 +3616,38 @@ fn attach_routing_candidate_drag(
         move_routing_candidate_row_before(&drop_container, &drop_controls, &dragged_id, &target_id)
     });
     row.add_controller(drop_target);
+}
+
+// 将已保存配置恢复到编辑器，缺失的提供商候选会被安全地跳过。
+fn load_routing_profile_editor(
+    mode: &gtk::DropDown,
+    allow_fallback: &gtk::CheckButton,
+    container: &gtk::Box,
+    controls: &RoutingCandidateControls,
+    profile: &RoutingProfile,
+) {
+    mode.set_selected(routing_mode_selection(profile.mode));
+    allow_fallback.set_active(profile.constraints.explicit_fallback_allowed);
+    {
+        let controls_ref = controls.borrow();
+        for (_, _, check) in controls_ref.iter() {
+            check.set_active(false);
+        }
+    }
+    let candidate_ids = profile
+        .candidates
+        .iter()
+        .filter_map(|candidate| ProviderProfileId::parse(&candidate.provider_id).ok())
+        .collect::<Vec<_>>();
+    {
+        let controls_ref = controls.borrow();
+        for (profile_id, _, check) in controls_ref.iter() {
+            check.set_active(candidate_ids.iter().any(|id| id == profile_id));
+        }
+    }
+    for pair in candidate_ids.windows(2) {
+        move_routing_candidate_row_before(container, controls, &pair[1], &pair[0]);
+    }
 }
 
 // 从用户明确保存的提供商配置生成不含端点和秘密的路由候选。
@@ -3782,6 +3823,7 @@ fn show_routing_profiles_dialog(
     }
     rebuild_routing_candidate_rows(&candidates_box, &candidate_controls);
     root.append(&candidates_box);
+    let editing_profile: Rc<RefCell<Option<RoutingProfile>>> = Rc::new(RefCell::new(None));
     let create = gtk::Button::with_mnemonic(&localized_mnemonic(
         locale,
         "action.create_routing_profile",
@@ -3827,6 +3869,34 @@ fn show_routing_profiles_dialog(
             label.set_xalign(0.0);
             label.set_hexpand(true);
             label.add_css_class("dim-label");
+            let edit = gtk::Button::with_mnemonic(&localized_mnemonic(
+                locale,
+                "action.edit_routing_profile",
+                "Edit",
+            ));
+            edit.set_focusable(true);
+            let edit_mode = mode.clone();
+            let edit_allow_fallback = allow_fallback.clone();
+            let edit_container = candidates_box.clone();
+            let edit_controls = Rc::clone(&candidate_controls);
+            let edit_save = create.clone();
+            let edit_profile = record.profile.clone();
+            let edit_selection = Rc::clone(&editing_profile);
+            edit.connect_clicked(move |_| {
+                load_routing_profile_editor(
+                    &edit_mode,
+                    &edit_allow_fallback,
+                    &edit_container,
+                    &edit_controls,
+                    &edit_profile,
+                );
+                edit_selection.replace(Some(edit_profile.clone()));
+                edit_save.set_label(&localized_mnemonic(
+                    locale,
+                    "action.save_routing_profile",
+                    "Save routing profile",
+                ));
+            });
             let use_button = gtk::Button::with_mnemonic(&localized_mnemonic(
                 locale,
                 "action.use_routing_profile",
@@ -3865,6 +3935,7 @@ fn show_routing_profiles_dialog(
                 }
             });
             row.append(&label);
+            row.append(&edit);
             row.append(&use_button);
             row.append(&delete);
             list.append(&row);
@@ -3881,6 +3952,7 @@ fn show_routing_profiles_dialog(
     let create_worker = worker.clone();
     let create_dialog = dialog.clone();
     let create_candidate_controls = Rc::clone(&candidate_controls);
+    let create_editing_profile = Rc::clone(&editing_profile);
     create.connect_clicked(move |_| {
         let selected_candidate_ids = create_candidate_controls
             .borrow()
@@ -3894,7 +3966,12 @@ fn show_routing_profiles_dialog(
             allow_fallback.is_active(),
             &selected_candidate_ids,
         ) {
-            Ok(profile) => {
+            Ok(mut profile) => {
+                if let Some(existing_profile) = create_editing_profile.borrow().clone() {
+                    profile.id = existing_profile.id;
+                    profile.constraints = existing_profile.constraints;
+                    profile.constraints.explicit_fallback_allowed = allow_fallback.is_active();
+                }
                 if let Err(error) = create_worker.save_routing_profile(profile) {
                     create_state
                         .borrow_mut()

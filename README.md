@@ -178,7 +178,7 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`fade545ec14793893de2603c62e0994689d9c4df` and validated with `msgfmt`; the 352-message bundle
+`aea172c15f421da09a0c848accae7c443820fb27` and validated with `msgfmt`; the 356-message bundle
 adds Linux routing-profile persistence/editor and ordinary-text selection labels. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
 active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, construction-stage provider/default-control copy, and diagnostics labels/state values without replacing active source text;
@@ -204,7 +204,9 @@ mode before saving a profile. Fallback consent is separate, explicit, and disabl
 manual profile never falls through to another candidate. The candidate editor lists saved provider/
 model pairs as focusable checkboxes, so a profile can include only the approved candidates; adjacent
 up/down controls and row drag-and-drop reorder them for Ordered mode and expose localized accessible
-labels for screen readers and keyboard users.
+labels for screen readers and keyboard users. Existing saved profiles can be loaded with **Edit**;
+the editor restores their mode, fallback consent, candidate checks, and order, then replaces the
+same non-secret profile ID on **Save routing profile**.
 
 When an ordinary text request ends in a failed or cancelled state, **Retry translation** becomes
 available. It reuses the current source, target, glossary, privacy mode, confirmed provider, and
