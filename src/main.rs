@@ -5581,7 +5581,7 @@ mod tests {
         destination_matches_source, document_format_label, endpoint_matches_preset_default,
         generate_custom_provider_id, localized_document_job_state, localized_document_warnings,
         localized_provider_default_name, localized_template, provider_preset_config,
-        provider_preset_index, refresh_ui, start_event_pump,
+        provider_preset_index, refresh_ui, show_new_profile_in_form, start_event_pump,
     };
     use adw::prelude::*;
     use gtk::glib;
@@ -6127,6 +6127,8 @@ mod tests {
             provider_preset_model.string(1).as_deref(),
             Some("Ollama（原生 /api）")
         );
+        show_new_profile_in_form(&bindings, &state.borrow())
+            .expect("initialize localized provider profile form");
         assert_eq!(
             bindings.provider_name.text().as_str(),
             "本地 OpenAI 兼容提供商"
