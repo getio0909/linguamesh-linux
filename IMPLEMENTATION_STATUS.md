@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-19 — Linux routing constraint controls checkpoint
+
+Assumption: Core's non-secret routing constraints must be user-editable in the native Linux
+profile dialog; editing visible controls must preserve future Core fields that the GTK surface does
+not yet expose.
+
+- Linux adds localized controls for Automatic preference (none/local/quality/latency/cost), local-only
+  routing, remote-candidate permission, privacy-sensitive request protection, streaming capability,
+  and document capability. Local-only and remote permission are mutually exclusive in the UI.
+- Existing profile edits restore these controls and preserve hidden allow/model lists, minimum quality,
+  and request-size limits when saving; pure helper tests cover preference mapping and preservation.
+- l10n `b871a881f0eaf88cdda67a50f9221375f4c814ce` contains 377 messages and all 59 generated resources;
+  Linux consumes the immutable revision and audits 253 catalog-backed source keys.
+- Remote Linux/l10n evidence will be recorded after the pinned-resource validation completes.
+
 ## 2026-07-19 — Linux editor text-metrics checkpoint
 
 Assumption: users need a non-sensitive size summary while editing, but tokenization remains

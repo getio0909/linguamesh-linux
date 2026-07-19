@@ -8,13 +8,15 @@ credential. These tests do not replace interoperability testing against a runnin
 Ollama daemon.
 
 The Linux checkout consumes the canonical gettext bundle from immutable l10n revision
-`8adb1f4558e4b1d93a00ce03cf026a98d4a1a5ed`. The bundle contains 360 messages, and
+`b871a881f0eaf88cdda67a50f9221375f4c814ce`. The bundle contains 377 messages, and
 `bash tools/sync-l10n.sh --check` verifies every PO/MO catalog and the generated manifest before
 the native build. History/memory row metadata, document-job IDs, active-provider mode summaries,
 unavailable provider/model labels, and routing-profile actions/mode labels are asserted through
 catalog keys rather than concatenated English UI fragments; non-English packs remain
 machine-generated drafts pending human review. The editor metrics regression checks character
-counts and an explicitly approximate token estimate without exposing text in diagnostics.
+counts and an explicitly approximate token estimate without exposing text in diagnostics. Routing
+profile tests also verify preference-index round trips and preservation of hidden Core constraints
+when visible privacy/capability controls are edited.
 
 The routing-profile worker regression saves, lists, and deletes a Core `routing_planner_v1` profile
 without persisting provider endpoints, credentials, or translation content. A separate regression

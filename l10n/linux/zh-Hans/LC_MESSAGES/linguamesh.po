@@ -2185,3 +2185,105 @@ msgstr "Ordered"
 msgctxt "routing.mode.automatic"
 msgid "Automatic"
 msgstr "Automatic"
+
+#. Label for the automatic routing preference selector.
+#, fuzzy
+msgctxt "label.routing_preference"
+msgid "Automatic preference"
+msgstr "自动路由偏好"
+
+#. Checkbox label allowing remote routing candidates.
+#, fuzzy
+msgctxt "option.routing_allow_remote"
+msgid "Allow remote candidates"
+msgstr "允许远程候选"
+
+#. Checkbox label restricting routing to local candidates.
+#, fuzzy
+msgctxt "option.routing_local_only"
+msgid "Local candidates only"
+msgstr "仅限本地候选"
+
+#. Checkbox label protecting privacy-sensitive requests from remote routing.
+#, fuzzy
+msgctxt "option.routing_privacy_sensitive"
+msgid "Protect privacy-sensitive requests"
+msgstr "保护隐私敏感请求"
+
+#. Checkbox label requiring document-capable routing candidates.
+#, fuzzy
+msgctxt "option.routing_require_document"
+msgid "Require document support"
+msgstr "要求文档支持"
+
+#. Checkbox label requiring real streamed output from routing candidates.
+#, fuzzy
+msgctxt "option.routing_require_streaming"
+msgid "Require streamed output"
+msgstr "要求流式输出"
+
+#. Automatic routing preference for lowest estimated cost.
+#, fuzzy
+msgctxt "routing.preference.cost"
+msgid "Lowest cost"
+msgstr "最低成本优先"
+
+#. Automatic routing preference for lowest estimated latency.
+#, fuzzy
+msgctxt "routing.preference.latency"
+msgid "Lowest latency"
+msgstr "最低延迟优先"
+
+#. Automatic routing preference for local candidates.
+#, fuzzy
+msgctxt "routing.preference.local"
+msgid "Local first"
+msgstr "本地优先"
+
+#. Automatic routing preference with no secondary ranking preference.
+#, fuzzy
+msgctxt "routing.preference.none"
+msgid "No preference"
+msgstr "无偏好"
+
+#. Automatic routing preference for highest quality tier.
+#, fuzzy
+msgctxt "routing.preference.quality"
+msgid "Quality first"
+msgstr "质量优先"
+
+#. Tooltip explaining the remote-candidate routing constraint.
+#, fuzzy
+msgctxt "tooltip.routing_allow_remote"
+msgid "Permit this profile to send content to non-local providers"
+msgstr "允许此配置向非本地提供商发送内容"
+
+#. Tooltip explaining the local-only routing constraint.
+#, fuzzy
+msgctxt "tooltip.routing_local_only"
+msgid "Reject saved providers that are not local loopback endpoints"
+msgstr "拒绝非本地回环端点的已保存提供商"
+
+#. Tooltip explaining the automatic routing preference selector.
+#, fuzzy
+msgctxt "tooltip.routing_preference"
+msgid "Choose the first ranking preference used by Automatic routing"
+msgstr "选择自动路由使用的首要排名偏好"
+
+#. Tooltip explaining privacy-sensitive request routing.
+#, fuzzy
+msgctxt "tooltip.routing_privacy_sensitive"
+msgid "When a request is marked privacy-sensitive, reject remote candidates"
+msgstr "请求标记为隐私敏感时拒绝远程候选"
+
+#. Tooltip explaining the document-capability routing constraint.
+#, fuzzy
+msgctxt "tooltip.routing_require_document"
+msgid "Keep only candidates that advertise document translation"
+msgstr "仅保留声明支持文档翻译的候选"
+
+#. Tooltip explaining the streaming-capability routing constraint.
+#, fuzzy
+msgctxt "tooltip.routing_require_streaming"
+msgid "Reject candidates that cannot return real streamed deltas"
+msgstr "拒绝无法返回真实流式增量的候选"

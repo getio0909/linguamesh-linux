@@ -3569,6 +3569,57 @@ fn routing_mode_selection(mode: RoutingMode) -> u32 {
     }
 }
 
+// 将自动路由偏好映射到稳定的 GTK 下拉框索引。
+fn routing_preference_selection(preference: RoutingPreference) -> u32 {
+    match preference {
+        RoutingPreference::None => 0,
+        RoutingPreference::Local => 1,
+        RoutingPreference::Quality => 2,
+        RoutingPreference::Latency => 3,
+        RoutingPreference::Cost => 4,
+    }
+}
+
+// 将 GTK 下拉框索引安全地还原为核心路由偏好。
+fn routing_preference_for_selection(selection: u32) -> RoutingPreference {
+    match selection {
+        1 => RoutingPreference::Local,
+        2 => RoutingPreference::Quality,
+        3 => RoutingPreference::Latency,
+        4 => RoutingPreference::Cost,
+        _ => RoutingPreference::None,
+    }
+}
+
+// 聚合路由编辑器控件，避免恢复函数的参数顺序产生错误。
+#[derive(Clone, Copy)]
+struct RoutingEditorWidgets<'a> {
+    mode: &'a gtk::DropDown,
+    preference: &'a gtk::DropDown,
+    allow_fallback: &'a gtk::CheckButton,
+    local_only: &'a gtk::CheckButton,
+    allow_remote: &'a gtk::CheckButton,
+    privacy_sensitive: &'a gtk::CheckButton,
+    require_streaming: &'a gtk::CheckButton,
+    require_document: &'a gtk::CheckButton,
+}
+
+// 仅更新编辑器暴露的约束，同时保留核心未来字段以保证编辑回写不丢数据。
+fn routing_constraints_from_controls(
+    existing: Option<&RoutingConstraints>,
+    selected: &RoutingConstraints,
+) -> RoutingConstraints {
+    let mut constraints = existing.cloned().unwrap_or_default();
+    constraints.preference = selected.preference;
+    constraints.local_only = selected.local_only;
+    constraints.allow_remote = selected.allow_remote;
+    constraints.privacy_sensitive = selected.privacy_sensitive;
+    constraints.require_streaming = selected.require_streaming;
+    constraints.require_document = selected.require_document;
+    constraints.explicit_fallback_allowed = selected.explicit_fallback_allowed;
+    constraints
+}
+
 // 按 Core 的标识符约束检查路由配置 ID，避免保存时才暴露无效输入。
 fn valid_routing_profile_id(value: &str) -> bool {
     !value.is_empty()
@@ -3693,14 +3744,35 @@ fn attach_routing_candidate_drag(
 
 // 将已保存配置恢复到编辑器，缺失的提供商候选会被安全地跳过。
 fn load_routing_profile_editor(
-    mode: &gtk::DropDown,
-    allow_fallback: &gtk::CheckButton,
+    widgets: RoutingEditorWidgets<'_>,
     container: &gtk::Box,
     controls: &RoutingCandidateControls,
     profile: &RoutingProfile,
 ) {
-    mode.set_selected(routing_mode_selection(profile.mode));
-    allow_fallback.set_active(profile.constraints.explicit_fallback_allowed);
+    widgets
+        .mode
+        .set_selected(routing_mode_selection(profile.mode));
+    widgets
+        .preference
+        .set_selected(routing_preference_selection(profile.constraints.preference));
+    widgets
+        .allow_fallback
+        .set_active(profile.constraints.explicit_fallback_allowed);
+    widgets
+        .local_only
+        .set_active(profile.constraints.local_only);
+    widgets
+        .allow_remote
+        .set_active(profile.constraints.allow_remote);
+    widgets
+        .privacy_sensitive
+        .set_active(profile.constraints.privacy_sensitive);
+    widgets
+        .require_streaming
+        .set_active(profile.constraints.require_streaming);
+    widgets
+        .require_document
+        .set_active(profile.constraints.require_document);
     {
         let controls_ref = controls.borrow();
         for (_, _, check) in controls_ref.iter() {
@@ -3752,7 +3824,7 @@ fn default_routing_profile(
     state: &AppState,
     profile_id: &str,
     mode: RoutingMode,
-    explicit_fallback_allowed: bool,
+    constraints: RoutingConstraints,
     selected_candidate_ids: &[ProviderProfileId],
 ) -> Result<RoutingProfile, TranslationError> {
     let candidate_ids = ordered_routing_profile_ids(state.saved_profiles(), selected_candidate_ids);
@@ -3772,17 +3844,8 @@ fn default_routing_profile(
             "Save at least one provider profile before creating a routing profile.",
         ));
     }
-    RoutingProfile::new(
-        profile_id,
-        mode,
-        candidates,
-        RoutingConstraints {
-            preference: RoutingPreference::Local,
-            explicit_fallback_allowed,
-            ..RoutingConstraints::default()
-        },
-    )
-    .map_err(|error| TranslationError::new(ErrorKind::InvalidConfiguration, error.to_string()))
+    RoutingProfile::new(profile_id, mode, candidates, constraints)
+        .map_err(|error| TranslationError::new(ErrorKind::InvalidConfiguration, error.to_string()))
 }
 
 // 展示持久化的路由规划配置，并把保存、删除操作交给核心工作线程。
@@ -3863,6 +3926,105 @@ fn show_routing_profiles_dialog(
     )));
     actions.append(&mode);
     actions.append(&allow_fallback);
+    let preference_labels = [
+        localization::text(locale, "routing.preference.none", "No preference"),
+        localization::text(locale, "routing.preference.local", "Local first"),
+        localization::text(locale, "routing.preference.quality", "Quality first"),
+        localization::text(locale, "routing.preference.latency", "Lowest latency"),
+        localization::text(locale, "routing.preference.cost", "Lowest cost"),
+    ];
+    let preference_label_refs = preference_labels
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<_>>();
+    let preference = gtk::DropDown::from_strings(&preference_label_refs);
+    preference.set_selected(routing_preference_selection(RoutingPreference::Local));
+    preference.set_focusable(true);
+    preference.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.routing_preference",
+        "Choose the first ranking preference used by Automatic routing",
+    )));
+    let preference_control = labeled_control(
+        &localized_mnemonic(locale, "label.routing_preference", "Automatic preference"),
+        preference.upcast_ref::<gtk::Widget>(),
+    );
+    let local_only = gtk::CheckButton::with_mnemonic(&localized_mnemonic(
+        locale,
+        "option.routing_local_only",
+        "Local candidates only",
+    ));
+    local_only.set_focusable(true);
+    local_only.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.routing_local_only",
+        "Reject saved providers that are not local loopback endpoints",
+    )));
+    let allow_remote = gtk::CheckButton::with_mnemonic(&localized_mnemonic(
+        locale,
+        "option.routing_allow_remote",
+        "Allow remote candidates",
+    ));
+    allow_remote.set_active(true);
+    allow_remote.set_focusable(true);
+    allow_remote.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.routing_allow_remote",
+        "Permit this profile to send content to non-local providers",
+    )));
+    let privacy_sensitive = gtk::CheckButton::with_mnemonic(&localized_mnemonic(
+        locale,
+        "option.routing_privacy_sensitive",
+        "Protect privacy-sensitive requests",
+    ));
+    privacy_sensitive.set_focusable(true);
+    privacy_sensitive.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.routing_privacy_sensitive",
+        "When a request is marked privacy-sensitive, reject remote candidates",
+    )));
+    let require_streaming = gtk::CheckButton::with_mnemonic(&localized_mnemonic(
+        locale,
+        "option.routing_require_streaming",
+        "Require streamed output",
+    ));
+    require_streaming.set_focusable(true);
+    require_streaming.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.routing_require_streaming",
+        "Reject candidates that cannot return real streamed deltas",
+    )));
+    let require_document = gtk::CheckButton::with_mnemonic(&localized_mnemonic(
+        locale,
+        "option.routing_require_document",
+        "Require document support",
+    ));
+    require_document.set_focusable(true);
+    require_document.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.routing_require_document",
+        "Keep only candidates that advertise document translation",
+    )));
+    let constraints = gtk::Box::new(gtk::Orientation::Vertical, 4);
+    constraints.append(&preference_control);
+    constraints.append(&local_only);
+    constraints.append(&allow_remote);
+    constraints.append(&privacy_sensitive);
+    constraints.append(&require_streaming);
+    constraints.append(&require_document);
+    root.append(&constraints);
+    let remote_guard = allow_remote.clone();
+    local_only.connect_toggled(move |button| {
+        if button.is_active() {
+            remote_guard.set_active(false);
+        }
+    });
+    let local_guard = local_only.clone();
+    allow_remote.connect_toggled(move |button| {
+        if button.is_active() {
+            local_guard.set_active(false);
+        }
+    });
     let candidate_controls: RoutingCandidateControls = Rc::new(RefCell::new(Vec::new()));
     let candidates_box = gtk::Box::new(gtk::Orientation::Vertical, 4);
     for profile in state
@@ -3977,7 +4139,13 @@ fn show_routing_profiles_dialog(
             ));
             edit.set_focusable(true);
             let edit_mode = mode.clone();
+            let edit_preference = preference.clone();
             let edit_allow_fallback = allow_fallback.clone();
+            let edit_local_only = local_only.clone();
+            let edit_allow_remote = allow_remote.clone();
+            let edit_privacy_sensitive = privacy_sensitive.clone();
+            let edit_require_streaming = require_streaming.clone();
+            let edit_require_document = require_document.clone();
             let edit_container = candidates_box.clone();
             let edit_controls = Rc::clone(&candidate_controls);
             let edit_save = create.clone();
@@ -3986,8 +4154,16 @@ fn show_routing_profiles_dialog(
             let edit_selection = Rc::clone(&editing_profile);
             edit.connect_clicked(move |_| {
                 load_routing_profile_editor(
-                    &edit_mode,
-                    &edit_allow_fallback,
+                    RoutingEditorWidgets {
+                        mode: &edit_mode,
+                        preference: &edit_preference,
+                        allow_fallback: &edit_allow_fallback,
+                        local_only: &edit_local_only,
+                        allow_remote: &edit_allow_remote,
+                        privacy_sensitive: &edit_privacy_sensitive,
+                        require_streaming: &edit_require_streaming,
+                        require_document: &edit_require_document,
+                    },
                     &edit_container,
                     &edit_controls,
                     &edit_profile,
@@ -4093,18 +4269,30 @@ fn show_routing_profiles_dialog(
             .filter(|(_, _, check)| check.is_active())
             .map(|(id, _, _)| id.clone())
             .collect::<Vec<_>>();
+        let editing_profile = create_editing_profile.borrow();
+        let constraints = routing_constraints_from_controls(
+            editing_profile.as_ref().map(|profile| &profile.constraints),
+            &RoutingConstraints {
+                preference: routing_preference_for_selection(preference.selected()),
+                local_only: local_only.is_active(),
+                allow_remote: allow_remote.is_active(),
+                privacy_sensitive: privacy_sensitive.is_active(),
+                require_streaming: require_streaming.is_active(),
+                require_document: require_document.is_active(),
+                explicit_fallback_allowed: allow_fallback.is_active(),
+                ..RoutingConstraints::default()
+            },
+        );
         match default_routing_profile(
             &create_state.borrow(),
             &profile_id,
             routing_mode_for_selection(mode.selected()),
-            allow_fallback.is_active(),
+            constraints,
             &selected_candidate_ids,
         ) {
             Ok(mut profile) => {
-                if let Some(existing_profile) = create_editing_profile.borrow().clone() {
+                if let Some(existing_profile) = editing_profile.clone() {
                     profile.id = existing_profile.id;
-                    profile.constraints = existing_profile.constraints;
-                    profile.constraints.explicit_fallback_allowed = allow_fallback.is_active();
                 }
                 if let Err(error) = create_worker.save_routing_profile(profile) {
                     create_state
@@ -6414,14 +6602,17 @@ mod tests {
         destination_matches_source, document_format_label, endpoint_matches_preset_default,
         generate_custom_provider_id, localized_document_job_state, localized_document_warnings,
         localized_provider_default_name, localized_template, provider_preset_config,
-        provider_preset_index, refresh_ui, routing_profile_id_conflicts, show_new_profile_in_form,
-        start_event_pump, text_metrics_label, valid_routing_profile_id,
+        provider_preset_index, refresh_ui, routing_constraints_from_controls,
+        routing_preference_for_selection, routing_preference_selection,
+        routing_profile_id_conflicts, show_new_profile_in_form, start_event_pump,
+        text_metrics_label, valid_routing_profile_id,
     };
     use adw::prelude::*;
     use gtk::glib;
     use linguamesh_document::{
         DocumentFormat, DocumentJobState, DocumentWarning, DocumentWarningKind,
     };
+    use linguamesh_domain::{RoutingConstraints, RoutingPreference};
     use linguamesh_testkit::FakeProviderServer;
     use std::cell::RefCell;
     use std::fs;
@@ -6473,6 +6664,57 @@ mod tests {
             text_metrics_label(UiLocale::English, "中a"),
             "Characters: 2 · Estimated tokens: 1"
         );
+    }
+
+    #[test]
+    fn routing_preference_selection_round_trips_core_values() {
+        for preference in [
+            RoutingPreference::None,
+            RoutingPreference::Local,
+            RoutingPreference::Quality,
+            RoutingPreference::Latency,
+            RoutingPreference::Cost,
+        ] {
+            assert_eq!(
+                routing_preference_for_selection(routing_preference_selection(preference)),
+                preference
+            );
+        }
+        assert_eq!(
+            routing_preference_for_selection(99),
+            RoutingPreference::None
+        );
+    }
+
+    #[test]
+    fn routing_editor_constraints_preserve_hidden_core_fields() {
+        let existing = RoutingConstraints {
+            provider_allowlist: vec!["local-loopback".to_owned()],
+            minimum_quality_tier: Some(2),
+            ..RoutingConstraints::default()
+        };
+        let updated = routing_constraints_from_controls(
+            Some(&existing),
+            &RoutingConstraints {
+                preference: RoutingPreference::Quality,
+                local_only: true,
+                allow_remote: false,
+                privacy_sensitive: true,
+                require_streaming: true,
+                require_document: false,
+                explicit_fallback_allowed: true,
+                ..RoutingConstraints::default()
+            },
+        );
+        assert_eq!(updated.provider_allowlist, existing.provider_allowlist);
+        assert_eq!(updated.minimum_quality_tier, Some(2));
+        assert_eq!(updated.preference, RoutingPreference::Quality);
+        assert!(updated.local_only);
+        assert!(!updated.allow_remote);
+        assert!(updated.privacy_sensitive);
+        assert!(updated.require_streaming);
+        assert!(!updated.require_document);
+        assert!(updated.explicit_fallback_allowed);
     }
 
     #[test]

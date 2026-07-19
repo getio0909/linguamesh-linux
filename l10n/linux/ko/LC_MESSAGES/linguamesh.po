@@ -2185,3 +2185,105 @@ msgstr "Ordered"
 msgctxt "routing.mode.automatic"
 msgid "Automatic"
 msgstr "Automatic"
+
+#. Label for the automatic routing preference selector.
+#, fuzzy
+msgctxt "label.routing_preference"
+msgid "Automatic preference"
+msgstr "Automatic preference"
+
+#. Checkbox label allowing remote routing candidates.
+#, fuzzy
+msgctxt "option.routing_allow_remote"
+msgid "Allow remote candidates"
+msgstr "Allow remote candidates"
+
+#. Checkbox label restricting routing to local candidates.
+#, fuzzy
+msgctxt "option.routing_local_only"
+msgid "Local candidates only"
+msgstr "Local candidates only"
+
+#. Checkbox label protecting privacy-sensitive requests from remote routing.
+#, fuzzy
+msgctxt "option.routing_privacy_sensitive"
+msgid "Protect privacy-sensitive requests"
+msgstr "Protect privacy-sensitive requests"
+
+#. Checkbox label requiring document-capable routing candidates.
+#, fuzzy
+msgctxt "option.routing_require_document"
+msgid "Require document support"
+msgstr "Require document support"
+
+#. Checkbox label requiring real streamed output from routing candidates.
+#, fuzzy
+msgctxt "option.routing_require_streaming"
+msgid "Require streamed output"
+msgstr "Require streamed output"
+
+#. Automatic routing preference for lowest estimated cost.
+#, fuzzy
+msgctxt "routing.preference.cost"
+msgid "Lowest cost"
+msgstr "Lowest cost"
+
+#. Automatic routing preference for lowest estimated latency.
+#, fuzzy
+msgctxt "routing.preference.latency"
+msgid "Lowest latency"
+msgstr "Lowest latency"
+
+#. Automatic routing preference for local candidates.
+#, fuzzy
+msgctxt "routing.preference.local"
+msgid "Local first"
+msgstr "Local first"
+
+#. Automatic routing preference with no secondary ranking preference.
+#, fuzzy
+msgctxt "routing.preference.none"
+msgid "No preference"
+msgstr "No preference"
+
+#. Automatic routing preference for highest quality tier.
+#, fuzzy
+msgctxt "routing.preference.quality"
+msgid "Quality first"
+msgstr "Quality first"
+
+#. Tooltip explaining the remote-candidate routing constraint.
+#, fuzzy
+msgctxt "tooltip.routing_allow_remote"
+msgid "Permit this profile to send content to non-local providers"
+msgstr "Permit this profile to send content to non-local providers"
+
+#. Tooltip explaining the local-only routing constraint.
+#, fuzzy
+msgctxt "tooltip.routing_local_only"
+msgid "Reject saved providers that are not local loopback endpoints"
+msgstr "Reject saved providers that are not local loopback endpoints"
+
+#. Tooltip explaining the automatic routing preference selector.
+#, fuzzy
+msgctxt "tooltip.routing_preference"
+msgid "Choose the first ranking preference used by Automatic routing"
+msgstr "Choose the first ranking preference used by Automatic routing"
+
+#. Tooltip explaining privacy-sensitive request routing.
+#, fuzzy
+msgctxt "tooltip.routing_privacy_sensitive"
+msgid "When a request is marked privacy-sensitive, reject remote candidates"
+msgstr "When a request is marked privacy-sensitive, reject remote candidates"
+
+#. Tooltip explaining the document-capability routing constraint.
+#, fuzzy
+msgctxt "tooltip.routing_require_document"
+msgid "Keep only candidates that advertise document translation"
+msgstr "Keep only candidates that advertise document translation"
+
+#. Tooltip explaining the streaming-capability routing constraint.
+#, fuzzy
+msgctxt "tooltip.routing_require_streaming"
+msgid "Reject candidates that cannot return real streamed deltas"
+msgstr "Reject candidates that cannot return real streamed deltas"
