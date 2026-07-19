@@ -4,6 +4,24 @@ Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline 
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
+## 2026-07-19 — Linux worker OOXML end-to-end checkpoint
+
+Assumption: Linux document acceptance must exercise the persisted worker command path, not only
+the native import wrapper or shared Core reconstruction tests; the fixtures use bounded in-memory
+DOCX/XLSX packages and contain no user paths or credentials.
+
+- Linux `9ed0557a87b5c042d38e05cad5abf4a2afe487f9` adds worker regressions that create persisted
+  DOCX and XLSX jobs, translate their pending segments through the fake provider, reconstruct the
+  completed packages, and verify translated text while preserving binary resources, formulas, and
+  numeric cells.
+- Local `cargo test --features demo-provider --offline` passed 115 tests with 2 ignored; the two
+  new regressions passed independently before the full suite. Formatting, GUI all-target checks,
+  strict Clippy, localization audit, l10n synchronization, and diff checks remain required for
+  the evidence head.
+
+This strengthens Linux evidence for mandatory Scenarios 10 and 11 without claiming macro/signature
+coverage, visual review, other clients, release artifacts, or a stable release.
+
 ## 2026-07-19 — Linux built-in Ollama profile-name localization checkpoint
 
 Assumption: built-in provider display names are user-visible Linux form values, so both the
