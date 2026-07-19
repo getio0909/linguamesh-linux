@@ -1107,8 +1107,13 @@ messages and bundle checksum `d2f4fd439b5fbc8fc6d48f1be0a91ee92f558c70b851271d64
 - Replaced Rust `Debug` output in persisted document-job rows with stable format labels and
   catalog-backed lifecycle state labels and row metadata.
 - Added localization coverage assertions for the row template and all six lifecycle states.
-- `bash tools/sync-l10n.sh --write` and `--check` passed; local format, strict Clippy, locked
-  no-default tests, and diff checks are required before this checkpoint is pushed.
+- `bash tools/sync-l10n.sh --write` and `--check` passed; local `cargo fmt --all`, strict
+  all-target/all-feature Clippy, locked no-default 61-test suite, demo-provider 99-test suite
+  (one existing environment-dependent ignore), and `git diff --check` passed.
+- The first pushed head `c93d416` correctly failed Native localization validation
+  (`29667345614`) because the workflow still pinned the prior l10n revision; workflow pin
+  `fd30017` corrected it. Current Native `29667394462`, Foundation `29667394454`, and Flatpak
+  `29667394442` passed, including the GTK keyboard, AT-SPI, Wayland, and Flatpak smoke gates.
 
 Complete visible-string gettext coverage, Orca speech, physical desktop review, OCR, other clients,
 and stable-release evidence remain open.
