@@ -12,7 +12,7 @@ Ollama daemon.
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`c3ccf229af29058fe05b9e1a13b12542cb87f2b9`. This revision carries the explicit request-level
+`d1c03ba84362c0c672c57045a59fc8092db470be`. This revision carries the explicit request-level
 Incognito privacy policy and changes file-backed Core storage to add SQLite's `SQLITE_OPEN_NOFOLLOW`
 flag, adds protected-span restoration and request-level glossary
 protection for streamed text, and adds bounded semantic chunking. On
@@ -21,9 +21,9 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e c3ccf229af29058fe05b9e1a13b12542cb87f2b9^{commit}
+git -C ../linguamesh-core cat-file -e d1c03ba84362c0c672c57045a59fc8092db470be^{commit}
 git -C ../linguamesh-core diff --quiet \
-  c3ccf229af29058fe05b9e1a13b12542cb87f2b9..HEAD -- \
+  d1c03ba84362c0c672c57045a59fc8092db470be..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```

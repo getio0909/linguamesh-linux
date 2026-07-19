@@ -10,7 +10,8 @@ Assumption: Linux must reject a Core that does not expose the shared routing con
 provider work starts; this pin records the contract while GTK routing controls remain a later
 client slice.
 
-- Core `c3ccf229af29058fe05b9e1a13b12542cb87f2b9` adds schema 15 routing-profile persistence and
+- Core `d1c03ba84362c0c672c57045a59fc8092db470be` adds strict routing-profile constraint validation
+  on top of schema 15 persistence and
   advertises `routing_planner_v1`.
 - Linux startup now requires the feature alongside the existing exact alpha.2, ABI 1, protocol 1,
   and provider-catalog checks.
