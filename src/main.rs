@@ -3374,6 +3374,19 @@ fn show_document_jobs_dialog(
     let close = gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.close", "Close"));
     close.set_focusable(true);
     root.append(&close);
+    let job_count = u64::try_from(jobs.len()).unwrap_or(u64::MAX);
+    let job_count_text = localization::text_plural(
+        locale,
+        "document.file_count",
+        "{count} file",
+        "{count} files",
+        job_count,
+    )
+    .replace("{count}", &jobs.len().to_string());
+    let job_count_label = gtk::Label::new(Some(&job_count_text));
+    job_count_label.set_xalign(0.0);
+    job_count_label.add_css_class("dim-label");
+    root.append(&job_count_label);
     let list = gtk::ListBox::new();
     list.set_selection_mode(gtk::SelectionMode::None);
     list.set_vexpand(true);
@@ -4221,7 +4234,12 @@ fn apply_worker_event(
             saved_profile,
         } => {
             let profile_was_saved = saved_profile.is_some();
-            let mut labels = vec!["Select a model...".to_owned()];
+            let model_placeholder = localization::text(
+                state.borrow().locale(),
+                "option.model.select",
+                "Select a model...",
+            );
+            let mut labels = vec![model_placeholder];
             labels.extend(models.iter().map(|model| model.display_name.clone()));
             let label_refs = labels.iter().map(String::as_str).collect::<Vec<_>>();
             let selected = {

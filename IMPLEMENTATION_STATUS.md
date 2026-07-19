@@ -4,6 +4,24 @@ Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline 
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
+## 2026-07-19 — Linux plural UI wiring checkpoint
+
+Assumption: pluralized catalog support must be exercised by a visible GTK surface, not only by
+catalog unit tests; persisted document jobs represent one selected source file per job.
+
+- The document-jobs dialog now announces its localized file count through the runtime plural API,
+  while retaining the empty-list state and per-job metadata.
+- Connected-provider model placeholders now resolve through the canonical catalog instead of
+  inserting an untranslated literal during model discovery.
+
+Validated locally:
+
+- `cargo fmt --all -- --check` — passed.
+- `cargo check --features gui --all-targets --offline` — passed.
+
+The full Linux test suite and remote gates are required for this checkpoint; actual visual/Orca
+review, physical offline conditions, other clients, and stable-release evidence remain open.
+
 ## 2026-07-19 — Linux offline-provider preservation checkpoint
 
 Assumption: offline behavior must fail within a bounded user-visible interval while preserving the
