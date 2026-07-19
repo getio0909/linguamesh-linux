@@ -13,7 +13,19 @@ fallback; placeholder-only checks are insufficient when copy drifts between Rust
   braces and placeholder identity drift. The dependency-free audit still skips dynamic keys and
   non-literal constants, which remain covered by the key audit and runtime tests.
 - The initial full local suite had one transient HTTP 502 in an unrelated profile-restore test; the
-  exact test rerun passed. Final full-suite and remote evidence will be recorded after this slice.
+  exact test rerun passed, and the final full suite completed with `131 passed; 2 ignored`.
+
+## 2026-07-19 — Linux localization fallback-template consistency remote verification
+
+- Linux `c3aaedfb60f4f65bab4abc67c019b0e3be3538e8` passed push Native/Flatpak/Foundation
+  `29708171935`/`29708171940`/`29708171993` and PR Native/Flatpak/Foundation
+  `29708173277`/`29708173249`/`29708173224`.
+- An earlier Flatpak push `29708101383` correctly failed because the source-pin validator detected
+  build-path changes at `25011190fbb4522a6d2c39407b88177d39bac71e`; updating the manifest pin fixed
+  the gate without weakening validation. Final Native/Flatpak evidence artifacts were non-expired.
+- This verifies canonical fallback copy and placeholder enforcement in CI; translated-copy/visual/Orca
+  review, third-party daemon interoperability, other clients, signing, rollback, and stable release
+  remain open.
 
 ## 2026-07-19 — Linux localization placeholder audit checkpoint
 
