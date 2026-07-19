@@ -20,6 +20,11 @@ run `29673591852` (job `88156804870`) and Flatpak Linux run `29673591888` (job `
 pull-request gates also passed in Native Linux run `29673593375` (job `88156808424`) and Flatpak
 Linux run `29673593421` (job `88156808624`).
 
+The final evidence-only revision `091676d7f1f053e4a005acddbc162116c39b5407` repeated the same
+checks successfully: push Native Linux `29673745733` (job `88157199361`), push Flatpak Linux
+`29673745743` (job `88157199354`), pull-request Native Linux `29673747672` (job `88157204034`),
+and pull-request Flatpak Linux `29673747662` (job `88157203962`).
+
 Assumption: canonical generated PO/MO resources are synchronized and format-validated. The GTK host
 now parses all twelve pinned official Linux MO catalogs at runtime, exposes BCP 47 locale choices,
 switches the root direction for Arabic, and preserves the source editor buffer during a locale
