@@ -4,6 +4,19 @@ Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline 
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
+## 2026-07-19 — Linux GTK fixture localization checkpoint
+
+Assumption: the automated GTK drag-and-drop fixture button is still user-visible UI and must
+resolve through the canonical catalog, even though it is only enabled for interaction-test runs.
+
+- Linux now resolves the drag-fixture button through `fixture.drag_file`; the source-level audit
+  covers 214 literal Linux localization keys.
+- l10n `3aa86232974f9a9ece8d3a45e6760dee294fca81` contains 333 catalog messages and bundle SHA-256
+  `61a054d99935b256e79d5be7feb4d929fc8cf61af663a02b8fd10475745d70bd`.
+
+The updated Linux revision still requires its full local and remote gates. Machine-generated
+translations, visual/RTL review, Orca speech review, and stable-release qualification remain open.
+
 ## 2026-07-19 — Linux corrupt-database fail-closed checkpoint
 
 Assumption: a corrupted local SQLite file must not be repaired or overwritten implicitly; the

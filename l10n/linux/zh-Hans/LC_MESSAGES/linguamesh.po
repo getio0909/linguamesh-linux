@@ -2017,3 +2017,9 @@ msgstr "可用"
 msgctxt "diagnostics.profile_storage_unavailable"
 msgid "Unavailable"
 msgstr "不可用"
+
+#. Accessible label for the draggable file fixture button used by Linux GTK interaction tests.
+#, fuzzy
+msgctxt "fixture.drag_file"
+msgid "Drag fixture"
+msgstr "拖动测试文件"

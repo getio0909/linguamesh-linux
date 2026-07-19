@@ -295,7 +295,11 @@ fn start_file_drop_fixture(application: &adw::Application, bindings: UiBindings)
     let coordinates_path = std::env::var("LINGUAMESH_FILE_DROP_COORDINATES")
         .expect("LINGUAMESH_FILE_DROP_COORDINATES must be set");
     let expected = fs::read_to_string(&fixture_path).expect("read file drop fixture");
-    let drag_button = gtk::Button::with_label("Drag fixture");
+    let drag_button = gtk::Button::with_label(&localization::text(
+        UiLocale::default(),
+        "fixture.drag_file",
+        "Drag fixture",
+    ));
     drag_button.set_focusable(true);
     drag_button.set_size_request(240, 48);
     let file = gtk::gio::File::for_path(&fixture_path);
