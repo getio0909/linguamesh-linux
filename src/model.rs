@@ -3,7 +3,7 @@ use linguamesh_domain::{
     ErrorKind, Glossary, ModelDescriptor, TranslationError, TranslationEvent,
     TranslationPrivacyMode, TranslationRequest,
 };
-pub use linguamesh_domain::{ProviderProfile, ProviderProfileId};
+pub use linguamesh_domain::{ProviderProfile, ProviderProfileId, RoutingMode};
 use linguamesh_protocol::{ABI_VERSION_MAJOR, PROTOCOL_VERSION};
 use std::collections::HashSet;
 use std::error::Error;
@@ -11,6 +11,16 @@ use std::fmt;
 
 /// 当前检查点提供的本地提供商标识。
 pub const LOCAL_FAKE_PROVIDER_ID: &str = "local-fake-provider";
+
+// 将 GTK 下拉框的稳定顺序映射到 Core 路由模式。
+#[must_use]
+pub const fn routing_mode_for_selection(index: u32) -> RoutingMode {
+    match index {
+        0 => RoutingMode::Manual,
+        1 => RoutingMode::Ordered,
+        _ => RoutingMode::Automatic,
+    }
+}
 
 /// 记录最近一次普通文本请求的非敏感路由决策摘要。
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -2028,7 +2038,8 @@ const fn yes_no(value: bool) -> &'static str {
 mod tests {
     use super::{
         AppState, AppStatus, OnboardingStage, ProfileStorageStatus, ProviderProfile,
-        ProviderProfileId, RoutingDecisionSummary, StateError, ThemePreference, UiLocale,
+        ProviderProfileId, RoutingDecisionSummary, RoutingMode, StateError, ThemePreference,
+        UiLocale, routing_mode_for_selection,
     };
     use linguamesh_domain::{
         ErrorKind, Glossary, GlossaryEntry, ModelDescriptor, ModelSource, SecretRef,
@@ -2062,6 +2073,14 @@ mod tests {
         .expect("profile")
         .with_selected_model(selected_model.map(str::to_owned))
         .expect("selected model")
+    }
+
+    #[test]
+    fn routing_mode_dropdown_preserves_core_mode_order() {
+        assert_eq!(routing_mode_for_selection(0), RoutingMode::Manual);
+        assert_eq!(routing_mode_for_selection(1), RoutingMode::Ordered);
+        assert_eq!(routing_mode_for_selection(2), RoutingMode::Automatic);
+        assert_eq!(routing_mode_for_selection(99), RoutingMode::Automatic);
     }
 
     fn discovered_model(id: &str) -> ModelDescriptor {

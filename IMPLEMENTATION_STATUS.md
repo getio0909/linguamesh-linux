@@ -1,5 +1,24 @@
 # Implementation Status
 
+## 2026-07-19 — Linux routing mode and fallback-consent checkpoint
+
+Assumption: routing mode is a user-visible Core contract, while fallback remains opt-in and must
+default to disabled for newly created profiles.
+
+- The GTK routing-profile dialog now exposes Core `Manual`, `Ordered`, and `Automatic` modes in a
+  stable dropdown order and persists the selected mode with the profile.
+- **Allow approved fallback** is a separate, focusable checkbox and is off by default; Core still
+  rejects fallback for manual mode and document jobs.
+- No new localization keys were added; existing catalog-backed routing and fallback labels are
+  reused.
+- Local Linux validation passed: GUI all-target check, 130 demo-provider tests (`128 passed; 2
+  ignored`), strict Clippy, formatting, localization sync/audit, Flatpak metadata, and diff checks.
+  Remote push/PR checks for this checkpoint are pending publication of the commit below.
+
+This advances the Linux routing configuration surface without claiming complete candidate editing,
+third-party-provider interoperability, other clients, visual/Orca review, release artifacts, or a
+stable release.
+
 ## 2026-07-19 — Linux routed document restart checkpoint
 
 Assumption: a routed document job must persist only its non-secret routing-profile ID so restart can
@@ -20,7 +39,7 @@ Linux push Native/Flatpak/Foundation `29695192479`/`29695192489`/`29695192477`, 
 Native/Flatpak/Foundation `29695193793`/`29695193826`/`29695193809`, all passed for the published
 commits.
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics including accessible document progress, live AT-SPI tree export checks, a headless GTK keyboard traversal fixture for tested controls, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF document-job translation with sequential segment persistence, bounded DOCX/PPTX/XLSX/EPUB package reconstruction and resource retention, bounded optional image-only PDF OCR with page-marked text output, page-aware text-PDF reconstruction with structured HTML fallback, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, both Ollama-compatible OpenAI `/v1/` and native Ollama `/api` deterministic discovery/streaming fixtures, a GTK provider preset selector for OpenAI-compatible and native Ollama profiles, bounded Linux ordinary-text dispatch through saved Core routing profiles, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; source-referenced Linux gettext keys are statically checked against the canonical catalog; automatic/ordered fallback-chain UI, a running third-party Ollama daemon, Orca speech, end-user prompt acceptance, visual/translated copy review, other clients, and release artifacts remain open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics including accessible document progress, live AT-SPI tree export checks, a headless GTK keyboard traversal fixture for tested controls, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF document-job translation with sequential segment persistence, bounded DOCX/PPTX/XLSX/EPUB package reconstruction and resource retention, bounded optional image-only PDF OCR with page-marked text output, page-aware text-PDF reconstruction with structured HTML fallback, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, both Ollama-compatible OpenAI `/v1/` and native Ollama `/api` deterministic discovery/streaming fixtures, a GTK provider preset selector for OpenAI-compatible and native Ollama profiles, bounded Linux ordinary-text dispatch through saved Core routing profiles, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; source-referenced Linux gettext keys are statically checked against the canonical catalog; complete candidate-management/fallback-chain UI, a running third-party Ollama daemon, Orca speech, end-user prompt acceptance, visual/translated copy review, other clients, and release artifacts remain open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 

@@ -76,6 +76,11 @@ rules and credential-shaped terms, selects only locale-matching entries, protect
 and restores required target terms after streaming; glossary content is not part of saved provider
 profiles or SQLite persistence.
 
+The GTK routing-profile dialog maps a stable dropdown order to Core's `Manual`, `Ordered`, and
+`Automatic` modes. A separate **Allow approved fallback** checkbox records explicit consent and is
+disabled by default; the worker still applies Core's policy that manual and document dispatches do
+not fall through to another candidate.
+
 Core also performs bounded long-text chunking before provider calls. It prefers paragraph, sentence,
 and whitespace boundaries, treats protected markers as indivisible, streams chunks in source order,
 and stops before starting another chunk when cancellation is requested. The 16 KiB default is a

@@ -14,7 +14,7 @@ use linguamesh_linux::file_import;
 use linguamesh_linux::localization;
 use linguamesh_linux::model::{
     AppState, AppStatus, OnboardingStage, ProfileStorageStatus, ProviderProfile,
-    RoutingDecisionSummary, StateError, ThemePreference, UiLocale,
+    RoutingDecisionSummary, StateError, ThemePreference, UiLocale, routing_mode_for_selection,
 };
 use linguamesh_linux::secret_service;
 use linguamesh_linux::worker::{
@@ -3528,7 +3528,12 @@ fn routing_candidate_for_profile(
 }
 
 // 创建一个可复用的 Linux 自动路由配置，候选只来自已保存的提供商配置。
-fn default_routing_profile(state: &AppState) -> Result<RoutingProfile, TranslationError> {
+// 根据用户选择创建路由配置，并把回退权限保持为显式开关。
+fn default_routing_profile(
+    state: &AppState,
+    mode: RoutingMode,
+    explicit_fallback_allowed: bool,
+) -> Result<RoutingProfile, TranslationError> {
     let candidates = state
         .saved_profiles()
         .iter()
@@ -3542,11 +3547,11 @@ fn default_routing_profile(state: &AppState) -> Result<RoutingProfile, Translati
     }
     RoutingProfile::new(
         "linux-default",
-        RoutingMode::Automatic,
+        mode,
         candidates,
         RoutingConstraints {
             preference: RoutingPreference::Local,
-            explicit_fallback_allowed: true,
+            explicit_fallback_allowed,
             ..RoutingConstraints::default()
         },
     )
@@ -3580,6 +3585,34 @@ fn show_routing_profiles_dialog(
     root.set_margin_start(16);
     root.set_margin_end(16);
     let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let mode_labels = [
+        localized_routing_mode(locale, RoutingMode::Manual),
+        localized_routing_mode(locale, RoutingMode::Ordered),
+        localized_routing_mode(locale, RoutingMode::Automatic),
+    ];
+    let mode_label_refs = mode_labels.iter().map(String::as_str).collect::<Vec<_>>();
+    let mode = gtk::DropDown::from_strings(&mode_label_refs);
+    mode.set_selected(2);
+    mode.set_focusable(true);
+    mode.set_tooltip_text(Some(&localization::text(
+        locale,
+        "dialog.routing_profiles",
+        "Choose Manual, Ordered, or Automatic routing",
+    )));
+    let allow_fallback = gtk::CheckButton::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.enable_fallback",
+        "Allow approved fallback",
+    ));
+    allow_fallback.set_focusable(true);
+    allow_fallback.set_active(false);
+    allow_fallback.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.fallback",
+        "Permit the selected routing profile to try another eligible saved provider after a retryable failure",
+    )));
+    actions.append(&mode);
+    actions.append(&allow_fallback);
     let create = gtk::Button::with_mnemonic(&localized_mnemonic(
         locale,
         "action.create_routing_profile",
@@ -3678,8 +3711,12 @@ fn show_routing_profiles_dialog(
     let create_state = Rc::clone(state);
     let create_worker = worker.clone();
     let create_dialog = dialog.clone();
-    create.connect_clicked(
-        move |_| match default_routing_profile(&create_state.borrow()) {
+    create.connect_clicked(move |_| {
+        match default_routing_profile(
+            &create_state.borrow(),
+            routing_mode_for_selection(mode.selected()),
+            allow_fallback.is_active(),
+        ) {
             Ok(profile) => {
                 if let Err(error) = create_worker.save_routing_profile(profile) {
                     create_state
@@ -3700,8 +3737,8 @@ fn show_routing_profiles_dialog(
                     ));
                 refresh_ui(&create_bindings, &create_state.borrow());
             }
-        },
-    );
+        }
+    });
     let close_dialog = dialog.clone();
     close.connect_clicked(move |_| close_dialog.close());
     dialog.present();

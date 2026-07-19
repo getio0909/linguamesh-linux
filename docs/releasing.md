@@ -22,6 +22,9 @@ persistently activated row but never auto-connects, so a credential must be ente
 required. A derived Provider setup card guides configuration, explicit connection, and deliberate
 model selection without storing a completion flag, distinguishes worker failure from startup, and
 shows the confirmed next-request stable ID/model identity.
+The routing-profile dialog now persists an explicit Core mode (`Manual`, `Ordered`, or `Automatic`);
+approved fallback remains a separate opt-in checkbox that defaults off. This is configuration-surface
+evidence only and does not satisfy the complete candidate-management release gate.
 The external-provider path includes deterministic Ollama-compatible OpenAI `/v1/` and native
 `/api/` loopback fixtures; they do not claim interoperability with a running third-party daemon.
 The GTK form now exposes the native Ollama preset and its `ollama_chat` adapter, while persistent

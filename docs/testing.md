@@ -25,9 +25,10 @@ failure across remaining automatic or ordered candidates, preserving event order
 output. A document-job regression selects a saved document-capable routing candidate while a
 different provider is active, translates every pending segment through that candidate, and asserts
 that the document decision reports no fallback even when the profile permits explicit fallback.
-The GTK dialog creates only a bounded local-preferred default from saved provider/model selections.
-When a routing profile is selected, it takes precedence over the separate explicit fallback
-checkbox for both ordinary text and document dispatch; document jobs never auto-fallback.
+The GTK dialog creates a bounded profile from saved provider/model selections and now exposes the
+Core `Manual`, `Ordered`, and `Automatic` modes in a stable order. Its separate explicit fallback
+checkbox is off by default; when a routing profile is selected, it takes precedence over the
+ordinary text fallback path, while document jobs never auto-fallback.
 The restart regression `document_job_resume_reconnects_saved_routing_profile_after_restart`
 interrupts a routed job, reopens the database, reconnects the saved profile through the host secret
 broker, and completes the remaining segments while asserting a zero-fallback decision.

@@ -199,6 +199,10 @@ provider can select it. The UI records the selection and warns that content may 
 is unavailable for document jobs, incognito requests, cancellation, authentication failures, model
 errors, and unapproved or session-only profiles; partial primary output is retained across the switch.
 
+The routing-profile dialog also lets the user choose Core's **Manual**, **Ordered**, or **Automatic**
+mode before saving a profile. Fallback consent is separate, explicit, and disabled by default; a
+manual profile never falls through to another candidate.
+
 When an ordinary text request ends in a failed or cancelled state, **Retry translation** becomes
 available. It reuses the current source, target, glossary, privacy mode, confirmed provider, and
 model through the same worker command path as **Translate**; it is disabled for active document jobs,
