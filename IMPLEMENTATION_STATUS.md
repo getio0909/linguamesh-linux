@@ -15,9 +15,9 @@ DOCX/XLSX packages and contain no user paths or credentials.
   completed packages, and verify translated text while preserving binary resources, formulas, and
   numeric cells.
 - Local `cargo test --features demo-provider --offline` passed 115 tests with 2 ignored; the two
-  new regressions passed independently before the full suite. Formatting, GUI all-target checks,
-  strict Clippy, localization audit, l10n synchronization, and diff checks remain required for
-  the evidence head.
+  new regressions passed independently before the full suite. `cargo fmt --all -- --check`,
+  `cargo check --features gui --all-targets --offline`, strict all-feature Clippy, the 215-key
+  localization audit, l10n synchronization, and `git diff --check` also passed.
 
 This strengthens Linux evidence for mandatory Scenarios 10 and 11 without claiming macro/signature
 coverage, visual review, other clients, release artifacts, or a stable release.
