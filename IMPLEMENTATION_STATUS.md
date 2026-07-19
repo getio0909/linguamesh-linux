@@ -13,12 +13,14 @@ functional pin used by Native CI and Flatpak metadata; no Linux-local duplicate 
   archive boundary rejects entries at least 1 KiB whose uncompressed size exceeds 200 times the
   compressed size, in addition to the existing size, count, path, duplicate, encrypted, and
   symlink checks.
-- The reviewed Linux pin and documentation are recorded at `be0bad0`; the Flatpak source update
-  will point at this immutable revision while its own metadata commit is validated.
+- The reviewed Linux functional pin and documentation are recorded at `be0bad02a16c046e49dfddc3152b98bf7f1d1bab`; Flatpak metadata consumes that immutable source.
 - Core local workspace tests, strict Clippy, formatting, and locked build passed at this revision;
   Core CI run `29682666941` and Native SDK run `29682666929` completed successfully.
-- Linux validation remains required after this pin update: the worker OOXML tests, local full suite,
-  localization and Flatpak metadata checks, then all Native, Foundation, and Flatpak remote gates.
+- Linux local validation passed: the worker OOXML tests are included in the 115-pass, 2-ignored
+  demo-provider suite; formatting, GUI all-target check, strict Clippy, 215-key localization audit,
+  l10n synchronization, Flatpak metadata validation, and diff checks also passed. Push Native
+  `29682975678`, Foundation `29682975679`, and Flatpak `29682975675`, plus PR Native
+  `29682976712`, Foundation `29682976695`, and Flatpak `29682976678`, all passed.
 
 This checkpoint strengthens mandatory Scenario 15 archive safety without claiming macro/signature,
 visual review, other clients, packaging artifacts, or a stable release.
