@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, live AT-SPI tree export checks, a headless GTK keyboard traversal fixture for tested controls, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF document-job translation with sequential segment persistence, bounded DOCX/PPTX/XLSX/EPUB package reconstruction and resource retention, bounded optional image-only PDF OCR with page-marked text output, page-aware text-PDF reconstruction with structured HTML fallback, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; Orca speech, end-user prompt acceptance, complete visible-string gettext coverage, other clients, and release artifacts remain open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, live AT-SPI tree export checks, a headless GTK keyboard traversal fixture for tested controls, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF document-job translation with sequential segment persistence, bounded DOCX/PPTX/XLSX/EPUB package reconstruction and resource retention, bounded optional image-only PDF OCR with page-marked text output, page-aware text-PDF reconstruction with structured HTML fallback, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; source-referenced Linux gettext keys are statically checked against the canonical catalog; Orca speech, end-user prompt acceptance, visual/translated copy review, other clients, and release artifacts remain open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -9,7 +9,8 @@ now parses all twelve pinned official Linux MO catalogs at runtime, exposes BCP 
 switches the root direction for Arabic, and preserves the source editor buffer during a locale
 switch; status summaries, partial-output markers, text-file import controls, provider-profile
 controls, source/target language options, and stable worker/runtime/storage error sentences now use
-the same catalogs; complete UI coverage, plural handling, and visual locale/RTL review remain open.
+the same catalogs; source-referenced key coverage is enforced by a static audit, while plural
+handling and visual locale/RTL review remain open.
 
 Assumption: the existing first-party `linguamesh-storage` crate and the already-reviewed GTK/GIO
 dependency closure are the approved persistence contract for this Linux slice. The Secret Service
@@ -1139,3 +1140,21 @@ source PDF or claims pixel-identical reconstruction.
   and Flatpak Linux run `29668533922` (job `88143262421`) passed. Native exercised the new OCR
   fixture after installing ImageMagick, Poppler, and Tesseract; Flatpak continued to pass its
   sandbox smoke without enabling OCR by default.
+
+## 2026-07-19 — Linux canonical localization-key audit checkpoint
+
+Assumption: every literal key passed to the Linux UI localization helpers must be present in the
+canonical l10n catalog; dynamic keys remain intentionally outside this static check and are covered
+by the existing runtime localization tests.
+
+- Added `tools/check-localization-keys.py`, a dependency-free source audit for literal keys in
+  `src/main.rs` and `src/model.rs`. It reads the sibling canonical catalog and reports missing keys
+  with a non-zero exit status.
+- Added the audit to Native localization validation and the Foundation required-file manifest; the
+  documented command uses `python3 -B` so validation does not leave bytecode artifacts.
+- Local `python3 -B tools/check-localization-keys.py`, l10n sync check, shell syntax, and diff checks
+  passed. The audit covered 187 unique Linux source keys against the pinned 306-message catalog.
+
+The audit makes source-to-catalog coverage reproducible but does not replace translated-copy,
+plural, visual locale/RTL, or Orca speech review. Native, Foundation, and Flatpak CI gates remain
+required for the pushed revision.

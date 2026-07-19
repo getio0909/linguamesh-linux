@@ -41,6 +41,7 @@ Validate localization provenance and gettext syntax with:
 
 ```sh
 bash tools/sync-l10n.sh --check
+python3 -B tools/check-localization-keys.py
 for file in l10n/linux/*/LC_MESSAGES/linguamesh.po; do
   msgfmt --check --check-format -o /dev/null "$file"
 done
