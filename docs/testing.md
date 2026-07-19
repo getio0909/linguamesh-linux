@@ -329,9 +329,9 @@ The GitHub Actions native workflow pins Core revision
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
 namespace test through the unprivileged path.
-The current Linux diagnostics localization revision `3aa86232974f9a9ece8d3a45e6760dee294fca81`
-contains 333 catalog messages and bundle SHA-256
-`61a054d99935b256e79d5be7feb4d929fc8cf61af663a02b8fd10475745d70bd`; the source-level catalog
+The current Linux diagnostics localization revision `85b9d45569ce840c17dc0acc7d7366d6810be48e`
+contains 334 catalog messages and bundle SHA-256
+`028d25b3637fbc19d41d497a860b414353615b9576db6f852a9f236bcbe770ce`; the source-level catalog
 audit and runtime locale tests cover the diagnostics labels. The current fixed-error localization revision `b6d2503`
 passed Native Linux run `29627668119`, Foundation run `29627668093`, and
 Flatpak run `29627668108`; the native job validated the pinned 117-message catalog and GTK

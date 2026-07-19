@@ -4,6 +4,20 @@ Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline 
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
+## 2026-07-19 — Linux built-in Ollama profile-name localization checkpoint
+
+Assumption: built-in provider display names are user-visible Linux form values, so both the
+OpenAI-compatible and native Ollama defaults must resolve through the canonical catalog while
+user-edited names remain untouched.
+
+- Linux now routes new-profile initialization and untouched preset switching through localized
+  default-name helpers for both built-in providers. The source audit covers 215 literal keys.
+- l10n `85b9d45569ce840c17dc0acc7d7366d6810be48e` contains 334 catalog messages and bundle SHA-256
+  `028d25b3637fbc19d41d497a860b414353615b9576db6f852a9f236bcbe770ce`.
+
+The updated Linux revision still requires its full remote gates. Machine-generated translations,
+visual/RTL review, Orca speech review, and stable-release qualification remain open.
+
 ## 2026-07-19 — Linux GTK fixture localization checkpoint
 
 Assumption: the automated GTK drag-and-drop fixture button is still user-visible UI and must
