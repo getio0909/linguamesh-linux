@@ -7,12 +7,14 @@ use linguamesh_application::{
 use linguamesh_document::{DocumentError, DocumentJob, DocumentJobState};
 use linguamesh_domain::{
     CompatibilityRequirements, CoreCompatibility, ErrorKind, Glossary, ModelDescriptor,
-    SecretValue, TranslationError, TranslationEvent, TranslationPrivacyMode, TranslationRequest,
+    RoutingProfile, SecretValue, TranslationError, TranslationEvent, TranslationPrivacyMode,
+    TranslationRequest,
 };
 use linguamesh_engine::{CancellationHandle, TranslationOperation, core_compatibility};
 use linguamesh_storage::{
     DocumentJobOptions, DocumentJobSnapshot, MAX_DOCUMENT_JOBS, MAX_TRANSLATION_HISTORY_ENTRIES,
-    MAX_TRANSLATION_MEMORY_ENTRIES, Storage, TranslationHistoryEntry, TranslationMemoryEntry,
+    MAX_TRANSLATION_MEMORY_ENTRIES, RoutingProfileRecord, Storage, TranslationHistoryEntry,
+    TranslationMemoryEntry,
 };
 use linguamesh_testkit::FakeProviderServer;
 use std::error::Error;
@@ -107,6 +109,18 @@ pub enum WorkerCommand {
     },
     /// 清空本地翻译记忆。
     ClearTranslationMemory,
+    /// 保存或替换一个不含秘密的路由配置。
+    SaveRoutingProfile {
+        /// 经过核心校验的路由配置。
+        profile: RoutingProfile,
+    },
+    /// 读取全部已保存路由配置。
+    ListRoutingProfiles,
+    /// 删除一个已保存路由配置。
+    DeleteRoutingProfile {
+        /// 路由配置稳定标识。
+        profile_id: String,
+    },
     /// 创建或替换一个本地文档任务快照。
     CreateDocumentJob {
         /// 不包含路径的稳定任务标识。
@@ -265,6 +279,20 @@ pub enum WorkerEvent {
     TranslationMemoryCleared,
     /// 清空本地翻译记忆被拒绝。
     TranslationMemoryClearRejected(TranslationError),
+    /// 已读取本地路由配置。
+    RoutingProfilesListed {
+        /// 按更新时间排列的非秘密路由配置。
+        profiles: Vec<RoutingProfileRecord>,
+    },
+    /// 路由配置已保存。
+    RoutingProfileSaved(RoutingProfileRecord),
+    /// 路由配置已删除。
+    RoutingProfileDeleted {
+        /// 被删除的路由配置稳定标识。
+        profile_id: String,
+    },
+    /// 路由配置操作被精确拒绝。
+    RoutingProfileActionRejected(TranslationError),
     /// 读取或删除本地翻译记忆被拒绝。
     TranslationMemoryActionRejected(TranslationError),
     /// 本地翻译记忆写入失败，但翻译结果仍已完成。
@@ -469,6 +497,27 @@ impl WorkerCommandHandle {
             .try_send(QueuedCommand::DeleteTranslationMemory { cache_key })
             .map_err(|_| WorkerSendError)
     }
+
+    /// 非阻塞保存或替换一个不含秘密的路由配置。
+    pub fn save_routing_profile(&self, profile: RoutingProfile) -> Result<(), WorkerSendError> {
+        self.commands
+            .try_send(QueuedCommand::SaveRoutingProfile { profile })
+            .map_err(|_| WorkerSendError)
+    }
+
+    /// 非阻塞请求读取本地路由配置。
+    pub fn list_routing_profiles(&self) -> Result<(), WorkerSendError> {
+        self.commands
+            .try_send(QueuedCommand::ListRoutingProfiles)
+            .map_err(|_| WorkerSendError)
+    }
+
+    /// 非阻塞删除一个本地路由配置。
+    pub fn delete_routing_profile(&self, profile_id: String) -> Result<(), WorkerSendError> {
+        self.commands
+            .try_send(QueuedCommand::DeleteRoutingProfile { profile_id })
+            .map_err(|_| WorkerSendError)
+    }
 }
 
 enum QueuedCommand {
@@ -501,6 +550,13 @@ enum QueuedCommand {
         cache_key: String,
     },
     ClearTranslationMemory,
+    SaveRoutingProfile {
+        profile: RoutingProfile,
+    },
+    ListRoutingProfiles,
+    DeleteRoutingProfile {
+        profile_id: String,
+    },
     CreateDocumentJob {
         job_id: String,
         job: DocumentJob,
@@ -703,6 +759,18 @@ impl CoreWorker {
             WorkerCommand::ClearTranslationMemory => self
                 .commands
                 .try_send(QueuedCommand::ClearTranslationMemory)
+                .map_err(|_| WorkerSendError),
+            WorkerCommand::SaveRoutingProfile { profile } => self
+                .commands
+                .try_send(QueuedCommand::SaveRoutingProfile { profile })
+                .map_err(|_| WorkerSendError),
+            WorkerCommand::ListRoutingProfiles => self
+                .commands
+                .try_send(QueuedCommand::ListRoutingProfiles)
+                .map_err(|_| WorkerSendError),
+            WorkerCommand::DeleteRoutingProfile { profile_id } => self
+                .commands
+                .try_send(QueuedCommand::DeleteRoutingProfile { profile_id })
                 .map_err(|_| WorkerSendError),
             WorkerCommand::CreateDocumentJob { job_id, job } => self
                 .commands
@@ -1133,6 +1201,18 @@ async fn run_worker(
                         TranslationError::new(
                             ErrorKind::InvalidConfiguration,
                             "Translation memory cannot be changed while a translation is running.",
+                        ),
+                    ));
+                }
+                ActiveStep::Command(Some(
+                    QueuedCommand::SaveRoutingProfile { .. }
+                    | QueuedCommand::ListRoutingProfiles
+                    | QueuedCommand::DeleteRoutingProfile { .. },
+                )) => {
+                    let _ = events.send(WorkerEvent::RoutingProfileActionRejected(
+                        TranslationError::new(
+                            ErrorKind::InvalidConfiguration,
+                            "Routing profiles cannot change while a translation is running.",
                         ),
                     ));
                 }
@@ -2002,6 +2082,102 @@ async fn run_worker(
                     }
                 }
             }
+            Some(QueuedCommand::SaveRoutingProfile { profile }) => {
+                let result = storage
+                    .as_mut()
+                    .ok_or_else(|| {
+                        TranslationError::new(
+                            ErrorKind::Persistence,
+                            "Local routing profile storage is unavailable.",
+                        )
+                    })
+                    .and_then(|storage| storage.save_routing_profile(&profile));
+                match result {
+                    Ok(record) => {
+                        if events
+                            .send(WorkerEvent::RoutingProfileSaved(record))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::RoutingProfileActionRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
+            Some(QueuedCommand::ListRoutingProfiles) => {
+                let result = storage
+                    .as_ref()
+                    .ok_or_else(|| {
+                        TranslationError::new(
+                            ErrorKind::Persistence,
+                            "Local routing profile storage is unavailable.",
+                        )
+                    })
+                    .and_then(Storage::routing_profiles);
+                match result {
+                    Ok(profiles) => {
+                        if events
+                            .send(WorkerEvent::RoutingProfilesListed { profiles })
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::RoutingProfileActionRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
+            Some(QueuedCommand::DeleteRoutingProfile { profile_id }) => {
+                let result = storage
+                    .as_mut()
+                    .ok_or_else(|| {
+                        TranslationError::new(
+                            ErrorKind::Persistence,
+                            "Local routing profile storage is unavailable.",
+                        )
+                    })
+                    .and_then(|storage| {
+                        if storage.delete_routing_profile(profile_id.as_str())? {
+                            Ok(())
+                        } else {
+                            Err(TranslationError::new(
+                                ErrorKind::InvalidConfiguration,
+                                "The routing profile no longer exists.",
+                            ))
+                        }
+                    });
+                match result {
+                    Ok(()) => {
+                        if events
+                            .send(WorkerEvent::RoutingProfileDeleted { profile_id })
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::RoutingProfileActionRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
             Some(QueuedCommand::OcrDocumentJob {
                 job_id,
                 source_name,
@@ -2699,6 +2875,11 @@ fn reject_queued_commands_for_shutdown(
             QueuedCommand::ListTranslationMemory
             | QueuedCommand::DeleteTranslationMemory { .. } => events.send(
                 WorkerEvent::TranslationMemoryActionRejected(TranslationError::cancelled()),
+            ),
+            QueuedCommand::SaveRoutingProfile { .. }
+            | QueuedCommand::ListRoutingProfiles
+            | QueuedCommand::DeleteRoutingProfile { .. } => events.send(
+                WorkerEvent::RoutingProfileActionRejected(TranslationError::cancelled()),
             ),
             QueuedCommand::CreateDocumentJob { .. }
             | QueuedCommand::OcrDocumentJob { .. }
@@ -3520,8 +3701,9 @@ mod tests {
     use crate::model::{ProviderProfile, ProviderProfileId};
     use linguamesh_document::{DocumentFormat, DocumentJob, DocumentJobState};
     use linguamesh_domain::{
-        CoreCompatibility, ErrorKind, SecretRef, SecretRefNamespace, SecretValue, TranslationError,
-        TranslationEvent, TranslationPrivacyMode, TranslationRequest,
+        CoreCompatibility, ErrorKind, RoutingCandidate, RoutingConstraints, RoutingMode,
+        RoutingPreference, RoutingProfile, SecretRef, SecretRefNamespace, SecretValue,
+        TranslationError, TranslationEvent, TranslationPrivacyMode, TranslationRequest,
     };
     use linguamesh_engine::core_compatibility;
     use linguamesh_storage::Storage;
@@ -4390,6 +4572,83 @@ mod tests {
             }
             _ => panic!("unexpected deletion event"),
         }
+        shutdown(&worker);
+    }
+
+    #[test]
+    fn routing_profiles_persist_without_provider_endpoints_or_secrets() {
+        let database = TestDatabase::new();
+        let worker = CoreWorker::spawn_with_database(database.path());
+        loop {
+            match worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("routing startup event")
+            {
+                WorkerEvent::DemoProviderReady { .. } => break,
+                WorkerEvent::ProfileStorageUnavailable(error) => {
+                    panic!("routing storage unavailable: {error}");
+                }
+                _ => {}
+            }
+        }
+        let mut candidate = RoutingCandidate::new("saved-provider", "saved-model", true, 4096)
+            .expect("routing candidate");
+        candidate.quality_tier = 3;
+        let profile = RoutingProfile::new(
+            "linux-local-first",
+            RoutingMode::Automatic,
+            vec![candidate],
+            RoutingConstraints {
+                local_only: true,
+                preference: RoutingPreference::Local,
+                explicit_fallback_allowed: true,
+                ..RoutingConstraints::default()
+            },
+        )
+        .expect("routing profile");
+        worker
+            .try_send(WorkerCommand::SaveRoutingProfile {
+                profile: profile.clone(),
+            })
+            .expect("save routing profile");
+        match worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("routing save event")
+        {
+            WorkerEvent::RoutingProfileSaved(record) => {
+                assert_eq!(record.id, "linux-local-first");
+                assert_eq!(record.profile, profile);
+            }
+            _ => panic!("unexpected routing save event"),
+        }
+        worker
+            .try_send(WorkerCommand::ListRoutingProfiles)
+            .expect("list routing profiles");
+        match worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("routing list event")
+        {
+            WorkerEvent::RoutingProfilesListed { profiles } => {
+                assert_eq!(profiles.len(), 1);
+                assert_eq!(profiles[0].profile, profile);
+            }
+            _ => panic!("unexpected routing list event"),
+        }
+        worker
+            .try_send(WorkerCommand::DeleteRoutingProfile {
+                profile_id: "linux-local-first".to_owned(),
+            })
+            .expect("delete routing profile");
+        assert!(matches!(
+            worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("routing delete event"),
+            WorkerEvent::RoutingProfileDeleted { profile_id } if profile_id == "linux-local-first"
+        ));
         shutdown(&worker);
     }
 

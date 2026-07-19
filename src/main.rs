@@ -6,6 +6,7 @@ use linguamesh_document::{
 };
 use linguamesh_domain::{
     ErrorKind, Glossary, GlossaryEntry, MAX_GLOSSARY_CSV_BYTES, OperationId, ProviderProfileId,
+    RoutingCandidate, RoutingConstraints, RoutingMode, RoutingPreference, RoutingProfile,
     SecretRef, SecretRefNamespace, SecretValue, TranslationError, TranslationEvent,
     TranslationPrivacyMode,
 };
@@ -19,7 +20,9 @@ use linguamesh_linux::secret_service;
 use linguamesh_linux::worker::{
     CoreWorker, PersistenceIntent, WorkerCommand, WorkerCommandHandle, WorkerEvent,
 };
-use linguamesh_storage::{DocumentJobSnapshot, TranslationHistoryEntry, TranslationMemoryEntry};
+use linguamesh_storage::{
+    DocumentJobSnapshot, RoutingProfileRecord, TranslationHistoryEntry, TranslationMemoryEntry,
+};
 use std::cell::{Cell, RefCell};
 use std::fs;
 use std::io::Write;
@@ -72,6 +75,7 @@ struct UiBindings {
     memory_enabled: gtk::CheckButton,
     memory: gtk::Button,
     clear_memory: gtk::Button,
+    routing_profiles: gtk::Button,
     fallback_enabled: gtk::CheckButton,
     fallback_profile_label: gtk::Label,
     fallback_profile: gtk::DropDown,
@@ -442,6 +446,7 @@ fn create_window(
         memory_enabled,
         memory,
         clear_memory,
+        routing_profiles,
         theme,
         locale,
     ) = create_controls();
@@ -704,6 +709,7 @@ fn create_window(
         memory_enabled,
         memory,
         clear_memory,
+        routing_profiles,
         fallback_enabled,
         fallback_profile_label,
         fallback_profile,
@@ -1338,6 +1344,7 @@ fn create_controls() -> (
     gtk::CheckButton,
     gtk::Button,
     gtk::Button,
+    gtk::Button,
     gtk::DropDown,
     gtk::DropDown,
 ) {
@@ -1484,6 +1491,17 @@ fn create_controls() -> (
         "tooltip.clear_memory",
         "Delete all locally stored translation memory entries",
     )));
+    let routing_profiles = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.routing_profiles",
+        "Routing profiles",
+    ));
+    routing_profiles.set_focusable(true);
+    routing_profiles.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.routing_profiles",
+        "Create, inspect, and delete non-secret routing planner profiles",
+    )));
     let theme_options = [
         localization::text(locale, "theme.system", "System"),
         localization::text(locale, "theme.light", "Light"),
@@ -1544,6 +1562,7 @@ fn create_controls() -> (
     controls.append(&memory_enabled);
     controls.append(&memory);
     controls.append(&clear_memory);
+    controls.append(&routing_profiles);
     (
         controls,
         model,
@@ -1559,6 +1578,7 @@ fn create_controls() -> (
         memory_enabled,
         memory,
         clear_memory,
+        routing_profiles,
         theme,
         locale,
     )
@@ -2320,6 +2340,21 @@ fn connect_action_handlers(
                 .borrow_mut()
                 .record_client_error(error.to_string());
             refresh_ui(&memory_bindings, &memory_state.borrow());
+        }
+    });
+
+    let routing_bindings = bindings.clone();
+    let routing_state = Rc::clone(state);
+    let routing_worker = Rc::clone(worker);
+    bindings.routing_profiles.connect_clicked(move |_| {
+        if !routing_state.borrow().profile_storage_available() {
+            return;
+        }
+        if let Err(error) = routing_worker.command_handle().list_routing_profiles() {
+            routing_state
+                .borrow_mut()
+                .record_client_error(error.to_string());
+            refresh_ui(&routing_bindings, &routing_state.borrow());
         }
     });
 
@@ -3431,6 +3466,203 @@ fn select_document_job(
     refresh_ui(bindings, &state.borrow());
 }
 
+// 将核心路由模式映射到可本地化的短标签。
+fn localized_routing_mode(locale: UiLocale, mode: RoutingMode) -> String {
+    let (key, fallback) = match mode {
+        RoutingMode::Manual => ("routing.mode.manual", "Manual"),
+        RoutingMode::Ordered => ("routing.mode.ordered", "Ordered"),
+        RoutingMode::Automatic => ("routing.mode.automatic", "Automatic"),
+    };
+    localization::text(locale, key, fallback)
+}
+
+// 从用户明确保存的提供商配置生成不含端点和秘密的路由候选。
+fn routing_candidate_for_profile(
+    profile: &ProviderProfile,
+) -> Result<RoutingCandidate, TranslationError> {
+    let model = profile.selected_model().ok_or_else(|| {
+        TranslationError::new(
+            ErrorKind::ModelUnavailable,
+            "Select a model for every saved provider before creating a routing profile.",
+        )
+    })?;
+    let endpoint = profile.base_endpoint();
+    let local = endpoint.starts_with("http://127.0.0.1")
+        || endpoint.starts_with("http://localhost")
+        || endpoint.starts_with("http://[::1]");
+    let mut candidate = RoutingCandidate::new(profile.id().as_str(), model, local, 64 * 1024)
+        .map_err(|error| {
+            TranslationError::new(ErrorKind::InvalidConfiguration, error.to_string())
+        })?;
+    candidate.supports_document = true;
+    candidate.quality_tier = if local { 2 } else { 1 };
+    Ok(candidate)
+}
+
+// 创建一个可复用的 Linux 自动路由配置，候选只来自已保存的提供商配置。
+fn default_routing_profile(state: &AppState) -> Result<RoutingProfile, TranslationError> {
+    let candidates = state
+        .saved_profiles()
+        .iter()
+        .map(routing_candidate_for_profile)
+        .collect::<Result<Vec<_>, _>>()?;
+    if candidates.is_empty() {
+        return Err(TranslationError::new(
+            ErrorKind::InvalidConfiguration,
+            "Save at least one provider profile before creating a routing profile.",
+        ));
+    }
+    RoutingProfile::new(
+        "linux-default",
+        RoutingMode::Automatic,
+        candidates,
+        RoutingConstraints {
+            preference: RoutingPreference::Local,
+            explicit_fallback_allowed: true,
+            ..RoutingConstraints::default()
+        },
+    )
+    .map_err(|error| TranslationError::new(ErrorKind::InvalidConfiguration, error.to_string()))
+}
+
+// 展示持久化的路由规划配置，并把保存、删除操作交给核心工作线程。
+#[allow(clippy::too_many_lines)]
+fn show_routing_profiles_dialog(
+    bindings: &UiBindings,
+    state: &Rc<RefCell<AppState>>,
+    worker: &WorkerCommandHandle,
+    profiles: Vec<RoutingProfileRecord>,
+) {
+    let locale = state.borrow().locale();
+    let dialog = gtk::Window::builder()
+        .application(&bindings.application)
+        .transient_for(&bindings.window)
+        .modal(true)
+        .title(localization::text(
+            locale,
+            "dialog.routing_profiles",
+            "Routing profiles",
+        ))
+        .default_width(720)
+        .default_height(480)
+        .build();
+    let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    root.set_margin_top(16);
+    root.set_margin_bottom(16);
+    root.set_margin_start(16);
+    root.set_margin_end(16);
+    let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let create = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.create_routing_profile",
+        "Create local-first profile",
+    ));
+    create.set_focusable(true);
+    let close = gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.close", "Close"));
+    close.set_focusable(true);
+    actions.append(&create);
+    actions.append(&close);
+    root.append(&actions);
+    let list = gtk::ListBox::new();
+    list.set_selection_mode(gtk::SelectionMode::None);
+    list.set_vexpand(true);
+    if profiles.is_empty() {
+        let empty = gtk::Label::new(Some(&localization::text(
+            locale,
+            "status.routing_profile_empty",
+            "No routing profiles are saved.",
+        )));
+        empty.set_xalign(0.0);
+        empty.add_css_class("dim-label");
+        list.append(&empty);
+    } else {
+        for record in profiles {
+            let row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+            row.set_margin_top(8);
+            row.set_margin_bottom(8);
+            let metadata = localized_template(
+                locale,
+                "status.routing_profile_row",
+                "{id} · {mode} · {candidates} candidates",
+                &[
+                    ("{id}", record.id.as_str()),
+                    (
+                        "{mode}",
+                        localized_routing_mode(locale, record.profile.mode).as_str(),
+                    ),
+                    ("{candidates}", &record.profile.candidates.len().to_string()),
+                ],
+            );
+            let label = gtk::Label::new(Some(&metadata));
+            label.set_xalign(0.0);
+            label.set_hexpand(true);
+            label.add_css_class("dim-label");
+            let delete = gtk::Button::with_mnemonic(&localized_mnemonic(
+                locale,
+                "action.delete_routing_profile",
+                "Delete",
+            ));
+            delete.set_focusable(true);
+            delete.add_css_class("destructive-action");
+            let delete_worker = worker.clone();
+            let delete_dialog = dialog.clone();
+            let delete_bindings = bindings.clone();
+            let delete_state = Rc::clone(state);
+            let profile_id = record.id;
+            delete.connect_clicked(move |_| {
+                if let Err(error) = delete_worker.delete_routing_profile(profile_id.clone()) {
+                    delete_state
+                        .borrow_mut()
+                        .record_client_error(error.to_string());
+                    refresh_ui(&delete_bindings, &delete_state.borrow());
+                } else {
+                    delete_dialog.close();
+                }
+            });
+            row.append(&label);
+            row.append(&delete);
+            list.append(&row);
+        }
+    }
+    let scroller = gtk::ScrolledWindow::builder()
+        .vexpand(true)
+        .child(&list)
+        .build();
+    root.append(&scroller);
+    dialog.set_child(Some(&root));
+    let create_bindings = bindings.clone();
+    let create_state = Rc::clone(state);
+    let create_worker = worker.clone();
+    let create_dialog = dialog.clone();
+    create.connect_clicked(
+        move |_| match default_routing_profile(&create_state.borrow()) {
+            Ok(profile) => {
+                if let Err(error) = create_worker.save_routing_profile(profile) {
+                    create_state
+                        .borrow_mut()
+                        .record_client_error(error.to_string());
+                    refresh_ui(&create_bindings, &create_state.borrow());
+                } else {
+                    create_dialog.close();
+                }
+            }
+            Err(error) => {
+                create_state
+                    .borrow_mut()
+                    .record_client_error(localization::text(
+                        create_state.borrow().locale(),
+                        "error.routing_profile_no_candidates",
+                        &error.to_string(),
+                    ));
+                refresh_ui(&create_bindings, &create_state.borrow());
+            }
+        },
+    );
+    let close_dialog = dialog.clone();
+    close.connect_clicked(move |_| close_dialog.close());
+    dialog.present();
+}
+
 // 展示持久化文档任务并允许用户选择或控制队列中的任务。
 #[allow(clippy::too_many_lines)]
 fn show_document_jobs_dialog(
@@ -4198,7 +4430,8 @@ fn apply_worker_event(
         WorkerEvent::TranslationHistoryActionRejected(error)
         | WorkerEvent::SecretCleanupFailed { error, .. }
         | WorkerEvent::TranslationMemoryActionRejected(error)
-        | WorkerEvent::DocumentJobStorageUnavailable(error) => {
+        | WorkerEvent::DocumentJobStorageUnavailable(error)
+        | WorkerEvent::RoutingProfileActionRejected(error) => {
             state.borrow_mut().record_client_error(error.to_string());
         }
         WorkerEvent::DocumentJobActionRejected(error) => {
@@ -4267,6 +4500,15 @@ fn apply_worker_event(
         WorkerEvent::TranslationMemoryPersistenceFailed(_) => {
             bindings.memory_warning.set(true);
             bindings.memory_clear_pending.set(false);
+        }
+        WorkerEvent::RoutingProfilesListed { profiles } => {
+            let routing_worker = worker.command_handle();
+            show_routing_profiles_dialog(bindings, state, &routing_worker, profiles);
+        }
+        WorkerEvent::RoutingProfileSaved(_) | WorkerEvent::RoutingProfileDeleted { .. } => {
+            if let Err(error) = worker.command_handle().list_routing_profiles() {
+                state.borrow_mut().record_client_error(error.to_string());
+            }
         }
         WorkerEvent::DocumentJobsRestored { jobs } => {
             if bindings.document_job_id.borrow().is_none()
@@ -4792,6 +5034,8 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     let memory = localization::text(locale, "action.view_memory", "View translation memory");
     let clear_memory =
         localization::text(locale, "action.clear_memory", "Clear translation memory");
+    let routing_profiles =
+        localization::text(locale, "action.routing_profiles", "Routing profiles");
     let fallback_action =
         localization::text(locale, "action.enable_fallback", "Allow approved fallback");
     let fallback_tooltip = localization::text(
@@ -4872,6 +5116,9 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     bindings.memory.set_label(&format!("_{memory}"));
     bindings.clear_memory.set_label(&format!("_{clear_memory}"));
     bindings
+        .routing_profiles
+        .set_label(&format!("_{routing_profiles}"));
+    bindings
         .fallback_enabled
         .set_label(Some(&format!("_{fallback_action}")));
     bindings
@@ -4927,6 +5174,13 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
         "tooltip.view_memory",
         "Inspect, export, or delete individual local translation memory entries",
     )));
+    bindings
+        .routing_profiles
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.routing_profiles",
+            "Create, inspect, and delete non-secret routing planner profiles",
+        )));
     bindings
         .clear_memory
         .set_tooltip_text(Some(&localization::text(
@@ -5629,6 +5883,9 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     bindings.memory.set_sensitive(
         state.profile_storage_available() && !blocked && state.translation_memory_count() > 0,
     );
+    bindings
+        .routing_profiles
+        .set_sensitive(state.profile_storage_available() && !blocked);
     bindings.export_glossary.set_sensitive(
         !blocked && (!bindings.glossary.text().trim().is_empty() || state.glossary().is_some()),
     );

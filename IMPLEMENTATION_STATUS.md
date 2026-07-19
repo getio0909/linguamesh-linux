@@ -49,6 +49,26 @@ This closes the current Linux source-level compound-summary localization gap wit
 human translated-copy review, Orca speech, automatic/ordered routing controls, other clients,
 release artifacts, or a stable release.
 
+## 2026-07-19 — Linux routing profile persistence checkpoint
+
+Assumption: the first Linux routing slice should persist only validated planner metadata; provider
+endpoints, credentials, and translation content remain outside the saved record.
+
+- Linux now exposes a catalog-backed **Routing profiles** action. The worker saves, lists, and
+  deletes Core `routing_planner_v1` profiles through the existing storage boundary and rejects
+  those mutations while a translation is active.
+- The dialog can create a bounded `linux-default` automatic, local-preferred profile from saved
+  provider/model selections. It displays mode and candidate counts and provides an explicit delete
+  action; no endpoint or secret is serialized into the routing profile.
+- l10n `5f98f8bf760bb552c5d9e6cc7ace575e427bae10` contains 350 messages, including the 11
+  Linux routing-profile labels and mode strings. Local l10n checks, Linux tests (122 passed, 2
+  ignored), GUI check, strict Clippy, localization sync/audit, Flatpak metadata, and diff checks
+  passed.
+
+This establishes routing-profile persistence and editing only. Actual translation dispatch through
+automatic or ordered routing, human copy review, other clients, release artifacts, and a stable
+release remain open.
+
 ## 2026-07-19 — Core routing planner compatibility checkpoint
 
 Assumption: Linux must reject a Core that does not expose the shared routing contract before

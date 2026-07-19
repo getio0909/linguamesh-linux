@@ -2059,3 +2059,69 @@ msgstr "Job: {id}"
 msgctxt "provider.active_with_mode"
 msgid "Active provider: {provider} ({mode})"
 msgstr "Active provider: {provider} ({mode})"
+
+#. Action that opens non-secret Linux routing planner profiles.
+#, fuzzy
+msgctxt "action.routing_profiles"
+msgid "Routing profiles"
+msgstr "Routing profiles"
+
+#. Creates the bounded Linux local-first routing planner profile.
+#, fuzzy
+msgctxt "action.create_routing_profile"
+msgid "Create local-first profile"
+msgstr "Create local-first profile"
+
+#. Deletes one saved Linux routing planner profile.
+#, fuzzy
+msgctxt "action.delete_routing_profile"
+msgid "Delete"
+msgstr "Delete"
+
+#. Title of the Linux routing planner profile dialog.
+#, fuzzy
+msgctxt "dialog.routing_profiles"
+msgid "Routing profiles"
+msgstr "Routing profiles"
+
+#. Tooltip for the Linux routing planner profile action.
+#, fuzzy
+msgctxt "tooltip.routing_profiles"
+msgid "Create, inspect, and delete non-secret routing planner profiles"
+msgstr "Create, inspect, and delete non-secret routing planner profiles"
+
+#. Empty state for the Linux routing planner profile dialog.
+#, fuzzy
+msgctxt "status.routing_profile_empty"
+msgid "No routing profiles are saved."
+msgstr "No routing profiles are saved."
+
+#. Metadata summary for one Linux routing planner profile.
+#, fuzzy, python-brace-format
+msgctxt "status.routing_profile_row"
+msgid "{id} · {mode} · {candidates} candidates"
+msgstr "{id} · {mode} · {candidates} candidates"
+
+#. Fixed error shown when no saved provider can become a routing candidate.
+#, fuzzy
+msgctxt "error.routing_profile_no_candidates"
+msgid "Save at least one provider profile before creating a routing profile."
+msgstr "Save at least one provider profile before creating a routing profile."
+
+#. Localized label for manual routing mode.
+#, fuzzy
+msgctxt "routing.mode.manual"
+msgid "Manual"
+msgstr "Manual"
+
+#. Localized label for ordered routing mode.
+#, fuzzy
+msgctxt "routing.mode.ordered"
+msgid "Ordered"
+msgstr "Ordered"
+
+#. Localized label for automatic routing mode.
+#, fuzzy
+msgctxt "routing.mode.automatic"
+msgid "Automatic"
+msgstr "Automatic"
