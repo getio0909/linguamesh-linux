@@ -19,6 +19,15 @@ performance budget can be set; no portable number is inferred from one runner.
   and 5,587,044 bytes); downloaded push evidence contained the binary, source archive, checksums,
   SBOM, build context, and `LINUX-PERFORMANCE-BASELINE.tsv`.
 
+## 2026-07-19 — Linux performance baseline remote verification
+
+- Documentation-only head `c01b86ed49587c46ea4c8172bea7741f9d995919` passed push
+  Native/Flatpak/Foundation `29706725013`/`29706726466`/`29706726471` and PR
+  Native/Flatpak/Foundation `29706726505`/`29706724981`/`29706724970`.
+- The current-head Native push artifact was non-expired at 5,587,469 bytes; its downloaded contents
+  include the release binary, repository-only source archive, checksums, SPDX SBOM, build context,
+  and all three exact performance-baseline rows. This remains machine-specific prerelease evidence.
+
 ## 2026-07-19 — Linux native release-mode evidence checkpoint
 
 Assumption: the next Linux release-engineering slice should make the native binary reproducible in
