@@ -154,11 +154,7 @@ fn provider_preset_config(index: u32) -> (&'static str, &'static str, &'static s
 
 // 将持久化的预设标识还原为界面下拉框索引。
 fn provider_preset_index(preset_id: &str) -> u32 {
-    if preset_id == OLLAMA_PROVIDER_PRESET_ID {
-        1
-    } else {
-        0
-    }
+    u32::from(preset_id == OLLAMA_PROVIDER_PRESET_ID)
 }
 
 // 根据活动界面语言生成提供商预设标签。
