@@ -1,5 +1,17 @@
 # Implementation Status
 
+## 2026-07-19 — Flatpak checksum and SBOM evidence checkpoint
+
+Assumption: Linux prerelease packaging should emit reproducible integrity evidence without implying
+that an unsigned CI artifact is a stable release.
+
+- Added `tools/create-flatpak-evidence.py`, which hashes the generated Flatpak bundle and emits a
+  deterministic SPDX 2.3 SBOM from the checked-in `Cargo.lock` package set.
+- The Flatpak workflow uploads the bundle's `SHA256SUMS` and `SBOM.spdx.json` as CI-only sidecars;
+  the foundation check requires the generator. No release, signature, or notarization is claimed.
+- Local metadata and source-level localization checks remain passing. Remote evidence is pending
+  for the new artifact-evidence steps.
+
 ## 2026-07-19 — Flatpak source-pin integrity checkpoint
 
 Assumption: a passing Flatpak gate is only evidence for the Linux revision under review; the

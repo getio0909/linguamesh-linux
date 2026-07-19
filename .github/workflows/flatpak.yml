@@ -31,5 +31,18 @@ jobs:
           cache-key: flatpak-builder-${{ github.sha }}
           upload-artifact: true
           verbose: true
+      - name: Create checksum and SBOM evidence
+        run: >-
+          python3 tools/create-flatpak-evidence.py
+          --bundle linguamesh-linux-x86_64.flatpak
+          --manifest packaging/flatpak/dev.linguamesh.LinguaMesh.yml
+          --cargo-lock Cargo.lock
+          --output-dir flatpak-evidence
+      - name: Upload checksum and SBOM evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: linguamesh-linux-flatpak-evidence-${{ github.sha }}
+          path: flatpak-evidence/
+          if-no-files-found: error
       - name: Run Flatpak sandbox smoke
         run: bash tools/run-flatpak-smoke.sh linguamesh-linux-x86_64.flatpak

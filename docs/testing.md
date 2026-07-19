@@ -312,6 +312,10 @@ installation and bounded application startup; it does not publish a release or p
 file-chooser portal leases or physical desktop-shell notification rendering. `flatpak-builder` is not installed on this host, so local SDK
 build and sandbox launch remain unavailable.
 
+After the SDK build, the workflow runs `tools/create-flatpak-evidence.py` to emit a `SHA256SUMS`
+sidecar and deterministic SPDX 2.3 SBOM from the bundle and locked Cargo dependency set. These
+uploads are CI-only evidence and are not a stable release or signature.
+
 These commands bypass sys-crate discovery and do not validate headers, ABI, linking, launch, or
 display behavior. Their cached sys-crate output can also make a later ordinary Cargo check look
 successful. The `pkg-config` commands below are therefore mandatory native-gate prerequisites;
