@@ -1741,3 +1741,21 @@ msgstr "The approved fallback provider was selected; content may be sent there."
 msgctxt "error.fallback_profile_required"
 msgid "Choose an approved saved fallback provider or turn fallback off."
 msgstr "Choose an approved saved fallback provider or turn fallback off."
+
+#. Validation error shown when glossary rules conflict with one another.
+#, fuzzy
+msgctxt "error.glossary_rule_conflict"
+msgid "Glossary entries conflict."
+msgstr "Glossary entries conflict."
+
+#. Validation error shown when glossary rules contain invalid or credential-like data.
+#, fuzzy
+msgctxt "error.glossary_rule_invalid"
+msgid "Glossary entries contain invalid or credential-like data."
+msgstr "Glossary entries contain invalid or credential-like data."
+
+#. Validation error shown when a glossary rule does not use the source-to-target form.
+#, fuzzy
+msgctxt "error.glossary_rule_syntax"
+msgid "Glossary entries must use the form source => target."
+msgstr "Glossary entries must use the form source => target."

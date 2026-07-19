@@ -1040,6 +1040,24 @@ Native, Foundation, and Flatpak CI gates remain required for the pushed revision
 visible-string gettext coverage, Orca speech, physical desktop review, OCR, other clients, and
 stable-release evidence remain open.
 
+## 2026-07-19 — Linux glossary validation localization checkpoint
+
+Assumption: request-level glossary syntax, credential-like data rejection, and conflicting-rule
+errors are stable user-facing Linux messages and require dedicated catalog keys instead of the
+generic English diagnostic fallback. The pinned l10n revision is
+`ede66149c501a1680ed050d76b8b78e7b565ba01` (289 canonical messages; bundle checksum
+`c8bd6b0464ebbfa015988a4fc0cfd30b1f9e28d9e1aad19b8c50d36976128e8f`).
+
+- Added catalog-backed mappings for the three glossary validation errors and synchronized all 14
+  Linux PO/MO resources, including pseudo-locales.
+- Added a regression covering localized rendering of all three messages.
+- Local targeted localization test, strict all-target/all-feature Clippy, locked no-default 61-test
+  suite, l10n synchronization check, and `git diff --check` passed.
+
+Native, Foundation, and Flatpak CI gates remain required for the pushed revision. Complete
+visible-string gettext coverage, Orca speech, physical desktop review, OCR, other clients, and
+stable-release evidence remain open.
+
 ## 2026-07-18 — Linux multi-job queue controls checkpoint
 
 Assumption: the existing persisted `DocumentJobSnapshot` list is the source of truth for a

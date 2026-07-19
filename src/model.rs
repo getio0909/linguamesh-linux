@@ -1550,6 +1550,17 @@ fn additional_state_error_message(message: &str) -> Option<(&'static str, &'stat
             "error.worker.command_queue_unavailable",
             "The core command queue is unavailable or full.",
         ),
+        "Glossary entries must use the form source => target." => (
+            "error.glossary_rule_syntax",
+            "Glossary entries must use the form source => target.",
+        ),
+        "Glossary entries contain invalid or credential-like data." => (
+            "error.glossary_rule_invalid",
+            "Glossary entries contain invalid or credential-like data.",
+        ),
+        "Glossary entries conflict." => {
+            ("error.glossary_rule_conflict", "Glossary entries conflict.")
+        }
         "The selected file is not valid UTF-8 text." => (
             "error.file.invalid_utf8",
             "The selected file is not valid UTF-8 text.",
@@ -1855,6 +1866,19 @@ mod tests {
                 .as_deref(),
             Some("内部错误: 提供商配置无效：invalid endpoint")
         );
+
+        for message in [
+            "Glossary entries must use the form source => target.",
+            "Glossary entries contain invalid or credential-like data.",
+            "Glossary entries conflict.",
+        ] {
+            state.record_client_error(message);
+            let expected = format!("Internal: {message}");
+            assert_eq!(
+                state.localized_error_text(UiLocale::English).as_deref(),
+                Some(expected.as_str())
+            );
+        }
     }
 
     #[test]
