@@ -20,7 +20,9 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `14cee83a650610b3a9a79a460c7c6f54ae9d21d4`, which adds
+reviewed Core functional revision `d1c03ba84362c0c672c57045a59fc8092db470be`, which adds strict
+routing-profile validation and schema-15 routing-profile persistence on top of the existing
+document and provider contract. Earlier reviewed revisions added
 `SQLITE_OPEN_NOFOLLOW` to file-backed storage, protected-span and request-level glossary
 restoration, bounded semantic chunking for long streamed text, bounded translation history, and
 optional translation-memory storage with versioned request identity, and the bounded TXT/Markdown/
@@ -172,8 +174,8 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`85b9d45569ce840c17dc0acc7d7366d6810be48e` and validated with `msgfmt`; the 334-message bundle
-checksum is `028d25b3637fbc19d41d497a860b414353615b9576db6f852a9f236bcbe770ce`. The locale selector
+`50688449ab16a8007f0edebabed2f8d6f0d3a90a` and validated with `msgfmt`; the 336-message bundle
+adds the explicit Linux text-retry action. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
 active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, construction-stage provider/default-control copy, and diagnostics labels/state values without replacing active source text;
 Arabic also switches the GTK workspace root to right-to-left direction. Document-job actions,
@@ -192,6 +194,12 @@ must choose a different saved provider; only network or timeout failures from th
 provider can select it. The UI records the selection and warns that content may be sent there. Fallback
 is unavailable for document jobs, incognito requests, cancellation, authentication failures, model
 errors, and unapproved or session-only profiles; partial primary output is retained across the switch.
+
+When an ordinary text request ends in a failed or cancelled state, **Retry translation** becomes
+available. It reuses the current source, target, glossary, privacy mode, confirmed provider, and
+model through the same worker command path as **Translate**; it is disabled for active document jobs,
+busy requests, and completed requests. Document jobs continue to use their separate persisted queue
+retry action.
 
 Long source text is split at paragraph, sentence, or whitespace boundaries using a conservative
 16 KiB byte estimate when no tokenizer is available; opaque protected markers remain whole and

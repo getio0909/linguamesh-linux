@@ -417,6 +417,12 @@ impl AppState {
         matches!(self.worker_startup, WorkerStartup::Failed)
     }
 
+    /// 指示当前普通文本请求是否允许用户显式重试。
+    #[must_use]
+    pub const fn can_retry_translation(&self) -> bool {
+        matches!(self.status, AppStatus::Cancelled | AppStatus::Failed)
+    }
+
     /// 标记工作线程已准备接受用户命令。
     pub const fn mark_worker_ready(&mut self) {
         self.worker_startup = WorkerStartup::Ready;
@@ -2058,6 +2064,21 @@ mod tests {
             state.privacy_mode(),
             linguamesh_domain::TranslationPrivacyMode::Incognito
         );
+    }
+
+    #[test]
+    fn failed_text_translation_can_be_retried_with_the_original_request_state() {
+        let mut state = connected_state();
+        state.record_operation_failure(TranslationError::new(
+            ErrorKind::Network,
+            "The provider could not be reached.",
+        ));
+        assert!(state.can_retry_translation());
+        let request = state.begin_translation().expect("retry request");
+        assert_eq!(request.source_text, "Hello");
+        assert_eq!(request.target_locale, "zh-CN");
+        assert_eq!(request.model_id, "fake-translator");
+        assert!(!state.can_retry_translation());
     }
 
     #[test]

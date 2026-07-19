@@ -4,6 +4,29 @@ Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline 
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
+## 2026-07-19 — Linux text retry action checkpoint
+
+Assumption: a failed or cancelled ordinary text request must be explicitly retryable without
+creating a document job or changing the confirmed provider/model selection.
+
+- Linux adds an accessible, catalog-backed **Retry translation** button. It delegates to the same
+  real `Translate` command path and is sensitive only for failed/cancelled ordinary text requests;
+  document-job retry remains a separate persisted queue action.
+- `AppState::can_retry_translation` and a request-preservation model test cover the state boundary;
+  the GTK acceptance flow verifies disabled-while-complete, enabled-after-failure, re-dispatch, and
+  completion after retry.
+- l10n `50688449ab16a8007f0edebabed2f8d6f0d3a90a` contains 336 catalog messages, including the two
+  new Linux-only text-retry messages. Local l10n lint/tests/generation checks passed.
+- Local Linux `cargo test --features demo-provider --offline` passed 121 tests with 2 ignored;
+  GUI check, strict Clippy, formatting, l10n synchronization, 217-key audit, Flatpak metadata,
+  and diff checks passed. The GUI all-target test binary could not link on this host because its
+  system GTK libraries do not export the GTK 4 symbols required by the installed gtk-rs version;
+  remote CI remains the authoritative GTK gate.
+
+This advances Linux Text Workspace retry evidence without claiming retry classification parity,
+automatic/ordered routing UI, other clients, visual/Orca review, release artifacts, or a stable
+release.
+
 ## 2026-07-19 — Core routing planner compatibility checkpoint
 
 Assumption: Linux must reject a Core that does not expose the shared routing contract before

@@ -1698,11 +1698,23 @@ msgctxt "action.retry_document"
 msgid "Retry document"
 msgstr "Retry document"
 
+#. Action that retries a failed or cancelled text translation.
+#, fuzzy
+msgctxt "action.retry_translation"
+msgid "Retry translation"
+msgstr "Retry translation"
+
 #. Action that selects a persisted document job.
 #, fuzzy
 msgctxt "action.select_document_job"
 msgid "Select document job"
 msgstr "Select document job"
+
+#. Tooltip for retrying the last failed or cancelled text translation.
+#, fuzzy
+msgctxt "tooltip.retry_translation"
+msgid "Retry the last failed or cancelled text translation"
+msgstr "Retry the last failed or cancelled text translation"
 
 #. Title of the persisted document jobs dialog.
 #, fuzzy

@@ -452,6 +452,8 @@ mod tests {
                 "action.pause_document",
                 "action.resume_document",
                 "action.retry_document",
+                "action.retry_translation",
+                "tooltip.retry_translation",
                 "action.open_output",
                 "action.enable_fallback",
                 "action.select_document_job",

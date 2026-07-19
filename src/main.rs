@@ -84,6 +84,7 @@ struct UiBindings {
     source_label: gtk::Label,
     output_label: gtk::Label,
     translate: gtk::Button,
+    retry_translation: gtk::Button,
     export_output: gtk::Button,
     open_output: gtk::Button,
     open_source: gtk::Button,
@@ -545,6 +546,24 @@ fn create_window(
     ));
     translate.add_css_class("suggested-action");
     translate.set_focusable(true);
+    let retry_translation = gtk::Button::with_mnemonic(&localized_mnemonic(
+        display_locale,
+        "action.retry_translation",
+        "Retry translation",
+    ));
+    retry_translation.set_focusable(true);
+    retry_translation.set_tooltip_text(Some(&localization::text(
+        display_locale,
+        "tooltip.retry_translation",
+        "Retry the last failed or cancelled text translation",
+    )));
+    let retry_translation_label = localization::text(
+        display_locale,
+        "action.retry_translation",
+        "Retry translation",
+    );
+    retry_translation
+        .update_property(&[gtk::accessible::Property::Label(&retry_translation_label)]);
     let export_output = gtk::Button::with_mnemonic(&localized_mnemonic(
         display_locale,
         "action.export_output",
@@ -598,6 +617,7 @@ fn create_window(
     action_row.append(&ocr_enabled);
     action_row.append(&document_jobs);
     action_row.append(&translate);
+    action_row.append(&retry_translation);
     action_row.append(&export_output);
     action_row.append(&open_output);
     action_row.append(&pause_document);
@@ -696,6 +716,7 @@ fn create_window(
         source_label: editor_bindings.source_label,
         output_label: editor_bindings.output_label,
         translate,
+        retry_translation,
         export_output,
         open_output,
         open_source,
@@ -2607,6 +2628,11 @@ fn connect_action_handlers(
             Err(error) => state.record_client_error(error.message),
         }
         refresh_ui(&translate_bindings, &state);
+    });
+
+    let retry_button = bindings.translate.clone();
+    bindings.retry_translation.connect_clicked(move |_| {
+        retry_button.emit_clicked();
     });
 
     let pause_bindings = bindings.clone();
@@ -4704,6 +4730,13 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
         "When enabled, use the optional Tesseract plugin for image-only PDF pages and import page-marked text",
     );
     let translate = localization::text(locale, "action.translate", "Translate");
+    let retry_translation =
+        localization::text(locale, "action.retry_translation", "Retry translation");
+    let retry_translation_tooltip = localization::text(
+        locale,
+        "tooltip.retry_translation",
+        "Retry the last failed or cancelled text translation",
+    );
     let stop = localization::text(locale, "accessibility.stop_translation", "Stop translation");
     let pause = localization::text(locale, "action.pause_document", "Pause document");
     let resume = localization::text(locale, "action.resume_document", "Resume document");
@@ -4758,6 +4791,15 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
             "View and select persisted document jobs",
         )));
     bindings.translate.set_label(&translate_label);
+    bindings
+        .retry_translation
+        .set_label(&format!("_{retry_translation}"));
+    bindings
+        .retry_translation
+        .set_tooltip_text(Some(&retry_translation_tooltip));
+    bindings
+        .retry_translation
+        .update_property(&[gtk::accessible::Property::Label(&retry_translation)]);
     bindings.export_output.set_label(&format!("_{export}"));
     bindings
         .export_output
@@ -5464,6 +5506,13 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     bindings
         .translate
         .set_sensitive(state.worker_ready() && !blocked && state.selected_model().is_some());
+    bindings.retry_translation.set_sensitive(
+        state.worker_ready()
+            && !blocked
+            && !document_job_available
+            && state.selected_model().is_some()
+            && state.can_retry_translation(),
+    );
     let fallback_available = state.worker_ready()
         && !blocked
         && !document_job_available
@@ -6238,6 +6287,7 @@ mod tests {
             &bindings.connect,
             &bindings.open_source,
             &bindings.translate,
+            &bindings.retry_translation,
             &bindings.export_output,
             &bindings.open_output,
             &bindings.stop,
@@ -6616,6 +6666,22 @@ mod tests {
         );
         assert!(!bindings.remember_profile.is_sensitive());
         assert!(bindings.translate.is_sensitive());
+        assert!(!bindings.retry_translation.is_sensitive());
+        state
+            .borrow_mut()
+            .record_operation_failure(TranslationError::new(
+                ErrorKind::Network,
+                "The provider could not be reached.",
+            ));
+        refresh_ui(&bindings, &state.borrow());
+        assert!(bindings.retry_translation.is_sensitive());
+        bindings.retry_translation.emit_clicked();
+        assert_eq!(state.borrow().status(), AppStatus::Translating);
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Completed
+        });
+        assert_eq!(state.borrow().output(), "你好，LinguaMesh！");
+        assert!(!bindings.retry_translation.is_sensitive());
         apply_worker_event(&bindings, &state, &worker, WorkerEvent::Stopped);
         refresh_ui(&bindings, &state.borrow());
         assert!(state.borrow().worker_unavailable());
