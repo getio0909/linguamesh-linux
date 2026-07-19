@@ -1175,6 +1175,9 @@ bounded by the Core document-job contract.
   no-default tests (64 passed, 1 ignored), and demo-provider tests (102 passed, 2 ignored) passed.
   The native GTK binary test remains CI-linked on this host because installed GTK symbols cannot
   link the test binary; CI is required to execute the new widget assertions.
+- The first pushed revision `ba12919` failed Native run `29669906878` only because the test asserted
+  the fallback English wording instead of the canonical catalog's `2 of 4 segments translated`;
+  the follow-up assertion now derives the expected text through the same catalog helper.
 
 Orca speech, manual high-contrast/RTL/reduced-motion review, end-user Secret Service prompt
 approval, other clients, and release artifacts remain open.

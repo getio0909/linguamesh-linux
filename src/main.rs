@@ -5350,7 +5350,8 @@ mod tests {
         SecretRef, SecretRefNamespace, SecretValue, TranslationError, UiLocale, WorkerCommand,
         WorkerEvent, apply_worker_event, connect_action_handlers, connect_selection_handlers,
         create_window, custom_provider_profile, document_format_label, generate_custom_provider_id,
-        localized_document_job_state, localized_document_warnings, refresh_ui, start_event_pump,
+        localized_document_job_state, localized_document_warnings, localized_template, refresh_ui,
+        start_event_pump,
     };
     use adw::prelude::*;
     use gtk::glib;
@@ -5761,9 +5762,15 @@ mod tests {
         refresh_ui(&bindings, &state.borrow());
         assert!(bindings.progress.is_visible());
         assert!((bindings.progress.fraction() - 0.5).abs() < f64::EPSILON);
+        let expected_progress = localized_template(
+            UiLocale::English,
+            "status.document_progress",
+            "Document progress: {completed}/{total}",
+            &[("{completed}", "2"), ("{total}", "4")],
+        );
         assert_eq!(
             bindings.progress.text().as_deref(),
-            Some("Document progress: 2/4")
+            Some(expected_progress.as_str())
         );
         bindings.document_progress.set(None);
         refresh_ui(&bindings, &state.borrow());
