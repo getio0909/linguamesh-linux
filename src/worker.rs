@@ -3543,6 +3543,7 @@ mod tests {
         Standard,
         Authenticated(&'static str),
         Delayed(Duration),
+        OllamaCompatible,
     }
 
     static TEST_DATABASE_COUNTER: AtomicUsize = AtomicUsize::new(0);
@@ -3797,6 +3798,9 @@ mod tests {
                         FakeMode::Delayed(delay) => {
                             FakeProviderServer::start_with_model_delay(delay).await
                         }
+                        FakeMode::OllamaCompatible => {
+                            FakeProviderServer::start_ollama_compatible().await
+                        }
                     }
                     .expect("external fake provider");
                     ready_sender
@@ -3850,10 +3854,26 @@ mod tests {
         secret_ref: Option<SecretRef>,
         selected_model: Option<&str>,
     ) -> ProviderProfile {
+        profile_with_preset(
+            id,
+            "custom-openai-compatible",
+            endpoint,
+            secret_ref,
+            selected_model,
+        )
+    }
+
+    fn profile_with_preset(
+        id: &str,
+        preset_id: &str,
+        endpoint: &str,
+        secret_ref: Option<SecretRef>,
+        selected_model: Option<&str>,
+    ) -> ProviderProfile {
         ProviderProfile::new(
             ProviderProfileId::parse(id).expect("profile ID"),
             format!("{id} display name"),
-            "custom-openai-compatible",
+            preset_id,
             "openai_chat_completions",
             endpoint,
             secret_ref,
@@ -4998,6 +5018,28 @@ mod tests {
             .expect("select loopback model");
         let (output, terminal) = translate(&worker, "fake-translator");
         assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        assert_eq!(external.chat_requests.load(Ordering::SeqCst), 1);
+        shutdown(&worker);
+    }
+
+    #[test]
+    fn loopback_ollama_compatible_provider_translates_without_secret() {
+        let external = ExternalFakeProvider::start(FakeMode::OllamaCompatible);
+        let (worker, _) = started_worker();
+        let runtime = profile_with_preset(
+            "ollama-loopback",
+            "local-loopback",
+            &external.endpoint,
+            None,
+            None,
+        );
+        let models = connect(&worker, runtime, None, PersistenceIntent::SessionOnly)
+            .expect("ollama-compatible provider connection");
+        assert!(models.iter().any(|model| model.id == "llama3.2:latest"));
+        select_event(&worker, "ollama-loopback", "llama3.2:latest").expect("select Ollama model");
+        let (output, terminal) = translate(&worker, "llama3.2:latest");
+        assert_eq!(output, "你好，Ollama！");
         assert!(matches!(terminal, TranslationEvent::Completed { .. }));
         assert_eq!(external.chat_requests.load(Ordering::SeqCst), 1);
         shutdown(&worker);

@@ -159,8 +159,9 @@ physical desktop keyboard coverage, or Orca speech.
 
 The user-facing endpoint example is loopback. Under its shared endpoint policy, Core accepts
 loopback HTTP and also accepts HTTPS endpoints; the Linux client does not duplicate URL parsing.
-Automated client evidence covers the built-in provider and an external LinguaMesh fake provider on
-loopback, not Ollama or another third-party server.
+Automated client evidence covers the built-in provider and a deterministic Ollama-compatible
+OpenAI `/v1/` fixture on loopback. Native Ollama `/api` behavior and a running third-party daemon
+remain outside this evidence.
 
 ## Secret lifecycle and persistence boundary
 

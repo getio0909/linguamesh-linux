@@ -142,10 +142,12 @@ session-only mode, and reports storage as unavailable. A private Linux tmpfs reg
 real `ENOSPC` at each transaction boundary and verifies after restart that only pre-fault state was
 committed.
 
-The tested external-provider path uses the LinguaMesh fake provider on loopback. It is not evidence
-of interoperability with Ollama or any other third-party server. Full validation commands, the
-header-free local path, and the GTK gates for X11/Xvfb and forced Wayland/headless Weston are
-documented in
+The tested external-provider path includes a deterministic Ollama-compatible OpenAI endpoint on
+loopback: model discovery returns `llama3.2:latest`, the worker requires deliberate selection, and
+streaming uses `/v1/chat/completions` without a credential. This proves the local `/v1/` contract
+used by Ollama, but not Ollama's native `/api` endpoints or a running third-party daemon. Full
+validation commands, the header-free local path, and the GTK gates for X11/Xvfb and forced
+Wayland/headless Weston are documented in
 [`docs/testing.md`](docs/testing.md). No release artifact is implemented yet.
 
 The repository now includes a reproducible Flatpak manifest, pinned Cargo source set, desktop
