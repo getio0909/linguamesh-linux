@@ -15,6 +15,18 @@ CI and expose integrity metadata without implying that an unsigned build is stab
 - This remains unsigned prerelease evidence; source archives, signing, rollback, and stable-release
   authorization remain open.
 
+## 2026-07-19 — Linux native evidence remote verification
+
+- Linux `8896aaa6e91e9ee482590701c925dabab96435de` passed the complete push gates: Native
+  `29705286112`, Flatpak `29705286140`, and Foundation `29705286105`; the duplicate PR gates
+  Native `29705287404`, Flatpak `29705287405`, and Foundation `29705287416` also passed.
+- The push Native run uploaded the non-expired artifact
+  `linguamesh-linux-native-evidence-8896aaa6e91e9ee482590701c925dabab96435de` (4,933,797 bytes).
+  The PR Native run uploaded its corresponding non-expired artifact (4,933,798 bytes). Each
+  contains the release-mode binary, `SHA256SUMS`, `SBOM.spdx.json`, and `BUILD-INFO.txt`.
+- The push Flatpak run also retained non-expired bundle and evidence artifacts. This validates
+  Linux CI packaging evidence only; the build is unsigned, unreleased, and not a stable artifact.
+
 ## 2026-07-19 — Flatpak checksum and SBOM evidence checkpoint
 
 Assumption: Linux prerelease packaging should emit reproducible integrity evidence without implying
