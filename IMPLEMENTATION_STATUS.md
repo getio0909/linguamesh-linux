@@ -10,7 +10,8 @@ Assumption: Linux must reject a Core that does not expose the shared routing con
 provider work starts; this pin records the contract while GTK routing controls remain a later
 client slice.
 
-- Core `7fabf6130f6813638866814146dac83544d522c3` adds and advertises `routing_planner_v1`.
+- Core `c3ccf229af29058fe05b9e1a13b12542cb87f2b9` adds schema 15 routing-profile persistence and
+  advertises `routing_planner_v1`.
 - Linux startup now requires the feature alongside the existing exact alpha.2, ABI 1, protocol 1,
   and provider-catalog checks.
 - Native and Flatpak source pins were updated to the same Core revision; full local and remote
