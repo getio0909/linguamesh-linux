@@ -1095,3 +1095,20 @@ not focusable.
 
 Orca speech, physical desktop review, OCR, complete visible-string gettext coverage, other clients,
 and stable-release evidence remain open.
+
+## 2026-07-19 — Linux document-job metadata localization checkpoint
+
+Assumption: persisted document-job rows must not expose Rust enum debug names as user-facing copy;
+the source filename and technical format names remain data, while lifecycle state labels and the
+row summary use the canonical Linux catalog. l10n revision
+`c81728faf8679e7a5e9854537ad7c70c046c7800` adds seven Linux-only messages, producing 296 canonical
+messages and bundle checksum `d2f4fd439b5fbc8fc6d48f1be0a91ee92f558c70b851271d643829cfe8590e9b`.
+
+- Replaced Rust `Debug` output in persisted document-job rows with stable format labels and
+  catalog-backed lifecycle state labels and row metadata.
+- Added localization coverage assertions for the row template and all six lifecycle states.
+- `bash tools/sync-l10n.sh --write` and `--check` passed; local format, strict Clippy, locked
+  no-default tests, and diff checks are required before this checkpoint is pushed.
+
+Complete visible-string gettext coverage, Orca speech, physical desktop review, OCR, other clients,
+and stable-release evidence remain open.

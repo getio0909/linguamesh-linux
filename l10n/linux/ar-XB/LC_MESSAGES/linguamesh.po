@@ -1769,3 +1769,45 @@ msgstr "⁧⟦Glossary entries contain invalid or credential-like data.⟧⁩"
 msgctxt "error.glossary_rule_syntax"
 msgid "Glossary entries must use the form source => target."
 msgstr "⁧⟦Glossary entries must use the form source => target.⟧⁩"
+
+#. Metadata summary shown for each persisted document job row.
+#, fuzzy, python-brace-format
+msgctxt "status.document_job_row"
+msgid "{source} · {format} · {state} · {completed}/{total}"
+msgstr "⁧⟦{source} · {format} · {state} · {completed}/{total}⟧⁩"
+
+#. State label for a document job that has not started.
+#, fuzzy
+msgctxt "status.document_job_pending"
+msgid "Pending"
+msgstr "⁧⟦Pending⟧⁩"
+
+#. State label for a document job currently translating.
+#, fuzzy
+msgctxt "status.document_job_running"
+msgid "Running"
+msgstr "⁧⟦Running⟧⁩"
+
+#. State label for a paused document job.
+#, fuzzy
+msgctxt "status.document_job_paused"
+msgid "Paused"
+msgstr "⁧⟦Paused⟧⁩"
+
+#. State label for a completed document job.
+#, fuzzy
+msgctxt "status.document_job_completed"
+msgid "Completed"
+msgstr "⁧⟦Completed⟧⁩"
+
+#. State label for a cancelled document job.
+#, fuzzy
+msgctxt "status.document_job_cancelled"
+msgid "Cancelled"
+msgstr "⁧⟦Cancelled⟧⁩"
+
+#. State label for a failed document job.
+#, fuzzy
+msgctxt "status.document_job_failed"
+msgid "Failed"
+msgstr "⁧⟦Failed⟧⁩"

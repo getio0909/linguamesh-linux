@@ -1,8 +1,8 @@
 use adw::prelude::*;
 use gtk::glib;
 use linguamesh_document::{
-    DEFAULT_SUBTITLE_MAX_LINE_CHARS, DEFAULT_SUBTITLE_MAX_READING_SPEED, DocumentJobState,
-    DocumentWarning, DocumentWarningKind,
+    DEFAULT_SUBTITLE_MAX_LINE_CHARS, DEFAULT_SUBTITLE_MAX_READING_SPEED, DocumentFormat,
+    DocumentJobState, DocumentWarning, DocumentWarningKind,
 };
 use linguamesh_domain::{
     ErrorKind, Glossary, GlossaryEntry, MAX_GLOSSARY_CSV_BYTES, OperationId, ProviderProfileId,
@@ -3209,10 +3209,23 @@ fn show_document_jobs_dialog(
             row.set_margin_bottom(8);
             let header = gtk::Box::new(gtk::Orientation::Horizontal, 8);
             let (completed, total) = document_progress(&snapshot);
-            let metadata = gtk::Label::new(Some(&format!(
-                "{} · {:?} · {:?} · {completed}/{total}",
-                snapshot.job.source_name, snapshot.job.format, snapshot.state,
-            )));
+            let format_label = document_format_label(snapshot.job.format);
+            let state_label = localized_document_job_state(locale, snapshot.state);
+            let completed_label = completed.to_string();
+            let total_label = total.to_string();
+            let metadata_text = localized_template(
+                locale,
+                "status.document_job_row",
+                "{source} · {format} · {state} · {completed}/{total}",
+                &[
+                    ("{source}", snapshot.job.source_name.as_str()),
+                    ("{format}", format_label),
+                    ("{state}", state_label.as_str()),
+                    ("{completed}", completed_label.as_str()),
+                    ("{total}", total_label.as_str()),
+                ],
+            );
+            let metadata = gtk::Label::new(Some(&metadata_text));
             metadata.set_xalign(0.0);
             metadata.set_hexpand(true);
             metadata.add_css_class("dim-label");
@@ -4762,6 +4775,37 @@ fn refresh_localized_widgets(bindings: &UiBindings, locale: UiLocale) {
         )));
 }
 
+// 将文档格式转换为稳定、可读且不依赖 Rust Debug 输出的标签。
+fn document_format_label(format: DocumentFormat) -> &'static str {
+    match format {
+        DocumentFormat::Txt => "TXT",
+        DocumentFormat::Markdown => "Markdown",
+        DocumentFormat::Srt => "SRT",
+        DocumentFormat::WebVtt => "WebVTT",
+        DocumentFormat::Csv => "CSV",
+        DocumentFormat::Html => "HTML",
+        DocumentFormat::Json => "JSON",
+        DocumentFormat::Docx => "DOCX",
+        DocumentFormat::Pptx => "PPTX",
+        DocumentFormat::Xlsx => "XLSX",
+        DocumentFormat::Epub => "EPUB",
+        DocumentFormat::Pdf => "PDF",
+    }
+}
+
+// 通过 canonical catalog 渲染文档任务的生命周期状态。
+fn localized_document_job_state(locale: UiLocale, state: DocumentJobState) -> String {
+    let (key, fallback) = match state {
+        DocumentJobState::Pending => ("status.document_job_pending", "Pending"),
+        DocumentJobState::Running => ("status.document_job_running", "Running"),
+        DocumentJobState::Paused => ("status.document_job_paused", "Paused"),
+        DocumentJobState::Completed => ("status.document_job_completed", "Completed"),
+        DocumentJobState::Cancelled => ("status.document_job_cancelled", "Cancelled"),
+        DocumentJobState::Failed => ("status.document_job_failed", "Failed"),
+    };
+    localization::text(locale, key, fallback)
+}
+
 fn localized_status_label(locale: UiLocale, status: AppStatus) -> String {
     match status {
         AppStatus::Disconnected => {
@@ -5207,12 +5251,14 @@ mod tests {
         DEFAULT_PROVIDER_NAME, ErrorKind, OPENAI_ADAPTER_TYPE, OnboardingStage, ProviderProfileId,
         SecretRef, SecretRefNamespace, SecretValue, TranslationError, UiLocale, WorkerCommand,
         WorkerEvent, apply_worker_event, connect_action_handlers, connect_selection_handlers,
-        create_window, custom_provider_profile, generate_custom_provider_id,
-        localized_document_warnings, refresh_ui, start_event_pump,
+        create_window, custom_provider_profile, document_format_label, generate_custom_provider_id,
+        localized_document_job_state, localized_document_warnings, refresh_ui, start_event_pump,
     };
     use adw::prelude::*;
     use gtk::glib;
-    use linguamesh_document::{DocumentWarning, DocumentWarningKind};
+    use linguamesh_document::{
+        DocumentFormat, DocumentJobState, DocumentWarning, DocumentWarningKind,
+    };
     use linguamesh_testkit::FakeProviderServer;
     use std::cell::RefCell;
     use std::fs;
@@ -5222,6 +5268,42 @@ mod tests {
     use std::time::{Duration, Instant};
     use tokio::runtime::Builder;
     use tokio::sync::oneshot;
+
+    #[test]
+    fn document_job_metadata_uses_stable_format_and_localized_state_labels() {
+        let formats = [
+            (DocumentFormat::Txt, "TXT"),
+            (DocumentFormat::Markdown, "Markdown"),
+            (DocumentFormat::Srt, "SRT"),
+            (DocumentFormat::WebVtt, "WebVTT"),
+            (DocumentFormat::Csv, "CSV"),
+            (DocumentFormat::Html, "HTML"),
+            (DocumentFormat::Json, "JSON"),
+            (DocumentFormat::Docx, "DOCX"),
+            (DocumentFormat::Pptx, "PPTX"),
+            (DocumentFormat::Xlsx, "XLSX"),
+            (DocumentFormat::Epub, "EPUB"),
+            (DocumentFormat::Pdf, "PDF"),
+        ];
+        for (format, expected) in formats {
+            assert_eq!(document_format_label(format), expected);
+        }
+
+        let states = [
+            (DocumentJobState::Pending, "Pending"),
+            (DocumentJobState::Running, "Running"),
+            (DocumentJobState::Paused, "Paused"),
+            (DocumentJobState::Completed, "Completed"),
+            (DocumentJobState::Cancelled, "Cancelled"),
+            (DocumentJobState::Failed, "Failed"),
+        ];
+        for (state, expected) in states {
+            assert_eq!(
+                localized_document_job_state(UiLocale::English, state),
+                expected
+            );
+        }
+    }
 
     #[test]
     fn pdf_warning_text_names_limited_pages_without_source_content() {
