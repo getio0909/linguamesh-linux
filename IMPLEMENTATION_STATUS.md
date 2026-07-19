@@ -6,7 +6,7 @@ Assumption: a routed document job must persist only its non-secret routing-profi
 re-run deterministic candidate selection; legacy jobs without that ID continue using their saved
 provider/model options. Document fallback remains disabled.
 
-- Core `9926d0f9f1bd6c8bb18bf20a3b0df0cfac82f795` adds schema 16 and the transactional migration
+- Core `9926d0f9bf6394c6011c6cc886d142bfeb54e10f` adds schema 16 and the transactional migration
   for `document_job_options.routing_profile_id`.
 - Linux stores that ID when a document starts through a saved profile. Resume and Retry now reload
   the profile after worker restart, reconnect the selected candidate through the host secret broker,
