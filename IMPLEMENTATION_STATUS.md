@@ -1178,6 +1178,10 @@ bounded by the Core document-job contract.
 - The first pushed revision `ba12919` failed Native run `29669906878` only because the test asserted
   the fallback English wording instead of the canonical catalog's `2 of 4 segments translated`;
   the follow-up assertion now derives the expected text through the same catalog helper.
+- Follow-up revision `c5d0308` passed Native run `29669977294` (job `88147085571`), Foundation
+  run `29669977297`, and Flatpak run `29669977295` (job `88147085574`). The pull-request reruns
+  `29669978352`, `29669978350`, and `29669978371` also passed, including the GTK progress-role,
+  bounded-fraction, localized-text, and hidden-reset assertions.
 
 Orca speech, manual high-contrast/RTL/reduced-motion review, end-user Secret Service prompt
 approval, other clients, and release artifacts remain open.
