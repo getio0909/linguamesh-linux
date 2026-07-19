@@ -23,12 +23,14 @@ The source-level localization checks are reproducible without GTK or third-party
 
 ```sh
 python3 -B tools/check-localization-keys.py
+python3 -B tools/check-localization-placeholders.py
 python3 -B tools/check-visible-localization.py
 ```
 
-The first command checks catalog key coverage; the second rejects non-empty literal strings passed
-directly to GTK visible-control APIs and direct string-list options. Empty strings used to clear a
-transient label are intentionally permitted.
+The first command checks catalog key coverage; the second checks placeholder identity and malformed
+braces in literal fallback templates; the third rejects non-empty literal strings passed directly to
+GTK visible-control APIs and direct string-list options. Empty strings used to clear a transient
+label are intentionally permitted.
 
 The routing-profile worker regression saves, lists, and deletes a Core `routing_planner_v1` profile
 without persisting provider endpoints, credentials, or translation content. A separate regression

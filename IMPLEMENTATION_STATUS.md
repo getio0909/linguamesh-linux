@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-19 — Linux localization placeholder audit checkpoint
+
+Assumption: catalog-backed fallback templates are part of the Linux visible-string contract, so
+their placeholder identities must be checked at source level before GTK or release validation.
+
+- Linux adds `tools/check-localization-placeholders.py`, a dependency-free parser for literal
+  `text`, `text_plural`, mnemonic, and template calls. It rejects malformed braces and placeholder
+  drift against the canonical l10n catalog while ignoring dynamic keys and non-literal constants.
+- Native and Foundation CI run this audit beside the existing key and visible-string audits; the
+  foundation required-file list now protects the checker from disappearing during repository work.
+- Local validation passed Python compilation, l10n synchronization, all three localization audits,
+  formatting, and `cargo test --features demo-provider --offline` (`131 passed; 2 ignored`).
+- This closes source-level fallback-template validation only; human translated-copy review, Orca
+  speech, broader runtime locale coverage, other clients, signing, and stable release remain open.
+
 ## 2026-07-19 — Linux performance baseline checkpoint
 
 Assumption: release hardening needs reproducible, machine-contextual measurements before a stable
