@@ -26,7 +26,7 @@ confirmation, or rollback.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `14cee83a650610b3a9a79a460c7c6f54ae9d21d4`; compared with the prior
+functional revision is `7fabf6130f6813638866814146dac83544d522c3`; compared with the prior
 alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW`, adds streamed
 protected-span and request-level glossary restoration, and rejects suspicious OOXML compression
 ratios and unsupported macro/signature parts before XML inspection. The required contract
@@ -37,7 +37,9 @@ is exact Core `0.1.0-alpha.2`, ABI 1, protocol 1, provider catalog `0.1.0`, and 
 - `typed_rust_host_secret_broker_v1`
 - `model_discovery_v1`
 - `protected_spans_v1`
+- `long_text_chunking_v1`
 - `bounded_text_document_v1`
+- `routing_planner_v1`
 - `streaming_text_v1`
 - `text_translation_v1`
 

@@ -4,6 +4,18 @@ Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline 
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
+## 2026-07-19 — Core routing planner compatibility checkpoint
+
+Assumption: Linux must reject a Core that does not expose the shared routing contract before
+provider work starts; this pin records the contract while GTK routing controls remain a later
+client slice.
+
+- Core `7fabf6130f6813638866814146dac83544d522c3` adds and advertises `routing_planner_v1`.
+- Linux startup now requires the feature alongside the existing exact alpha.2, ABI 1, protocol 1,
+  and provider-catalog checks.
+- Native and Flatpak source pins were updated to the same Core revision; full local and remote
+  validation remains pending.
+
 ## 2026-07-19 — Linux image-only PDF OCR toolchain revalidation
 
 Assumption: the opt-in OCR boundary is only claimable when the current Linux checkout can drive

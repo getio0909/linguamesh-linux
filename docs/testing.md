@@ -12,7 +12,7 @@ Ollama daemon.
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`14cee83a650610b3a9a79a460c7c6f54ae9d21d4`. This revision carries the explicit request-level
+`7fabf6130f6813638866814146dac83544d522c3`. This revision carries the explicit request-level
 Incognito privacy policy and changes file-backed Core storage to add SQLite's `SQLITE_OPEN_NOFOLLOW`
 flag, adds protected-span restoration and request-level glossary
 protection for streamed text, and adds bounded semantic chunking. On
@@ -21,14 +21,14 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 14cee83a650610b3a9a79a460c7c6f54ae9d21d4^{commit}
+git -C ../linguamesh-core cat-file -e 7fabf6130f6813638866814146dac83544d522c3^{commit}
 git -C ../linguamesh-core diff --quiet \
-  14cee83a650610b3a9a79a460c7c6f54ae9d21d4..HEAD -- \
+  7fabf6130f6813638866814146dac83544d522c3..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
 
-The same Core pin also negotiates `bounded_text_document_v1`: Linux imports only bounded UTF-8 TXT,
+The same Core pin also negotiates `bounded_text_document_v1` and `routing_planner_v1`: Linux imports only bounded UTF-8 TXT,
 Markdown, CSV, JSON, HTML, SRT, WebVTT, DOCX, PPTX, XLSX, EPUB packages, and text-based PDF pages, preserves line endings, keeps Markdown fenced code and subtitle timing
 structure verbatim, and
 persists pending/running/paused document jobs and validated non-secret translation options for worker
@@ -344,7 +344,7 @@ Core ABI/protocol header, localizes fixed labels and state values through the Li
 keys, and keeps source content, endpoints, identifiers, and secret references redacted.
 
 The GitHub Actions native workflow pins Core revision
-`14cee83a650610b3a9a79a460c7c6f54ae9d21d4`, installs the headers plus D-Bus, Xvfb, test-only
+`7fabf6130f6813638866814146dac83544d522c3`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
 namespace test through the unprivileged path.
