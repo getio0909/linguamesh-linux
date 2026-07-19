@@ -24,8 +24,7 @@ model selection without storing a completion flag, distinguishes worker failure 
 shows the confirmed next-request stable ID/model identity.
 The external-provider path includes deterministic Ollama-compatible OpenAI `/v1/` and native
 `/api/` loopback fixtures; they do not claim interoperability with a running third-party daemon.
-The native Ollama preset is currently exercised through the worker test path, while the GTK form
-remains a generic endpoint form. Persistent
+The GTK form now exposes the native Ollama preset and its `ollama_chat` adapter, while persistent
 secret references use the Linux GIO Secret Service adapter and fail closed when the desktop keyring
 is unavailable or requires an interactive prompt. The native workflow
 pins reviewed Core functional revision
@@ -44,9 +43,9 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `0d0d475d22129e8211333ee8f664a7669948ce3a` and l10n
-`32bef261f5f0deb9f6a0426231e365d0bae72b62` (326 catalog messages, bundle SHA-256
-`054d6749397cbbf652e099784f2c7d0e3650779a3c17c98e68d25560d286b2d3`). Request-level glossary rules, bounded CSV,
+The current Linux gate consumes Core `123d5c4d7a76873e597895763ca5d78e1ea42ea0` and l10n
+`d3d838198027e2104583296eb3e0f6fadc283e4e` (332 catalog messages, bundle SHA-256
+`0650b68a49daf27b56c95ae149cd5c29621d890ba4c7554c7c79d5690e38a05b`). Request-level glossary rules, bounded CSV,
 interchange are implemented in the Linux slice; persistent glossary libraries and TBX import
 remain outside the release claim.
 

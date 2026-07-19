@@ -124,6 +124,18 @@ msgctxt "provider.name"
 msgid "Provider name"
 msgstr "［Þŕøṽïðëŕ ñåṁë~~~~］"
 
+#. Display label for the OpenAI-compatible provider preset in the Linux provider form.
+#, fuzzy
+msgctxt "provider.preset.openai"
+msgid "OpenAI-compatible"
+msgstr "［ØþëñÅÏ-çøṁþåŧïƀŀë~~~~~］"
+
+#. Display label for the native Ollama provider preset in the Linux provider form.
+#, fuzzy
+msgctxt "provider.preset.ollama"
+msgid "Ollama (native /api)"
+msgstr "［Øŀŀåṁå (ñåŧïṽë /åþï)~~~~~~］"
+
 #. Label for the provider endpoint field.
 #, fuzzy
 msgctxt "field.endpoint"
@@ -418,6 +430,18 @@ msgctxt "tooltip.endpoint"
 msgid "HTTPS or loopback HTTP OpenAI-compatible base endpoint"
 msgstr "［ĦŦŦÞŠ øŕ ŀøøþƀåçķ ĦŦŦÞ ØþëñÅÏ-çøṁþåŧïƀŀë ƀåšë ëñðþøïñŧ~~~~~~~~~~~~~~~~~~］"
 
+#. Tooltip for the Linux native Ollama endpoint field.
+#, fuzzy
+msgctxt "tooltip.endpoint.ollama"
+msgid "HTTPS or loopback HTTP native Ollama /api endpoint"
+msgstr "［ĦŦŦÞŠ øŕ ŀøøþƀåçķ ĦŦŦÞ ñåŧïṽë Øŀŀåṁå /åþï ëñðþøïñŧ~~~~~~~~~~~~~~~~］"
+
+#. Tooltip for the Linux provider protocol preset selector.
+#, fuzzy
+msgctxt "tooltip.provider_preset"
+msgid "Choose the provider protocol used for model discovery and streaming"
+msgstr "［Çħøøšë ŧħë þŕøṽïðëŕ þŕøŧøçøŀ ûšëð ƒøŕ ṁøðëŀ ðïšçøṽëŕÿ åñð šŧŕëåṁïñĝ~~~~~~~~~~~~~~~~~~~~~~］"
+
 #. Tooltip for the Linux provider credential field.
 #, fuzzy
 msgctxt "tooltip.credential"
@@ -453,6 +477,12 @@ msgstr "［Šåṽëð þŕøƒïŀë~~~~］"
 msgctxt "label.source_language"
 msgid "Source language"
 msgstr "［Šøûŕçë ŀåñĝûåĝë~~~~~］"
+
+#. Label for the Linux provider protocol preset selector.
+#, fuzzy
+msgctxt "label.provider_preset"
+msgid "Provider preset"
+msgstr "［Þŕøṽïðëŕ þŕëšëŧ~~~~~］"
 
 #. Label for the Linux provider credential field.
 #, fuzzy

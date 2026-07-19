@@ -115,6 +115,16 @@ msgctxt "provider.name"
 msgid "Provider name"
 msgstr "Provider name"
 
+#. Display label for the OpenAI-compatible provider preset in the Linux provider form.
+msgctxt "provider.preset.openai"
+msgid "OpenAI-compatible"
+msgstr "OpenAI-compatible"
+
+#. Display label for the native Ollama provider preset in the Linux provider form.
+msgctxt "provider.preset.ollama"
+msgid "Ollama (native /api)"
+msgstr "Ollama (native /api)"
+
 #. Label for the provider endpoint field.
 msgctxt "field.endpoint"
 msgid "Endpoint"
@@ -361,6 +371,16 @@ msgctxt "tooltip.endpoint"
 msgid "HTTPS or loopback HTTP OpenAI-compatible base endpoint"
 msgstr "HTTPS or loopback HTTP OpenAI-compatible base endpoint"
 
+#. Tooltip for the Linux native Ollama endpoint field.
+msgctxt "tooltip.endpoint.ollama"
+msgid "HTTPS or loopback HTTP native Ollama /api endpoint"
+msgstr "HTTPS or loopback HTTP native Ollama /api endpoint"
+
+#. Tooltip for the Linux provider protocol preset selector.
+msgctxt "tooltip.provider_preset"
+msgid "Choose the provider protocol used for model discovery and streaming"
+msgstr "Choose the provider protocol used for model discovery and streaming"
+
 #. Tooltip for the Linux provider credential field.
 msgctxt "tooltip.credential"
 msgid "Optional credential; it is kept in memory unless remembered through Secret Service"
@@ -390,6 +410,11 @@ msgstr "Saved profile"
 msgctxt "label.source_language"
 msgid "Source language"
 msgstr "Source language"
+
+#. Label for the Linux provider protocol preset selector.
+msgctxt "label.provider_preset"
+msgid "Provider preset"
+msgstr "Provider preset"
 
 #. Label for the Linux provider credential field.
 msgctxt "label.credential"

@@ -1,8 +1,30 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics including accessible document progress, live AT-SPI tree export checks, a headless GTK keyboard traversal fixture for tested controls, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF document-job translation with sequential segment persistence, bounded DOCX/PPTX/XLSX/EPUB package reconstruction and resource retention, bounded optional image-only PDF OCR with page-marked text output, page-aware text-PDF reconstruction with structured HTML fallback, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, both Ollama-compatible OpenAI `/v1/` and native Ollama `/api` deterministic discovery/streaming fixtures, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; source-referenced Linux gettext keys are statically checked against the canonical catalog; a running third-party Ollama daemon, Orca speech, end-user prompt acceptance, visual/translated copy review, other clients, and release artifacts remain open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics including accessible document progress, live AT-SPI tree export checks, a headless GTK keyboard traversal fixture for tested controls, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF document-job translation with sequential segment persistence, bounded DOCX/PPTX/XLSX/EPUB package reconstruction and resource retention, bounded optional image-only PDF OCR with page-marked text output, page-aware text-PDF reconstruction with structured HTML fallback, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, both Ollama-compatible OpenAI `/v1/` and native Ollama `/api` deterministic discovery/streaming fixtures, a GTK provider preset selector for OpenAI-compatible and native Ollama profiles, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; source-referenced Linux gettext keys are statically checked against the canonical catalog; a running third-party Ollama daemon, Orca speech, end-user prompt acceptance, visual/translated copy review, other clients, and release artifacts remain open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
+
+## 2026-07-19 — Native Ollama `/api` GTK preset checkpoint
+
+Assumption: the verified native Ollama worker path is ready for explicit Linux user selection, while
+the independently installed daemon remains an external interoperability gate.
+
+The GTK provider form now exposes localized OpenAI-compatible and native Ollama presets. Selecting
+the native preset uses the stable `ollama`/`ollama_chat` profile pair, changes only untouched default
+name and endpoint fields, and shows the native `/api` tooltip. Saved profiles restore their preset;
+connecting through the form therefore exercises native `/api/tags` discovery and `/api/chat` NDJSON
+streaming without a credential. The regression also checks Simplified Chinese labels and accessible
+label-to-control relations. The native test remains fixture-backed and does not claim a third-party
+daemon, GPU, Orca, visual review, or stable release.
+
+Validated locally:
+
+- `cargo check --features gui --all-targets --offline` and `cargo check --features gui --tests --offline` — passed.
+- `cargo test --features demo-provider --offline` — passed: 105 tests, 2 ignored, 0 failed.
+- `bash tools/sync-l10n.sh --check` — passed at l10n revision `d3d838198027e2104583296eb3e0f6fadc283e4e` (332 messages; bundle SHA-256 `0650b68a49daf27b56c95ae149cd5c29621d890ba4c7554c7c79d5690e38a05b`).
+
+The local GTK binary test remains unavailable on this host because installed GTK/libadwaita symbols
+are older than the gtk-rs headers; the CI native and Flatpak gates are required evidence.
 
 ## 2026-07-19 — Native Ollama `/api` worker checkpoint
 
@@ -10,13 +32,11 @@ Assumption: Linux-first local-model support needs the native Ollama `/api` contr
 the already covered OpenAI-compatible `/v1/` surface; a running third-party daemon remains an
 external runtime gate.
 
-The worker now creates an explicit `ollama_chat` profile for the catalog's loopback-only `ollama`
+The worker creates an explicit `ollama_chat` profile for the catalog's loopback-only `ollama`
 preset. It discovers `llama3.2:latest` through `/api/tags`, requires deliberate model selection,
 and streams `你好，Ollama！` through `/api/chat` NDJSON without a secret. Core owns endpoint policy,
 bounded response parsing, cancellation, protected-span restoration, and completion validation;
-Linux only supplies the profile and exercises the real worker path against the deterministic
-fixture. The GTK form still exposes the generic OpenAI-compatible endpoint field, so end-user
-preset selection for native Ollama remains a follow-up UI task.
+Linux supplies the profile and exercises the real worker path against the deterministic fixture.
 
 Validated locally:
 

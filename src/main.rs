@@ -32,9 +32,13 @@ const TARGET_LOCALES: [&str; 3] = ["zh-CN", "en", "ja"];
 const MAX_EVENTS_PER_TICK: usize = 64;
 const PROFILE_ID_GENERATION_ATTEMPTS: usize = 8;
 const CUSTOM_PROVIDER_PRESET_ID: &str = "custom-openai-compatible";
+const OLLAMA_PROVIDER_PRESET_ID: &str = "ollama";
 const OPENAI_ADAPTER_TYPE: &str = "openai_chat_completions";
+const OLLAMA_ADAPTER_TYPE: &str = "ollama_chat";
 const DEFAULT_PROVIDER_NAME: &str = "Local OpenAI-compatible provider";
+const DEFAULT_OLLAMA_PROVIDER_NAME: &str = "Local Ollama provider";
 const DEFAULT_PROVIDER_ENDPOINT: &str = "http://127.0.0.1:11434/v1/";
+const DEFAULT_OLLAMA_ENDPOINT: &str = "http://127.0.0.1:11434/api/";
 
 #[derive(Clone)]
 struct UiBindings {
@@ -47,6 +51,7 @@ struct UiBindings {
     provider_title: gtk::Label,
     provider_note: gtk::Label,
     saved_profile: gtk::DropDown,
+    provider_preset: gtk::DropDown,
     provider_name: gtk::Entry,
     provider_endpoint: gtk::Entry,
     provider_credential: gtk::PasswordEntry,
@@ -96,6 +101,8 @@ struct UiBindings {
     diagnostics_panel: gtk::Expander,
     diagnostics: gtk::Label,
     profile_selection_guard: Rc<Cell<bool>>,
+    provider_preset_guard: Rc<Cell<bool>>,
+    provider_preset_previous: Rc<Cell<u32>>,
     draft_profile_id: Rc<RefCell<Option<ProviderProfileId>>>,
     source_uri: Rc<RefCell<Option<String>>>,
     output_uri: Rc<RefCell<Option<String>>>,
@@ -125,6 +132,70 @@ struct UiBindings {
     memory_policy_pending: Rc<Cell<bool>>,
     memory_policy_notice: Rc<Cell<Option<bool>>>,
     source_drop_target: gtk::DropTarget,
+}
+
+// 将有限的原生提供商预设映射到稳定的核心适配器配置。
+fn provider_preset_config(index: u32) -> (&'static str, &'static str, &'static str, &'static str) {
+    match index {
+        1 => (
+            OLLAMA_PROVIDER_PRESET_ID,
+            OLLAMA_ADAPTER_TYPE,
+            DEFAULT_OLLAMA_PROVIDER_NAME,
+            DEFAULT_OLLAMA_ENDPOINT,
+        ),
+        _ => (
+            CUSTOM_PROVIDER_PRESET_ID,
+            OPENAI_ADAPTER_TYPE,
+            DEFAULT_PROVIDER_NAME,
+            DEFAULT_PROVIDER_ENDPOINT,
+        ),
+    }
+}
+
+// 将持久化的预设标识还原为界面下拉框索引。
+fn provider_preset_index(preset_id: &str) -> u32 {
+    if preset_id == OLLAMA_PROVIDER_PRESET_ID {
+        1
+    } else {
+        0
+    }
+}
+
+// 根据活动界面语言生成提供商预设标签。
+fn provider_preset_labels(locale: UiLocale) -> [String; 2] {
+    [
+        localization::text(locale, "provider.preset.openai", "OpenAI-compatible"),
+        localization::text(locale, "provider.preset.ollama", "Ollama (native /api)"),
+    ]
+}
+
+// 根据预设显示与协议匹配的端点提示。
+fn provider_endpoint_tooltip(locale: UiLocale, preset_index: u32) -> String {
+    if preset_index == 1 {
+        localization::text(
+            locale,
+            "tooltip.endpoint.ollama",
+            "HTTPS or loopback HTTP native Ollama /api endpoint",
+        )
+    } else {
+        localization::text(
+            locale,
+            "tooltip.endpoint",
+            "HTTPS or loopback HTTP OpenAI-compatible base endpoint",
+        )
+    }
+}
+
+// 判断端点是否仍是预设提供的默认值，以避免覆盖用户自定义地址。
+fn endpoint_matches_preset_default(endpoint: &str, preset_index: u32) -> bool {
+    let endpoint = endpoint.trim();
+    if preset_index == 1 {
+        endpoint == DEFAULT_OLLAMA_ENDPOINT
+            || (endpoint.starts_with("http://127.0.0.1:") && endpoint.ends_with("/api/"))
+    } else {
+        endpoint == DEFAULT_PROVIDER_ENDPOINT
+            || (endpoint.starts_with("http://127.0.0.1:") && endpoint.ends_with("/v1/"))
+    }
 }
 
 struct EditorBindings {
@@ -330,6 +401,7 @@ fn create_window(
     let (
         provider_session,
         saved_profile,
+        provider_preset,
         provider_name,
         provider_endpoint,
         provider_credential,
@@ -578,6 +650,7 @@ fn create_window(
         provider_title,
         provider_note,
         saved_profile,
+        provider_preset,
         provider_name,
         provider_endpoint,
         provider_credential,
@@ -627,6 +700,8 @@ fn create_window(
         diagnostics_panel,
         diagnostics,
         profile_selection_guard: Rc::new(Cell::new(false)),
+        provider_preset_guard: Rc::new(Cell::new(false)),
+        provider_preset_previous: Rc::new(Cell::new(0)),
         draft_profile_id: Rc::new(RefCell::new(None)),
         source_uri: Rc::new(RefCell::new(None)),
         output_uri: Rc::new(RefCell::new(None)),
@@ -665,6 +740,7 @@ fn create_window(
                 .remove_saved_profile
                 .clone()
                 .upcast::<gtk::Widget>(),
+            bindings.provider_preset.clone().upcast::<gtk::Widget>(),
             bindings.provider_name.clone().upcast::<gtk::Widget>(),
             bindings.provider_endpoint.clone().upcast::<gtk::Widget>(),
             bindings.provider_credential.clone().upcast::<gtk::Widget>(),
@@ -1003,6 +1079,7 @@ fn create_editors() -> EditorBindings {
 fn create_provider_session() -> (
     gtk::Box,
     gtk::DropDown,
+    gtk::DropDown,
     gtk::Entry,
     gtk::Entry,
     gtk::PasswordEntry,
@@ -1060,6 +1137,21 @@ fn create_provider_session() -> (
     ));
     profile_actions.append(&remove_saved_profile);
     section.append(&profile_actions);
+
+    let preset_labels = provider_preset_labels(locale);
+    let preset_label_refs = preset_labels.iter().map(String::as_str).collect::<Vec<_>>();
+    let provider_preset = gtk::DropDown::from_strings(&preset_label_refs);
+    provider_preset.set_hexpand(true);
+    provider_preset.set_focusable(true);
+    provider_preset.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_preset",
+        "Choose the provider protocol used for model discovery and streaming",
+    )));
+    section.append(&labeled_control(
+        &localized_mnemonic(locale, "label.provider_preset", "Provider preset"),
+        provider_preset.upcast_ref::<gtk::Widget>(),
+    ));
 
     let fields = gtk::Box::new(gtk::Orientation::Horizontal, 12);
     let default_provider_name =
@@ -1135,6 +1227,7 @@ fn create_provider_session() -> (
     (
         section,
         saved_profile,
+        provider_preset,
         provider_name,
         provider_endpoint,
         provider_credential,
@@ -1734,6 +1827,11 @@ fn selected_fallback_profile_id(bindings: &UiBindings) -> Option<ProviderProfile
 }
 
 fn show_saved_profile_in_form(bindings: &UiBindings, profile: &ProviderProfile) {
+    let preset_index = provider_preset_index(profile.preset_id());
+    bindings.provider_preset_guard.set(true);
+    bindings.provider_preset.set_selected(preset_index);
+    bindings.provider_preset_previous.set(preset_index);
+    bindings.provider_preset_guard.set(false);
     bindings.provider_name.set_text(profile.display_name());
     bindings.provider_endpoint.set_text(profile.base_endpoint());
     bindings.provider_credential.set_text("");
@@ -1747,6 +1845,10 @@ fn show_new_profile_in_form(
 ) -> Result<(), TranslationError> {
     let profile_id = generate_custom_provider_id(state.saved_profiles())?;
     bindings.draft_profile_id.replace(Some(profile_id));
+    bindings.provider_preset_guard.set(true);
+    bindings.provider_preset.set_selected(0);
+    bindings.provider_preset_previous.set(0);
+    bindings.provider_preset_guard.set(false);
     bindings.provider_name.set_text(DEFAULT_PROVIDER_NAME);
     bindings
         .provider_endpoint
@@ -1873,6 +1975,36 @@ fn connect_profile_selection_handler(bindings: &UiBindings, state: &Rc<RefCell<A
         });
 }
 
+// 预设切换只更新仍为默认值的字段，保留用户明确输入的名称和端点。
+fn connect_provider_preset_handler(bindings: &UiBindings) {
+    let preset_bindings = bindings.clone();
+    bindings
+        .provider_preset
+        .connect_selected_notify(move |drop_down| {
+            if preset_bindings.provider_preset_guard.get() {
+                return;
+            }
+            let selected = drop_down.selected();
+            let previous = preset_bindings.provider_preset_previous.replace(selected);
+            if selected == previous {
+                return;
+            }
+            let (_, _, default_name, default_endpoint) = provider_preset_config(selected);
+            if endpoint_matches_preset_default(&preset_bindings.provider_endpoint.text(), previous)
+            {
+                preset_bindings.provider_endpoint.set_text(default_endpoint);
+            }
+            let (_, _, previous_name, _) = provider_preset_config(previous);
+            if preset_bindings.provider_name.text().trim() == previous_name {
+                preset_bindings.provider_name.set_text(default_name);
+            }
+            let locale = UiLocale::from_index(preset_bindings.locale.selected() as usize);
+            preset_bindings
+                .provider_endpoint
+                .set_tooltip_text(Some(&provider_endpoint_tooltip(locale, selected)));
+        });
+}
+
 fn connect_selection_handlers(
     bindings: &UiBindings,
     theme: &gtk::DropDown,
@@ -1881,6 +2013,7 @@ fn connect_selection_handlers(
     worker: &Rc<CoreWorker>,
 ) {
     connect_profile_selection_handler(bindings, state);
+    connect_provider_preset_handler(bindings);
 
     let model_bindings = bindings.clone();
     let model_state = Rc::clone(state);
@@ -2244,20 +2377,20 @@ fn connect_action_handlers(
             refresh_ui(&connect_bindings, &state);
             return;
         }
-        let (profile_id, preset_id, adapter_type, saved_secret_ref, enabled, selected_model) =
+        let (preset_id, adapter_type, _, _) =
+            provider_preset_config(connect_bindings.provider_preset.selected());
+        let preset_id = preset_id.to_owned();
+        let adapter_type = adapter_type.to_owned();
+        let (profile_id, saved_secret_ref, enabled, selected_model) =
             match state.selected_saved_profile() {
                 Some(saved) => (
                     Ok(saved.id().clone()),
-                    saved.preset_id().to_owned(),
-                    saved.adapter_type().to_owned(),
                     saved.secret_ref().cloned(),
                     saved.enabled(),
                     saved.selected_model().map(str::to_owned),
                 ),
                 None => (
                     ensure_draft_profile_id(&connect_bindings, &state),
-                    CUSTOM_PROVIDER_PRESET_ID.to_owned(),
-                    OPENAI_ADAPTER_TYPE.to_owned(),
                     None,
                     true,
                     None,
@@ -4078,6 +4211,7 @@ fn apply_worker_event(
                 state.active_provider().is_none()
                     && state.pending_provider().is_none()
                     && state.saved_profiles().is_empty()
+                    && bindings.provider_preset.selected() == 0
                     && bindings.provider_endpoint.text() == DEFAULT_PROVIDER_ENDPOINT
             };
             if should_use_demo {
@@ -4677,6 +4811,13 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
             "Choose a saved non-secret profile or create a new profile",
         )));
     bindings
+        .provider_preset
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.provider_preset",
+            "Choose the provider protocol used for model discovery and streaming",
+        )));
+    bindings
         .provider_name
         .set_tooltip_text(Some(&localization::text(
             locale,
@@ -4685,10 +4826,9 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
         )));
     bindings
         .provider_endpoint
-        .set_tooltip_text(Some(&localization::text(
+        .set_tooltip_text(Some(&provider_endpoint_tooltip(
             locale,
-            "tooltip.endpoint",
-            "HTTPS or loopback HTTP OpenAI-compatible base endpoint",
+            bindings.provider_preset.selected(),
         )));
     bindings
         .provider_credential
@@ -4740,6 +4880,11 @@ fn refresh_localized_widgets(bindings: &UiBindings, locale: UiLocale) {
     bindings
         .output_view
         .update_property(&[gtk::accessible::Property::Label(&output_accessible)]);
+    set_labeled_control_label(
+        bindings.provider_preset.upcast_ref(),
+        &localized_mnemonic(locale, "label.provider_preset", "Provider preset"),
+    );
+    refresh_dropdown_labels(&bindings.provider_preset, &provider_preset_labels(locale));
     set_labeled_control_label(
         bindings.provider_name.upcast_ref(),
         &localized_mnemonic(locale, "provider.name", "Provider name"),
@@ -5222,6 +5367,9 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         .provider_name
         .set_sensitive(provider_controls_enabled);
     bindings
+        .provider_preset
+        .set_sensitive(provider_controls_enabled);
+    bindings
         .provider_endpoint
         .set_sensitive(provider_controls_enabled);
     bindings
@@ -5350,13 +5498,15 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
 #[cfg(test)]
 mod tests {
     use super::{
-        AppState, AppStatus, CUSTOM_PROVIDER_PRESET_ID, CoreWorker, DEFAULT_PROVIDER_ENDPOINT,
-        DEFAULT_PROVIDER_NAME, ErrorKind, OPENAI_ADAPTER_TYPE, OnboardingStage, ProviderProfileId,
-        SecretRef, SecretRefNamespace, SecretValue, TranslationError, UiLocale, WorkerCommand,
-        WorkerEvent, apply_worker_event, connect_action_handlers, connect_selection_handlers,
-        create_window, custom_provider_profile, document_format_label, generate_custom_provider_id,
-        localized_document_job_state, localized_document_warnings, localized_template, refresh_ui,
-        start_event_pump,
+        AppState, AppStatus, CUSTOM_PROVIDER_PRESET_ID, CoreWorker, DEFAULT_OLLAMA_ENDPOINT,
+        DEFAULT_OLLAMA_PROVIDER_NAME, DEFAULT_PROVIDER_ENDPOINT, DEFAULT_PROVIDER_NAME, ErrorKind,
+        OLLAMA_ADAPTER_TYPE, OLLAMA_PROVIDER_PRESET_ID, OPENAI_ADAPTER_TYPE, OnboardingStage,
+        ProviderProfileId, SecretRef, SecretRefNamespace, SecretValue, TranslationError, UiLocale,
+        WorkerCommand, WorkerEvent, apply_worker_event, connect_action_handlers,
+        connect_selection_handlers, create_window, custom_provider_profile, document_format_label,
+        endpoint_matches_preset_default, generate_custom_provider_id, localized_document_job_state,
+        localized_document_warnings, localized_template, provider_preset_config,
+        provider_preset_index, refresh_ui, start_event_pump,
     };
     use adw::prelude::*;
     use gtk::glib;
@@ -5460,6 +5610,43 @@ mod tests {
         assert!(!text.contains("source"));
     }
 
+    #[test]
+    fn provider_presets_map_to_stable_native_and_compatible_defaults() {
+        assert_eq!(provider_preset_index(OLLAMA_PROVIDER_PRESET_ID), 1);
+        assert_eq!(provider_preset_index(CUSTOM_PROVIDER_PRESET_ID), 0);
+        assert_eq!(
+            provider_preset_config(0),
+            (
+                CUSTOM_PROVIDER_PRESET_ID,
+                OPENAI_ADAPTER_TYPE,
+                DEFAULT_PROVIDER_NAME,
+                DEFAULT_PROVIDER_ENDPOINT,
+            )
+        );
+        assert_eq!(
+            provider_preset_config(1),
+            (
+                OLLAMA_PROVIDER_PRESET_ID,
+                OLLAMA_ADAPTER_TYPE,
+                DEFAULT_OLLAMA_PROVIDER_NAME,
+                DEFAULT_OLLAMA_ENDPOINT,
+            )
+        );
+        assert!(endpoint_matches_preset_default(
+            DEFAULT_PROVIDER_ENDPOINT,
+            0
+        ));
+        assert!(endpoint_matches_preset_default(DEFAULT_OLLAMA_ENDPOINT, 1));
+        assert!(!endpoint_matches_preset_default(
+            "https://api.example.test/v1/",
+            0
+        ));
+        assert!(!endpoint_matches_preset_default(
+            "https://api.example.test/api/",
+            1
+        ));
+    }
+
     fn spin_main_context_until(
         context: &glib::MainContext,
         timeout: Duration,
@@ -5529,6 +5716,55 @@ mod tests {
         }
     }
 
+    struct NativeOllamaFakeProvider {
+        endpoint: String,
+        shutdown: Option<oneshot::Sender<()>>,
+        thread: Option<JoinHandle<()>>,
+    }
+
+    impl NativeOllamaFakeProvider {
+        fn start() -> Self {
+            let (ready_sender, ready_receiver) = mpsc::sync_channel(1);
+            let (shutdown, shutdown_receiver) = oneshot::channel();
+            let thread = std::thread::spawn(move || {
+                let runtime = Builder::new_multi_thread()
+                    .worker_threads(2)
+                    .enable_all()
+                    .build()
+                    .expect("native Ollama provider runtime");
+                runtime.block_on(async move {
+                    let server = FakeProviderServer::start_ollama_native()
+                        .await
+                        .expect("native Ollama provider");
+                    ready_sender
+                        .send(server.ollama_base_url())
+                        .expect("native Ollama endpoint");
+                    let _ = shutdown_receiver.await;
+                    server.shutdown().await;
+                });
+            });
+            let endpoint = ready_receiver
+                .recv_timeout(Duration::from_secs(5))
+                .expect("native Ollama startup");
+            Self {
+                endpoint,
+                shutdown: Some(shutdown),
+                thread: Some(thread),
+            }
+        }
+    }
+
+    impl Drop for NativeOllamaFakeProvider {
+        fn drop(&mut self) {
+            if let Some(shutdown) = self.shutdown.take() {
+                let _ = shutdown.send(());
+            }
+            if let Some(thread) = self.thread.take() {
+                thread.join().expect("native Ollama shutdown");
+            }
+        }
+    }
+
     fn assert_labeled_control(control: &gtk::Widget) {
         assert!(gtk::test_accessible_has_relation(
             control,
@@ -5541,6 +5777,64 @@ mod tests {
             .and_then(|child| child.downcast::<gtk::Label>().ok())
             .expect("control label");
         assert_eq!(label.mnemonic_widget().as_ref(), Some(control));
+    }
+
+    #[test]
+    fn gtk_native_ollama_preset_connects_and_translates() {
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.NativeOllamaTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK test application");
+
+        let external = NativeOllamaFakeProvider::start();
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn());
+        let (window, bindings, theme, locale) = create_window(&application);
+        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
+        connect_action_handlers(&bindings, &state, &worker);
+        start_event_pump(&bindings, &state, &worker);
+        let context = glib::MainContext::default();
+        window.present();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().worker_ready()
+        });
+
+        bindings.provider_preset.set_selected(1);
+        bindings.provider_name.set_text("Native Ollama provider");
+        bindings.provider_endpoint.set_text(&external.endpoint);
+        bindings.connect.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Ready
+                && state.borrow().active_provider().is_some()
+                && state.borrow().selected_model().is_some()
+        });
+        let active = state
+            .borrow()
+            .active_provider()
+            .cloned()
+            .expect("active provider");
+        assert_eq!(active.preset_id(), OLLAMA_PROVIDER_PRESET_ID);
+        assert_eq!(active.adapter_type(), OLLAMA_ADAPTER_TYPE);
+        assert_eq!(state.borrow().selected_model(), Some("llama3.2:latest"));
+
+        bindings.source.set_text("Hello");
+        bindings.translate.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Completed
+        });
+        assert_eq!(state.borrow().output(), "你好，Ollama！");
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        drop(window);
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
     }
 
     // 单个原生流程覆盖真实控件生命周期和恢复表单，避免拆分后并行初始化 GTK。
@@ -5688,6 +5982,21 @@ mod tests {
             Some("_打开文本文件")
         );
         assert_eq!(bindings.provider_title.label(), "提供商配置");
+        assert_eq!(bindings.provider_preset.selected(), 0);
+        assert_labeled_control(bindings.provider_preset.upcast_ref::<gtk::Widget>());
+        let provider_preset_model = bindings
+            .provider_preset
+            .model()
+            .and_then(|model| model.downcast::<gtk::StringList>().ok())
+            .expect("provider preset labels");
+        assert_eq!(
+            provider_preset_model.string(0).as_deref(),
+            Some("OpenAI 兼容")
+        );
+        assert_eq!(
+            provider_preset_model.string(1).as_deref(),
+            Some("Ollama（原生 /api）")
+        );
         assert_eq!(bindings.connect.label().as_deref(), Some("_连接"));
         assert_eq!(
             bindings.remove_saved_profile.label().as_deref(),
@@ -5782,6 +6091,7 @@ mod tests {
         assert!(!bindings.progress.is_visible());
         for control in [
             bindings.saved_profile.upcast_ref::<gtk::Widget>(),
+            bindings.provider_preset.upcast_ref::<gtk::Widget>(),
             bindings.provider_name.upcast_ref::<gtk::Widget>(),
             bindings.provider_endpoint.upcast_ref::<gtk::Widget>(),
             bindings.provider_credential.upcast_ref::<gtk::Widget>(),

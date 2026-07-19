@@ -64,8 +64,9 @@ provider output that structurally drops one of these spans.
 The provider catalog's `local-loopback` preset uses the OpenAI-compatible `/v1/` adapter, while its
 loopback-only `ollama` preset uses Core's native `/api/` adapter. The worker's deterministic native
 fixture covers `/api/tags` model discovery and `/api/chat` NDJSON streaming with explicit model
-selection. The GTK form currently remains a generic endpoint form; native Ollama preset selection
-and interoperability with an independently running daemon are not yet release claims.
+selection. The GTK provider form now exposes both presets, restores the selected preset for saved
+profiles, and changes untouched default fields when the user switches protocol. Interoperability
+with an independently running daemon remains an external validation gate.
 
 The Linux text workspace adds an in-memory request-level glossary field. Core validates duplicate
 rules and credential-shaped terms, selects only locale-matching entries, protects immutable names,

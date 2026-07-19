@@ -142,10 +142,12 @@ session-only mode, and reports storage as unavailable. A private Linux tmpfs reg
 real `ENOSPC` at each transaction boundary and verifies after restart that only pre-fault state was
 committed.
 
-The tested external-provider path includes a deterministic Ollama-compatible OpenAI endpoint on
-loopback: model discovery returns `llama3.2:latest`, the worker requires deliberate selection, and
-streaming uses `/v1/chat/completions` without a credential. This proves the local `/v1/` contract
-used by Ollama, but not Ollama's native `/api` endpoints or a running third-party daemon. Full
+The tested external-provider path includes deterministic loopback fixtures for both Ollama-compatible
+OpenAI `/v1/` and native Ollama `/api`: model discovery returns `llama3.2:latest`, the worker requires
+deliberate selection, and streaming uses `/v1/chat/completions` or `/api/chat` without a credential.
+The GTK provider form exposes localized OpenAI-compatible and native Ollama presets and preserves
+custom endpoint edits when switching between them. This proves the bounded local contracts, but not
+a running third-party daemon. Full
 validation commands, the header-free local path, and the GTK gates for X11/Xvfb and forced
 Wayland/headless Weston are documented in
 [`docs/testing.md`](docs/testing.md). No release artifact is implemented yet.
@@ -168,8 +170,8 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`f00b00fda307660000b0e4068c5ca1072d266df1` and validated with `msgfmt`; the 327-message bundle
-checksum is `53821e2397e6697b7551693c6f5787cc1f88e24d96b3077ac590645a848f1977`. The locale selector
+`d3d838198027e2104583296eb3e0f6fadc283e4e` and validated with `msgfmt`; the 332-message bundle
+checksum is `0650b68a49daf27b56c95ae149cd5c29621d890ba4c7554c7c79d5690e38a05b`. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
 active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, construction-stage provider/default-control copy, and diagnostics labels/state values without replacing active source text;
 Arabic also switches the GTK workspace root to right-to-left direction. Document-job actions,

@@ -289,8 +289,10 @@ that pending model confirmation remains in Step 2 and fatal worker shutdown beco
 instead of remaining at Starting, with Connect, model, translation, and stop controls disabled. It
 waits for fake-endpoint readiness without auto-connect, clears a session credential from the form
 immediately after Connect, explicitly selects a discovered model, preserves the active
-provider/model and Ready identity after a failed switch, and completes a streamed translation. A
-completed translation also exercises the registered application notification path; its payload is
+provider/model and Ready identity after a failed switch, and completes a streamed translation. The
+The same GTK binary regression selects the native Ollama preset, connects to the deterministic
+`/api/` fixture, verifies `ollama_chat` model discovery, and translates `你好，Ollama！` without a
+credential. A completed translation also exercises the registered application notification path; its payload is
   localized generic copy and does not contain source or translated content. It
 also verifies the storage-unavailable session-only warning persists in Ready, injects a two-profile
 startup snapshot, verifies persisted-active prefill without activation, browses another row without
@@ -323,13 +325,13 @@ Core ABI/protocol header, localizes fixed labels and state values through the Li
 keys, and keeps source content, endpoints, identifiers, and secret references redacted.
 
 The GitHub Actions native workflow pins Core revision
-`fbf3e9b5927049dccaa19f8c36013495ffebba12`, installs the headers plus D-Bus, Xvfb, test-only
+`123d5c4d7a76873e597895763ca5d78e1ea42ea0`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
 namespace test through the unprivileged path.
-The current Linux diagnostics localization revision `32bef261f5f0deb9f6a0426231e365d0bae72b62`
-contains 326 catalog messages and bundle SHA-256
-`054d6749397cbbf652e099784f2c7d0e3650779a3c17c98e68d25560d286b2d3`; the source-level catalog
+The current Linux diagnostics localization revision `d3d838198027e2104583296eb3e0f6fadc283e4e`
+contains 332 catalog messages and bundle SHA-256
+`0650b68a49daf27b56c95ae149cd5c29621d890ba4c7554c7c79d5690e38a05b`; the source-level catalog
 audit and runtime locale tests cover the diagnostics labels. The current fixed-error localization revision `b6d2503`
 passed Native Linux run `29627668119`, Foundation run `29627668093`, and
 Flatpak run `29627668108`; the native job validated the pinned 117-message catalog and GTK
