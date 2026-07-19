@@ -63,6 +63,32 @@ pub fn move_routing_profile_id(
     true
 }
 
+// 将路由候选移动到另一个候选之前，供 GTK 拖放排序复用。
+#[must_use]
+pub fn move_routing_profile_id_before(
+    ids: &mut Vec<ProviderProfileId>,
+    dragged_id: &ProviderProfileId,
+    target_id: &ProviderProfileId,
+) -> bool {
+    if dragged_id == target_id {
+        return false;
+    }
+    let Some(dragged_index) = ids.iter().position(|id| id == dragged_id) else {
+        return false;
+    };
+    let Some(target_index) = ids.iter().position(|id| id == target_id) else {
+        return false;
+    };
+    let dragged = ids.remove(dragged_index);
+    let adjusted_target = if dragged_index < target_index {
+        target_index.saturating_sub(1)
+    } else {
+        target_index
+    };
+    ids.insert(adjusted_target, dragged);
+    true
+}
+
 /// 记录最近一次普通文本请求的非敏感路由决策摘要。
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RoutingDecisionSummary {
@@ -2080,7 +2106,8 @@ mod tests {
     use super::{
         AppState, AppStatus, OnboardingStage, ProfileStorageStatus, ProviderProfile,
         ProviderProfileId, RoutingDecisionSummary, RoutingMode, StateError, ThemePreference,
-        UiLocale, move_routing_profile_id, ordered_routing_profile_ids, routing_mode_for_selection,
+        UiLocale, move_routing_profile_id, move_routing_profile_id_before,
+        ordered_routing_profile_ids, routing_mode_for_selection,
     };
     use linguamesh_domain::{
         ErrorKind, Glossary, GlossaryEntry, ModelDescriptor, ModelSource, SecretRef,
@@ -2171,6 +2198,42 @@ mod tests {
             &mut ids,
             &ProviderProfileId::parse("missing-provider").expect("provider ID"),
             1
+        ));
+    }
+
+    #[test]
+    fn routing_candidate_drag_reordering_is_bounded() {
+        let provider_a = ProviderProfileId::parse("provider-a").expect("provider ID");
+        let provider_b = ProviderProfileId::parse("provider-b").expect("provider ID");
+        let provider_c = ProviderProfileId::parse("provider-c").expect("provider ID");
+        let mut ids = vec![provider_a.clone(), provider_b.clone(), provider_c.clone()];
+        assert!(move_routing_profile_id_before(
+            &mut ids,
+            &provider_c,
+            &provider_a
+        ));
+        assert_eq!(
+            ids,
+            vec![provider_c.clone(), provider_a.clone(), provider_b.clone()]
+        );
+        assert!(move_routing_profile_id_before(
+            &mut ids,
+            &provider_a,
+            &provider_b
+        ));
+        assert_eq!(
+            ids,
+            vec![provider_c.clone(), provider_a.clone(), provider_b.clone()]
+        );
+        assert!(!move_routing_profile_id_before(
+            &mut ids,
+            &provider_a,
+            &provider_a
+        ));
+        assert!(!move_routing_profile_id_before(
+            &mut ids,
+            &ProviderProfileId::parse("missing-provider").expect("provider ID"),
+            &provider_a,
         ));
     }
 

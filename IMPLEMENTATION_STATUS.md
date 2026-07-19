@@ -1,5 +1,22 @@
 # Implementation Status
 
+## 2026-07-19 — Linux routing candidate drag-order checkpoint
+
+Assumption: Ordered routing needs both keyboard-accessible bounded moves and a direct pointer
+gesture for placing a selected candidate before another; the persisted candidate list remains the
+only source of truth and invalid drag payloads must fail closed.
+
+- Linux adds GTK text drag sources and row drop targets to the routing-profile dialog. Dropping a
+  candidate before another row rebuilds the visible list and preserves the resulting order used by
+  profile creation; the existing localized icon labels and keyboard controls remain available.
+- Core-facing helper `move_routing_profile_id_before` rejects self, unknown, and missing target IDs;
+  `routing_candidate_drag_reordering_is_bounded` covers forward, reverse, self, and unknown cases.
+- Local targeted test and GUI all-target check passed. Full Linux and remote CI validation will be
+  recorded after the checkpoint commit.
+
+This advances Linux candidate management without claiming complete profile editing, full Orca
+speech, manual visual review, other clients, release artifacts, or a stable release.
+
 ## 2026-07-19 — Linux routing candidate accessibility-label checkpoint
 
 Assumption: icon-only candidate movement controls must expose catalog-backed accessible names in

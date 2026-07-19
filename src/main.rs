@@ -15,7 +15,7 @@ use linguamesh_linux::localization;
 use linguamesh_linux::model::{
     AppState, AppStatus, OnboardingStage, ProfileStorageStatus, ProviderProfile,
     RoutingDecisionSummary, StateError, ThemePreference, UiLocale, move_routing_profile_id,
-    ordered_routing_profile_ids, routing_mode_for_selection,
+    move_routing_profile_id_before, ordered_routing_profile_ids, routing_mode_for_selection,
 };
 use linguamesh_linux::secret_service;
 use linguamesh_linux::worker::{
@@ -3548,6 +3548,67 @@ fn move_routing_candidate_row(
     rebuild_routing_candidate_rows(container, controls);
 }
 
+// 按拖放目标移动候选行，并把新顺序留给配置创建闭包读取。
+fn move_routing_candidate_row_before(
+    container: &gtk::Box,
+    controls: &RoutingCandidateControls,
+    dragged_id: &ProviderProfileId,
+    target_id: &ProviderProfileId,
+) -> bool {
+    let mut controls_mut = controls.borrow_mut();
+    let mut ids = controls_mut
+        .iter()
+        .map(|(id, _, _)| id.clone())
+        .collect::<Vec<_>>();
+    if !move_routing_profile_id_before(&mut ids, dragged_id, target_id) {
+        return false;
+    }
+    let mut remaining = std::mem::take(&mut *controls_mut);
+    let mut reordered = Vec::with_capacity(remaining.len());
+    for id in ids {
+        if let Some(index) = remaining
+            .iter()
+            .position(|(candidate_id, _, _)| *candidate_id == id)
+        {
+            reordered.push(remaining.swap_remove(index));
+        }
+    }
+    *controls_mut = reordered;
+    drop(controls_mut);
+    rebuild_routing_candidate_rows(container, controls);
+    true
+}
+
+// 为候选行安装文本拖动源和“放置到该行之前”的 GTK 控制器。
+fn attach_routing_candidate_drag(
+    row: &gtk::Box,
+    container: &gtk::Box,
+    controls: &RoutingCandidateControls,
+    profile_id: &ProviderProfileId,
+) {
+    let bytes = glib::Bytes::from(profile_id.as_str().as_bytes());
+    let provider = gtk::gdk::ContentProvider::for_bytes("text/plain", &bytes);
+    let drag_source = gtk::DragSource::new();
+    drag_source.set_actions(gtk::gdk::DragAction::MOVE);
+    drag_source.set_content(Some(&provider));
+    row.add_controller(drag_source);
+
+    let drop_target = gtk::DropTarget::new(String::static_type(), gtk::gdk::DragAction::MOVE);
+    let drop_container = container.clone();
+    let drop_controls = Rc::clone(controls);
+    let target_id = profile_id.clone();
+    drop_target.connect_drop(move |_, value, _, _| {
+        let Ok(dragged_id) = value.get::<String>() else {
+            return false;
+        };
+        let Ok(dragged_id) = ProviderProfileId::parse(dragged_id) else {
+            return false;
+        };
+        move_routing_candidate_row_before(&drop_container, &drop_controls, &dragged_id, &target_id)
+    });
+    row.add_controller(drop_target);
+}
+
 // 从用户明确保存的提供商配置生成不含端点和秘密的路由候选。
 fn routing_candidate_for_profile(
     profile: &ProviderProfile,
@@ -3702,6 +3763,7 @@ fn show_routing_profiles_dialog(
         row.append(&up);
         row.append(&down);
         let profile_id = profile.id().clone();
+        attach_routing_candidate_drag(&row, &candidates_box, &candidate_controls, &profile_id);
         let up_controls = Rc::clone(&candidate_controls);
         let up_container = candidates_box.clone();
         let up_id = profile_id.clone();
