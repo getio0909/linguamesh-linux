@@ -28,13 +28,16 @@ that the document decision reports no fallback even when the profile permits exp
 The GTK dialog creates only a bounded local-preferred default from saved provider/model selections.
 When a routing profile is selected, it takes precedence over the separate explicit fallback
 checkbox for both ordinary text and document dispatch; document jobs never auto-fallback.
+The restart regression `document_job_resume_reconnects_saved_routing_profile_after_restart`
+interrupts a routed job, reopens the database, reconnects the saved profile through the host secret
+broker, and completes the remaining segments while asserting a zero-fallback decision.
 
 ## Host prerequisites
 
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`d1c03ba84362c0c672c57045a59fc8092db470be`. This revision carries the explicit request-level
+`9926d0f9f1bd6c8bb18bf20a3b0df0cfac82f795`. This revision carries the explicit request-level
 Incognito privacy policy and changes file-backed Core storage to add SQLite's `SQLITE_OPEN_NOFOLLOW`
 flag, adds protected-span restoration and request-level glossary
 protection for streamed text, and adds bounded semantic chunking. On
@@ -43,9 +46,9 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e d1c03ba84362c0c672c57045a59fc8092db470be^{commit}
+git -C ../linguamesh-core cat-file -e 9926d0f9f1bd6c8bb18bf20a3b0df0cfac82f795^{commit}
 git -C ../linguamesh-core diff --quiet \
-  d1c03ba84362c0c672c57045a59fc8092db470be..HEAD -- \
+  9926d0f9f1bd6c8bb18bf20a3b0df0cfac82f795..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -53,7 +56,8 @@ test -z "$(git -C ../linguamesh-core status --porcelain)"
 The same Core pin also negotiates `bounded_text_document_v1` and `routing_planner_v1`: Linux imports only bounded UTF-8 TXT,
 Markdown, CSV, JSON, HTML, SRT, WebVTT, DOCX, PPTX, XLSX, EPUB packages, and text-based PDF pages, preserves line endings, keeps Markdown fenced code and subtitle timing
 structure verbatim, and
-persists pending/running/paused document jobs and validated non-secret translation options for worker
+persists pending/running/paused document jobs and validated non-secret translation options, including
+the optional routing-profile ID, for worker
 restart recovery. The Linux worker tests also cover
 sequential prose-segment translation, per-segment persistence, safe reconstruction (including DOCX/PPTX/XLSX/EPUB package resources and PDF page association), structured HTML fallback for unsupported PDF encodings, and cancellation
 to a persisted cancelled snapshot. The GTK surface now exposes per-job progress and

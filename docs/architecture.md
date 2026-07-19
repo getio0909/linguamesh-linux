@@ -26,7 +26,7 @@ confirmation, or rollback.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `d1c03ba84362c0c672c57045a59fc8092db470be`; compared with the prior
+functional revision is `9926d0f9f1bd6c8bb18bf20a3b0df0cfac82f795`; compared with the prior
 alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW`, adds streamed
 protected-span and request-level glossary restoration, and rejects suspicious OOXML compression
 ratios and unsupported macro/signature parts before XML inspection. The required contract
@@ -98,14 +98,16 @@ clear-all.
 The native text-file path delegates TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF format detection and bounded UTF-8/BOM handling to
 Core's `bounded_text_document_v1` contract. It preserves the original LF/CRLF/CR line endings and
 classifies Markdown fenced code and blank structure as verbatim segments before the editor receives
-the source text. Core schema 14 and the worker persist bounded pending/running/paused job snapshots
+the source text. Core schema 16 and the worker persist bounded pending/running/paused job snapshots
 and segment progress without source paths or credentials. Schema 8 also stores validated non-secret
 source/target locales, provider/model IDs, and optional glossary rules. Imported TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF files
 become these snapshots before translation; the worker translates pending prose segments sequentially,
 writes each completed segment through the confirmed provider or selected saved document-capable
 routing candidate, emits a typed non-sensitive routing decision, and routes safe reconstruction back
 to the editor. Document jobs keep fallback disabled even when a routing profile permits explicit
-fallback. Resume and Retry reuse saved options only after the active runtime matches.
+fallback. Resume and Retry reuse saved options only after the active runtime matches; routed jobs
+also persist the non-secret routing-profile ID and reconnect that profile before selecting the next
+candidate after restart.
 DOCX/PPTX/XLSX/EPUB package resources remain intact while
 supported text parts are rewritten under the same 4 MiB package and 512-entry limits. PDF extraction
 keeps page association, coordinates where available, and uncertain reading-order boundaries; ASCII

@@ -20,17 +20,19 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `d1c03ba84362c0c672c57045a59fc8092db470be`, which adds strict
-routing-profile validation and schema-15 routing-profile persistence on top of the existing
+reviewed Core functional revision `9926d0f9f1bd6c8bb18bf20a3b0df0cfac82f795`, which adds strict
+routing-profile validation, schema-15 routing-profile persistence, and schema-16 document-job
+routing-profile persistence on top of the existing
 document and provider contract. Earlier reviewed revisions added
 `SQLITE_OPEN_NOFOLLOW` to file-backed storage, protected-span and request-level glossary
 restoration, bounded semantic chunking for long streamed text, bounded translation history, and
 optional translation-memory storage with versioned request identity, and the bounded TXT/Markdown/
 SRT/WebVTT/CSV/JSON/HTML document contract with preserved line endings, verbatim Markdown fences, and validated
-subtitle timing, bounded DOCX/PPTX/XLSX/EPUB package reconstruction, bounded text-PDF page extraction and reconstruction with structured HTML fallback, plus schema-14 document job snapshots that survive worker restart without persisting source paths or credentials, plus
+subtitle timing, bounded DOCX/PPTX/XLSX/EPUB package reconstruction, bounded text-PDF page extraction and reconstruction with structured HTML fallback, plus schema-16 document job snapshots that survive worker restart without persisting source paths or credentials, plus
 validated non-secret provider/model/glossary options reused by Resume and Retry after restart. A
 selected saved routing profile can dispatch document segments through a document-capable candidate;
-document jobs keep fallback disabled by policy.
+document jobs keep fallback disabled by policy, and routed jobs reconnect the saved profile after
+restart instead of silently reverting to the active provider.
 The same Core document boundary rejects suspicious OOXML compression ratios before XML inspection
 and rejects unsupported OOXML macro and digital-signature parts before import or reconstruction.
 

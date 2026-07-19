@@ -1,5 +1,23 @@
 # Implementation Status
 
+## 2026-07-19 — Linux routed document restart checkpoint
+
+Assumption: a routed document job must persist only its non-secret routing-profile ID so restart can
+re-run deterministic candidate selection; legacy jobs without that ID continue using their saved
+provider/model options. Document fallback remains disabled.
+
+- Core `9926d0f9f1bd6c8bb18bf20a3b0df0cfac82f795` adds schema 16 and the transactional migration
+  for `document_job_options.routing_profile_id`.
+- Linux stores that ID when a document starts through a saved profile. Resume and Retry now reload
+  the profile after worker restart, reconnect the selected candidate through the host secret broker,
+  emit a zero-fallback routing decision, and translate the remaining segments.
+- Regression `document_job_resume_reconnects_saved_routing_profile_after_restart` interrupts a
+  routed job, restarts the worker, and verifies complete reconstruction and no fallback.
+
+Local Core storage/workspace validation and Linux 129-test validation passed; two existing Linux
+environment-dependent tests remain ignored. Remote Core and Linux gates are pending for the
+published commits.
+
 Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics including accessible document progress, live AT-SPI tree export checks, a headless GTK keyboard traversal fixture for tested controls, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF document-job translation with sequential segment persistence, bounded DOCX/PPTX/XLSX/EPUB package reconstruction and resource retention, bounded optional image-only PDF OCR with page-marked text output, page-aware text-PDF reconstruction with structured HTML fallback, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, both Ollama-compatible OpenAI `/v1/` and native Ollama `/api` deterministic discovery/streaming fixtures, a GTK provider preset selector for OpenAI-compatible and native Ollama profiles, bounded Linux ordinary-text dispatch through saved Core routing profiles, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; source-referenced Linux gettext keys are statically checked against the canonical catalog; automatic/ordered fallback-chain UI, a running third-party Ollama daemon, Orca speech, end-user prompt acceptance, visual/translated copy review, other clients, and release artifacts remain open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`

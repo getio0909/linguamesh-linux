@@ -1035,10 +1035,16 @@ struct RoutedDocumentStart {
     translation: ActiveDocumentTranslation,
     manager: ProviderManager,
     profile: ProviderProfile,
+    profile_id: String,
     provider_id: String,
     model_id: String,
     eligible_count: usize,
     rejected_count: usize,
+}
+
+enum ResumedDocumentStart {
+    Plain(ActiveDocumentTranslation),
+    Routed(Box<RoutedDocumentStart>),
 }
 
 // 集中保留命令与事件优先级，避免拆分后破坏单一活动操作约束。
@@ -2514,6 +2520,7 @@ async fn run_worker(
                             glossary,
                             privacy_mode,
                             &routing_profile_id,
+                            false,
                             &cancellation,
                             &mut secret_requests,
                         )
@@ -2796,26 +2803,34 @@ async fn run_worker(
                 let document_manager = routing_manager.as_ref().map_or(&manager, |manager| manager);
                 let resume_profile = document_profile.as_ref().or(active_profile.as_ref());
                 let resume_model = document_model.as_deref().or(selected_model.as_deref());
-                let result = storage
-                    .as_mut()
-                    .ok_or_else(|| {
-                        TranslationError::new(
-                            ErrorKind::Persistence,
-                            "Local document job storage is unavailable.",
-                        )
-                    })
-                    .and_then(|storage| {
-                        start_persisted_document_job_translation(
+                let cancellation = shutdown_cancellation.child_token();
+                set_active_cancellation(
+                    &active_cancellation,
+                    ActiveCancellation::Connection(cancellation.clone()),
+                );
+                let result = match storage.as_mut() {
+                    Some(storage) => {
+                        start_resumable_document_job_translation(
+                            secret_broker.clone(),
                             storage,
                             document_manager,
                             resume_profile,
                             resume_model,
                             &job_id,
                             false,
+                            &cancellation,
+                            &mut secret_requests,
                         )
-                    });
+                        .await
+                    }
+                    None => Err(TranslationError::new(
+                        ErrorKind::Persistence,
+                        "Local document job storage is unavailable.",
+                    )),
+                };
+                clear_active_cancellation(&active_cancellation);
                 match result {
-                    Ok(document_translation) => {
+                    Ok(ResumedDocumentStart::Plain(document_translation)) => {
                         set_active_cancellation(
                             &active_cancellation,
                             ActiveCancellation::Translation(
@@ -2823,6 +2838,31 @@ async fn run_worker(
                             ),
                         );
                         active_document = Some(document_translation);
+                    }
+                    Ok(ResumedDocumentStart::Routed(start)) => {
+                        if events
+                            .send(WorkerEvent::RoutingDecisionSelected {
+                                profile_id: start.profile_id.clone(),
+                                provider_id: start.provider_id.clone(),
+                                model_id: start.model_id.clone(),
+                                eligible_count: start.eligible_count,
+                                rejected_count: start.rejected_count,
+                                fallback_count: 0,
+                            })
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                        routing_manager = Some(start.manager);
+                        document_profile = Some(start.profile);
+                        document_model = Some(start.model_id);
+                        set_active_cancellation(
+                            &active_cancellation,
+                            ActiveCancellation::Translation(
+                                start.translation.operation.cancellation_handle(),
+                            ),
+                        );
+                        active_document = Some(start.translation);
                     }
                     Err(error) => {
                         if events
@@ -2838,26 +2878,34 @@ async fn run_worker(
                 let document_manager = routing_manager.as_ref().map_or(&manager, |manager| manager);
                 let resume_profile = document_profile.as_ref().or(active_profile.as_ref());
                 let resume_model = document_model.as_deref().or(selected_model.as_deref());
-                let result = storage
-                    .as_mut()
-                    .ok_or_else(|| {
-                        TranslationError::new(
-                            ErrorKind::Persistence,
-                            "Local document job storage is unavailable.",
-                        )
-                    })
-                    .and_then(|storage| {
-                        start_persisted_document_job_translation(
+                let cancellation = shutdown_cancellation.child_token();
+                set_active_cancellation(
+                    &active_cancellation,
+                    ActiveCancellation::Connection(cancellation.clone()),
+                );
+                let result = match storage.as_mut() {
+                    Some(storage) => {
+                        start_resumable_document_job_translation(
+                            secret_broker.clone(),
                             storage,
                             document_manager,
                             resume_profile,
                             resume_model,
                             &job_id,
                             true,
+                            &cancellation,
+                            &mut secret_requests,
                         )
-                    });
+                        .await
+                    }
+                    None => Err(TranslationError::new(
+                        ErrorKind::Persistence,
+                        "Local document job storage is unavailable.",
+                    )),
+                };
+                clear_active_cancellation(&active_cancellation);
                 match result {
-                    Ok(document_translation) => {
+                    Ok(ResumedDocumentStart::Plain(document_translation)) => {
                         set_active_cancellation(
                             &active_cancellation,
                             ActiveCancellation::Translation(
@@ -2865,6 +2913,31 @@ async fn run_worker(
                             ),
                         );
                         active_document = Some(document_translation);
+                    }
+                    Ok(ResumedDocumentStart::Routed(start)) => {
+                        if events
+                            .send(WorkerEvent::RoutingDecisionSelected {
+                                profile_id: start.profile_id.clone(),
+                                provider_id: start.provider_id.clone(),
+                                model_id: start.model_id.clone(),
+                                eligible_count: start.eligible_count,
+                                rejected_count: start.rejected_count,
+                                fallback_count: 0,
+                            })
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                        routing_manager = Some(start.manager);
+                        document_profile = Some(start.profile);
+                        document_model = Some(start.model_id);
+                        set_active_cancellation(
+                            &active_cancellation,
+                            ActiveCancellation::Translation(
+                                start.translation.operation.cancellation_handle(),
+                            ),
+                        );
+                        active_document = Some(start.translation);
                     }
                     Err(error) => {
                         if events
@@ -4109,6 +4182,7 @@ fn persisted_document_options(
         target_locale,
         model_id: model_id.to_owned(),
         provider_id: profile.id().as_str().to_owned(),
+        routing_profile_id: None,
         glossary,
     })
 }
@@ -4124,6 +4198,7 @@ async fn start_routed_document_job_translation(
     glossary: Option<Glossary>,
     privacy_mode: TranslationPrivacyMode,
     routing_profile_id: &str,
+    retry: bool,
     cancellation: &CancellationToken,
     requests: &mut HostSecretRequests,
 ) -> Result<RoutedDocumentStart, TranslationError> {
@@ -4148,7 +4223,19 @@ async fn start_routed_document_job_translation(
             "The document job was not found.",
         )
     })?;
-    if !snapshot.state.is_resumable() {
+    let allowed = if retry {
+        matches!(
+            snapshot.state,
+            DocumentJobState::Pending
+                | DocumentJobState::Running
+                | DocumentJobState::Paused
+                | DocumentJobState::Cancelled
+                | DocumentJobState::Failed
+        )
+    } else {
+        snapshot.state.is_resumable()
+    };
+    if !allowed {
         return Err(TranslationError::new(
             ErrorKind::InvalidConfiguration,
             "The document job is not ready to translate.",
@@ -4199,6 +4286,7 @@ async fn start_routed_document_job_translation(
         target_locale: target_locale.clone(),
         model_id: model_id.clone(),
         provider_id: profile.id().as_str().to_owned(),
+        routing_profile_id: Some(routing_profile_id.to_owned()),
         glossary: glossary.clone(),
     };
     let result = storage
@@ -4226,6 +4314,7 @@ async fn start_routed_document_job_translation(
             translation,
             manager,
             profile,
+            profile_id: routing_profile_id.to_owned(),
             provider_id: selected.provider_id,
             model_id,
             eligible_count: decision.eligible_candidates.len(),
@@ -4237,6 +4326,94 @@ async fn start_routed_document_job_translation(
             Err(error)
         }
     }
+}
+
+async fn start_persisted_routed_document_job_translation(
+    secret_broker: HostSecretBroker,
+    storage: &mut Storage,
+    job_id: &str,
+    retry: bool,
+    cancellation: &CancellationToken,
+    requests: &mut HostSecretRequests,
+) -> Result<RoutedDocumentStart, TranslationError> {
+    let snapshot = storage.document_job(job_id)?.ok_or_else(|| {
+        TranslationError::new(
+            ErrorKind::InvalidConfiguration,
+            "The document job was not found.",
+        )
+    })?;
+    let options = snapshot.options.clone().ok_or_else(|| {
+        TranslationError::new(
+            ErrorKind::InvalidConfiguration,
+            "The document job has no saved translation options; start it again.",
+        )
+    })?;
+    let routing_profile_id = options.routing_profile_id.ok_or_else(|| {
+        TranslationError::new(
+            ErrorKind::InvalidConfiguration,
+            "The document job has no saved routing profile; start it again.",
+        )
+    })?;
+    start_routed_document_job_translation(
+        secret_broker,
+        storage,
+        job_id,
+        options.source_locale,
+        options.target_locale,
+        options.glossary,
+        TranslationPrivacyMode::Standard,
+        &routing_profile_id,
+        retry,
+        cancellation,
+        requests,
+    )
+    .await
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn start_resumable_document_job_translation(
+    secret_broker: HostSecretBroker,
+    storage: &mut Storage,
+    manager: &ProviderManager,
+    active_profile: Option<&ProviderProfile>,
+    selected_model: Option<&str>,
+    job_id: &str,
+    retry: bool,
+    cancellation: &CancellationToken,
+    requests: &mut HostSecretRequests,
+) -> Result<ResumedDocumentStart, TranslationError> {
+    let snapshot = storage.document_job(job_id)?.ok_or_else(|| {
+        TranslationError::new(
+            ErrorKind::InvalidConfiguration,
+            "The document job was not found.",
+        )
+    })?;
+    if snapshot
+        .options
+        .as_ref()
+        .and_then(|options| options.routing_profile_id.as_deref())
+        .is_some()
+    {
+        return start_persisted_routed_document_job_translation(
+            secret_broker,
+            storage,
+            job_id,
+            retry,
+            cancellation,
+            requests,
+        )
+        .await
+        .map(|start| ResumedDocumentStart::Routed(Box::new(start)));
+    }
+    start_persisted_document_job_translation(
+        storage,
+        manager,
+        active_profile,
+        selected_model,
+        job_id,
+        retry,
+    )
+    .map(ResumedDocumentStart::Plain)
 }
 
 // 为无法直接编码非 ASCII PDF 文本的任务生成结构化 HTML 文件名。
@@ -4957,6 +5134,8 @@ mod tests {
                 | WorkerEvent::DocumentJobActionRejected(_)
                 | WorkerEvent::DocumentJobStorageUnavailable(_)
                 | WorkerEvent::DocumentJobUpdated(_)
+                | WorkerEvent::DocumentJobSegment { .. }
+                | WorkerEvent::RoutingDecisionSelected { .. }
                 | WorkerEvent::DocumentJobsListed { .. }
                 | WorkerEvent::DocumentJobsRestored { .. } => {}
                 _ => panic!("unexpected worker shutdown event"),
@@ -5869,6 +6048,163 @@ mod tests {
                 .expect("routed document reconstruct"),
             "你好，LinguaMesh！\n你好，LinguaMesh！"
         );
+        shutdown(&worker);
+    }
+
+    #[allow(clippy::too_many_lines)]
+    #[test]
+    fn document_job_resume_reconnects_saved_routing_profile_after_restart() {
+        let database = TestDatabase::new();
+        let provider = ExternalFakeProvider::start(FakeMode::Standard);
+        let (worker, _, _) = started_worker_with_database(database.path());
+        connect(
+            &worker,
+            profile("document-restart-provider", &provider.endpoint, None, None),
+            None,
+            PersistenceIntent::Persistent,
+        )
+        .expect("persistent routing provider connection");
+        select(&worker, "document-restart-provider", "fake-translator");
+        let mut candidate = RoutingCandidate::new(
+            "document-restart-provider",
+            "fake-translator",
+            true,
+            64 * 1024,
+        )
+        .expect("document restart candidate");
+        candidate.supports_document = true;
+        let routing_profile = RoutingProfile::new(
+            "document-restart-route",
+            RoutingMode::Automatic,
+            vec![candidate],
+            RoutingConstraints {
+                require_document: true,
+                ..RoutingConstraints::default()
+            },
+        )
+        .expect("document restart profile");
+        worker
+            .try_send(WorkerCommand::SaveRoutingProfile {
+                profile: routing_profile,
+            })
+            .expect("save document restart profile");
+        assert!(matches!(
+            worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("saved routing profile event"),
+            WorkerEvent::RoutingProfileSaved(_)
+        ));
+        worker
+            .try_send(WorkerCommand::CreateDocumentJob {
+                job_id: "document-route-restart".to_owned(),
+                job: DocumentJob::from_text(
+                    "restart.txt",
+                    DocumentFormat::Txt,
+                    "one\ntwo\nthree\nfour",
+                ),
+            })
+            .expect("create restart document job");
+        assert!(matches!(
+            worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("restart document created event"),
+            WorkerEvent::DocumentJobUpdated(snapshot)
+                if snapshot.state == DocumentJobState::Pending
+        ));
+        worker
+            .try_send(WorkerCommand::TranslateDocumentJobWithRouting {
+                job_id: "document-route-restart".to_owned(),
+                source_locale: Some("en".to_owned()),
+                target_locale: "zh-CN".to_owned(),
+                glossary: None,
+                privacy_mode: TranslationPrivacyMode::Standard,
+                routing_profile_id: "document-restart-route".to_owned(),
+            })
+            .expect("start routed restart document job");
+        loop {
+            match worker
+                .events
+                .recv_timeout(Duration::from_secs(10))
+                .expect("initial routing decision")
+            {
+                WorkerEvent::RoutingDecisionSelected {
+                    profile_id,
+                    provider_id,
+                    model_id,
+                    fallback_count,
+                    ..
+                } => {
+                    assert_eq!(profile_id, "document-restart-route");
+                    assert_eq!(provider_id, "document-restart-provider");
+                    assert_eq!(model_id, "fake-translator");
+                    assert_eq!(fallback_count, 0);
+                    break;
+                }
+                WorkerEvent::DocumentJobSegment { .. }
+                | WorkerEvent::DocumentJobUpdated(_)
+                | WorkerEvent::TranslationMemoryPersistenceFailed(_)
+                | WorkerEvent::TranslationHistoryPersistenceFailed(_) => {}
+                _ => panic!("unexpected initial routing event"),
+            }
+        }
+        shutdown(&worker);
+
+        let (worker, _, _) = started_worker_with_database(database.path());
+        worker
+            .try_send(WorkerCommand::ResumeDocumentJob {
+                job_id: "document-route-restart".to_owned(),
+            })
+            .expect("resume restarted routed document job");
+        let deadline = Instant::now() + Duration::from_secs(15);
+        let mut decision_seen = false;
+        let completed = loop {
+            assert!(
+                Instant::now() < deadline,
+                "restarted routed document translation timed out"
+            );
+            match worker
+                .events
+                .recv_timeout(Duration::from_millis(500))
+                .expect("restarted routing event")
+            {
+                WorkerEvent::RoutingDecisionSelected {
+                    profile_id,
+                    provider_id,
+                    model_id,
+                    fallback_count,
+                    ..
+                } => {
+                    assert_eq!(profile_id, "document-restart-route");
+                    assert_eq!(provider_id, "document-restart-provider");
+                    assert_eq!(model_id, "fake-translator");
+                    assert_eq!(fallback_count, 0);
+                    decision_seen = true;
+                }
+                WorkerEvent::DocumentJobUpdated(snapshot)
+                    if snapshot.state == DocumentJobState::Completed =>
+                {
+                    break snapshot;
+                }
+                WorkerEvent::DocumentJobSegment { event, .. } => {
+                    assert!(!matches!(event, TranslationEvent::Failed { .. }));
+                }
+                WorkerEvent::DocumentJobUpdated(_)
+                | WorkerEvent::TranslationMemoryPersistenceFailed(_)
+                | WorkerEvent::TranslationHistoryPersistenceFailed(_) => {}
+                _ => panic!("unexpected restarted routing event"),
+            }
+        };
+        assert!(decision_seen);
+        assert_eq!(
+            completed
+                .job
+                .reconstruct()
+                .expect("restarted routed document reconstruct"),
+            "你好，LinguaMesh！\n你好，LinguaMesh！\n你好，LinguaMesh！\n你好，LinguaMesh！"
+        );
+        assert!(provider.chat_requests.load(Ordering::SeqCst) >= 2);
         shutdown(&worker);
     }
 
