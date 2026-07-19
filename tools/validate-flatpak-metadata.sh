@@ -16,6 +16,7 @@ python3 - "$manifest" "$sources" <<'PY'
 import json
 import pathlib
 import re
+import subprocess
 import sys
 
 manifest = json.loads(pathlib.Path(sys.argv[1]).read_text())
@@ -40,6 +41,11 @@ git_sources = [source for source in module["sources"] if isinstance(source, dict
 assert len(git_sources) == 2
 for source in git_sources:
     assert re.fullmatch(r"[0-9a-f]{40}", source["commit"])
+linux_root = pathlib.Path(sys.argv[1]).resolve().parents[2]
+linux_revision = subprocess.check_output(
+    ["git", "-C", str(linux_root), "rev-parse", "HEAD"], text=True
+).strip()
+assert any(source["dest"] == "linguamesh-linux" and source["commit"] == linux_revision for source in git_sources)
 assert any(source == "cargo-sources.json" for source in module["sources"])
 assert sources
 for source in sources:

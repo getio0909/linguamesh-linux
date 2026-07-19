@@ -1,5 +1,17 @@
 # Implementation Status
 
+## 2026-07-19 — Flatpak source-pin integrity checkpoint
+
+Assumption: a passing Flatpak gate is only evidence for the Linux revision under review; the
+manifest must not silently build an older remote commit.
+
+- Updated `packaging/flatpak/dev.linguamesh.LinguaMesh.yml` to pin the Linux source to the current
+  checkout `2386d495123d3aeacf2b5815d0c45577808c7a44`.
+- `tools/validate-flatpak-metadata.sh` now verifies that the manifest's `linguamesh-linux` git
+  source commit equals `git rev-parse HEAD`; the Flatpak workflow runs this check before building.
+- Local metadata validation and diff checks passed. Remote evidence is pending for this packaging
+  pin correction; no distributable or stable release artifact is claimed.
+
 ## 2026-07-19 — Linux visible-string localization audit checkpoint
 
 Assumption: complete Linux gettext coverage requires a repeatable source check that rejects

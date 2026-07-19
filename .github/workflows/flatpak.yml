@@ -20,6 +20,8 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           persist-credentials: false
+      - name: Validate Flatpak metadata and source pins
+        run: bash tools/validate-flatpak-metadata.sh
       - name: Build Flatpak bundle
         uses: flatpak/flatpak-github-actions/flatpak-builder@401fe28a8384095fc1531b9d320b292f0ee45adb
         with:
