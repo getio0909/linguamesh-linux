@@ -5,11 +5,11 @@ use linguamesh_document::{
     DocumentJobState, DocumentWarning, DocumentWarningKind,
 };
 use linguamesh_domain::{
-    ErrorKind, Glossary, GlossaryEntry, MAX_GLOSSARY_CSV_BYTES, MAX_ROUTING_IDENTIFIER_BYTES,
-    MAX_ROUTING_PROFILE_JSON_BYTES, OperationId, ProviderProfileId, RoutingCandidate,
-    RoutingConstraints, RoutingMode, RoutingPreference, RoutingProfile, SecretRef,
-    SecretRefNamespace, SecretValue, TranslationError, TranslationEvent, TranslationPreset,
-    TranslationPrivacyMode, TranslationQualityMode,
+    ErrorKind, FileLease, Glossary, GlossaryEntry, MAX_GLOSSARY_CSV_BYTES,
+    MAX_ROUTING_IDENTIFIER_BYTES, MAX_ROUTING_PROFILE_JSON_BYTES, OperationId, ProviderProfileId,
+    RoutingCandidate, RoutingConstraints, RoutingMode, RoutingPreference, RoutingProfile,
+    SecretRef, SecretRefNamespace, SecretValue, TranslationError, TranslationEvent,
+    TranslationPreset, TranslationPrivacyMode, TranslationQualityMode,
 };
 use linguamesh_linux::file_import;
 use linguamesh_linux::localization;
@@ -4099,12 +4099,29 @@ fn load_source_file(
     let bytes_read = Rc::new(Cell::new(0_usize));
     let too_large = Rc::new(Cell::new(false));
     let source_uri = file.uri().to_string();
+    let source_lease = match FileLease::desktop_path(source_uri.clone()) {
+        Ok(lease) => lease,
+        Err(_) => {
+            show_file_import_error(
+                bindings,
+                &localization::text(
+                    state.borrow().locale(),
+                    "error.file_open",
+                    "The selected text file could not be opened.",
+                ),
+            );
+            return;
+        }
+    };
     let source_name = file.basename().map_or_else(
         || "source.txt".to_owned(),
         |name| name.to_string_lossy().into_owned(),
     );
     let read_bytes = Rc::clone(&bytes_read);
     let read_too_large = Rc::clone(&too_large);
+    let lease_expired = Rc::new(Cell::new(false));
+    let read_lease_expired = Rc::clone(&lease_expired);
+    let read_lease = source_lease.clone();
     let load_bindings = bindings.clone();
     let load_state = Rc::clone(state);
     let load_worker = Rc::clone(worker);
@@ -4113,6 +4130,10 @@ fn load_source_file(
     file.load_partial_contents_async(
         None::<&gtk::gio::Cancellable>,
         move |chunk| {
+            if !read_lease.is_active() {
+                read_lease_expired.set(true);
+                return false;
+            }
             let next = read_bytes.get().saturating_add(chunk.len());
             if next > file_import::MAX_TEXT_FILE_BYTES {
                 read_too_large.set(true);
@@ -4123,6 +4144,17 @@ fn load_source_file(
             }
         },
         move |result| {
+            if lease_expired.get() {
+                show_file_import_error(
+                    &load_bindings,
+                    &localization::text(
+                        load_state.borrow().locale(),
+                        "error.file_open",
+                        "The selected text file could not be opened.",
+                    ),
+                );
+                return;
+            }
             if too_large.get() {
                 show_file_import_error(
                     &load_bindings,
@@ -4136,8 +4168,13 @@ fn load_source_file(
             }
             match result {
                 Ok((contents, _)) => {
-                    match file_import::decode_document_job(&source_name, contents.as_ref()) {
+                    match file_import::decode_document_job_with_lease(
+                        &source_lease,
+                        &source_name,
+                        contents.as_ref(),
+                    ) {
                     Ok(job) => {
+                        source_lease.revoke();
                         let warnings = job.warnings().unwrap_or_default();
                         if std::env::var_os("LINGUAMESH_TEST_FILE_DIALOG").is_some() {
                             println!("GTK file chooser application fixture completed the asynchronous GIO read.");
@@ -4194,7 +4231,8 @@ fn load_source_file(
                                 "error.file_open",
                                 "The selected document format is not supported.",
                             ),
-                            file_import::TextImportError::InvalidStructure => (
+                            file_import::TextImportError::InvalidStructure
+                            | file_import::TextImportError::LeaseExpired => (
                                 "error.file_open",
                                 "The selected document structure is invalid.",
                             ),

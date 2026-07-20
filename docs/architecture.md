@@ -26,16 +26,19 @@ confirmation, or rollback.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `c559b32d3869e01983f2bbf32f1386bad99c3290`; compared with the prior
+functional revision is `8b096475b00fbb4b8f5c88db3d6c7f35d7e046b9`; compared with the prior
 alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW`, adds streamed
 protected-span and request-level glossary restoration, and rejects suspicious OOXML compression
-ratios and unsupported macro/signature parts before XML inspection. Provider adapters also carry
+ratios and unsupported macro/signature parts before XML inspection. Core now advertises the bounded
+`file_lease_v1` lifecycle; Linux validates the lease around portal-backed document reads and revokes it
+after the document bytes are copied into the bounded job. Provider adapters also carry
 bounded `Retry-After` hints into typed errors; Linux applies cancellation-aware bounded backoff
 and an in-memory circuit breaker before trying the next approved candidate. The required contract
 is exact Core `0.1.0-alpha.2`, ABI 1, protocol 1, provider catalog `0.1.0`, and these features:
 
 - `cancellation_v1`
 - `compatibility_negotiation_v1`
+- `file_lease_v1`
 - `typed_rust_host_secret_broker_v1`
 - `model_discovery_v1`
 - `protected_spans_v1`

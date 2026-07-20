@@ -4,6 +4,7 @@ use crate::ocr::OcrPage;
 use linguamesh_document::{
     DocumentError, DocumentFormat, DocumentJob, DocumentSegment, DocumentSegmentKind,
 };
+use linguamesh_domain::FileLease;
 
 /// 限制通过原生文本导入进入编辑器的最大字节数。
 pub const MAX_TEXT_FILE_BYTES: usize = 4 * 1024 * 1024;
@@ -19,6 +20,8 @@ pub enum TextImportError {
     UnsupportedFormat,
     /// 文档的结构或字段无效。
     InvalidStructure,
+    /// 宿主在文档读取期间撤销了文件 lease。
+    LeaseExpired,
 }
 
 impl fmt::Display for TextImportError {
@@ -34,6 +37,7 @@ impl fmt::Display for TextImportError {
             Self::InvalidStructure => {
                 formatter.write_str("The selected document structure is invalid.")
             }
+            Self::LeaseExpired => formatter.write_str("The selected document lease expired."),
         }
     }
 }
@@ -61,6 +65,22 @@ pub fn decode_document_job(
     contents: &[u8],
 ) -> Result<DocumentJob, TextImportError> {
     let job = DocumentJob::from_utf8(source_name, contents).map_err(map_document_error)?;
+    Ok(job)
+}
+
+/// 只在宿主文件 lease 有效期间解析文档，避免继续使用已撤销的借用资源。
+pub fn decode_document_job_with_lease(
+    lease: &FileLease,
+    source_name: &str,
+    contents: &[u8],
+) -> Result<DocumentJob, TextImportError> {
+    lease
+        .ensure_active()
+        .map_err(|_| TextImportError::LeaseExpired)?;
+    let job = decode_document_job(source_name, contents)?;
+    lease
+        .ensure_active()
+        .map_err(|_| TextImportError::LeaseExpired)?;
     Ok(job)
 }
 
@@ -133,10 +153,11 @@ fn map_document_error(error: DocumentError) -> TextImportError {
 mod tests {
     use super::{
         MAX_TEXT_FILE_BYTES, TextImportError, decode_document_contents, decode_document_job,
-        decode_text_contents, document_job_from_ocr,
+        decode_document_job_with_lease, decode_text_contents, document_job_from_ocr,
     };
     use crate::ocr::OcrPage;
     use linguamesh_document::DocumentSegmentKind;
+    use linguamesh_domain::FileLease;
     use std::io::{Cursor, Read, Write};
     use zip::ZipArchive;
     use zip::write::{SimpleFileOptions, ZipWriter};
@@ -353,6 +374,16 @@ mod tests {
         assert_eq!(
             decode_text_contents(&contents),
             Err(TextImportError::TooLarge)
+        );
+    }
+
+    #[test]
+    fn document_decode_rejects_an_expired_file_lease() {
+        let lease = FileLease::desktop_path("file:///tmp/lease.txt").expect("lease");
+        lease.expire();
+        assert_eq!(
+            decode_document_job_with_lease(&lease, "lease.txt", b"Hello"),
+            Err(TextImportError::LeaseExpired)
         );
     }
 

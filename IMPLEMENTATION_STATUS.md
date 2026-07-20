@@ -1,5 +1,24 @@
 # Implementation Status
 
+## 2026-07-20 — Linux FileLease document-import boundary
+
+Assumption: Linux portal-backed document reads must borrow a Core file lease only for the bounded
+read and must fail closed if the host lease expires before decoding completes.
+
+- Core revision `8b096475b00fbb4b8f5c88db3d6c7f35d7e046b9` adds the validated `file_lease_v1` feature
+  and monotonic expiry/revocation contract. Linux now creates a lease for each selected file URI,
+  checks it in the asynchronous GIO read callback and document decoder, and revokes it after bytes
+  are copied into the bounded `DocumentJob`.
+- Added a regression proving an expired lease rejects document decoding. The existing localized
+  file-open error path handles lease expiry without exposing paths or introducing untranslated UI
+  text. The worker compatibility list now requires `file_lease_v1` before provider work.
+- Local no-default tests passed (`81 passed; 1 ignored`) after the lease integration; demo-provider,
+  strict Clippy, localization, packaging, and remote CI evidence are recorded after the pinned
+  revision completes its workflow.
+
+This is unreleased Linux-first evidence. Native ABI lease transport, other clients, visual and Orca
+review, signing, rollback, and stable release remain open.
+
 ## 2026-07-20 — Core compatibility snapshot pin
 
 Assumption: the Linux client must pin and validate the same Core compatibility contract that native
