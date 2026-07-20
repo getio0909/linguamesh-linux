@@ -100,12 +100,15 @@ XDG_CACHE_HOME="$workspace/cache" \
       fi
       sleep 0.1
     done
-    if ! xdotool search --onlyvisible --name "^LinguaMesh$" >/dev/null 2>&1; then
+    app_window=$(xdotool search --onlyvisible --name "^LinguaMesh$" | head -n 1 || true)
+    if [[ -z "$app_window" ]]; then
       cat /tmp/linguamesh-orca-app.log >&2 || true
       cat /tmp/linguamesh-orca.log >&2 || true
       printf "%s\n" "Orca AT-SPI fixture could not find the application window." >&2
       exit 1
     fi
+    xdotool windowactivate --sync "$app_window" >/dev/null 2>&1 || true
+    xdotool windowfocus --sync "$app_window" >/dev/null 2>&1 || true
     python3 tools/orca-atspi-inspect.py
     for _ in {1..200}; do
       if [[ -s "$LINGUAMESH_ORCA_LOG" ]] \

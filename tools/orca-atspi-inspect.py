@@ -33,6 +33,23 @@ def role_name(node: object) -> str:
         return ""
 
 
+def state_summary(node: object) -> str:
+    """返回聚焦诊断所需的最小 AT-SPI 状态集合。"""
+    try:
+        state = node.getState()  # type: ignore[attr-defined]
+    except Exception:
+        return "unknown"
+    names = []
+    for name in ("STATE_FOCUSABLE", "STATE_SENSITIVE", "STATE_ENABLED", "STATE_VISIBLE"):
+        value = getattr(pyatspi, name, None)
+        try:
+            if value is not None and state.contains(value):
+                names.append(name.removeprefix("STATE_").lower())
+        except Exception:
+            continue
+    return ",".join(names) or "none"
+
+
 def find_stop_control(deadline: float) -> object | None:
     """等待应用注册并找到名为 Stop translation 的按钮。"""
     while time.monotonic() < deadline:
@@ -62,7 +79,11 @@ def main() -> int:
         component = node.queryComponent()  # type: ignore[attr-defined]
         focused = bool(component.grabFocus())
     except Exception as error:
-        print(f"Orca AT-SPI fixture could not focus the Stop translation button: {error}", file=sys.stderr)
+        print(
+            "Orca AT-SPI fixture could not focus the Stop translation button: "
+            f"{error} (states: {state_summary(node)})",
+            file=sys.stderr,
+        )
         return 1
     if not focused:
         print("Orca AT-SPI fixture could not focus the Stop translation button.", file=sys.stderr)
