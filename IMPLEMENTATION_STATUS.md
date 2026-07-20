@@ -18,6 +18,10 @@ Core migration/open call, not merely preflight a pathname.
   `29715284721`/`29715284671`/`29715284678` (jobs `88267263432`/`88267263349`/`88267263588`) and
   PR Native/Flatpak/Foundation `29715287347`/`29715287327`/`29715287399` (jobs
   `88267269342`/`88267269231`/`88267269534`) all completed successfully.
+- The final status-document head `c5d36eb354d115047d5da84fe02d36da57586e30` also passed push
+  Native/Flatpak/Foundation `29715545070`/`29715545071`/`29715545056` (jobs
+  `88268027779`/`88268027804`/`88268027728`) and PR Native/Flatpak/Foundation
+  `29715546522`/`29715546521`/`29715546520` (jobs `88268031921`/`88268031905`/`88268031836`).
 
 ## 2026-07-20 — Linux final database no-follow hardening remote verification
 
