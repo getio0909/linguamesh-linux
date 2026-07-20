@@ -264,10 +264,17 @@ fn build_ui(application: &adw::Application, file_dialog_fixture: bool, file_drop
     if std::env::var_os("LINGUAMESH_TEST_ORCA_ATSPI").is_some() {
         // Orca 烟测在独立窗口中请求生产 Stop 控件的真实 GTK 焦点。
         let focus_window = window.clone();
-        let focus_control = bindings.stop.clone();
+        let focus_control = bindings.stop.clone().upcast::<gtk::Widget>();
+        let warmup_control = bindings.provider_name.clone().upcast::<gtk::Widget>();
         let focus_deadline = Instant::now() + Duration::from_secs(15);
+        let focus_start = Instant::now();
         glib::timeout_add_local(Duration::from_millis(100), move || {
-            gtk::prelude::GtkWindowExt::set_focus(&focus_window, Some(&focus_control));
+            let control = if focus_start.elapsed() < Duration::from_secs(3) {
+                &warmup_control
+            } else {
+                &focus_control
+            };
+            gtk::prelude::GtkWindowExt::set_focus(&focus_window, Some(control));
             if Instant::now() >= focus_deadline {
                 glib::ControlFlow::Break
             } else {
