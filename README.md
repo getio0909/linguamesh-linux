@@ -20,7 +20,7 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `c03bd205e1d135c024f3a0a767dd94770030a723`, which adds strict
+reviewed Core functional revision `8790eb41a52c4e2c908044699e8c12597d3c42a5`, which adds strict
 routing-profile validation, schema-15 routing-profile persistence, schema-16 document-job
 routing-profile persistence, and schema-17 document quality-mode persistence on top of the existing
 document and provider contract, including schema-18 document translation-preset persistence.
@@ -36,9 +36,10 @@ document jobs keep fallback disabled by policy, and routed jobs reconnect the sa
 restart instead of silently reverting to the active provider.
 The same Core document boundary rejects suspicious OOXML compression ratios before XML inspection
 and rejects unsupported OOXML macro and digital-signature parts before import or reconstruction.
-Retryable provider failures carry a bounded `Retry-After` hint when available; Linux applies an
-eight-second maximum backoff with stable jitter, cancellation-aware waits, and an in-memory
-two-failure circuit breaker that cools down for thirty seconds before retrying a candidate.
+Retryable provider failures carry a bounded `Retry-After` hint when available; Linux applies the
+Core `RetryPolicy` contract with an eight-second maximum backoff, stable jitter, cancellation-aware
+waits, and an in-memory two-failure circuit breaker that cools down for thirty seconds before
+retrying a candidate.
 
 The GTK provider form consumes the pinned Core provider catalog for adapter and model-listing
 compatibility. A catalog drift fails closed before the window is created; localized labels and
