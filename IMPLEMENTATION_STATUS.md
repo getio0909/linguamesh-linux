@@ -17,7 +17,14 @@ resolved.
   ignored`), synchronization, and diff checks passed.
 - The host cannot link the all-feature GTK test binary because its installed GTK runtime lacks
   symbols required by gtk-rs; Native CI remains the authoritative GUI/Secret Service/Flatpak gate.
-  The PR remains Draft/Open and the release train remains unreleased.
+  The first push/PR run `29720882684`/`29720886129` and `29720882696`/`29720886096` were recorded
+  as failures because the Flatpak source pin used a malformed commit name; the next Native run
+  exposed the standalone GTK test's cross-thread initialization and was corrected by folding the
+  regression into the existing GTK lifecycle test. Final push Native/Flatpak/Foundation
+  `29721394859`/`29721394882`/`29721394847` (jobs `88284977586`/`88284977776`/`88284977563`)
+  and PR Native/Flatpak/Foundation `29721397504`/`29721397510`/`29721397543` (jobs
+  `88284984553`/`88284984617`/`88284984699`) all passed. The PR remains Draft/Open and the
+  release train remains unreleased.
 
 ## 2026-07-20 — Linux Core Anthropic compatibility pin
 
