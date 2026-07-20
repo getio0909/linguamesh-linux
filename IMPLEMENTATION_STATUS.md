@@ -1,5 +1,21 @@
 # Implementation Status
 
+## 2026-07-20 — Linux Provider Catalog compatibility guard
+
+Assumption: the Core provider catalog is the authoritative non-secret source for adapter type and
+model-listing policy; Linux keeps localized labels and endpoint defaults native, but must reject a
+stale or incompatible preset mapping before creating the GTK window.
+
+- Linux now consumes Core's `linguamesh-provider-catalog` crate at the pinned Core revision
+  `d304afe01e21023a1e1f37ad8f674d49a23b5d42`, caches the bundled catalog, derives manual-model
+  visibility from its `model_listing`, and validates all six GTK preset adapter mappings at startup.
+- The regression `provider_presets_map_to_stable_native_and_compatible_defaults` covers the stable
+  GTK order and catalog compatibility without credentials or network access. A catalog mismatch
+  fails closed with an English diagnostic and does not start the window.
+- Local `cargo fmt --all`, GUI all-target check, strict Clippy, and demo-provider tests (`140 passed;
+  3 ignored`) passed. The GUI test binary remains linker-limited on this host by installed GTK
+  symbols; Native CI is authoritative for the startup guard and GTK test execution.
+
 ## 2026-07-20 — Linux translation quality-mode control
 
 Assumption: Linux is the first active client target; `Best` requests an internal provider critique

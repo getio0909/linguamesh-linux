@@ -11,6 +11,7 @@ default = []
 demo-provider = [
     "dep:linguamesh-application",
     "dep:linguamesh-engine",
+    "dep:linguamesh-provider-catalog",
     "dep:linguamesh-storage",
     "dep:linguamesh-testkit",
     "dep:tokio",
@@ -26,6 +27,7 @@ linguamesh-domain = { version = "=0.1.0-alpha.2", path = "../linguamesh-core/cra
 linguamesh-document = { version = "=0.1.0-alpha.2", path = "../linguamesh-core/crates/linguamesh-document" }
 linguamesh-engine = { version = "=0.1.0-alpha.2", path = "../linguamesh-core/crates/linguamesh-engine", optional = true }
 linguamesh-protocol = { version = "=0.1.0-alpha.2", path = "../linguamesh-core/crates/linguamesh-protocol" }
+linguamesh-provider-catalog = { version = "=0.1.0-alpha.2", path = "../linguamesh-core/crates/linguamesh-provider-catalog", optional = true }
 linguamesh-storage = { version = "=0.1.0-alpha.2", path = "../linguamesh-core/crates/linguamesh-storage", optional = true }
 linguamesh-testkit = { version = "=0.1.0-alpha.2", path = "../linguamesh-core/crates/linguamesh-testkit", optional = true }
 rustix = { version = "1.1.4", features = ["fs"] }

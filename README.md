@@ -36,6 +36,10 @@ restart instead of silently reverting to the active provider.
 The same Core document boundary rejects suspicious OOXML compression ratios before XML inspection
 and rejects unsupported OOXML macro and digital-signature parts before import or reconstruction.
 
+The GTK provider form consumes the pinned Core provider catalog for adapter and model-listing
+compatibility. A catalog drift fails closed before the window is created; localized labels and
+endpoint defaults remain Linux-native UI data.
+
 ## Native stack
 
 The client uses stable Rust, GTK 4.10 or newer through gtk-rs, GLib/GIO, and libadwaita. Shared provider,

@@ -28,6 +28,12 @@ the session Bearer credential. The worker verifies one model-list request, one t
 request, ignores `response.created`, streams `response.output_text.delta`, and completes on
 `response.completed` with deterministic `你好，Responses！` output.
 
+The GTK regression `provider_presets_map_to_stable_native_and_compatible_defaults` validates the
+six-position Linux preset order against the bundled Core provider catalog. Adapter types must match
+the catalog, and manual-model visibility is derived from its `model_listing` field. The application
+performs the same compatibility check before creating the window and fails closed with an English
+diagnostic if the pinned catalog drifts.
+
 The Linux worker regression `gemini_provider_discovers_and_streams_without_secret` now exercises
 that fixture through the real `ProviderManager` and worker path: it discovers
 `gemini-2.0-flash`, deliberately selects it, and completes `你好，Gemini！` without a credential.

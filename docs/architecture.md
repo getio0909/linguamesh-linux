@@ -71,8 +71,10 @@ model for an internal critique and revision before final text. Core does not add
 follow-up calls. The selector is disabled for document jobs until their persisted option schema
 also carries a quality-mode field.
 
-The provider catalog's `local-loopback` preset uses the OpenAI-compatible `/v1/` adapter, while its
-loopback-only `ollama` preset uses Core's native `/api/` adapter. The Linux form also exposes the
+The Linux GTK form consumes the bundled Core provider catalog for adapter compatibility and model
+listing policy before creating a window; a stale mapping fails closed. Its localized labels and
+endpoint defaults remain native UI data. The provider catalog's `local-loopback` preset uses the
+OpenAI-compatible `/v1/` adapter, while its loopback-only `ollama` preset uses Core's native `/api/` adapter. The Linux form also exposes the
 localized Anthropic Messages preset backed by Core's `anthropic_messages` manual-model adapter and
 the Google Gemini preset backed by `gemini_generate_content`. Gemini discovers only models that
 advertise `generateContent`, streams `/v1beta/` SSE candidates, and sends an optional credential as

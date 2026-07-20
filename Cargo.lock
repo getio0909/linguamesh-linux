@@ -1038,6 +1038,7 @@ dependencies = [
  "linguamesh-domain",
  "linguamesh-engine",
  "linguamesh-protocol",
+ "linguamesh-provider-catalog",
  "linguamesh-storage",
  "linguamesh-testkit",
  "rustix",

@@ -21,6 +21,7 @@ use linguamesh_linux::secret_service;
 use linguamesh_linux::worker::{
     CoreWorker, PersistenceIntent, WorkerCommand, WorkerCommandHandle, WorkerEvent,
 };
+use linguamesh_provider_catalog::{ProviderCatalog, ProviderPreset};
 use linguamesh_storage::{
     DocumentJobSnapshot, RoutingProfileRecord, TranslationHistoryEntry, TranslationMemoryEntry,
 };
@@ -28,6 +29,7 @@ use std::cell::{Cell, RefCell};
 use std::fs;
 use std::io::Write;
 use std::rc::Rc;
+use std::sync::OnceLock;
 use std::sync::mpsc::TryRecvError;
 use std::time::{Duration, Instant};
 
@@ -59,6 +61,55 @@ const DEFAULT_ANTHROPIC_ENDPOINT: &str = "https://api.anthropic.com/v1/";
 const DEFAULT_GEMINI_ENDPOINT: &str = "https://generativelanguage.googleapis.com/v1beta/";
 const DEFAULT_AZURE_ENDPOINT: &str = "https://resource.openai.azure.com/";
 const DEFAULT_RESPONSES_ENDPOINT: &str = "https://api.openai.com/v1/";
+
+// 返回核心目录中与 Linux 下拉框位置对应的稳定预设标识。
+fn catalog_preset_id(index: u32) -> &'static str {
+    match index {
+        1 => OLLAMA_PROVIDER_PRESET_ID,
+        2 => ANTHROPIC_PROVIDER_PRESET_ID,
+        3 => GEMINI_PROVIDER_PRESET_ID,
+        4 => AZURE_PROVIDER_PRESET_ID,
+        5 => RESPONSES_PROVIDER_PRESET_ID,
+        _ => "generic-openai-compatible",
+    }
+}
+
+// 只缓存编译进核心的无秘密提供商目录，避免每次刷新控件时重复解析 JSON。
+fn bundled_provider_catalog() -> Option<&'static ProviderCatalog> {
+    static CATALOG: OnceLock<Option<ProviderCatalog>> = OnceLock::new();
+    CATALOG
+        .get_or_init(|| ProviderCatalog::bundled().ok())
+        .as_ref()
+}
+
+// 返回指定 Linux 预设对应的核心目录条目。
+fn catalog_preset(index: u32) -> Option<&'static ProviderPreset> {
+    let id = catalog_preset_id(index);
+    bundled_provider_catalog()?
+        .providers
+        .iter()
+        .find(|preset| preset.id == id)
+}
+
+// 检查 Linux 映射的适配器和模型发现策略是否仍与核心目录一致。
+fn validate_provider_preset_catalog() -> Result<(), String> {
+    for index in 0..6 {
+        let (_, adapter, _, _) = provider_preset_config(index);
+        let preset = catalog_preset(index).ok_or_else(|| {
+            format!(
+                "missing provider catalog preset: {}",
+                catalog_preset_id(index)
+            )
+        })?;
+        if preset.adapter != adapter {
+            return Err(format!(
+                "provider catalog adapter mismatch for {}: expected {}, received {}",
+                preset.id, adapter, preset.adapter
+            ));
+        }
+    }
+    Ok(())
+}
 
 #[derive(Clone)]
 struct UiBindings {
@@ -262,7 +313,9 @@ fn quality_mode_for_selection(selection: u32) -> TranslationQualityMode {
 
 // 判断预设是否要求用户在连接前提供手工模型或部署名。
 fn preset_requires_manual_model(index: u32) -> bool {
-    index == 2 || index == 4
+    catalog_preset(index).map_or(index == 2 || index == 4, |preset| {
+        preset.model_listing == "manual"
+    })
 }
 
 // 根据预设显示与协议匹配的端点提示。
@@ -419,6 +472,10 @@ fn main() -> glib::ExitCode {
 fn build_ui(application: &adw::Application, file_dialog_fixture: bool, file_drop_fixture: bool) {
     if let Some(window) = application.active_window() {
         window.present();
+        return;
+    }
+    if let Err(error) = validate_provider_preset_catalog() {
+        eprintln!("Provider catalog validation failed: {error}");
         return;
     }
     let state = Rc::new(RefCell::new(AppState::default()));
@@ -7383,7 +7440,7 @@ mod tests {
         routing_optional_limit_from_text, routing_preference_for_selection,
         routing_preference_selection, routing_profile_id_conflicts, show_new_profile_in_form,
         show_routing_profiles_dialog, start_event_pump, text_metrics_label,
-        valid_routing_profile_id,
+        valid_routing_profile_id, validate_provider_preset_catalog,
     };
     use adw::prelude::*;
     use gtk::glib;
@@ -7732,6 +7789,7 @@ mod tests {
 
     #[test]
     fn provider_presets_map_to_stable_native_and_compatible_defaults() {
+        assert!(validate_provider_preset_catalog().is_ok());
         assert_eq!(provider_preset_index(OLLAMA_PROVIDER_PRESET_ID), 1);
         assert_eq!(provider_preset_index(ANTHROPIC_PROVIDER_PRESET_ID), 2);
         assert_eq!(provider_preset_index(GEMINI_PROVIDER_PRESET_ID), 3);
