@@ -60,7 +60,7 @@
         {
           "type": "git",
           "url": "https://github.com/getio0909/linguamesh-linux.git",
-          "commit": "09c181bb5c0300fca3ce66c91caa97d2583e0c87",
+          "commit": "91533b7bcd87c5d252ac794a06911e4a4f542e4d",
           "dest": "linguamesh-linux"
         },
         "cargo-sources.json"
