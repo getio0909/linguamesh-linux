@@ -7,7 +7,7 @@ use linguamesh_application::{
 use linguamesh_document::{DocumentError, DocumentJob, DocumentJobState};
 use linguamesh_domain::{
     CompatibilityRequirements, CoreCompatibility, ErrorKind, Glossary, ModelDescriptor,
-    RoutingCandidate, RoutingContext, RoutingDecision, RoutingProfile, SecretValue,
+    RetryPolicy, RoutingCandidate, RoutingContext, RoutingDecision, RoutingProfile, SecretValue,
     TranslationError, TranslationEvent, TranslationPreset, TranslationPrivacyMode,
     TranslationQualityMode, TranslationRequest, deserialize_routing_profile,
     serialize_routing_profile,
@@ -42,9 +42,7 @@ const COMMAND_CAPACITY: usize = 16;
 const EVENT_CAPACITY: usize = 64;
 const MAX_ACTIVE_DOCUMENT_JOBS: usize = 4;
 const SECRET_REQUEST_CAPACITY: usize = 1;
-const MAX_ROUTING_BACKOFF_MS: u64 = 8_000;
-const ROUTING_CIRCUIT_FAILURE_THRESHOLD: u32 = 2;
-const ROUTING_CIRCUIT_COOLDOWN: Duration = Duration::from_secs(30);
+const ROUTING_RETRY_POLICY: RetryPolicy = RetryPolicy::standard();
 const REVIEWED_CORE_VERSION: &str = "0.1.0-alpha.2";
 const REVIEWED_ABI_MAJOR: u32 = 1;
 const REVIEWED_PROTOCOL_VERSION: u32 = 1;
@@ -1135,14 +1133,23 @@ struct ActiveTranslation {
     routing_provider_id: Option<String>,
 }
 
-#[derive(Default)]
 struct RoutingCircuitBreaker {
     states: HashMap<String, RoutingCircuitState>,
+    policy: RetryPolicy,
 }
 
 struct RoutingCircuitState {
     consecutive_failures: u32,
     open_until: Option<Instant>,
+}
+
+impl Default for RoutingCircuitBreaker {
+    fn default() -> Self {
+        Self {
+            states: HashMap::new(),
+            policy: ROUTING_RETRY_POLICY,
+        }
+    }
 }
 
 impl RoutingCircuitBreaker {
@@ -1173,14 +1180,20 @@ impl RoutingCircuitBreaker {
                 open_until: None,
             });
         state.consecutive_failures = state.consecutive_failures.saturating_add(1);
-        if state.consecutive_failures >= ROUTING_CIRCUIT_FAILURE_THRESHOLD {
-            state.open_until = Some(Instant::now() + ROUTING_CIRCUIT_COOLDOWN);
+        if state.consecutive_failures >= self.policy.circuit_failure_threshold() {
+            state.open_until =
+                Some(Instant::now() + Duration::from_millis(self.policy.circuit_cooldown_ms()));
         }
     }
 
     // 连接成功表示候选恢复可用，避免旧失败影响后续请求。
     fn record_success(&mut self, candidate_key: &str) {
         self.states.remove(candidate_key);
+    }
+
+    // 暴露只读策略副本，确保候选状态和退避计算使用同一组边界。
+    fn policy(&self) -> RetryPolicy {
+        self.policy
     }
 }
 
@@ -1770,6 +1783,7 @@ async fn run_worker(
                                     &retry_error,
                                     candidate_index,
                                     &candidate_key,
+                                    routing_circuit.policy(),
                                 );
                                 if !wait_for_routing_backoff(delay, &shutdown_cancellation).await {
                                     stop_after_active = true;
@@ -3958,7 +3972,12 @@ async fn run_worker(
                             continue;
                         }
                         if let Some(error) = last_error.as_ref() {
-                            let delay = routing_backoff_delay(error, index, &candidate_key);
+                            let delay = routing_backoff_delay(
+                                error,
+                                index,
+                                &candidate_key,
+                                ROUTING_RETRY_POLICY,
+                            );
                             if !wait_for_routing_backoff(delay, &shutdown_cancellation).await {
                                 shutting_down = true;
                                 break;
@@ -5014,21 +5033,24 @@ fn routing_backoff_delay(
     error: &TranslationError,
     attempt_index: usize,
     candidate_key: &str,
+    policy: RetryPolicy,
 ) -> Duration {
-    if let Some(retry_after_ms) = error.retry_after_ms {
-        return Duration::from_millis(retry_after_ms.min(MAX_ROUTING_BACKOFF_MS));
+    if let Some(retry_after_ms) = policy.bounded_retry_after_ms(error.retry_after_ms) {
+        return Duration::from_millis(retry_after_ms);
     }
     let exponent = u32::try_from(attempt_index.min(6)).unwrap_or(6);
-    let base_ms = 100_u64
+    let base_ms = policy
+        .base_delay_ms()
         .saturating_mul(1_u64 << exponent)
-        .min(MAX_ROUTING_BACKOFF_MS);
-    let jitter_bound = base_ms / 2;
+        .max(policy.base_delay_ms())
+        .min(policy.max_backoff_ms());
+    let jitter_bound = base_ms.saturating_mul(u64::from(policy.jitter_percent())) / 100;
     let jitter = if jitter_bound == 0 {
         0
     } else {
         routing_jitter(candidate_key, attempt_index) % (jitter_bound + 1)
     };
-    Duration::from_millis(base_ms.saturating_add(jitter).min(MAX_ROUTING_BACKOFF_MS))
+    Duration::from_millis(base_ms.saturating_add(jitter).min(policy.max_backoff_ms()))
 }
 
 // 在退避等待期间保留 shutdown 响应，避免熔断或网络等待阻塞 worker 退出。
@@ -5658,8 +5680,8 @@ mod tests {
     use crate::model::{ProviderProfile, ProviderProfileId};
     use linguamesh_document::{DocumentFormat, DocumentJob, DocumentJobState};
     use linguamesh_domain::{
-        CoreCompatibility, ErrorKind, RoutingCandidate, RoutingConstraints, RoutingMode,
-        RoutingPreference, RoutingProfile, SecretRef, SecretRefNamespace, SecretValue,
+        CoreCompatibility, ErrorKind, RetryPolicy, RoutingCandidate, RoutingConstraints,
+        RoutingMode, RoutingPreference, RoutingProfile, SecretRef, SecretRefNamespace, SecretValue,
         TranslationError, TranslationEvent, TranslationPreset, TranslationPrivacyMode,
         TranslationQualityMode, TranslationRequest, serialize_routing_profile,
     };
@@ -9474,17 +9496,20 @@ mod tests {
     #[test]
     fn routing_backoff_prefers_retry_hint_and_stays_bounded() {
         let network = TranslationError::new(ErrorKind::Network, "retryable");
-        let first = routing_backoff_delay(&network, 0, "provider-a@model-a");
-        let later = routing_backoff_delay(&network, 6, "provider-a@model-a");
+        let policy = RetryPolicy::standard();
+        let first = routing_backoff_delay(&network, 0, "provider-a@model-a", policy);
+        let later = routing_backoff_delay(&network, 6, "provider-a@model-a", policy);
         let hinted = routing_backoff_delay(
             &network.clone().with_retry_after_ms(Some(1_500)),
             0,
             "provider-a@model-a",
+            policy,
         );
         let capped = routing_backoff_delay(
             &network.with_retry_after_ms(Some(60_000)),
             0,
             "provider-a@model-a",
+            policy,
         );
         assert!(first >= Duration::from_millis(100));
         assert!(later > first);
