@@ -12,8 +12,12 @@ Core migration/open call, not merely preflight a pathname.
 - The regression `pinned_database_parent_survives_path_replacement` renames the validated parent,
   replaces its visible path with a symlink to an alternate directory, and verifies migrations
   still land in the pinned inode's directory. Local format/check/Clippy/full-test validation and
-  Flatpak metadata/source validation passed; remote gates are required before this checkpoint is
-  considered published.
+  Flatpak metadata/source validation passed.
+- Source pin correction `3b26c0795ecd369aee2b99a211c8e6408ed208ac` passed all six Linux gates after
+  the first code push's expected stale-pin failures: push Native/Flatpak/Foundation
+  `29715284721`/`29715284671`/`29715284678` (jobs `88267263432`/`88267263349`/`88267263588`) and
+  PR Native/Flatpak/Foundation `29715287347`/`29715287327`/`29715287399` (jobs
+  `88267269342`/`88267269231`/`88267269534`) all completed successfully.
 
 ## 2026-07-20 — Linux final database no-follow hardening remote verification
 
