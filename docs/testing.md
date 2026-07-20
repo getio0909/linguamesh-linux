@@ -214,7 +214,10 @@ model change must remain session-only, and restart must restore only the pre-fau
 and model. The runner requires
 `1 passed; 0 failed; 0 ignored` so a missing or skipped test cannot count as evidence, and cleanup
 unmounts the private filesystem. This proves the implemented Linux `ENOSPC` transaction boundary;
-it does not cover read-only media, corruption, power loss, or every SQLite VFS failure.
+the focused `read_only_database_directory_reports_error_but_session_mode_still_works` regression
+additionally covers a non-writable private directory. Corrupt-database fail-closed behavior is
+covered by the regular worker suite. Power loss and every SQLite VFS failure remain outside these
+automated boundaries.
 
 The Secret Service runner creates an isolated XDG data directory, starts a real `gnome-keyring`
 Secret Service daemon on a private D-Bus session with a persistent `login` collection, stores and

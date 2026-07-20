@@ -158,7 +158,9 @@ change, or deletion is rejected before any success is reported. The worker drops
 handle and saved-profile marker, keeps the previously validated engine and model usable in
 session-only mode, and reports storage as unavailable. A private Linux tmpfs regression forces a
 real `ENOSPC` at each transaction boundary and verifies after restart that only pre-fault state was
-committed.
+committed. A non-writable private-directory regression and corrupt-database regression also fail
+closed while retaining session-only translation; power-loss and broader SQLite VFS behavior remain
+unverified.
 
 The tested external-provider path includes deterministic loopback fixtures for both Ollama-compatible
 OpenAI `/v1/` and native Ollama `/api`: model discovery returns `llama3.2:latest`, the worker requires

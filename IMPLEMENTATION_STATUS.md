@@ -1,5 +1,18 @@
 # Implementation Status
 
+## 2026-07-20 — Linux read-only profile storage fallback
+
+Assumption: a profile database directory mounted or configured read-only must fail closed for
+persistent mutations while preserving session-only translation.
+
+- The regression `read_only_database_directory_reports_error_but_session_mode_still_works` runs
+  the worker against a private `0500` database directory, verifies a typed persistence failure,
+  completes a session-only fake-provider translation, and confirms that no database file is
+  created. Directory permissions are restored before test cleanup.
+- The targeted regression passed locally; the broader Linux test and CI gates remain required
+  before this checkpoint is considered remotely verified. Corruption and `ENOSPC` boundaries
+  remain separately documented; power-loss and broader SQLite VFS behavior are still open.
+
 ## 2026-07-20 — Linux descriptor-pinned database open
 
 Assumption: Linux profile storage must keep the exact validated database inode fixed through the
@@ -1552,8 +1565,8 @@ in the GitHub Actions evidence above, but those native checks remain unavailable
 - Other third-party local-server variants beyond the verified Ollama daemon; the deterministic
   Ollama-compatible OpenAI `/v1/` loopback contract and native `/api` daemon path are covered.
 - Complete canonical UI gettext coverage, plural/placeholder handling, and visual locale/RTL verification.
-- Runtime database faults beyond the verified private-tmpfs `ENOSPC` transaction boundary,
-  including read-only media, corruption, power loss, and broader SQLite VFS failures.
+- Runtime database faults beyond the verified private-tmpfs `ENOSPC`, read-only-directory, and
+  corrupt-database boundaries, including power loss and broader SQLite VFS failures.
 - XDG portals beyond the implemented user-data path, document-portal lease lifecycle, and direct
   FileChooser backend fixture; application-level GTK file-dialog and drag-and-drop gestures,
   physical desktop-shell notification rendering, AT-SPI/Orca, provider-form Tab-chain and broader physical-keyboard coverage,

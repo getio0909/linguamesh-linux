@@ -89,8 +89,9 @@ updates, profile deletion, and provider switching. Runtime-storage functional re
 `c37702c76c3b1a2f9cec805cf9e219721ef7b5ce` passed Native Linux run `29586532049` (job
 `87904787338`) and repository-foundation run `29586531915` (job `87904787120`). Ubuntu exercised
 the controlled mount fallback and proved exact rejection, continued use of the prior session,
-session-only post-fault model selection, and restart recovery of only pre-fault state. This is not
-evidence for corruption, power-loss recovery, read-only media, or every storage-failure path.
+session-only post-fault model selection, and restart recovery of only pre-fault state. The regular
+worker suite also covers corrupt-database and non-writable-directory fail-closed behavior. This is
+not evidence for power-loss recovery or every storage-failure path.
 
 ## Future release gate
 
