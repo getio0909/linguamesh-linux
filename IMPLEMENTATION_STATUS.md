@@ -9,9 +9,10 @@ an overlapping document start rather than interrupting the active job or mutatin
   slow document translation, submits a second job while the first is streaming, asserts the typed
   configuration rejection, cancels the active job, and verifies the second job remains pending.
 - Local targeted validation passed: `cargo fmt --all -- --check` and the filtered demo-provider test
-  (`1 passed; 0 failed`). No Core, l10n, Flatpak, workspace-manifest, or release-manifest pin
-  changed; true concurrent document execution, cross-platform clients, signing, rollback, and
-  stable-release authorization remain open.
+  (`1 passed; 0 failed`). The Flatpak source pin now follows the code head
+  `36b81586b8b148d7adc08ecfc46203b2ef94af4d`; no Core, l10n, workspace-manifest, or
+  release-manifest pin changed. True concurrent document execution, cross-platform clients,
+  signing, rollback, and stable-release authorization remain open.
 
 ## 2026-07-20 — Linux GTK routing candidate reorder behavior
 
