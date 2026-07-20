@@ -41,7 +41,13 @@ def state_summary(node: object) -> str:
     except Exception:
         return "unknown"
     names = []
-    for name in ("STATE_FOCUSABLE", "STATE_SENSITIVE", "STATE_ENABLED", "STATE_VISIBLE"):
+    for name in (
+        "STATE_FOCUSABLE",
+        "STATE_SENSITIVE",
+        "STATE_ENABLED",
+        "STATE_VISIBLE",
+        "STATE_FOCUSED",
+    ):
         value = getattr(pyatspi, name, None)
         try:
             if value is not None and state.contains(value):
@@ -82,6 +88,26 @@ def focus_by_pointer(node: object) -> bool:
         return False
 
 
+def focus_by_keyboard(node: object) -> bool:
+    """通过 GTK 的键盘遍历取得焦点，避免依赖不受支持的 grabFocus。"""
+    for _ in range(160):
+        result = subprocess.run(
+            ["xdotool", "key", "--clearmodifiers", "Tab"],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        if result.returncode != 0:
+            return False
+        time.sleep(0.05)
+        try:
+            if node.getState().contains(pyatspi.STATE_FOCUSED):  # type: ignore[attr-defined]
+                return True
+        except Exception:
+            continue
+    return False
+
+
 def find_stop_control(deadline: float) -> object | None:
     """等待应用注册并找到名为 Stop translation 的按钮。"""
     while time.monotonic() < deadline:
@@ -114,6 +140,8 @@ def main() -> int:
         focused = False
     if not focused:
         focused = focus_by_pointer(node)
+    if not focused:
+        focused = focus_by_keyboard(node)
     if not focused:
         print(
             "Orca AT-SPI fixture could not focus the Stop translation button "
