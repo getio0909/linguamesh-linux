@@ -1,5 +1,23 @@
 # Implementation Status
 
+## 2026-07-20 — Linux GTK routing candidate reorder behavior
+
+Assumption: candidate-management evidence must exercise the button callbacks and resulting row
+order through the serialized GTK dialog lifecycle, not only assert that accessible controls exist.
+
+- `49327372c8164a42fc5f45b7d22e8d74ed172e59` extends the restored-profile GTK regression to expose
+  two enabled provider/model candidates, click the first candidate's down and up controls, and
+  assert the visible candidate order changes and returns to its original order. The Flatpak source
+  manifest is pinned to this exact Linux head; no provider endpoint, credential, or release pin
+  changed.
+- Local `cargo fmt --all -- --check`, `cargo check --features gui --all-targets --offline`, strict
+  Clippy, demo-provider tests (`134 passed; 3 ignored`), Flatpak metadata validation, localization
+  audits, l10n synchronization, and `git diff --check` passed. The host still cannot link the
+  all-feature GTK test binary because its installed GTK runtime lacks gtk-rs symbols; Native CI is
+  authoritative for GTK runtime execution.
+- This remains prerelease evidence. Human visual/translated-copy review, physical desktop review,
+  other clients, signing, rollback, and stable-release authorization remain open.
+
 ## 2026-07-20 — Linux GTK routing candidate control regression
 
 Assumption: candidate movement controls must be exercised through the real GTK dialog lifecycle,
