@@ -8200,6 +8200,272 @@ mod tests {
         drop(state);
     }
 
+    // 验证路由候选管理器的可访问控件、排序操作和编辑生命周期。
+    #[allow(clippy::too_many_lines)]
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_routing_profile_candidate_controls_have_accessible_lifecycle() {
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.RoutingProfilesTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK test application");
+
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn());
+        let (window, bindings, theme, locale) = create_window(&application);
+        let profile_a = custom_provider_profile(
+            ProviderProfileId::parse("profile-a").expect("candidate A ID"),
+            "Candidate A".to_owned(),
+            CUSTOM_PROVIDER_PRESET_ID.to_owned(),
+            OPENAI_ADAPTER_TYPE.to_owned(),
+            "http://127.0.0.1:4242/v1/".to_owned(),
+            None,
+            Some("model-a".to_owned()),
+        )
+        .expect("candidate A profile");
+        let profile_b = custom_provider_profile(
+            ProviderProfileId::parse("profile-b").expect("candidate B ID"),
+            "Candidate B".to_owned(),
+            CUSTOM_PROVIDER_PRESET_ID.to_owned(),
+            OPENAI_ADAPTER_TYPE.to_owned(),
+            "http://127.0.0.1:4243/v1/".to_owned(),
+            None,
+            Some("model-b".to_owned()),
+        )
+        .expect("candidate B profile");
+        state
+            .borrow_mut()
+            .restore_saved_profiles(vec![profile_b.clone(), profile_a.clone()], None)
+            .expect("restore routing candidates");
+        refresh_ui(&bindings, &state.borrow());
+        window.present();
+        let context = glib::MainContext::default();
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("LinguaMesh"))
+        });
+
+        let routing_profile = RoutingProfile::new(
+            "linux-candidates",
+            RoutingMode::Ordered,
+            vec![
+                RoutingCandidate::new("profile-a", "model-a", true, 64 * 1024)
+                    .expect("candidate A"),
+                RoutingCandidate::new("profile-b", "model-b", true, 64 * 1024)
+                    .expect("candidate B"),
+            ],
+            RoutingConstraints::default(),
+        )
+        .expect("routing profile");
+        show_routing_profiles_dialog(
+            &bindings,
+            &state,
+            &worker.command_handle(),
+            vec![RoutingProfileRecord {
+                id: "linux-candidates".to_owned(),
+                profile: routing_profile,
+                created_at: 0,
+                updated_at: 0,
+            }],
+        );
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Routing profiles"))
+        });
+        let dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| candidate.title().as_deref() == Some("Routing profiles"))
+            .expect("routing profile dialog");
+        assert!(dialog.is_modal());
+        let widgets = descendant_widgets(dialog.upcast_ref::<gtk::Widget>());
+
+        let profile_id = widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Entry>())
+            .find(|entry| entry.text() == "linux-default")
+            .cloned()
+            .expect("routing profile ID entry");
+        assert_labeled_control(profile_id.upcast_ref::<gtk::Widget>());
+
+        let mode = widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::DropDown>())
+            .find(|drop_down| {
+                drop_down
+                    .model()
+                    .and_then(|model| model.downcast::<gtk::StringList>().ok())
+                    .is_some_and(|model| {
+                        model.n_items() == 3
+                            && model.string(0).as_deref() == Some("Manual")
+                            && model.string(1).as_deref() == Some("Ordered")
+                            && model.string(2).as_deref() == Some("Automatic")
+                    })
+            })
+            .cloned()
+            .expect("routing mode control");
+        assert!(mode.is_focusable());
+        assert_eq!(mode.selected(), 2);
+
+        let fallback = widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::CheckButton>())
+            .find(|check| {
+                check
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.trim_start_matches('_') == "Allow approved fallback")
+            })
+            .cloned()
+            .expect("fallback routing control");
+        assert!(fallback.is_focusable());
+        assert!(!fallback.is_active());
+
+        let candidate_labels = || {
+            descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
+                .iter()
+                .filter_map(|widget| widget.downcast_ref::<gtk::CheckButton>())
+                .filter_map(gtk::prelude::CheckButtonExt::label)
+                .map(|label| label.to_string())
+                .filter(|label| label.starts_with("Candidate "))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            candidate_labels(),
+            vec!["Candidate A · model-a", "Candidate B · model-b"]
+        );
+        for candidate in descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::CheckButton>())
+            .filter(|check| {
+                check
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.starts_with("Candidate "))
+            })
+        {
+            assert!(candidate.is_focusable());
+            assert!(candidate.is_active());
+        }
+        let movement_buttons = descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .filter_map(gtk::prelude::WidgetExt::tooltip_text)
+            .collect::<Vec<_>>();
+        assert!(
+            movement_buttons
+                .iter()
+                .any(|label| label == "Move candidate up")
+        );
+        assert!(
+            movement_buttons
+                .iter()
+                .any(|label| label == "Move candidate down")
+        );
+        assert!(
+            descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
+                .iter()
+                .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+                .filter(|button| {
+                    button.tooltip_text().is_some_and(|label| {
+                        label == "Move candidate up" || label == "Move candidate down"
+                    })
+                })
+                .all(|button| {
+                    button.is_focusable()
+                        && gtk::test_accessible_has_property(button, gtk::AccessibleProperty::Label)
+                })
+        );
+
+        let candidate_a_row = descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Box>())
+            .find(|row| {
+                row.first_child()
+                    .and_then(|child| child.downcast::<gtk::CheckButton>().ok())
+                    .and_then(|check| check.label())
+                    .is_some_and(|label| label == "Candidate A · model-a")
+            })
+            .cloned()
+            .expect("candidate A row");
+        let candidate_a_down = candidate_a_row
+            .first_child()
+            .and_then(|child| child.next_sibling())
+            .and_then(|child| child.next_sibling())
+            .and_then(|child| child.downcast::<gtk::Button>().ok())
+            .expect("candidate A down button");
+        candidate_a_down.emit_clicked();
+        assert_eq!(
+            candidate_labels(),
+            vec!["Candidate B · model-b", "Candidate A · model-a"]
+        );
+        mode.set_selected(0);
+        assert!(
+            descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
+                .iter()
+                .filter_map(|widget| widget.downcast_ref::<gtk::CheckButton>())
+                .find(|check| {
+                    check
+                        .label()
+                        .as_deref()
+                        .is_some_and(|label| label == "Candidate B · model-b")
+                })
+                .is_some_and(gtk::prelude::CheckButtonExt::is_active)
+        );
+        assert!(
+            !descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
+                .iter()
+                .filter_map(|widget| widget.downcast_ref::<gtk::CheckButton>())
+                .find(|check| {
+                    check
+                        .label()
+                        .as_deref()
+                        .is_some_and(|label| label == "Candidate A · model-a")
+                })
+                .is_some_and(gtk::prelude::CheckButtonExt::is_active)
+        );
+
+        let use_button = descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .find(|button| {
+                button
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.trim_start_matches('_') == "Use")
+            })
+            .cloned()
+            .expect("use routing profile button");
+        assert!(use_button.is_focusable());
+        use_button.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            !application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Routing profiles"))
+        });
+        assert_eq!(
+            bindings.selected_routing_profile_id.borrow().as_deref(),
+            Some("linux-candidates")
+        );
+
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
+    }
+
     #[test]
     fn text_metrics_report_characters_and_approximate_tokens() {
         assert_eq!(
