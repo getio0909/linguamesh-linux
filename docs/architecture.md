@@ -26,7 +26,7 @@ confirmation, or rollback.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `d304afe01e21023a1e1f37ad8f674d49a23b5d42`; compared with the prior
+functional revision is `f62f2dfc1d7170a1e376e4dfc4c2e9e8dcf08a64`; compared with the prior
 alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW`, adds streamed
 protected-span and request-level glossary restoration, and rejects suspicious OOXML compression
 ratios and unsupported macro/signature parts before XML inspection. The required contract
@@ -68,8 +68,8 @@ provider output that structurally drops one of these spans.
 The text workspace exposes Core's `Fast`, `Balanced`, and `Best` quality modes as a request-scoped
 selector. Fast uses one direct pass, Balanced adds deterministic output checks, and Best asks the
 model for an internal critique and revision before final text. Core does not add hidden paid
-follow-up calls. The selector is disabled for document jobs until their persisted option schema
-also carries a quality-mode field.
+follow-up calls. Document jobs persist the selected mode in schema 17 and reuse it for each segment
+after pause, retry, or restart.
 
 The Linux GTK form consumes the bundled Core provider catalog for adapter compatibility and model
 listing policy before creating a window; a stale mapping fails closed. Its localized labels and
@@ -139,14 +139,14 @@ clear-all.
 The native text-file path delegates TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF format detection and bounded UTF-8/BOM handling to
 Core's `bounded_text_document_v1` contract. It preserves the original LF/CRLF/CR line endings and
 classifies Markdown fenced code and blank structure as verbatim segments before the editor receives
-the source text. Core schema 16 and the worker persist bounded pending/running/paused job snapshots
+the source text. Core schema 17 and the worker persist bounded pending/running/paused job snapshots
 and segment progress without source paths or credentials. Schema 8 also stores validated non-secret
 source/target locales, provider/model IDs, and optional glossary rules. Imported TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF files
 become these snapshots before translation; the worker translates pending prose segments sequentially,
 writes each completed segment through the confirmed provider or selected saved document-capable
 routing candidate, emits a typed non-sensitive routing decision, and routes safe reconstruction back
 to the editor. Document jobs keep fallback disabled even when a routing profile permits explicit
-fallback. Resume and Retry reuse saved options only after the active runtime matches; routed jobs
+fallback. Resume and Retry reuse saved options, including quality mode, only after the active runtime matches; routed jobs
 also persist the non-secret routing-profile ID and reconnect that profile before selecting the next
 candidate after restart.
 DOCX/PPTX/XLSX/EPUB package resources remain intact while

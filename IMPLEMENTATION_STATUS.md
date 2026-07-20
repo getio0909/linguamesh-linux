@@ -7,7 +7,7 @@ model-listing policy; Linux keeps localized labels and endpoint defaults native,
 stale or incompatible preset mapping before creating the GTK window.
 
 - Linux now consumes Core's `linguamesh-provider-catalog` crate at the pinned Core revision
-  `d304afe01e21023a1e1f37ad8f674d49a23b5d42`, caches the bundled catalog, derives manual-model
+  `f62f2dfc1d7170a1e376e4dfc4c2e9e8dcf08a64`, caches the bundled catalog, derives manual-model
   visibility from its `model_listing`, and validates all six GTK preset adapter mappings at startup.
 - The regression `provider_presets_map_to_stable_native_and_compatible_defaults` covers the stable
   GTK order and catalog compatibility without credentials or network access. A catalog mismatch
@@ -16,17 +16,32 @@ stale or incompatible preset mapping before creating the GTK window.
   3 ignored`) passed. The GUI test binary remains linker-limited on this host by installed GTK
   symbols; Native CI is authoritative for the startup guard and GTK test execution.
 
+## 2026-07-20 — Linux document quality-mode persistence
+
+Assumption: a document job captures the selected quality policy at dispatch time and reuses it for
+every segment after pause, retry, or process restart; older Core rows default to `Balanced`.
+
+- Core `f62f2dfc1d7170a1e376e4dfc4c2e9e8dcf08a64` adds schema 17 and the validated
+  `DocumentJobOptions.quality_mode` field. Linux passes the mode into every document request,
+  persists it for plain and routed jobs, restores it from queued snapshots, and keeps the GTK
+  selector enabled while a document job is selected.
+- The routed restart regression now selects `Best`, shuts down after dispatch, resumes through the
+  saved routing profile, and asserts the completed snapshot retains `Best`.
+- Local GUI check, strict Clippy, full demo-provider tests (`140 passed; 3 ignored`), locked build,
+  targeted restart test, formatting, localization audits, Flatpak metadata, and diff checks passed.
+  The GUI test binary remains linker-limited on this host by installed GTK symbols; remote Native CI
+  remains authoritative for the GTK path.
+
 ## 2026-07-20 — Linux translation quality-mode control
 
 Assumption: Linux is the first active client target; `Best` requests an internal provider critique
 and revision in one call, while Core's deterministic validation rejects malformed completion and no
 hidden paid follow-up call is introduced.
 
-- Core `d304afe01e21023a1e1f37ad8f674d49a23b5d42` adds `TranslationQualityMode`, the versioned
+- Core `f62f2dfc1d7170a1e376e4dfc4c2e9e8dcf08a64` adds `TranslationQualityMode`, the versioned
   `translation-prompt-v2` helper, `translation_quality_modes_v1`, and deterministic output checks.
 - Linux adds localized Fast/Balanced/Best selection to the text workspace and propagates the choice
-  into `TranslationRequest`; document jobs keep the selector disabled because their persisted
-  options have no quality-mode field yet.
+  into both ordinary and persisted document `TranslationRequest` values.
 - Canonical l10n `e03d8ccc548d7d2eeeef9163b4b12b8204e68d6d` contains 410 messages and generated
   Linux resources. Local Linux validation passed format, GUI check, strict Clippy, and 140 demo-
   provider tests (3 ignored). Stable release and human prompt/copy review remain open.

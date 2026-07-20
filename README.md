@@ -20,15 +20,15 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `d304afe01e21023a1e1f37ad8f674d49a23b5d42`, which adds strict
-routing-profile validation, schema-15 routing-profile persistence, and schema-16 document-job
-routing-profile persistence on top of the existing
+reviewed Core functional revision `f62f2dfc1d7170a1e376e4dfc4c2e9e8dcf08a64`, which adds strict
+routing-profile validation, schema-15 routing-profile persistence, schema-16 document-job
+routing-profile persistence, and schema-17 document quality-mode persistence on top of the existing
 document and provider contract. Earlier reviewed revisions added
 `SQLITE_OPEN_NOFOLLOW` to file-backed storage, protected-span and request-level glossary
 restoration, bounded semantic chunking for long streamed text, bounded translation history, and
 optional translation-memory storage with versioned request identity, and the bounded TXT/Markdown/
 SRT/WebVTT/CSV/JSON/HTML document contract with preserved line endings, verbatim Markdown fences, and validated
-subtitle timing, bounded DOCX/PPTX/XLSX/EPUB package reconstruction, bounded text-PDF page extraction and reconstruction with structured HTML fallback, plus schema-16 document job snapshots that survive worker restart without persisting source paths or credentials, plus
+subtitle timing, bounded DOCX/PPTX/XLSX/EPUB package reconstruction, bounded text-PDF page extraction and reconstruction with structured HTML fallback, plus schema-17 document job snapshots that survive worker restart without persisting source paths or credentials, plus
 validated non-secret provider/model/glossary options reused by Resume and Retry after restart. A
 selected saved routing profile can dispatch document segments through a document-capable candidate;
 document jobs keep fallback disabled by policy, and routed jobs reconnect the saved profile after
@@ -99,7 +99,7 @@ Each successful TXT, Markdown, CSV, JSON, HTML, SRT, WebVTT, DOCX, PPTX, XLSX, E
 **Translate**
 then sends pending prose segments sequentially through the confirmed provider, emits segment events,
 persists each completed segment, and saves only validated non-secret source/target locale,
-provider/model identifiers, and glossary rules. A worker restart can restore the unfinished snapshot;
+provider/model identifiers, quality mode, and glossary rules. A worker restart can restore the unfinished snapshot;
 **Resume** and **Retry** reuse those options only after the active provider and model match. **Stop**
 cancels the active document segment and leaves the source unchanged; Incognito mode intentionally
 rejects new document jobs because their progress must be persisted. Subtitle timestamps and cue IDs
