@@ -1,5 +1,27 @@
 # Implementation Status
 
+## 2026-07-20 — Linux GTK routing candidate control regression
+
+Assumption: candidate movement controls must be exercised through the real GTK dialog lifecycle,
+not only through pure routing helpers; the existing serialized GTK lifecycle test is the safe
+fixture because GTK initialization is thread-affine.
+
+- `23abaf7b09adf2017bcedbdce9b521ca07b42b98` adds a GTK regression that constructs the Routing
+  profiles dialog after restored provider profiles are available and verifies the localized
+  keyboard-focusable up/down controls through their tooltips. The test then continues through the
+  existing GTK flow; no provider endpoint, credential, or production routing contract changed.
+- Local `cargo fmt --all -- --check`, GUI all-target check, strict Clippy, demo-provider tests
+  (`134 passed; 3 ignored`), Flatpak metadata validation, and `git diff --check` passed. The host
+  still cannot link the all-feature GTK test binary because its installed GTK runtime lacks the
+  gtk-rs symbols; Native CI is authoritative for GTK runtime execution.
+- The first remote test attempt failed on the new assertion (`29725417555`); moving the check to
+  the healthy restored-profile phase fixed it. The next source-pin attempt failed only because
+  Flatpak still referenced the previous Linux head (`29725940665`). Final push and PR
+  Native/Flatpak/Foundation checks for `9c1fa0b9ed32782f67a4dbb10b1d7f58be6d7df8` all passed:
+  push `29726187490`/`29726187520`/`29726187565`, PR `29726189998`/`29726189990`/`29726189988`.
+- This is prerelease evidence. Human visual/translated-copy review, physical desktop review,
+  other clients, signing, rollback, and stable-release authorization remain open.
+
 ## 2026-07-20 — Linux Secret Service prompt protocol evidence
 
 Assumption: automated prompt fixtures may prove Secret Service signal/response handling, but they
