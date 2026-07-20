@@ -261,6 +261,15 @@ fn build_ui(application: &adw::Application, file_dialog_fixture: bool, file_drop
     });
     refresh_ui(&bindings, &state.borrow());
     window.present();
+    if std::env::var_os("LINGUAMESH_TEST_ORCA_ATSPI").is_some() {
+        // Orca 烟测在独立窗口中请求生产 Stop 控件的真实 GTK 焦点。
+        let focus_window = window.clone();
+        let focus_control = bindings.stop.clone();
+        glib::timeout_add_local(Duration::from_millis(750), move || {
+            gtk::prelude::GtkWindowExt::set_focus(&focus_window, Some(&focus_control));
+            glib::ControlFlow::Break
+        });
+    }
     if file_dialog_fixture {
         start_file_dialog_fixture(application, bindings, &state, &worker);
     } else if file_drop_fixture {
