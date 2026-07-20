@@ -7,12 +7,28 @@ even though this client continues to use the direct typed Rust lease path until 
 can consume ABI resource tokens.
 
 - Updated the Native workflow, Flatpak source manifest, host testing instructions, release notes,
-  and architecture pin to Core `0396736235d4dc5c8992d3bfef5aded3abadf457`. This revision adds
+  and architecture pin to Core `9a959f142f6660f4a736174cb17f8bea6ff332c1`. This revision adds
   bounded engine-scoped create, active-state, expire, revoke, and destroy calls for validated
   paths and platform descriptors without returning resource values across the ABI.
 - Linux continues to validate `file_lease_v1` around portal-backed reads and to revoke after the
   bounded document bytes are copied. It does not yet call the C ABI lease functions; document-command
   resource consumption and OS-handle transfer remain open.
+
+## 2026-07-20 — Core ABI malformed-input stress corpus pinned
+
+Assumption: Linux's exact Core pin must include the ABI decoder regression corpus before the next
+native compatibility checkpoint, while sanitizer and coverage-guided fuzzing remain separate gates.
+
+- Core revision `9a959f142f6660f4a736174cb17f8bea6ff332c1` adds a deterministic 4,096-case malformed
+  input corpus through the real `lm_engine_submit` boundary, capped at the existing 1 MiB protocol
+  limit and requiring controlled rejection or busy results without a panic or provider request.
+- Linux updates its native workflow, Flatpak source manifest, host test instructions, architecture
+  snapshot, and release notes to consume this exact revision. No Linux runtime API change is made;
+  document-command resource consumption and OS-handle transfer remain open.
+
+The Core CI and Native SDK gates passed for this pin. Linux local validation and PR gates are required
+before this compatibility checkpoint is considered verified; no stable release or fuzz completion is
+claimed.
 
 Local Linux validation and the PR's Native/Flatpak/Foundation gates are required before this pin is
 considered verified. The PR remains Draft/Open and this is unreleased Linux-first evidence.
