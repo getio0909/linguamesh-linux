@@ -265,9 +265,14 @@ fn build_ui(application: &adw::Application, file_dialog_fixture: bool, file_drop
         // Orca 烟测在独立窗口中请求生产 Stop 控件的真实 GTK 焦点。
         let focus_window = window.clone();
         let focus_control = bindings.stop.clone();
-        glib::timeout_add_local(Duration::from_millis(750), move || {
+        let focus_deadline = Instant::now() + Duration::from_secs(15);
+        glib::timeout_add_local(Duration::from_millis(100), move || {
             gtk::prelude::GtkWindowExt::set_focus(&focus_window, Some(&focus_control));
-            glib::ControlFlow::Break
+            if Instant::now() >= focus_deadline {
+                glib::ControlFlow::Break
+            } else {
+                glib::ControlFlow::Continue
+            }
         });
     }
     if file_dialog_fixture {
