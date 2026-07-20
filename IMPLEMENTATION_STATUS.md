@@ -2,11 +2,11 @@
 
 ## 2026-07-20 — Linux headless Orca remote gate evidence
 
-- Source revision `3953f3fdb3f9c14d4449fd9a148c89a6d122f486` passed all six required GitHub checks.
-- Push evidence: Native `29710151756` (job `88252867367`), Flatpak `29710151764` (job
-  `88252867692`), and Foundation `29710151770` (job `88252867360`) all completed successfully.
-- Pull-request evidence: Native `29710152701` (job `88252869669`), Flatpak `29710152684` (job
-  `88252869608`), and Foundation `29710152687` (job `88252869626`) all completed successfully.
+- Source revision `94e98e71eeb9edd9d0196230e1864ba2a63a9644` passed all six required GitHub checks.
+- Push evidence: Native `29710341677` (job `88253271782`), Flatpak `29710341643` (job
+  `88253271710`), and Foundation `29710341660` (job `88253271731`) all completed successfully.
+- Pull-request evidence: Native `29710342976` (job `88253274294`), Flatpak `29710342978` (job
+  `88253274312`), and Foundation `29710342987` (job `88253274307`) all completed successfully.
 - The Native log records `Orca AT-SPI fixture passed`, the named control inspection, and the
   Linux application-tree `SPEECH GENERATOR` assertion. This is reproducible process evidence only;
   the remote GTK4/Orca focus handoff limitation and human-listening boundary remain documented above.
