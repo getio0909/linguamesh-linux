@@ -1,5 +1,19 @@
 # Implementation Status
 
+## 2026-07-20 — Core compatibility snapshot pin
+
+Assumption: the Linux client must pin and validate the same Core compatibility contract that native
+clients query before provider work; this checkpoint keeps Linux on the direct typed Rust layer.
+
+- Core revision `c559b32d3869e01983f2bbf32f1386bad99c3290` adds the versioned
+  `CompatibilitySnapshot` and C ABI query while preserving the typed Rust compatibility check used
+  by Linux. Native and Flatpak workflow pins now consume this exact revision.
+- Local Linux no-default tests (`80 passed; 1 ignored`), demo-provider tests
+  (`144 passed; 3 ignored`), strict Clippy, localization key/placeholder/visible audits, Flatpak
+  metadata validation, and diff checks passed against the new Core checkout.
+- The Linux PR remains Draft/Open and this is unreleased Linux-first evidence; file-lease projection,
+  native UI review, signing, rollback, and stable release remain open.
+
 ## 2026-07-20 — Core ABI host-secret contract pin
 
 Assumption: the Linux repository must consume the same Core protocol revision as the native SDK,
