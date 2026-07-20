@@ -20,7 +20,7 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `0d5351340990544dc25921d522834e1e622f64a1`, which adds strict
+reviewed Core functional revision `9cacf6364a2a2c6e63f65b336bb7dfe5d460518f`, which adds strict
 routing-profile validation, schema-15 routing-profile persistence, schema-16 document-job
 routing-profile persistence, and schema-17 document quality-mode persistence on top of the existing
 document and provider contract, including schema-18 document translation-preset persistence.
