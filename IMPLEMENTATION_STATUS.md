@@ -1,5 +1,23 @@
 # Implementation Status
 
+## 2026-07-20 — Linux automatic routing fallback integration
+
+Assumption: Automatic routing must be verified at the client worker boundary, not only by Core
+unit tests; a retryable failure may continue only through the profile's explicitly approved chain.
+
+- Linux `0e2ae25c321cef243275d1322f2b8271f0602d06` adds
+  `automatic_routing_prefers_quality_and_falls_back_along_approved_chain`. The regression creates
+  two saved providers, verifies Core's quality preference selects the higher-quality candidate,
+  shuts that candidate down before dispatch, and asserts the worker emits the typed decision and
+  fallback events before completing through the lower-quality candidate. No unapproved provider,
+  credential, or document-job fallback is introduced.
+- Local `cargo fmt --all -- --check`, GUI all-target `cargo check --features gui --offline`, strict
+  Clippy with `demo-provider`, and `git diff --check` passed. The GUI test binary remains linker-
+  limited on this host by installed GTK symbols; Native CI is authoritative for the runtime test.
+
+Remote push/PR Native, Flatpak, and Foundation gates are pending for this head. The PR remains
+Draft/Open and the release train remains unreleased.
+
 ## 2026-07-20 — Linux explicit provider connection test
 
 Assumption: an explicit connection test may discover models with a temporary provider session,
