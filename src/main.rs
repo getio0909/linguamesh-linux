@@ -8610,47 +8610,47 @@ mod tests {
         assert_eq!(
             candidate_labels(),
             vec![
-                "Restored provider B · fake-slow-translator",
                 "Restored provider A · fake-translator",
+                "Restored provider B · fake-slow-translator",
             ]
         );
-        let candidate_b_row = descendant_widgets(routing_dialog.upcast_ref::<gtk::Widget>())
+        let candidate_a_row = descendant_widgets(routing_dialog.upcast_ref::<gtk::Widget>())
             .iter()
             .filter_map(|widget| widget.downcast_ref::<gtk::Box>())
             .find(|row| {
                 row.first_child()
                     .and_then(|child| child.downcast::<gtk::CheckButton>().ok())
                     .and_then(|check| check.label())
-                    .is_some_and(|label| label == "Restored provider B · fake-slow-translator")
+                    .is_some_and(|label| label == "Restored provider A · fake-translator")
             })
             .cloned()
             .expect("first routing candidate row");
-        let candidate_b_check = candidate_b_row
+        let candidate_a_check = candidate_a_row
             .first_child()
             .and_then(|child| child.downcast::<gtk::CheckButton>().ok())
             .expect("candidate checkbox");
-        let candidate_b_up = candidate_b_check
+        let candidate_a_up = candidate_a_check
             .next_sibling()
             .and_then(|child| child.downcast::<gtk::Button>().ok())
             .expect("candidate up button");
-        let candidate_b_down = candidate_b_up
+        let candidate_a_down = candidate_a_up
             .next_sibling()
             .and_then(|child| child.downcast::<gtk::Button>().ok())
             .expect("candidate down button");
-        candidate_b_down.emit_clicked();
+        candidate_a_down.emit_clicked();
         assert_eq!(
             candidate_labels(),
             vec![
-                "Restored provider A · fake-translator",
                 "Restored provider B · fake-slow-translator",
+                "Restored provider A · fake-translator",
             ]
         );
-        candidate_b_up.emit_clicked();
+        candidate_a_up.emit_clicked();
         assert_eq!(
             candidate_labels(),
             vec![
-                "Restored provider B · fake-slow-translator",
                 "Restored provider A · fake-translator",
+                "Restored provider B · fake-slow-translator",
             ]
         );
         routing_dialog.close();
