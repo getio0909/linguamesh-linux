@@ -54,13 +54,13 @@
         {
           "type": "git",
           "url": "https://github.com/getio0909/linguamesh-core.git",
-          "commit": "e46066ccafcd81e50b004c84d7eb8734e77f3279",
+          "commit": "58075c997cecdcd9a179b9397cb493da375d3a50",
           "dest": "linguamesh-core"
         },
         {
           "type": "git",
           "url": "https://github.com/getio0909/linguamesh-linux.git",
-          "commit": "a679d57bf9b4d887d27fdd4c2cb2f87dfd6342db",
+          "commit": "498323ee09a69f3183b903278efcab137836c3fb",
           "dest": "linguamesh-linux"
         },
         "cargo-sources.json"
