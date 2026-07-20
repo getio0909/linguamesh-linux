@@ -8549,6 +8549,54 @@ mod tests {
         );
         assert!(restored_bindings.remember_profile.is_active());
         assert_eq!(restored_bindings.model.selected(), 0);
+        let candidate = RoutingCandidate::new("profile-b", "fake-slow-translator", true, 64 * 1024)
+            .expect("routing candidate");
+        let routing_profile = RoutingProfile::new(
+            "gtk-routing-fixture",
+            RoutingMode::Ordered,
+            vec![candidate],
+            RoutingConstraints::default(),
+        )
+        .expect("routing profile");
+        show_routing_profiles_dialog(
+            &restored_bindings,
+            &restored_state,
+            &restored_worker.command_handle(),
+            vec![RoutingProfileRecord {
+                id: "gtk-routing-fixture".to_owned(),
+                profile: routing_profile,
+                created_at: 0,
+                updated_at: 0,
+            }],
+        );
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Routing profiles"))
+        });
+        let routing_dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| candidate.title().as_deref() == Some("Routing profiles"))
+            .expect("routing profile dialog");
+        let routing_widgets = descendant_widgets(routing_dialog.upcast_ref::<gtk::Widget>());
+        let movement_tooltips = routing_widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .filter_map(gtk::prelude::WidgetExt::tooltip_text)
+            .collect::<Vec<_>>();
+        assert!(
+            movement_tooltips
+                .iter()
+                .any(|text| text == "Move candidate up")
+        );
+        assert!(
+            movement_tooltips
+                .iter()
+                .any(|text| text == "Move candidate down")
+        );
+        routing_dialog.close();
         apply_worker_event(
             &restored_bindings,
             &restored_state,
@@ -8694,55 +8742,6 @@ mod tests {
         );
         assert_eq!(restored_bindings.status.label(), "Status: Unavailable");
         assert!(!restored_bindings.connect.is_sensitive());
-        let candidate = RoutingCandidate::new("profile-b", "fake-slow-translator", true, 64 * 1024)
-            .expect("routing candidate");
-        let routing_profile = RoutingProfile::new(
-            "gtk-routing-fixture",
-            RoutingMode::Ordered,
-            vec![candidate],
-            RoutingConstraints::default(),
-        )
-        .expect("routing profile");
-        show_routing_profiles_dialog(
-            &restored_bindings,
-            &restored_state,
-            &restored_worker.command_handle(),
-            vec![RoutingProfileRecord {
-                id: "gtk-routing-fixture".to_owned(),
-                profile: routing_profile,
-                created_at: 0,
-                updated_at: 0,
-            }],
-        );
-        spin_main_context_until(&context, Duration::from_secs(1), || {
-            application
-                .windows()
-                .iter()
-                .any(|candidate| candidate.title().as_deref() == Some("Routing profiles"))
-        });
-        let routing_dialog = application
-            .windows()
-            .into_iter()
-            .find(|candidate| candidate.title().as_deref() == Some("Routing profiles"))
-            .expect("routing profile dialog");
-        let routing_widgets = descendant_widgets(routing_dialog.upcast_ref::<gtk::Widget>());
-        let movement_tooltips = routing_widgets
-            .iter()
-            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
-            .filter_map(gtk::prelude::WidgetExt::tooltip_text)
-            .collect::<Vec<_>>();
-        assert!(
-            movement_tooltips
-                .iter()
-                .any(|text| text == "Move candidate up")
-        );
-        assert!(
-            movement_tooltips
-                .iter()
-                .any(|text| text == "Move candidate down")
-        );
-        routing_dialog.close();
-
         run_gtk_native_ollama_preset_flow(&application);
         let _ = restored_worker.try_send(WorkerCommand::Shutdown);
         restored_window.close();
