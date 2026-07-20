@@ -7543,50 +7543,6 @@ mod tests {
     }
 
     #[test]
-    fn anthropic_preset_requires_manual_model_before_connecting() {
-        adw::init().expect("initialize GTK and libadwaita");
-        let application = adw::Application::builder()
-            .application_id("dev.linguamesh.LinguaMesh.AnthropicManualModelTest")
-            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
-            .build();
-        application
-            .register(None::<&gtk::gio::Cancellable>)
-            .expect("register GTK test application");
-        let state = Rc::new(RefCell::new(AppState::default()));
-        state.borrow_mut().mark_worker_ready();
-        let worker = Rc::new(CoreWorker::spawn());
-        let (window, bindings, theme, locale) = create_window(&application);
-        connect_action_handlers(&bindings, &state, &worker);
-        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
-        refresh_ui(&bindings, &state.borrow());
-        window.present();
-        bindings.provider_preset.set_selected(2);
-        bindings
-            .provider_name
-            .set_text(DEFAULT_ANTHROPIC_PROVIDER_NAME);
-        bindings
-            .provider_endpoint
-            .set_text(DEFAULT_ANTHROPIC_ENDPOINT);
-        assert!(bindings.manual_model_row.is_visible());
-        bindings.connect.emit_clicked();
-        assert_eq!(state.borrow().status(), AppStatus::Failed);
-        assert!(
-            state
-                .borrow()
-                .error_text()
-                .is_some_and(|text| text.contains("Anthropic model ID"))
-        );
-        assert!(state.borrow().active_provider().is_none());
-        let _ = worker.try_send(WorkerCommand::Shutdown);
-        drop(window);
-        drop(bindings);
-        drop(theme);
-        drop(locale);
-        drop(state);
-        drop(worker);
-    }
-
-    #[test]
     fn built_in_provider_default_names_follow_the_active_locale() {
         assert_eq!(
             localized_provider_default_name(UiLocale::English, 0),
@@ -8189,6 +8145,25 @@ mod tests {
             bindings.provider_name.text().as_str(),
             "本地 OpenAI 兼容提供商"
         );
+        bindings.provider_preset.set_selected(2);
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            bindings.manual_model_row.is_visible()
+        });
+        bindings
+            .provider_endpoint
+            .set_text(DEFAULT_ANTHROPIC_ENDPOINT);
+        bindings.manual_model.set_text("");
+        bindings.connect.emit_clicked();
+        assert_eq!(state.borrow().status(), AppStatus::Failed);
+        assert!(
+            state
+                .borrow()
+                .error_text()
+                .is_some_and(|text| text.contains("Anthropic model ID"))
+        );
+        assert!(state.borrow().active_provider().is_none());
+        show_new_profile_in_form(&bindings, &state.borrow())
+            .expect("restore custom provider profile after Anthropic validation");
         bindings.provider_preset.set_selected(1);
         spin_main_context_until(&context, Duration::from_secs(1), || {
             bindings.provider_name.text().as_str() == "本地 Ollama 提供商"
