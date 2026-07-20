@@ -6715,6 +6715,128 @@ mod tests {
         shutdown(&worker);
     }
 
+    #[allow(clippy::too_many_lines)]
+    #[test]
+    fn automatic_routing_prefers_quality_and_falls_back_along_approved_chain() {
+        let lower = ExternalFakeProvider::start(FakeMode::Standard);
+        let higher = ExternalFakeProvider::start(FakeMode::Standard);
+        let database = TestDatabase::new();
+        let (worker, _, _) = started_worker_with_database(database.path());
+        connect(
+            &worker,
+            profile("automatic-lower", &lower.endpoint, None, None),
+            None,
+            PersistenceIntent::Persistent,
+        )
+        .expect("lower-quality profile connection");
+        select(&worker, "automatic-lower", "fake-translator");
+        connect(
+            &worker,
+            profile("automatic-higher", &higher.endpoint, None, None),
+            None,
+            PersistenceIntent::Persistent,
+        )
+        .expect("higher-quality profile connection");
+        select(&worker, "automatic-higher", "fake-translator");
+
+        let mut lower_candidate =
+            RoutingCandidate::new("automatic-lower", "fake-translator", true, 4096)
+                .expect("lower-quality candidate");
+        lower_candidate.quality_tier = 1;
+        let mut higher_candidate =
+            RoutingCandidate::new("automatic-higher", "fake-translator", false, 4096)
+                .expect("higher-quality candidate");
+        higher_candidate.quality_tier = 3;
+        let profile = RoutingProfile::new(
+            "automatic-quality-route",
+            RoutingMode::Automatic,
+            vec![lower_candidate, higher_candidate],
+            RoutingConstraints {
+                preference: RoutingPreference::Quality,
+                explicit_fallback_allowed: true,
+                ..RoutingConstraints::default()
+            },
+        )
+        .expect("automatic routing profile");
+        worker
+            .try_send(WorkerCommand::SaveRoutingProfile { profile })
+            .expect("save automatic routing profile");
+        assert!(matches!(
+            worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("automatic routing save event"),
+            WorkerEvent::RoutingProfileSaved(_)
+        ));
+        drop(higher);
+
+        worker
+            .try_send(WorkerCommand::TranslateWithRouting {
+                request: TranslationRequest::new("Hello", "zh-CN", "fake-translator"),
+                routing_profile_id: "automatic-quality-route".to_owned(),
+            })
+            .expect("automatic routing translation command");
+        let deadline = Instant::now() + Duration::from_secs(10);
+        let mut output = String::new();
+        let mut selected = false;
+        let mut fallback_selected = false;
+        let terminal = loop {
+            assert!(Instant::now() < deadline, "automatic routing timed out");
+            let event = match worker.events.recv_timeout(Duration::from_millis(500)) {
+                Ok(event) => event,
+                Err(mpsc::RecvTimeoutError::Timeout) => continue,
+                Err(mpsc::RecvTimeoutError::Disconnected) => {
+                    panic!("automatic routing event channel disconnected")
+                }
+            };
+            match event {
+                WorkerEvent::RoutingDecisionSelected {
+                    profile_id,
+                    provider_id,
+                    model_id,
+                    eligible_count,
+                    rejected_count,
+                    fallback_count,
+                } => {
+                    assert_eq!(profile_id, "automatic-quality-route");
+                    assert_eq!(provider_id, "automatic-higher");
+                    assert_eq!(model_id, "fake-translator");
+                    assert_eq!(eligible_count, 2);
+                    assert_eq!(rejected_count, 0);
+                    assert_eq!(fallback_count, 1);
+                    selected = true;
+                }
+                WorkerEvent::RoutingFallbackSelected {
+                    routing_profile_id,
+                    previous_provider_id,
+                    next_provider_id,
+                    attempt_index,
+                } => {
+                    assert_eq!(routing_profile_id, "automatic-quality-route");
+                    assert_eq!(previous_provider_id, "automatic-higher");
+                    assert_eq!(next_provider_id, "automatic-lower");
+                    assert_eq!(attempt_index, 0);
+                    fallback_selected = true;
+                }
+                WorkerEvent::Translation(TranslationEvent::TextDelta { text, .. }) => {
+                    output.push_str(&text);
+                }
+                WorkerEvent::Translation(event) if event.is_terminal() => break event,
+                WorkerEvent::Translation(_)
+                | WorkerEvent::TranslationHistoryUpdated { .. }
+                | WorkerEvent::TranslationMemoryPersistenceFailed(_)
+                | WorkerEvent::TranslationHistoryPersistenceFailed(_) => {}
+                _ => panic!("unexpected automatic routing event"),
+            }
+        };
+        assert!(selected);
+        assert!(fallback_selected);
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        assert_eq!(lower.chat_requests.load(Ordering::SeqCst), 1);
+        shutdown(&worker);
+    }
+
     #[test]
     fn document_jobs_persist_segment_progress_and_restore_after_restart() {
         let database = TestDatabase::new();
