@@ -50,8 +50,8 @@ output region reports translation busy state; document-job progress exposes a na
 role with a bounded completed/total fraction; empty errors are hidden from the accessibility tree;
 and Stop has the explicit accessible name “Stop translation”. A CI fixture reads the running
 application through AT-SPI and verifies the named Stop control plus both text-editor roles. Native
-CI also starts Orca with Speech Dispatcher in the isolated X11 session, focuses that named control
-through AT-SPI, and requires Orca's speech-generator debug record. This remains headless Orca
+CI also starts Orca with Speech Dispatcher in the isolated X11 session, inspects that named control
+through AT-SPI, and requires Orca's speech-generator debug record for the Linux application tree. This remains headless Orca
 integration evidence, not a human listening, physical-keyboard, high-contrast, or physical-compositor
 review. The
 non-sensitive Diagnostics panel localizes its Core ABI/protocol summary, fixed field labels, state

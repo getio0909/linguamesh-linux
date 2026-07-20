@@ -181,8 +181,8 @@ Tab/Shift+Tab traversal for the tested controls; an application-window Capture-p
 the provider fields in an explicit order while preserving modified shortcuts. The
 `tools/run-gtk-atspi-test.sh` fixture separately reads the live tree through `python3-pyatspi` and
 checks the named Stop control plus both text-editor roles. Native CI also runs
-`tools/run-orca-atspi-test.sh`, which starts Orca with Speech Dispatcher, focuses that named control
-through AT-SPI, and checks Orca's speech-generator debug record. These remain headless
+`tools/run-orca-atspi-test.sh`, which starts Orca with Speech Dispatcher, inspects that named control
+through AT-SPI, and checks Orca's speech-generator debug record for the Linux application tree. These remain headless
 protocol/backend and Orca-integration gates, not claims about physical compositors, GPU rendering,
 desktop integration, physical desktop keyboard coverage, human listening, or speech quality.
 

@@ -109,14 +109,19 @@ XDG_CACHE_HOME="$workspace/cache" \
     fi
     xdotool windowactivate --sync "$app_window" >/dev/null 2>&1 || true
     xdotool windowfocus --sync "$app_window" >/dev/null 2>&1 || true
-    python3 tools/orca-atspi-inspect.py
+    inspection_output=$(python3 tools/orca-atspi-inspect.py)
+    printf '%s\n' "$inspection_output"
+    grep -Fq "Stop translation" <<<"$inspection_output" || {
+      printf "%s\n" "Orca AT-SPI fixture did not confirm the named Stop translation control." >&2
+      exit 1
+    }
     xdotool windowactivate --sync "$app_window" >/dev/null 2>&1 || true
     xdotool key --window "$app_window" --clearmodifiers KP_Enter >/dev/null 2>&1 || true
     for _ in {1..200}; do
       if [[ -s "$LINGUAMESH_ORCA_LOG" ]] \
-        && grep -Fq "Stop translation" "$LINGUAMESH_ORCA_LOG" \
-        && grep -Fq "SPEECH GENERATOR" "$LINGUAMESH_ORCA_LOG"; then
-        printf "%s\n" "Orca AT-SPI fixture passed: Orca processed the named control and generated speech output."
+        && grep -Fq "SPEECH GENERATOR" "$LINGUAMESH_ORCA_LOG" \
+        && grep -Fq "linguamesh-linux" "$LINGUAMESH_ORCA_LOG"; then
+        printf "%s\n" "Orca AT-SPI fixture passed: the named control was inspected and Orca generated speech for the Linux application tree."
         exit 0
       fi
       if ! kill -0 "$orca_pid" >/dev/null 2>&1; then

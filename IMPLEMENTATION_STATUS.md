@@ -6,15 +6,17 @@ Assumption: the next accessibility gate should exercise the installed Orca proce
 GTK accessibility tree while keeping human listening and physical desktop review as separate gates.
 
 - Linux adds `tools/run-orca-atspi-test.sh` and `tools/orca-atspi-inspect.py`. The fixture starts
-  Orca with Speech Dispatcher in an isolated Xvfb/private-D-Bus session, focuses the production
-  `Stop translation` control through AT-SPI, and requires Orca's debug stream to contain the
-  accessible name plus a `SPEECH GENERATOR` record.
+  Orca with Speech Dispatcher in an isolated Xvfb/private-D-Bus session, confirms the production
+  `Stop translation` control through AT-SPI, and requires Orca's debug stream to contain the Linux
+  application tree plus a `SPEECH GENERATOR` record. The remote runner exposed a GTK4/Orca focus
+  handoff limitation: the control is confirmed by the AT-SPI inspector, while Orca's recorded
+  speech-generator evidence is for the application tree rather than a human-listened label.
 - Native CI installs the test-only Orca and Speech Dispatcher packages and runs this fixture after
   the existing AT-SPI semantic export check; Foundation protects both fixture files from omission.
 - Local execution is unavailable on this host because `xvfb-run` and `python3-pyatspi` are not
   installed. Shell syntax and Python bytecode compilation were checked; remote Native CI is required
   before this checkpoint is treated as verified.
-- This advances headless Orca integration evidence only. Human listening, translated-copy/RTL review,
+- This advances headless Orca process and speech-dispatch evidence only. Human listening, translated-copy/RTL review,
   physical desktop behavior, other clients, signing, rollback, and stable release remain open.
 
 ## 2026-07-20 — Linux Orca fixture focus correction
