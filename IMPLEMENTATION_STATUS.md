@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-20 — Linux bounded concurrent document execution
+
+Assumption: Linux is the first delivery target, so bounded worker concurrency can advance without
+unfreezing the other clients or claiming a stable release.
+
+- The worker now runs up to four document jobs concurrently. Each job owns its event pump,
+  cancellation handle, partial output, provider manager, and segment index; a fifth or duplicate
+  start is rejected before persistence changes the job to Running.
+- Added regression coverage for independent concurrent completion and targeted cancellation of one
+  job while its survivor completes. Full local validation passed: formatting, GUI all-target check,
+  strict Clippy, demo-provider tests (`136 passed; 3 ignored`), and `git diff --check`.
+- Native/Flatpak/Repository Foundation CI remains the authoritative GTK, packaging, and sandbox
+  evidence after the next pushed code head. Cross-platform clients, human accessibility/visual
+  review, signing, rollback, and stable-release authorization remain open.
+
 ## 2026-07-20 — Linux document-job concurrency isolation regression
 
 Assumption: until bounded concurrent document execution is implemented, Linux must fail closed on

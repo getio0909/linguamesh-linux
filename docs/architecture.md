@@ -133,10 +133,11 @@ alternative. Core also exposes configurable subtitle line-length and reading-spe
 cue number; the Linux UI renders only those numbers and fixed guidance text. EPUB preserves
 metadata, navigation, CSS, and binary resources while rewriting visible XHTML/HTML text and updating
 OPF language metadata at export. Encrypted, malformed, traversal, and DTD-bearing packages are rejected.
-The GTK surface presents multiple persisted jobs for explicit selection; execution remains
-single-active-job. A second document-start request is rejected with a typed configuration error,
-leaving the active job and the pending snapshot isolated; true concurrent document translation
-stays outside the current validation gate.
+The GTK surface presents multiple persisted jobs for explicit selection. The worker runs up to four
+document jobs concurrently, with per-job bounded event delivery, cancellation, pause state, and
+segment persistence isolated by job ID. A fifth start, or a duplicate start for an active job, is
+rejected with a typed configuration error without changing the persisted job snapshot. The UI still
+uses explicit selection for queue actions, and the broader release gate remains prerelease.
 
 Image-only PDF pages are a separate, explicit opt-in path. The GTK toggle is only used when Core
 reports a PDF with no extractable text. The worker then invokes `pdftoppm` and `tesseract` through

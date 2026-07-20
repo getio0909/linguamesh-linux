@@ -119,10 +119,12 @@ the saved provider/model options. The worker regressions
 `document_job_translation_reconstructs_xlsx_and_preserves_formulas_and_numbers`,
 `document_job_translation_reconstructs_pptx_and_preserves_notes_and_resources` drive the
 persisted-job translation path end to end, then inspect reconstructed OOXML while checking that
-binary resources, formulas, and numeric cells survive. Concurrent translation remains outside the
-validation gate; `concurrent_document_start_is_rejected_without_interrupting_active_job` proves
-that a second start request is rejected with a typed configuration error while the active job can
-still be cancelled and the second job remains pending. PDF imports
+binary resources, formulas, and numeric cells survive. The worker concurrency gate allows four
+document jobs and isolates their event streams and cancellation state by job ID.
+`concurrent_document_jobs_run_independently` proves that two slow jobs can stream and complete
+together, while `cancelling_one_concurrent_document_job_keeps_the_other_running` proves that
+targeted cancellation does not interrupt its survivor. The fifth-job limit and duplicate-start
+guard reject before any new Running snapshot is persisted. PDF imports
 also expose bounded structured warnings for image-only pages, uncertain reading order, and limited
 reconstruction; the UI warning test verifies that only page numbers and fixed text are shown, never
 source content. Subtitle imports also expose configurable Core thresholds for line length and
