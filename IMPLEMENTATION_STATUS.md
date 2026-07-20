@@ -1,5 +1,16 @@
 # Implementation Status
 
+## 2026-07-20 — Linux document queue documentation consistency
+
+Assumption: the existing GTK queue-selection surface should be described as implemented, while
+bounded single-active-job execution remains an explicit validation boundary.
+
+- Corrected the architecture description to match the existing `document_job_list_returns_multiple_saved_jobs_for_queue_selection`
+  regression and GTK job-selection dialog.
+- No runtime behavior, provider routing, persistence schema, or release pin changed. Concurrent
+  document execution, human accessibility/visual review, other clients, signing, rollback, and
+  stable-release evidence remain open.
+
 ## 2026-07-20 — Linux Anthropic Messages provider preset
 
 Assumption: Anthropic Messages remains a manual-model provider on Linux until a provider catalog

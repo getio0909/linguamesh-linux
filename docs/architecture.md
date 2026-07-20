@@ -133,8 +133,8 @@ alternative. Core also exposes configurable subtitle line-length and reading-spe
 cue number; the Linux UI renders only those numbers and fixed guidance text. EPUB preserves
 metadata, navigation, CSS, and binary resources while rewriting visible XHTML/HTML text and updating
 OPF language metadata at export. Encrypted, malformed, traversal, and DTD-bearing packages are rejected.
-Multi-job queue presentation remains outside
-this slice.
+The GTK surface presents multiple persisted jobs for explicit selection; execution remains
+single-active-job and concurrent document translation stays outside the current validation gate.
 
 Image-only PDF pages are a separate, explicit opt-in path. The GTK toggle is only used when Core
 reports a PDF with no extractable text. The worker then invokes `pdftoppm` and `tesseract` through
