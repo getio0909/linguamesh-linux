@@ -23,6 +23,11 @@ request is made, and streams the deterministic `你好，Azure！` response thro
 This proves request shaping and secret isolation only; live Azure account, quota, and deployment
 availability remain unverified.
 
+The OpenAI Responses fixture uses the shared `/v1/models` discovery route and `/v1/responses` with
+the session Bearer credential. The worker verifies one model-list request, one typed-SSE translation
+request, ignores `response.created`, streams `response.output_text.delta`, and completes on
+`response.completed` with deterministic `你好，Responses！` output.
+
 The Linux worker regression `gemini_provider_discovers_and_streams_without_secret` now exercises
 that fixture through the real `ProviderManager` and worker path: it discovers
 `gemini-2.0-flash`, deliberately selects it, and completes `你好，Gemini！` without a credential.
@@ -46,7 +51,7 @@ The Linux checkpoint has a reproducible external pass using Docker image
 were removed after validation. This evidence is prerelease-only and does not cover GPU execution.
 
 The Linux checkout consumes the canonical gettext bundle from immutable l10n revision
-`8e0e50577f8714b90bcc08a0d22cc790319f9239`. The bundle contains 401 messages, and
+`95078b1a0c30defe98995a9879c4c669d213e5bc`. The bundle contains 405 messages, and
 `bash tools/sync-l10n.sh --check` verifies every PO/MO catalog and the generated manifest before
 the native build. History/memory row metadata, document-job IDs, active-provider mode summaries,
 unavailable provider/model labels, and routing-profile actions/mode labels are asserted through
@@ -101,7 +106,7 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`e46066ccafcd81e50b004c84d7eb8734e77f3279`. This revision carries the explicit request-level
+`58075c997cecdcd9a179b9397cb493da375d3a50`. This revision carries the explicit request-level
 Incognito privacy policy and changes file-backed Core storage to add SQLite's `SQLITE_OPEN_NOFOLLOW`
 flag, adds protected-span restoration and request-level glossary
 protection for streamed text, and adds bounded semantic chunking. On
@@ -110,9 +115,9 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e e46066ccafcd81e50b004c84d7eb8734e77f3279^{commit}
+git -C ../linguamesh-core cat-file -e 58075c997cecdcd9a179b9397cb493da375d3a50^{commit}
 git -C ../linguamesh-core diff --quiet \
-  e46066ccafcd81e50b004c84d7eb8734e77f3279..HEAD -- \
+  58075c997cecdcd9a179b9397cb493da375d3a50..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -486,7 +491,7 @@ dispatch only. It does not replace a human listening review, physical desktop re
 about speech quality across locales.
 
 The GitHub Actions native workflow pins Core revision
-`e46066ccafcd81e50b004c84d7eb8734e77f3279`, installs the headers plus D-Bus, Xvfb, test-only
+`58075c997cecdcd9a179b9397cb493da375d3a50`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
 namespace test through the unprivileged path.
@@ -494,8 +499,8 @@ namespace test through the unprivileged path.
 The GTK AT-SPI fixture bounds cleanup of its private application, window manager, and accessibility
 launcher processes; a fixture that prints successful accessibility assertions but cannot reap its
 processes is recorded as a failed gate rather than accepted as evidence.
-The current Linux diagnostics localization revision `8e0e50577f8714b90bcc08a0d22cc790319f9239`
-contains 401 catalog messages; the source-level catalog
+The current Linux diagnostics localization revision `95078b1a0c30defe98995a9879c4c669d213e5bc`
+contains 405 catalog messages; the source-level catalog
 audit and runtime locale tests cover the diagnostics labels. The current fixed-error localization revision `b6d2503`
 passed Native Linux run `29627668119`, Foundation run `29627668093`, and
 Flatpak run `29627668108`; the native job validated the pinned 117-message catalog and GTK

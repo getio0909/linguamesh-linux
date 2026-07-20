@@ -40,21 +40,25 @@ const OLLAMA_PROVIDER_PRESET_ID: &str = "ollama";
 const ANTHROPIC_PROVIDER_PRESET_ID: &str = "anthropic";
 const GEMINI_PROVIDER_PRESET_ID: &str = "gemini";
 const AZURE_PROVIDER_PRESET_ID: &str = "azure-openai";
+const RESPONSES_PROVIDER_PRESET_ID: &str = "openai-responses";
 const OPENAI_ADAPTER_TYPE: &str = "openai_chat_completions";
 const OLLAMA_ADAPTER_TYPE: &str = "ollama_chat";
 const ANTHROPIC_ADAPTER_TYPE: &str = "anthropic_messages";
 const GEMINI_ADAPTER_TYPE: &str = "gemini_generate_content";
 const AZURE_ADAPTER_TYPE: &str = "azure_openai_chat";
+const RESPONSES_ADAPTER_TYPE: &str = "openai_responses";
 const DEFAULT_PROVIDER_NAME: &str = "Local OpenAI-compatible provider";
 const DEFAULT_OLLAMA_PROVIDER_NAME: &str = "Local Ollama provider";
 const DEFAULT_ANTHROPIC_PROVIDER_NAME: &str = "Anthropic Messages provider";
 const DEFAULT_GEMINI_PROVIDER_NAME: &str = "Google Gemini provider";
 const DEFAULT_AZURE_PROVIDER_NAME: &str = "Azure OpenAI provider";
+const DEFAULT_RESPONSES_PROVIDER_NAME: &str = "OpenAI Responses provider";
 const DEFAULT_PROVIDER_ENDPOINT: &str = "http://127.0.0.1:11434/v1/";
 const DEFAULT_OLLAMA_ENDPOINT: &str = "http://127.0.0.1:11434/api/";
 const DEFAULT_ANTHROPIC_ENDPOINT: &str = "https://api.anthropic.com/v1/";
 const DEFAULT_GEMINI_ENDPOINT: &str = "https://generativelanguage.googleapis.com/v1beta/";
 const DEFAULT_AZURE_ENDPOINT: &str = "https://resource.openai.azure.com/";
+const DEFAULT_RESPONSES_ENDPOINT: &str = "https://api.openai.com/v1/";
 
 #[derive(Clone)]
 struct UiBindings {
@@ -185,6 +189,12 @@ fn provider_preset_config(index: u32) -> (&'static str, &'static str, &'static s
             DEFAULT_AZURE_PROVIDER_NAME,
             DEFAULT_AZURE_ENDPOINT,
         ),
+        5 => (
+            RESPONSES_PROVIDER_PRESET_ID,
+            RESPONSES_ADAPTER_TYPE,
+            DEFAULT_RESPONSES_PROVIDER_NAME,
+            DEFAULT_RESPONSES_ENDPOINT,
+        ),
         _ => (
             CUSTOM_PROVIDER_PRESET_ID,
             OPENAI_ADAPTER_TYPE,
@@ -201,18 +211,24 @@ fn provider_preset_index(preset_id: &str) -> u32 {
         ANTHROPIC_PROVIDER_PRESET_ID => 2,
         GEMINI_PROVIDER_PRESET_ID => 3,
         AZURE_PROVIDER_PRESET_ID => 4,
+        RESPONSES_PROVIDER_PRESET_ID => 5,
         _ => 0,
     }
 }
 
 // 根据活动界面语言生成提供商预设标签。
-fn provider_preset_labels(locale: UiLocale) -> [String; 5] {
+fn provider_preset_labels(locale: UiLocale) -> [String; 6] {
     [
         localization::text(locale, "provider.preset.openai", "OpenAI-compatible"),
         localization::text(locale, "provider.preset.ollama", "Ollama (native /api)"),
         localization::text(locale, "provider.preset.anthropic", "Anthropic Messages"),
         localization::text(locale, "provider.preset.gemini", "Google Gemini"),
         localization::text(locale, "provider.preset.azure_openai", "Azure OpenAI"),
+        localization::text(
+            locale,
+            "provider.preset.openai_responses",
+            "OpenAI Responses",
+        ),
     ]
 }
 
@@ -246,6 +262,12 @@ fn provider_endpoint_tooltip(locale: UiLocale, preset_index: u32) -> String {
             locale,
             "tooltip.endpoint.azure_openai",
             "HTTPS Azure OpenAI resource endpoint; enter the deployment name as the model",
+        )
+    } else if preset_index == 5 {
+        localization::text(
+            locale,
+            "tooltip.endpoint.openai_responses",
+            "HTTPS OpenAI Responses /v1 endpoint with typed streaming events",
         )
     } else {
         localization::text(
@@ -282,6 +304,12 @@ fn localized_provider_default_name(locale: UiLocale, preset_index: u32) -> Strin
             "profile.default_azure_openai_name",
             DEFAULT_AZURE_PROVIDER_NAME,
         )
+    } else if preset_index == 5 {
+        localization::text(
+            locale,
+            "profile.default_openai_responses_name",
+            DEFAULT_RESPONSES_PROVIDER_NAME,
+        )
     } else {
         localization::text(locale, "profile.default_name", DEFAULT_PROVIDER_NAME)
     }
@@ -299,6 +327,8 @@ fn endpoint_matches_preset_default(endpoint: &str, preset_index: u32) -> bool {
         endpoint == DEFAULT_GEMINI_ENDPOINT
     } else if preset_index == 4 {
         endpoint == DEFAULT_AZURE_ENDPOINT
+    } else if preset_index == 5 {
+        endpoint == DEFAULT_RESPONSES_ENDPOINT
     } else {
         endpoint == DEFAULT_PROVIDER_ENDPOINT
             || (endpoint.starts_with("http://127.0.0.1:") && endpoint.ends_with("/v1/"))
@@ -318,6 +348,12 @@ fn provider_model_tooltip(locale: UiLocale, preset_index: u32) -> String {
             locale,
             "tooltip.model.azure_openai",
             "Enter the Azure OpenAI deployment name before connecting; model discovery is manual for this preset",
+        )
+    } else if preset_index == 5 {
+        localization::text(
+            locale,
+            "tooltip.model.openai_responses",
+            "Models are discovered from the OpenAI Responses-compatible endpoint",
         )
     } else {
         localization::text(
@@ -7252,22 +7288,23 @@ mod tests {
         DEFAULT_ANTHROPIC_ENDPOINT, DEFAULT_ANTHROPIC_PROVIDER_NAME, DEFAULT_AZURE_ENDPOINT,
         DEFAULT_AZURE_PROVIDER_NAME, DEFAULT_GEMINI_ENDPOINT, DEFAULT_GEMINI_PROVIDER_NAME,
         DEFAULT_OLLAMA_ENDPOINT, DEFAULT_OLLAMA_PROVIDER_NAME, DEFAULT_PROVIDER_ENDPOINT,
-        DEFAULT_PROVIDER_NAME, ErrorKind, GEMINI_ADAPTER_TYPE, GEMINI_PROVIDER_PRESET_ID,
-        OLLAMA_ADAPTER_TYPE, OLLAMA_PROVIDER_PRESET_ID, OPENAI_ADAPTER_TYPE, OnboardingStage,
-        ProviderProfileId, RoutingCandidate, RoutingConstraintTextValues, RoutingProfile,
-        RoutingProfileRecord, SecretRef, SecretRefNamespace, SecretValue, TranslationError,
-        UiLocale, WorkerCommand, WorkerEvent, apply_worker_event, connect_action_handlers,
-        connect_selection_handlers, create_window, custom_provider_profile,
-        destination_matches_source, document_format_label, endpoint_matches_preset_default,
-        fallback_confirmation_needed, generate_custom_provider_id, localized_document_job_state,
-        localized_document_warnings, localized_provider_default_name, localized_template,
-        normalized_candidate_ids_for_mode, preset_requires_manual_model, provider_preset_config,
-        provider_preset_index, refresh_ui, routing_constraints_from_controls,
-        routing_constraints_from_text_values, routing_identifier_list_from_text,
-        routing_optional_limit_from_text, routing_preference_for_selection,
-        routing_preference_selection, routing_profile_id_conflicts, show_new_profile_in_form,
-        show_routing_profiles_dialog, start_event_pump, text_metrics_label,
-        valid_routing_profile_id,
+        DEFAULT_PROVIDER_NAME, DEFAULT_RESPONSES_ENDPOINT, DEFAULT_RESPONSES_PROVIDER_NAME,
+        ErrorKind, GEMINI_ADAPTER_TYPE, GEMINI_PROVIDER_PRESET_ID, OLLAMA_ADAPTER_TYPE,
+        OLLAMA_PROVIDER_PRESET_ID, OPENAI_ADAPTER_TYPE, OnboardingStage, ProviderProfileId,
+        RESPONSES_ADAPTER_TYPE, RESPONSES_PROVIDER_PRESET_ID, RoutingCandidate,
+        RoutingConstraintTextValues, RoutingProfile, RoutingProfileRecord, SecretRef,
+        SecretRefNamespace, SecretValue, TranslationError, UiLocale, WorkerCommand, WorkerEvent,
+        apply_worker_event, connect_action_handlers, connect_selection_handlers, create_window,
+        custom_provider_profile, destination_matches_source, document_format_label,
+        endpoint_matches_preset_default, fallback_confirmation_needed, generate_custom_provider_id,
+        localized_document_job_state, localized_document_warnings, localized_provider_default_name,
+        localized_template, normalized_candidate_ids_for_mode, preset_requires_manual_model,
+        provider_preset_config, provider_preset_index, refresh_ui,
+        routing_constraints_from_controls, routing_constraints_from_text_values,
+        routing_identifier_list_from_text, routing_optional_limit_from_text,
+        routing_preference_for_selection, routing_preference_selection,
+        routing_profile_id_conflicts, show_new_profile_in_form, show_routing_profiles_dialog,
+        start_event_pump, text_metrics_label, valid_routing_profile_id,
     };
     use adw::prelude::*;
     use gtk::glib;
@@ -7600,6 +7637,7 @@ mod tests {
         assert_eq!(provider_preset_index(ANTHROPIC_PROVIDER_PRESET_ID), 2);
         assert_eq!(provider_preset_index(GEMINI_PROVIDER_PRESET_ID), 3);
         assert_eq!(provider_preset_index(AZURE_PROVIDER_PRESET_ID), 4);
+        assert_eq!(provider_preset_index(RESPONSES_PROVIDER_PRESET_ID), 5);
         assert_eq!(provider_preset_index(CUSTOM_PROVIDER_PRESET_ID), 0);
         assert_eq!(
             provider_preset_config(0),
@@ -7646,6 +7684,15 @@ mod tests {
                 DEFAULT_AZURE_ENDPOINT,
             )
         );
+        assert_eq!(
+            provider_preset_config(5),
+            (
+                RESPONSES_PROVIDER_PRESET_ID,
+                RESPONSES_ADAPTER_TYPE,
+                DEFAULT_RESPONSES_PROVIDER_NAME,
+                DEFAULT_RESPONSES_ENDPOINT,
+            )
+        );
         assert!(endpoint_matches_preset_default(
             DEFAULT_PROVIDER_ENDPOINT,
             0
@@ -7657,9 +7704,14 @@ mod tests {
         ));
         assert!(endpoint_matches_preset_default(DEFAULT_GEMINI_ENDPOINT, 3));
         assert!(endpoint_matches_preset_default(DEFAULT_AZURE_ENDPOINT, 4));
+        assert!(endpoint_matches_preset_default(
+            DEFAULT_RESPONSES_ENDPOINT,
+            5
+        ));
         assert!(preset_requires_manual_model(2));
         assert!(preset_requires_manual_model(4));
         assert!(!preset_requires_manual_model(0));
+        assert!(!preset_requires_manual_model(5));
         assert!(!endpoint_matches_preset_default(
             "https://api.example.test/v1/",
             0

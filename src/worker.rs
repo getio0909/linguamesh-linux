@@ -43,9 +43,10 @@ const REVIEWED_CORE_VERSION: &str = "0.1.0-alpha.2";
 const REVIEWED_ABI_MAJOR: u32 = 1;
 const REVIEWED_PROTOCOL_VERSION: u32 = 1;
 const REVIEWED_PROVIDER_CATALOG_VERSION: &str = "0.1.0";
-const REQUIRED_CORE_FEATURES: [&str; 11] = [
+const REQUIRED_CORE_FEATURES: [&str; 12] = [
     "cancellation_v1",
     "azure_openai_chat_v1",
+    "openai_responses_v1",
     "compatibility_negotiation_v1",
     "typed_rust_host_secret_broker_v1",
     "model_discovery_v1",
@@ -5091,6 +5092,7 @@ mod tests {
         OllamaNative,
         Gemini,
         Azure,
+        Responses,
     }
 
     fn docx_worker_fixture() -> Vec<u8> {
@@ -5448,6 +5450,7 @@ mod tests {
                         FakeMode::OllamaNative => FakeProviderServer::start_ollama_native().await,
                         FakeMode::Gemini => FakeProviderServer::start_gemini().await,
                         FakeMode::Azure => FakeProviderServer::start_azure().await,
+                        FakeMode::Responses => FakeProviderServer::start_responses().await,
                     }
                     .expect("external fake provider");
                     ready_sender
@@ -5533,6 +5536,7 @@ mod tests {
                 "ollama" => "ollama_chat",
                 "gemini" => "gemini_generate_content",
                 "azure-openai" => "azure_openai_chat",
+                "openai-responses" => "openai_responses",
                 _ => "openai_chat_completions",
             },
             endpoint,
@@ -8002,6 +8006,35 @@ mod tests {
         assert_eq!(output, "你好，Azure！");
         assert!(matches!(terminal, TranslationEvent::Completed { .. }));
         assert_eq!(external.model_requests.load(Ordering::SeqCst), 0);
+        assert_eq!(external.chat_requests.load(Ordering::SeqCst), 1);
+        shutdown(&worker);
+    }
+
+    #[test]
+    fn openai_responses_provider_discovers_and_streams_typed_sse() {
+        let external = ExternalFakeProvider::start(FakeMode::Responses);
+        let (worker, _) = started_worker();
+        let runtime = profile_with_preset(
+            "responses-loopback",
+            "openai-responses",
+            &external.endpoint,
+            Some(SecretRef::new(SecretRefNamespace::Session)),
+            None,
+        );
+        let models = connect(
+            &worker,
+            runtime,
+            Some(SecretValue::new("responses-test-key")),
+            PersistenceIntent::SessionOnly,
+        )
+        .expect("OpenAI Responses provider connection");
+        assert!(models.iter().any(|model| model.id == "fake-translator"));
+        select_event(&worker, "responses-loopback", "fake-translator")
+            .expect("select Responses model");
+        let (output, terminal) = translate(&worker, "fake-translator");
+        assert_eq!(output, "你好，Responses！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        assert_eq!(external.model_requests.load(Ordering::SeqCst), 1);
         assert_eq!(external.chat_requests.load(Ordering::SeqCst), 1);
         shutdown(&worker);
     }

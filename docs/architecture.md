@@ -26,7 +26,7 @@ confirmation, or rollback.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `e46066ccafcd81e50b004c84d7eb8734e77f3279`; compared with the prior
+functional revision is `58075c997cecdcd9a179b9397cb493da375d3a50`; compared with the prior
 alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW`, adds streamed
 protected-span and request-level glossary restoration, and rejects suspicious OOXML compression
 ratios and unsupported macro/signature parts before XML inspection. The required contract
@@ -75,15 +75,20 @@ path, deliberately selecting the discovered `gemini-2.0-flash` model before tran
 Anthropic defaults to HTTPS `/v1/`, requires a non-empty Model ID before Connect, and validates that
 ID before resolving any host SecretRef. The worker's deterministic native
 fixture covers `/api/tags` model discovery and `/api/chat` NDJSON streaming with explicit model
-selection. The GTK provider form now exposes all five presets, restores the selected preset for saved
+selection. The GTK provider form now exposes all six presets, restores the selected preset for saved
 profiles, and changes untouched default fields when the user switches protocol. The opt-in harness
 also passed against an independently running Docker Ollama daemon and an installed Qwen GGUF model;
 GPU execution remains outside this prerelease evidence. Azure OpenAI uses Core's
 `azure_openai_chat` adapter: the resource endpoint is validated before the session secret is
 resolved, the deployment name is supplied manually as the selected model, API version `2024-10-21`
 is pinned, and the credential is sent only as the `api-key` header. Azure deployment enumeration is
-not attempted; the GTK form exposes all five presets and restores the selected preset for saved
+not attempted; the GTK form exposes all six presets and restores the selected preset for saved
 profiles.
+
+OpenAI Responses uses Core's `openai_responses` adapter with the shared `/v1/models` discovery
+endpoint and `/v1/responses` translation endpoint. The client sends the credential only through
+the Bearer header and consumes typed SSE events, including `response.output_text.delta` and
+`response.completed`; metadata events are not treated as translated text.
 
 The Linux text workspace adds an in-memory request-level glossary field. Core validates duplicate
 rules and credential-shaped terms, selects only locale-matching entries, protects immutable names,

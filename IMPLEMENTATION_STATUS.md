@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-20 — Linux OpenAI Responses typed-SSE slice
+
+Assumption: Linux is the first active client target; the OpenAI Responses preset uses the shared
+`/v1/models` discovery path and a session-only credential while live account, quota, and model
+availability remain external gates.
+
+- Core `58075c997cecdcd9a179b9397cb493da375d3a50` adds the `openai_responses` adapter, typed
+  `response.output_text.delta`/`response.completed` decoding, and the `openai_responses_v1`
+  compatibility feature.
+- Linux adds the localized `openai-responses` preset and a worker regression that discovers
+  `fake-translator`, makes one authenticated `/v1/responses` request, and streams
+  `你好，Responses！` through the real `ProviderManager` path.
+- Canonical l10n `95078b1a0c30defe98995a9879c4c669d213e5bc` contains 405 messages and generated Linux
+  resources. This checkpoint does not claim a stable release.
+
 ## 2026-07-20 — Linux Azure OpenAI end-to-end worker fixture
 
 Assumption: Linux is the first active client target; deterministic Azure loopback coverage proves

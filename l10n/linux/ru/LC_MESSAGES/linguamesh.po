@@ -2435,3 +2435,27 @@ msgstr "Enter the Azure OpenAI deployment name before connecting; model discover
 msgctxt "error.azure_openai_deployment_required"
 msgid "Enter an Azure OpenAI deployment name before connecting."
 msgstr "Enter an Azure OpenAI deployment name before connecting."
+
+#. Display label for the OpenAI Responses provider preset in the Linux provider form.
+#, fuzzy
+msgctxt "provider.preset.openai_responses"
+msgid "OpenAI Responses"
+msgstr "OpenAI Responses"
+
+#. Default display name for an OpenAI Responses provider profile.
+#, fuzzy
+msgctxt "profile.default_openai_responses_name"
+msgid "OpenAI Responses provider"
+msgstr "OpenAI Responses provider"
+
+#. Endpoint tooltip for the OpenAI Responses provider preset.
+#, fuzzy
+msgctxt "tooltip.endpoint.openai_responses"
+msgid "HTTPS OpenAI Responses /v1 endpoint with typed streaming events"
+msgstr "HTTPS OpenAI Responses /v1 endpoint with typed streaming events"
+
+#. Tooltip for the Linux OpenAI Responses model selector.
+#, fuzzy
+msgctxt "tooltip.model.openai_responses"
+msgid "Models are discovered from the OpenAI Responses-compatible endpoint"
+msgstr "Models are discovered from the OpenAI Responses-compatible endpoint"

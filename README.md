@@ -20,7 +20,7 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `e46066ccafcd81e50b004c84d7eb8734e77f3279`, which adds strict
+reviewed Core functional revision `58075c997cecdcd9a179b9397cb493da375d3a50`, which adds strict
 routing-profile validation, schema-15 routing-profile persistence, and schema-16 document-job
 routing-profile persistence on top of the existing
 document and provider contract. Earlier reviewed revisions added
@@ -168,12 +168,15 @@ The tested external-provider path includes deterministic loopback fixtures for b
 OpenAI `/v1/` and native Ollama `/api`: model discovery returns `llama3.2:latest`, the worker requires
 deliberate selection, and streaming uses `/v1/chat/completions` or `/api/chat` without a credential.
 The GTK provider form exposes localized OpenAI-compatible, native Ollama, Anthropic Messages,
-Google Gemini, and Azure OpenAI presets. Anthropic uses the HTTPS `/v1/` endpoint and requires a
+Google Gemini, Azure OpenAI, and OpenAI Responses presets. Anthropic uses the HTTPS `/v1/` endpoint and requires a
 manual Model ID before Connect; Gemini uses the HTTPS `/v1beta/` Generate Content endpoint with
 model discovery; Azure OpenAI uses the resource endpoint, sends the session credential in the
 `api-key` header, pins API version `2024-10-21`, and requires the deployment name as a manual model
 value. Azure model discovery is intentionally manual, so the client never enumerates deployments.
-custom endpoint edits remain preserved when switching presets. `tools/run-ollama-interop-test.sh` provides an
+OpenAI Responses uses `/v1/models` discovery and typed SSE events from `/v1/responses`, including
+`response.output_text.delta` and `response.completed`; its credential is sent only as Bearer
+authentication. Custom endpoint edits remain preserved when switching presets.
+`tools/run-ollama-interop-test.sh` provides an
 opt-in regression against a caller-selected installed model; the default suite keeps it ignored
 because model installation is external. The Linux checkpoint passed this harness against Docker
 `ollama/ollama:0.11.10` with `qwen2.5-0.5b-instruct:latest`; GPU and stable-release evidence remain
@@ -205,7 +208,7 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`8e0e50577f8714b90bcc08a0d22cc790319f9239` and validated with `msgfmt`; the 401-message bundle
+`95078b1a0c30defe98995a9879c4c669d213e5bc` and validated with `msgfmt`; the 405-message bundle
 adds Linux routing-profile persistence/editor, profile-ID validation and duplicate protection, ordinary-text selection labels, routing preference/privacy/document constraints, provider/model allowlists and denylists, quality/request-size limits, and source/output character plus approximate-token metrics. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
 active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, construction-stage provider/default-control copy, and diagnostics labels/state values without replacing active source text;
