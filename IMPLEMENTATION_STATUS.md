@@ -1,11 +1,28 @@
 # Implementation Status
 
+## 2026-07-20 — Core ABI host-secret contract pin
+
+Assumption: the Linux repository must consume the same Core protocol revision as the native SDK,
+even though this client currently uses the direct typed Rust host-secret broker rather than the C
+ABI wrapper.
+
+- Core revision `adc1e26f37db3761406bb30aa7515003a8bd2717` adds the versioned `secret_ref`,
+  `secret_required`, and one-shot `host_secret_response` contract. Linux updates its path pin and
+  Flatpak source manifest without storing or exposing secret values.
+- Local no-default tests passed (`80 passed; 1 ignored`), demo-provider tests passed
+  (`144 passed; 3 ignored`), strict Clippy, localization audits, Flatpak metadata validation, and
+  diff checks passed. The direct Linux worker's existing typed broker behavior remains unchanged;
+  Core FFI authenticated-loopback evidence is recorded in the Core repository.
+
+The Linux PR remains Draft/Open and this is unreleased Linux-first evidence; native UI, other
+clients, file-lease projection, human review, signing, rollback, and stable release remain open.
+
 ## 2026-07-20 — Linux bounded routing retry and circuit-breaker policy
 
 Assumption: a retryable provider failure may advance only through the configured routing chain;
 backoff and circuit state must be bounded, cancellation-aware, and free of sensitive inputs.
 
-- Core revision `6e8c40224943a6ba892e5a064fb3b00657b3bf47` carries the validated `RetryPolicy` deserialization and
+- Core revision `adc1e26f37db3761406bb30aa7515003a8bd2717` carries the validated `RetryPolicy` deserialization and
   optional `retry_after_ms`
   field on `TranslationError`. The shared parser accepts delta-seconds or HTTP-date values,
   caps them at sixty seconds, and all four HTTP providers preserve the hint without changing
