@@ -42,7 +42,7 @@ preset and its `ollama_chat` adapter, while persistent
 secret references use the Linux GIO Secret Service adapter and fail closed when the desktop keyring
 is unavailable or requires an interactive prompt. The native workflow
 pins reviewed Core functional revision
-`b5febb8daec88ab0401af4d6ceb20ec848f65138`, whose storage delta adds
+`a87aaf2bef7cca287c4a6faa8addd340e0245b0e`, whose storage delta adds
 `SQLITE_OPEN_NOFOLLOW`, adds the trusted `/proc/self/fd/<fd>` descriptor path for hosts that pin a
 private inode, rejects suspicious OOXML compression ratios and unsupported macro/signature
 parts before XML inspection, and whose
@@ -60,7 +60,7 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `b5febb8daec88ab0401af4d6ceb20ec848f65138` and l10n
+The current Linux gate consumes Core `a87aaf2bef7cca287c4a6faa8addd340e0245b0e` and l10n
 `85b9d45569ce840c17dc0acc7d7366d6810be48e` (334 catalog messages, bundle SHA-256
 `028d25b3637fbc19d41d497a860b414353615b9576db6f852a9f236bcbe770ce`). Request-level glossary rules, bounded CSV,
 interchange are implemented in the Linux slice; persistent glossary libraries and TBX import

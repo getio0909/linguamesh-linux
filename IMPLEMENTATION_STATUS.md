@@ -1,5 +1,27 @@
 # Implementation Status
 
+## 2026-07-20 — Linux Core Anthropic compatibility pin
+
+Assumption: the Linux-first client should consume the verified Core Anthropic Messages adapter even
+before the Linux GTK form exposes an Anthropic-specific preset. The shared Core revision is pinned
+to `a87aaf2bef7cca287c4a6faa8addd340e0245b0e`; this adds the manual-model `anthropic_messages`
+adapter while preserving the existing Linux provider choices and exact compatibility contract.
+
+- Updated the Native Linux workflow, Flatpak source manifest, local documentation, and lockfile to
+  the new Core revision. The lockfile now records the Core provider package without adding a Linux
+  production dependency outside the shared workspace.
+- Local `cargo fmt --all --check`, demo-provider check, strict Clippy, no-default-feature tests
+  (`79 passed; 1 ignored`), demo-provider tests (`134 passed; 3 ignored`), demo-provider build,
+  localization key/placeholder/visible-string audits, l10n synchronization, Flatpak metadata
+  validation, and diff checks passed.
+- Local all-feature check and Clippy passed. The all-feature test binary could not link on this
+  workstation because the installed GTK runtime lacks symbols required by the gtk-rs headers;
+  this is an environment linker limitation, not a Rust test assertion. Native CI remains the
+  authoritative full GTK/Flatpak gate.
+- The Linux UI does not claim Anthropic preset support yet; human visual review, end-user Secret
+  Service prompt approval, other native clients, signing, rollback, and stable-release evidence
+  remain open.
+
 ## 2026-07-20 — Linux Secret Service session-only fallback guidance
 
 Assumption: a declined or unavailable Secret Service prompt must not silently change a user's

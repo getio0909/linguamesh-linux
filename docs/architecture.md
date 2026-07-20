@@ -26,7 +26,7 @@ confirmation, or rollback.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `b5febb8daec88ab0401af4d6ceb20ec848f65138`; compared with the prior
+functional revision is `a87aaf2bef7cca287c4a6faa8addd340e0245b0e`; compared with the prior
 alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW`, adds streamed
 protected-span and request-level glossary restoration, and rejects suspicious OOXML compression
 ratios and unsupported macro/signature parts before XML inspection. The required contract
@@ -65,7 +65,9 @@ missing, duplicate, or changed markers as typed malformed responses; Linux there
 provider output that structurally drops one of these spans.
 
 The provider catalog's `local-loopback` preset uses the OpenAI-compatible `/v1/` adapter, while its
-loopback-only `ollama` preset uses Core's native `/api/` adapter. The worker's deterministic native
+loopback-only `ollama` preset uses Core's native `/api/` adapter. Core also exposes an
+`anthropic_messages` manual-model adapter, but the Linux form does not yet bind an Anthropic-specific
+preset. The worker's deterministic native
 fixture covers `/api/tags` model discovery and `/api/chat` NDJSON streaming with explicit model
 selection. The GTK provider form now exposes both presets, restores the selected preset for saved
 profiles, and changes untouched default fields when the user switches protocol. The opt-in harness
