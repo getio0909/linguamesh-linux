@@ -2304,6 +2304,75 @@ fn show_fallback_approval_dialog(bindings: &UiBindings, state: &Rc<RefCell<AppSt
     dialog.present();
 }
 
+// Secret Service 持久化交互失败时，明确引导用户改用仅会话凭据而不静默改变意图。
+fn show_secret_storage_session_fallback(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
+    let locale = state.borrow().locale();
+    let error_text = state
+        .borrow()
+        .localized_error_text(locale)
+        .unwrap_or_else(|| {
+            localization::text(
+                locale,
+                "error.storage.secure_unavailable",
+                "Secure credential storage is unavailable.",
+            )
+        });
+    let dialog = gtk::Window::builder()
+        .application(&bindings.application)
+        .transient_for(&bindings.window)
+        .modal(true)
+        .title(localization::text(
+            locale,
+            "error.storage.secure_unavailable",
+            "Secure credential storage is unavailable.",
+        ))
+        .default_width(520)
+        .default_height(240)
+        .build();
+    let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    root.set_margin_top(16);
+    root.set_margin_bottom(16);
+    root.set_margin_start(16);
+    root.set_margin_end(16);
+    let message = gtk::Label::new(Some(&format!(
+        "{}\n\n{}",
+        error_text,
+        localization::text(
+            locale,
+            "error.storage.session_only",
+            "Profile storage is unavailable; use session-only mode.",
+        )
+    )));
+    message.set_xalign(0.0);
+    message.set_wrap(true);
+    message.set_focusable(true);
+    root.append(&message);
+    let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let session_only = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "error.storage.session_only",
+        "Use session-only mode",
+    ));
+    session_only.set_focusable(true);
+    let close = gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.close", "Close"));
+    close.set_focusable(true);
+    actions.append(&session_only);
+    actions.append(&close);
+    root.append(&actions);
+    dialog.set_child(Some(&root));
+
+    let fallback_bindings = bindings.clone();
+    let fallback_dialog = dialog.clone();
+    session_only.connect_clicked(move |_| {
+        fallback_bindings.remember_profile.set_active(false);
+        fallback_bindings.provider_credential.grab_focus();
+        fallback_dialog.close();
+    });
+    let close_dialog = dialog.clone();
+    close.connect_clicked(move |_| close_dialog.close());
+    dialog.present();
+}
+
 // 只有用户尚未确认且开启了回退时才显示一次发送前提示。
 #[must_use]
 fn fallback_confirmation_needed(enabled: bool, approved: bool) -> bool {
@@ -2637,6 +2706,8 @@ fn connect_action_handlers(
             {
                 state.provider_failed(error);
                 refresh_ui(&connect_bindings, &state);
+                drop(state);
+                show_secret_storage_session_fallback(&connect_bindings, &connect_state);
                 return;
             }
             Some(secret_ref)

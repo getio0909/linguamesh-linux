@@ -1,5 +1,18 @@
 # Implementation Status
 
+## 2026-07-20 — Linux Secret Service session-only fallback guidance
+
+Assumption: a declined or unavailable Secret Service prompt must not silently change a user's
+request to remember credentials; the Linux client must provide an explicit session-only recovery.
+
+- The provider connection flow now presents a localized modal warning after a persistent
+  Secret Service store failure. **Use session-only mode** disables Remember and returns focus to the
+  credential field; **Close** leaves the connection unsubmitted. No credential is persisted in the
+  fallback path, and the existing typed error remains visible in the workspace.
+- Local Linux formatting, all-target/all-feature check, strict Clippy, demo-provider tests
+  (`134 passed; 3 ignored`), Flatpak metadata validation, and diff checks passed. End-user approval
+  of the desktop keyring prompt and physical visual review remain manual boundaries.
+
 ## 2026-07-20 — Linux read-only profile storage fallback
 
 Assumption: a profile database directory mounted or configured read-only must fail closed for

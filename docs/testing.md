@@ -236,7 +236,9 @@ bash tools/run-secret-service-prompt-test.sh
 ```
 
 This proves the fail-closed boundary without automating user approval or unlock UI; end-user prompt
-acceptance remains a separate validation gate.
+acceptance remains a separate validation gate. The GTK connection flow's localized session-only
+recovery dialog is covered by source-level key audits and native CI compilation; physical prompt
+approval and visual review remain manual.
 
 The localization unit suite parses every official Linux MO catalog, checks action entries are
 available, and verifies unique BCP 47 tags plus Arabic RTL metadata:

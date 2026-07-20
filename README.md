@@ -150,7 +150,9 @@ interactive prompts fail closed with typed errors instead of falling back to pla
 also exercises non-root prompt paths for store and delete and verifies the same typed rejection;
 Secret Service and portal unlock prompts remain outside the automated gate. Session-only
 connection remains available when remembering is disabled or profile storage/keyring access is
-unavailable. Connection and translation can both be cancelled, and a failed provider switch
+unavailable. If a persistent Secret Service store is declined or unavailable, the Linux client
+shows a localized warning and explicitly offers session-only recovery without silently changing the
+Remember choice. Connection and translation can both be cancelled, and a failed provider switch
 preserves the previously confirmed provider and model.
 
 If an already-open database later returns a persistent write error, the triggering Connect, model
