@@ -7160,18 +7160,19 @@ mod tests {
         DEFAULT_ANTHROPIC_PROVIDER_NAME, DEFAULT_OLLAMA_ENDPOINT, DEFAULT_OLLAMA_PROVIDER_NAME,
         DEFAULT_PROVIDER_ENDPOINT, DEFAULT_PROVIDER_NAME, ErrorKind, OLLAMA_ADAPTER_TYPE,
         OLLAMA_PROVIDER_PRESET_ID, OPENAI_ADAPTER_TYPE, OnboardingStage, ProviderProfileId,
-        RoutingConstraintTextValues, SecretRef, SecretRefNamespace, SecretValue, TranslationError,
-        UiLocale, WorkerCommand, WorkerEvent, apply_worker_event, connect_action_handlers,
-        connect_selection_handlers, create_window, custom_provider_profile,
-        destination_matches_source, document_format_label, endpoint_matches_preset_default,
-        fallback_confirmation_needed, generate_custom_provider_id, localized_document_job_state,
-        localized_document_warnings, localized_provider_default_name, localized_template,
-        normalized_candidate_ids_for_mode, provider_preset_config, provider_preset_index,
-        refresh_ui, routing_constraints_from_controls, routing_constraints_from_text_values,
-        routing_identifier_list_from_text, routing_optional_limit_from_text,
-        routing_preference_for_selection, routing_preference_selection,
-        routing_profile_id_conflicts, show_new_profile_in_form, start_event_pump,
-        text_metrics_label, valid_routing_profile_id,
+        RoutingCandidate, RoutingConstraintTextValues, RoutingProfile, RoutingProfileRecord,
+        SecretRef, SecretRefNamespace, SecretValue, TranslationError, UiLocale, WorkerCommand,
+        WorkerEvent, apply_worker_event, connect_action_handlers, connect_selection_handlers,
+        create_window, custom_provider_profile, destination_matches_source, document_format_label,
+        endpoint_matches_preset_default, fallback_confirmation_needed, generate_custom_provider_id,
+        localized_document_job_state, localized_document_warnings, localized_provider_default_name,
+        localized_template, normalized_candidate_ids_for_mode, provider_preset_config,
+        provider_preset_index, refresh_ui, routing_constraints_from_controls,
+        routing_constraints_from_text_values, routing_identifier_list_from_text,
+        routing_optional_limit_from_text, routing_preference_for_selection,
+        routing_preference_selection, routing_profile_id_conflicts, show_new_profile_in_form,
+        show_routing_profiles_dialog, start_event_pump, text_metrics_label,
+        valid_routing_profile_id,
     };
     use adw::prelude::*;
     use gtk::glib;
@@ -7188,6 +7189,17 @@ mod tests {
     use std::time::{Duration, Instant};
     use tokio::runtime::Builder;
     use tokio::sync::oneshot;
+
+    fn descendant_widgets(root: &gtk::Widget) -> Vec<gtk::Widget> {
+        let mut descendants = Vec::new();
+        let mut child = root.first_child();
+        while let Some(widget) = child {
+            descendants.push(widget.clone());
+            descendants.extend(descendant_widgets(&widget));
+            child = widget.next_sibling();
+        }
+        descendants
+    }
 
     #[test]
     fn routing_profile_id_matches_core_identifier_bounds() {
@@ -8684,6 +8696,49 @@ mod tests {
         assert!(!restored_bindings.connect.is_sensitive());
         let _ = restored_worker.try_send(WorkerCommand::Shutdown);
         restored_window.close();
+
+        let candidate = RoutingCandidate::new("profile-b", "fake-slow-translator", true, 64 * 1024)
+            .expect("routing candidate");
+        let routing_profile = RoutingProfile::new(
+            "gtk-routing-fixture",
+            RoutingMode::Ordered,
+            vec![candidate],
+            RoutingConstraints::default(),
+        )
+        .expect("routing profile");
+        show_routing_profiles_dialog(
+            &restored_bindings,
+            &restored_state,
+            &restored_worker.command_handle(),
+            vec![RoutingProfileRecord {
+                id: "gtk-routing-fixture".to_owned(),
+                profile: routing_profile,
+                created_at: 0,
+                updated_at: 0,
+            }],
+        );
+        let routing_dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| candidate.title().as_deref() == Some("Routing profiles"))
+            .expect("routing profile dialog");
+        let routing_widgets = descendant_widgets(routing_dialog.upcast_ref::<gtk::Widget>());
+        let movement_tooltips = routing_widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .filter_map(gtk::prelude::WidgetExt::tooltip_text)
+            .collect::<Vec<_>>();
+        assert!(
+            movement_tooltips
+                .iter()
+                .any(|text| text == "Move candidate up")
+        );
+        assert!(
+            movement_tooltips
+                .iter()
+                .any(|text| text == "Move candidate down")
+        );
+        routing_dialog.close();
 
         run_gtk_native_ollama_preset_flow(&application);
         let _ = worker.try_send(WorkerCommand::Shutdown);
