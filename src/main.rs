@@ -2351,7 +2351,7 @@ fn show_secret_storage_session_fallback(bindings: &UiBindings, state: &Rc<RefCel
     let session_only = gtk::Button::with_mnemonic(&localized_mnemonic(
         locale,
         "error.storage.session_only",
-        "Use session-only mode",
+        "Profile storage is unavailable; use session-only mode.",
     ));
     session_only.set_focusable(true);
     let close = gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.close", "Close"));
