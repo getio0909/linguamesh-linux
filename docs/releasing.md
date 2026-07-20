@@ -39,12 +39,13 @@ The external-provider path includes deterministic Ollama-compatible OpenAI `/v1/
 `/api/`, and Gemini `/v1beta/` loopback fixtures plus a passed opt-in third-party daemon regression
 using Docker `ollama/ollama:0.11.10` and `qwen2.5-0.5b-instruct:latest`. The GTK form exposes the
 native Ollama preset and its `ollama_chat` adapter plus the Anthropic Messages preset with a manual
-Model ID field and the Gemini Generate Content preset with discovered models,
+Model ID field, the Gemini Generate Content preset with discovered models, and the Azure OpenAI
+preset with a manually entered deployment and pinned API version,
 while persistent
 secret references use the Linux GIO Secret Service adapter and fail closed when the desktop keyring
 is unavailable or requires an interactive prompt. The native workflow
 pins reviewed Core functional revision
-`232881263f4f523ce54b3713d83513f2d0170ff2`, whose storage delta adds
+`e46066ccafcd81e50b004c84d7eb8734e77f3279`, whose storage delta adds
 `SQLITE_OPEN_NOFOLLOW`, adds the trusted `/proc/self/fd/<fd>` descriptor path for hosts that pin a
 private inode, rejects suspicious OOXML compression ratios and unsupported macro/signature
 parts before XML inspection, and whose
@@ -62,8 +63,8 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `232881263f4f523ce54b3713d83513f2d0170ff2` and l10n
-`f9d74a8f83a89540a58bba65477a5031031bd619` (396 catalog messages). Request-level glossary rules, bounded CSV,
+The current Linux gate consumes Core `e46066ccafcd81e50b004c84d7eb8734e77f3279` and l10n
+`8e0e50577f8714b90bcc08a0d22cc790319f9239` (401 catalog messages). Request-level glossary rules, bounded CSV,
 interchange are implemented in the Linux slice; persistent glossary libraries and TBX import
 remain outside the release claim.
 

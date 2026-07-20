@@ -2401,3 +2401,33 @@ msgstr "Google Gemini provider"
 msgctxt "tooltip.endpoint.gemini"
 msgid "HTTPS or loopback HTTP Gemini Generate Content /v1beta endpoint"
 msgstr "HTTPS or loopback HTTP Gemini Generate Content /v1beta endpoint"
+
+#. Display label for the Azure OpenAI provider preset in the Linux provider form.
+#, fuzzy
+msgctxt "provider.preset.azure_openai"
+msgid "Azure OpenAI"
+msgstr "Azure OpenAI"
+
+#. Default display name for an Azure OpenAI provider profile.
+#, fuzzy
+msgctxt "profile.default_azure_openai_name"
+msgid "Azure OpenAI provider"
+msgstr "Azure OpenAI provider"
+
+#. Endpoint tooltip for the Azure OpenAI Chat Completions provider preset.
+#, fuzzy
+msgctxt "tooltip.endpoint.azure_openai"
+msgid "HTTPS Azure OpenAI resource endpoint; enter the deployment name as the model"
+msgstr "HTTPS Azure OpenAI resource endpoint; enter the deployment name as the model"
+
+#. Tooltip for the Linux manually entered Azure OpenAI deployment identifier.
+#, fuzzy
+msgctxt "tooltip.model.azure_openai"
+msgid "Enter the Azure OpenAI deployment name before connecting; model discovery is manual for this preset"
+msgstr "Enter the Azure OpenAI deployment name before connecting; model discovery is manual for this preset"
+
+#. Validation error shown when an Azure OpenAI provider has no deployment name.
+#, fuzzy
+msgctxt "error.azure_openai_deployment_required"
+msgid "Enter an Azure OpenAI deployment name before connecting."
+msgstr "Enter an Azure OpenAI deployment name before connecting."

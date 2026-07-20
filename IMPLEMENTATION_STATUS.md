@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-20 — Linux Azure OpenAI end-to-end worker fixture
+
+Assumption: Linux is the first active client target; deterministic Azure loopback coverage proves
+request shaping and session-secret handling while live Azure account, quota, deployment, and other
+client behavior remain unverified.
+
+- Core `e46066ccafcd81e50b004c84d7eb8734e77f3279` adds the `azure_openai_chat` adapter with a
+  pinned `2024-10-21` API version, resource/deployment URL validation, `api-key` authentication,
+  manual deployment selection, and a deterministic testkit fixture.
+- Linux adds the localized Azure OpenAI preset and worker regression
+  `azure_openai_provider_uses_manual_deployment_and_api_key`; it selects `fake-deployment`, makes
+  no model-list request, and streams `你好，Azure！` through the real `ProviderManager` path.
+- Canonical l10n `8e0e50577f8714b90bcc08a0d22cc790319f9239` contains 401 messages and generated Linux
+  PO/MO resources. Local and remote gate evidence is recorded below after the final push.
+
 ## 2026-07-20 — Linux Gemini end-to-end worker fixture
 
 Assumption: deterministic loopback coverage is sufficient for the Linux/Core integration gate,

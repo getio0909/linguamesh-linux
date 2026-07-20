@@ -43,8 +43,9 @@ const REVIEWED_CORE_VERSION: &str = "0.1.0-alpha.2";
 const REVIEWED_ABI_MAJOR: u32 = 1;
 const REVIEWED_PROTOCOL_VERSION: u32 = 1;
 const REVIEWED_PROVIDER_CATALOG_VERSION: &str = "0.1.0";
-const REQUIRED_CORE_FEATURES: [&str; 10] = [
+const REQUIRED_CORE_FEATURES: [&str; 11] = [
     "cancellation_v1",
+    "azure_openai_chat_v1",
     "compatibility_negotiation_v1",
     "typed_rust_host_secret_broker_v1",
     "model_discovery_v1",
@@ -5089,6 +5090,7 @@ mod tests {
         OllamaCompatible,
         OllamaNative,
         Gemini,
+        Azure,
     }
 
     fn docx_worker_fixture() -> Vec<u8> {
@@ -5428,6 +5430,7 @@ mod tests {
                 runtime.block_on(async move {
                     let native_ollama = matches!(&mode, FakeMode::OllamaNative);
                     let gemini = matches!(&mode, FakeMode::Gemini);
+                    let azure = matches!(&mode, FakeMode::Azure);
                     let server = match mode {
                         FakeMode::Standard => FakeProviderServer::start().await,
                         FakeMode::Authenticated(required_secret) => {
@@ -5444,6 +5447,7 @@ mod tests {
                         }
                         FakeMode::OllamaNative => FakeProviderServer::start_ollama_native().await,
                         FakeMode::Gemini => FakeProviderServer::start_gemini().await,
+                        FakeMode::Azure => FakeProviderServer::start_azure().await,
                     }
                     .expect("external fake provider");
                     ready_sender
@@ -5452,6 +5456,8 @@ mod tests {
                                 server.ollama_base_url()
                             } else if gemini {
                                 server.gemini_base_url()
+                            } else if azure {
+                                server.azure_base_url()
                             } else {
                                 server.base_url()
                             },
@@ -5526,6 +5532,7 @@ mod tests {
             match preset_id {
                 "ollama" => "ollama_chat",
                 "gemini" => "gemini_generate_content",
+                "azure-openai" => "azure_openai_chat",
                 _ => "openai_chat_completions",
             },
             endpoint,
@@ -7965,6 +7972,36 @@ mod tests {
         let (output, terminal) = translate(&worker, "gemini-2.0-flash");
         assert_eq!(output, "你好，Gemini！");
         assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        assert_eq!(external.chat_requests.load(Ordering::SeqCst), 1);
+        shutdown(&worker);
+    }
+
+    #[test]
+    fn azure_openai_provider_uses_manual_deployment_and_api_key() {
+        let external = ExternalFakeProvider::start(FakeMode::Azure);
+        let (worker, _) = started_worker();
+        let runtime = profile_with_preset(
+            "azure-loopback",
+            "azure-openai",
+            &external.endpoint,
+            Some(SecretRef::new(SecretRefNamespace::Session)),
+            Some("fake-deployment"),
+        );
+        let models = connect(
+            &worker,
+            runtime,
+            Some(SecretValue::new("azure-test-key")),
+            PersistenceIntent::SessionOnly,
+        )
+        .expect("Azure OpenAI provider connection");
+        assert_eq!(models.len(), 1);
+        assert_eq!(models[0].id, "fake-deployment");
+        select_event(&worker, "azure-loopback", "fake-deployment")
+            .expect("select Azure deployment");
+        let (output, terminal) = translate(&worker, "fake-deployment");
+        assert_eq!(output, "你好，Azure！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        assert_eq!(external.model_requests.load(Ordering::SeqCst), 0);
         assert_eq!(external.chat_requests.load(Ordering::SeqCst), 1);
         shutdown(&worker);
     }

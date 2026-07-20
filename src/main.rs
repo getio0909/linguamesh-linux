@@ -39,18 +39,22 @@ const CUSTOM_PROVIDER_PRESET_ID: &str = "custom-openai-compatible";
 const OLLAMA_PROVIDER_PRESET_ID: &str = "ollama";
 const ANTHROPIC_PROVIDER_PRESET_ID: &str = "anthropic";
 const GEMINI_PROVIDER_PRESET_ID: &str = "gemini";
+const AZURE_PROVIDER_PRESET_ID: &str = "azure-openai";
 const OPENAI_ADAPTER_TYPE: &str = "openai_chat_completions";
 const OLLAMA_ADAPTER_TYPE: &str = "ollama_chat";
 const ANTHROPIC_ADAPTER_TYPE: &str = "anthropic_messages";
 const GEMINI_ADAPTER_TYPE: &str = "gemini_generate_content";
+const AZURE_ADAPTER_TYPE: &str = "azure_openai_chat";
 const DEFAULT_PROVIDER_NAME: &str = "Local OpenAI-compatible provider";
 const DEFAULT_OLLAMA_PROVIDER_NAME: &str = "Local Ollama provider";
 const DEFAULT_ANTHROPIC_PROVIDER_NAME: &str = "Anthropic Messages provider";
 const DEFAULT_GEMINI_PROVIDER_NAME: &str = "Google Gemini provider";
+const DEFAULT_AZURE_PROVIDER_NAME: &str = "Azure OpenAI provider";
 const DEFAULT_PROVIDER_ENDPOINT: &str = "http://127.0.0.1:11434/v1/";
 const DEFAULT_OLLAMA_ENDPOINT: &str = "http://127.0.0.1:11434/api/";
 const DEFAULT_ANTHROPIC_ENDPOINT: &str = "https://api.anthropic.com/v1/";
 const DEFAULT_GEMINI_ENDPOINT: &str = "https://generativelanguage.googleapis.com/v1beta/";
+const DEFAULT_AZURE_ENDPOINT: &str = "https://resource.openai.azure.com/";
 
 #[derive(Clone)]
 struct UiBindings {
@@ -175,6 +179,12 @@ fn provider_preset_config(index: u32) -> (&'static str, &'static str, &'static s
             DEFAULT_GEMINI_PROVIDER_NAME,
             DEFAULT_GEMINI_ENDPOINT,
         ),
+        4 => (
+            AZURE_PROVIDER_PRESET_ID,
+            AZURE_ADAPTER_TYPE,
+            DEFAULT_AZURE_PROVIDER_NAME,
+            DEFAULT_AZURE_ENDPOINT,
+        ),
         _ => (
             CUSTOM_PROVIDER_PRESET_ID,
             OPENAI_ADAPTER_TYPE,
@@ -190,18 +200,25 @@ fn provider_preset_index(preset_id: &str) -> u32 {
         OLLAMA_PROVIDER_PRESET_ID => 1,
         ANTHROPIC_PROVIDER_PRESET_ID => 2,
         GEMINI_PROVIDER_PRESET_ID => 3,
+        AZURE_PROVIDER_PRESET_ID => 4,
         _ => 0,
     }
 }
 
 // 根据活动界面语言生成提供商预设标签。
-fn provider_preset_labels(locale: UiLocale) -> [String; 4] {
+fn provider_preset_labels(locale: UiLocale) -> [String; 5] {
     [
         localization::text(locale, "provider.preset.openai", "OpenAI-compatible"),
         localization::text(locale, "provider.preset.ollama", "Ollama (native /api)"),
         localization::text(locale, "provider.preset.anthropic", "Anthropic Messages"),
         localization::text(locale, "provider.preset.gemini", "Google Gemini"),
+        localization::text(locale, "provider.preset.azure_openai", "Azure OpenAI"),
     ]
+}
+
+// 判断预设是否要求用户在连接前提供手工模型或部署名。
+fn preset_requires_manual_model(index: u32) -> bool {
+    index == 2 || index == 4
 }
 
 // 根据预设显示与协议匹配的端点提示。
@@ -223,6 +240,12 @@ fn provider_endpoint_tooltip(locale: UiLocale, preset_index: u32) -> String {
             locale,
             "tooltip.endpoint.gemini",
             "HTTPS or loopback HTTP Gemini Generate Content /v1beta endpoint",
+        )
+    } else if preset_index == 4 {
+        localization::text(
+            locale,
+            "tooltip.endpoint.azure_openai",
+            "HTTPS Azure OpenAI resource endpoint; enter the deployment name as the model",
         )
     } else {
         localization::text(
@@ -253,6 +276,12 @@ fn localized_provider_default_name(locale: UiLocale, preset_index: u32) -> Strin
             "profile.default_gemini_name",
             DEFAULT_GEMINI_PROVIDER_NAME,
         )
+    } else if preset_index == 4 {
+        localization::text(
+            locale,
+            "profile.default_azure_openai_name",
+            DEFAULT_AZURE_PROVIDER_NAME,
+        )
     } else {
         localization::text(locale, "profile.default_name", DEFAULT_PROVIDER_NAME)
     }
@@ -268,6 +297,8 @@ fn endpoint_matches_preset_default(endpoint: &str, preset_index: u32) -> bool {
         endpoint == DEFAULT_ANTHROPIC_ENDPOINT
     } else if preset_index == 3 {
         endpoint == DEFAULT_GEMINI_ENDPOINT
+    } else if preset_index == 4 {
+        endpoint == DEFAULT_AZURE_ENDPOINT
     } else {
         endpoint == DEFAULT_PROVIDER_ENDPOINT
             || (endpoint.starts_with("http://127.0.0.1:") && endpoint.ends_with("/v1/"))
@@ -281,6 +312,12 @@ fn provider_model_tooltip(locale: UiLocale, preset_index: u32) -> String {
             locale,
             "tooltip.model.anthropic",
             "Enter the Anthropic model ID before connecting; model discovery is manual for this preset",
+        )
+    } else if preset_index == 4 {
+        localization::text(
+            locale,
+            "tooltip.model.azure_openai",
+            "Enter the Azure OpenAI deployment name before connecting; model discovery is manual for this preset",
         )
     } else {
         localization::text(
@@ -2026,7 +2063,9 @@ fn show_saved_profile_in_form(bindings: &UiBindings, profile: &ProviderProfile) 
     bindings
         .manual_model
         .set_text(profile.selected_model().unwrap_or_default());
-    bindings.manual_model_row.set_visible(preset_index == 2);
+    bindings
+        .manual_model_row
+        .set_visible(preset_requires_manual_model(preset_index));
     bindings.provider_credential.set_text("");
     bindings.remember_profile.set_active(true);
     bindings.draft_profile_id.replace(None);
@@ -2242,8 +2281,12 @@ fn connect_provider_preset_handler(bindings: &UiBindings) {
             preset_bindings
                 .provider_endpoint
                 .set_tooltip_text(Some(&provider_endpoint_tooltip(locale, selected)));
-            preset_bindings.manual_model_row.set_visible(selected == 2);
-            preset_bindings.manual_model.set_sensitive(selected == 2);
+            preset_bindings
+                .manual_model_row
+                .set_visible(preset_requires_manual_model(selected));
+            preset_bindings
+                .manual_model
+                .set_sensitive(preset_requires_manual_model(selected));
             preset_bindings
                 .manual_model
                 .set_tooltip_text(Some(&provider_model_tooltip(locale, selected)));
@@ -2786,11 +2829,19 @@ fn connect_action_handlers(
         let preset_id = preset_id.to_owned();
         let adapter_type = adapter_type.to_owned();
         let manual_model = connect_bindings.manual_model.text().trim().to_owned();
-        if preset_index == 2 && manual_model.is_empty() {
+        if preset_requires_manual_model(preset_index) && manual_model.is_empty() {
             let message = localization::text(
                 state.locale(),
-                "error.anthropic_model_required",
-                "Enter an Anthropic model ID before connecting.",
+                if preset_index == 4 {
+                    "error.azure_openai_deployment_required"
+                } else {
+                    "error.anthropic_model_required"
+                },
+                if preset_index == 4 {
+                    "Enter an Azure OpenAI deployment name before connecting."
+                } else {
+                    "Enter an Anthropic model ID before connecting."
+                },
             );
             state.provider_failed(TranslationError::new(ErrorKind::ModelUnavailable, message));
             refresh_ui(&connect_bindings, &state);
@@ -2802,7 +2853,7 @@ fn connect_action_handlers(
                     Ok(saved.id().clone()),
                     saved.secret_ref().cloned(),
                     saved.enabled(),
-                    if preset_index == 2 {
+                    if preset_requires_manual_model(preset_index) {
                         Some(manual_model.clone())
                     } else {
                         saved.selected_model().map(str::to_owned)
@@ -2812,7 +2863,7 @@ fn connect_action_handlers(
                     ensure_draft_profile_id(&connect_bindings, &state),
                     None,
                     true,
-                    (preset_index == 2).then_some(manual_model.clone()),
+                    preset_requires_manual_model(preset_index).then_some(manual_model.clone()),
                 ),
             };
         let profile_id = match profile_id {
@@ -7050,10 +7101,13 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         .set_sensitive(provider_controls_enabled);
     bindings
         .manual_model_row
-        .set_visible(bindings.provider_preset.selected() == 2);
-    bindings
-        .manual_model
-        .set_sensitive(provider_controls_enabled && bindings.provider_preset.selected() == 2);
+        .set_visible(preset_requires_manual_model(
+            bindings.provider_preset.selected(),
+        ));
+    bindings.manual_model.set_sensitive(
+        provider_controls_enabled
+            && preset_requires_manual_model(bindings.provider_preset.selected()),
+    );
     bindings
         .provider_credential
         .set_sensitive(provider_controls_enabled);
@@ -7193,9 +7247,10 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
 #[cfg(test)]
 mod tests {
     use super::{
-        ANTHROPIC_ADAPTER_TYPE, ANTHROPIC_PROVIDER_PRESET_ID, AppState, AppStatus,
-        CUSTOM_PROVIDER_PRESET_ID, CoreWorker, DEFAULT_ANTHROPIC_ENDPOINT,
-        DEFAULT_ANTHROPIC_PROVIDER_NAME, DEFAULT_GEMINI_ENDPOINT, DEFAULT_GEMINI_PROVIDER_NAME,
+        ANTHROPIC_ADAPTER_TYPE, ANTHROPIC_PROVIDER_PRESET_ID, AZURE_ADAPTER_TYPE,
+        AZURE_PROVIDER_PRESET_ID, AppState, AppStatus, CUSTOM_PROVIDER_PRESET_ID, CoreWorker,
+        DEFAULT_ANTHROPIC_ENDPOINT, DEFAULT_ANTHROPIC_PROVIDER_NAME, DEFAULT_AZURE_ENDPOINT,
+        DEFAULT_AZURE_PROVIDER_NAME, DEFAULT_GEMINI_ENDPOINT, DEFAULT_GEMINI_PROVIDER_NAME,
         DEFAULT_OLLAMA_ENDPOINT, DEFAULT_OLLAMA_PROVIDER_NAME, DEFAULT_PROVIDER_ENDPOINT,
         DEFAULT_PROVIDER_NAME, ErrorKind, GEMINI_ADAPTER_TYPE, GEMINI_PROVIDER_PRESET_ID,
         OLLAMA_ADAPTER_TYPE, OLLAMA_PROVIDER_PRESET_ID, OPENAI_ADAPTER_TYPE, OnboardingStage,
@@ -7206,12 +7261,13 @@ mod tests {
         destination_matches_source, document_format_label, endpoint_matches_preset_default,
         fallback_confirmation_needed, generate_custom_provider_id, localized_document_job_state,
         localized_document_warnings, localized_provider_default_name, localized_template,
-        normalized_candidate_ids_for_mode, provider_preset_config, provider_preset_index,
-        refresh_ui, routing_constraints_from_controls, routing_constraints_from_text_values,
-        routing_identifier_list_from_text, routing_optional_limit_from_text,
-        routing_preference_for_selection, routing_preference_selection,
-        routing_profile_id_conflicts, show_new_profile_in_form, show_routing_profiles_dialog,
-        start_event_pump, text_metrics_label, valid_routing_profile_id,
+        normalized_candidate_ids_for_mode, preset_requires_manual_model, provider_preset_config,
+        provider_preset_index, refresh_ui, routing_constraints_from_controls,
+        routing_constraints_from_text_values, routing_identifier_list_from_text,
+        routing_optional_limit_from_text, routing_preference_for_selection,
+        routing_preference_selection, routing_profile_id_conflicts, show_new_profile_in_form,
+        show_routing_profiles_dialog, start_event_pump, text_metrics_label,
+        valid_routing_profile_id,
     };
     use adw::prelude::*;
     use gtk::glib;
@@ -7543,6 +7599,7 @@ mod tests {
         assert_eq!(provider_preset_index(OLLAMA_PROVIDER_PRESET_ID), 1);
         assert_eq!(provider_preset_index(ANTHROPIC_PROVIDER_PRESET_ID), 2);
         assert_eq!(provider_preset_index(GEMINI_PROVIDER_PRESET_ID), 3);
+        assert_eq!(provider_preset_index(AZURE_PROVIDER_PRESET_ID), 4);
         assert_eq!(provider_preset_index(CUSTOM_PROVIDER_PRESET_ID), 0);
         assert_eq!(
             provider_preset_config(0),
@@ -7580,6 +7637,15 @@ mod tests {
                 DEFAULT_GEMINI_ENDPOINT,
             )
         );
+        assert_eq!(
+            provider_preset_config(4),
+            (
+                AZURE_PROVIDER_PRESET_ID,
+                AZURE_ADAPTER_TYPE,
+                DEFAULT_AZURE_PROVIDER_NAME,
+                DEFAULT_AZURE_ENDPOINT,
+            )
+        );
         assert!(endpoint_matches_preset_default(
             DEFAULT_PROVIDER_ENDPOINT,
             0
@@ -7590,6 +7656,10 @@ mod tests {
             2
         ));
         assert!(endpoint_matches_preset_default(DEFAULT_GEMINI_ENDPOINT, 3));
+        assert!(endpoint_matches_preset_default(DEFAULT_AZURE_ENDPOINT, 4));
+        assert!(preset_requires_manual_model(2));
+        assert!(preset_requires_manual_model(4));
+        assert!(!preset_requires_manual_model(0));
         assert!(!endpoint_matches_preset_default(
             "https://api.example.test/v1/",
             0
@@ -7979,6 +8049,10 @@ mod tests {
         assert_eq!(
             provider_preset_model.string(1).as_deref(),
             Some("Ollama（原生 /api）")
+        );
+        assert_eq!(
+            provider_preset_model.string(4).as_deref(),
+            Some("Azure OpenAI")
         );
         assert_eq!(bindings.connect.label().as_deref(), Some("_连接"));
         assert_eq!(
