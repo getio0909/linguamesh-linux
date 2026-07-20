@@ -16,13 +16,16 @@ backoff and circuit state must be bounded, cancellation-aware, and free of sensi
   shutdown cancels the wait. Candidate keys contain only the reviewed provider/model identifiers.
 - `routing_backoff_prefers_retry_hint_and_stays_bounded` and
   `routing_circuit_breaker_opens_after_repeated_failures_and_resets` cover the policy. Local Core
-  workspace validation passed 150 tests; Linux GUI all-target check, strict Clippy, no-default
-  tests (`80 passed; 1 ignored`), demo-provider tests (`144 passed; 3 ignored`), and formatting
-  checks passed. Core CI/Native SDK runs `29776309259`/`29776309263` passed for the Retry-After
-  contract. Exact Linux source/pin head `4b345763af46bc4cd23bdecc54ecb6b8b52e597a` passed push
-  Native/Flatpak/Foundation `29776662997`/`29776663334`/`29776662987` and PR
-  Native/Flatpak/Foundation `29776667400`/`29776667014`/`29776667068`. GTK runtime evidence
-  remains CI-only on this host because `xvfb-run` is unavailable.
+  workspace formatting, check, strict Clippy, all-target/all-feature tests, and locked offline
+  build passed; Linux GUI all-target check, strict Clippy, no-default tests (`80 passed; 1
+  ignored`), demo-provider tests (`144 passed; 3 ignored`), Flatpak metadata, and diff checks
+  passed. Core CI/Native SDK runs `29778375725`/`29778375728` passed. Linux source/pin head
+  `3ff10f4c9f54d82b7c43a0204946033cb063b92f` and documentation head
+  `eb7e57869580917494d719ac61ec861c1c8bcff4` passed push Native/Flatpak/Foundation
+  `29778624703`/`29778624674`/`29778624715` (jobs `88474104174`/`88474104142`/`88474104194`)
+  and PR Native/Flatpak/Foundation `29778626906`/`29778626865`/`29778626849` (jobs
+  `88474110557`/`88474110496`/`88474110539`). GTK runtime evidence remains CI-only on this host
+  because `xvfb-run` is unavailable.
 
 The PR remains Draft/Open and the release train remains unreleased; provider quota behavior,
 physical desktop review, other clients, signing, rollback, and stable-release authorization remain
