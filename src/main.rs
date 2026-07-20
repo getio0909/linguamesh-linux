@@ -7942,10 +7942,10 @@ mod tests {
         quality_mode_selection, refresh_ui, routing_constraints_from_controls,
         routing_constraints_from_text_values, routing_identifier_list_from_text,
         routing_optional_limit_from_text, routing_preference_for_selection,
-        routing_preference_selection, routing_profile_id_conflicts, show_new_profile_in_form,
-        show_routing_profiles_dialog, start_event_pump, text_metrics_label,
-        translation_preset_for_selection, translation_preset_selection, valid_routing_profile_id,
-        validate_provider_preset_catalog,
+        routing_preference_selection, routing_profile_id_conflicts, show_fallback_approval_dialog,
+        show_new_profile_in_form, show_routing_profiles_dialog, start_event_pump,
+        text_metrics_label, translation_preset_for_selection, translation_preset_selection,
+        valid_routing_profile_id, validate_provider_preset_catalog,
     };
     use adw::prelude::*;
     use gtk::glib;
@@ -8069,6 +8069,118 @@ mod tests {
         assert!(fallback_confirmation_needed(true, false));
         assert!(!fallback_confirmation_needed(true, true));
         assert!(!fallback_confirmation_needed(false, false));
+    }
+
+    #[test]
+    fn gtk_fallback_approval_dialog_requires_an_explicit_one_shot_action() {
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.FallbackApprovalTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK test application");
+
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let (window, bindings, theme, locale) = create_window(&application);
+        let translate_count = Rc::new(std::cell::Cell::new(0_u32));
+        let translate_count_handler = Rc::clone(&translate_count);
+        bindings.translate.connect_clicked(move |_| {
+            translate_count_handler.set(translate_count_handler.get().saturating_add(1));
+        });
+        let context = glib::MainContext::default();
+        window.present();
+
+        show_fallback_approval_dialog(&bindings, &state);
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Allow approved fallback"))
+        });
+        let dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| candidate.title().as_deref() == Some("Allow approved fallback"))
+            .expect("fallback approval dialog");
+        assert!(dialog.is_modal());
+        let widgets = descendant_widgets(dialog.upcast_ref::<gtk::Widget>());
+        let message = widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Label>())
+            .find(|label| {
+                label
+                    .label()
+                    .contains("The approved fallback provider was selected")
+            })
+            .expect("fallback approval message");
+        assert!(message.is_focusable());
+        let buttons = widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .cloned()
+            .collect::<Vec<_>>();
+        let close = buttons
+            .iter()
+            .find(|button| button.label().as_deref() == Some("Close"))
+            .cloned()
+            .expect("fallback close button");
+        let approve = buttons
+            .iter()
+            .find(|button| button.label().as_deref() == Some("Translate"))
+            .cloned()
+            .expect("fallback approve button");
+        assert!(close.is_focusable());
+        assert!(approve.is_focusable());
+        assert!(!bindings.fallback_approval.get());
+        close.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            !application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Allow approved fallback"))
+        });
+        assert_eq!(translate_count.get(), 0);
+        assert!(!bindings.fallback_approval.get());
+
+        show_fallback_approval_dialog(&bindings, &state);
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Allow approved fallback"))
+        });
+        let dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| candidate.title().as_deref() == Some("Allow approved fallback"))
+            .expect("second fallback approval dialog");
+        let approve = descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .find(|button| button.label().as_deref() == Some("Translate"))
+            .cloned()
+            .expect("second fallback approve button");
+        approve.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            !application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Allow approved fallback"))
+        });
+        assert_eq!(translate_count.get(), 1);
+        assert!(bindings.fallback_approval.get());
+        assert!(!fallback_confirmation_needed(
+            true,
+            bindings.fallback_approval.get()
+        ));
+
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
     }
 
     #[test]
