@@ -13,6 +13,12 @@ an overlapping document start rather than interrupting the active job or mutatin
   `36b81586b8b148d7adc08ecfc46203b2ef94af4d`; no Core, l10n, workspace-manifest, or
   release-manifest pin changed. True concurrent document execution, cross-platform clients,
   signing, rollback, and stable-release authorization remain open.
+- Full local Linux validation also passed: formatting, GUI all-target check, strict Clippy,
+  demo-provider tests (`135 passed; 3 ignored`), Flatpak metadata, l10n synchronization, three
+  localization audits, and diff checks. The first code-head Flatpak pin failures
+  `29729850476` (push) and `29729852622` (PR) are retained; after pinning the code head,
+  Native/Flatpak/Foundation push runs `29730049695`/`29730049744`/`29730049648` and PR runs
+  `29730052583`/`29730052576`/`29730052602` all passed.
 
 ## 2026-07-20 — Linux GTK routing candidate reorder behavior
 
