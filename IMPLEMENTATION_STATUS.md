@@ -5,11 +5,12 @@
 Assumption: candidate-management evidence must exercise the button callbacks and resulting row
 order through the serialized GTK dialog lifecycle, not only assert that accessible controls exist.
 
-- `8d06bf93bacc8bed33eaa0f4b4daedd00da2f98f` extends the restored-profile GTK regression to expose
+- `1deb3617377642fb07977446ad6d8bf30b563344` extends the restored-profile GTK regression to expose
   two enabled provider/model candidates, click the first sorted candidate's down and up controls,
-  and assert the visible candidate order changes and returns to its original order. The Flatpak
-  source manifest is pinned to this exact Linux head; no provider endpoint, credential, or release
-  pin changed.
+  assert the visible candidate order changes and returns to its original order, then restore the
+  disabled-profile fixture state for the remaining lifecycle assertions. The Flatpak source
+  manifest is pinned to this exact Linux head; no provider endpoint, credential, or release pin
+  changed.
 - Local `cargo fmt --all -- --check`, `cargo check --features gui --all-targets --offline`, strict
   Clippy, demo-provider tests (`134 passed; 3 ignored`), Flatpak metadata validation, localization
   audits, l10n synchronization, and `git diff --check` passed. The host still cannot link the
@@ -18,6 +19,9 @@ order through the serialized GTK dialog lifecycle, not only assert that accessib
 - The first PR Native run `29727820986` correctly caught an ordering assumption in the new fixture
   (`left: A,B`, `right: B,A`); the test now follows the sorted saved-profile order and moves A down
   then back up. That failure remains recorded as regression evidence.
+- The next PR Native run `29728076058` caught the temporary fixture-state change at the later disabled
+  profile assertion; the corrected test restores the disabled profile before continuing the existing
+  lifecycle checks. That failure also remains recorded as regression evidence.
 - This remains prerelease evidence. Human visual/translated-copy review, physical desktop review,
   other clients, signing, rollback, and stable-release authorization remain open.
 
