@@ -1,5 +1,26 @@
 # Implementation Status
 
+## 2026-07-20 — Linux Google Gemini Generate Content provider
+
+Assumption: Linux remains the only active client target for this slice; Android, Windows, and macOS
+remain frozen while the shared provider contract is validated through deterministic loopback tests.
+
+- Core `638713c34ce7d5bcc8003bb0d7e54c514ab49ea7` adds the `gemini_generate_content` adapter,
+  model discovery, fragmented SSE streaming, cancellation, bounded protected-span/glossary
+  restoration, endpoint policy, and redacted diagnostics. The provider uses the documented
+  `/v1beta/models` and `:streamGenerateContent?alt=sse` shapes with an optional `x-goog-api-key`.
+- Linux `67554cec96ff5774d9bfe4d99790d29a205cdc62` exposes a localized Google Gemini preset,
+  preserves custom endpoint edits, keeps manual-model controls Anthropic-only, and restores the
+  selected preset for saved profiles. Canonical l10n `f9d74a8f83a89540a58bba65477a5031031bd619`
+  contains 396 messages and generated Linux PO/MO resources.
+- Local validation passed Core formatting, strict Clippy, and workspace tests (all passing); Linux
+  formatting, GUI all-target check, strict Clippy, demo-provider tests (`136 passed; 3 ignored`),
+  localization synchronization and three audits, Flatpak metadata validation, and diff checks.
+  The deterministic fixture does not claim live Gemini credentials, quota, or account coverage.
+- Native/Flatpak/Foundation push and PR checks for this head are pending; the PR remains Draft/Open,
+  the release train remains unreleased, and stable signing, rollback, human accessibility/visual
+  review, and the other clients remain open.
+
 ## 2026-07-20 — Linux bounded concurrent document execution
 
 Assumption: Linux is the first delivery target, so bounded worker concurrency can advance without
