@@ -17,8 +17,11 @@ backoff and circuit state must be bounded, cancellation-aware, and free of sensi
   `routing_circuit_breaker_opens_after_repeated_failures_and_resets` cover the policy. Local Core
   workspace validation passed 150 tests; Linux GUI all-target check, strict Clippy, no-default
   tests (`80 passed; 1 ignored`), demo-provider tests (`144 passed; 3 ignored`), and formatting
-  checks passed. The exact Linux source/pin and CI gate IDs are recorded after the packaging pin
-  commit; GTK runtime evidence remains CI-only on this host because `xvfb-run` is unavailable.
+  checks passed. Core CI/Native SDK runs `29776309259`/`29776309263` passed for the Retry-After
+  contract. Exact Linux source/pin head `4b345763af46bc4cd23bdecc54ecb6b8b52e597a` passed push
+  Native/Flatpak/Foundation `29776662997`/`29776663334`/`29776662987` and PR
+  Native/Flatpak/Foundation `29776667400`/`29776667014`/`29776667068`. GTK runtime evidence
+  remains CI-only on this host because `xvfb-run` is unavailable.
 
 The PR remains Draft/Open and the release train remains unreleased; provider quota behavior,
 physical desktop review, other clients, signing, rollback, and stable-release authorization remain
