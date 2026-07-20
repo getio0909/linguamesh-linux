@@ -3546,6 +3546,8 @@ fn prepare_database_file(path: &Path) -> Result<(), TranslationError> {
         .read(true)
         .write(true)
         .mode(0o600)
+        // 仅允许打开最终的普通路径组件，拒绝竞态期间替换成的符号链接。
+        .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
         .open(path)
         .map_err(|_| {
             TranslationError::new(
@@ -8224,6 +8226,35 @@ mod tests {
                 if error.kind == ErrorKind::Persistence
         ));
         assert!(!target.join("state.sqlite3").exists());
+        assert!(matches!(
+            worker.events.recv_timeout(Duration::from_secs(5)),
+            Ok(WorkerEvent::DemoProviderReady { .. })
+        ));
+        shutdown(&worker);
+    }
+
+    #[test]
+    fn symbolic_database_file_is_rejected_without_following_the_target() {
+        let database = TestDatabase::new();
+        fs::create_dir(&database.directory).expect("database directory");
+        fs::set_permissions(&database.directory, fs::Permissions::from_mode(0o700))
+            .expect("database directory permissions");
+        let target = database.directory.join("target.sqlite3");
+        let original = b"NOT_A_DATABASE";
+        fs::write(&target, original).expect("database target");
+        symlink(&target, database.path()).expect("symbolic database file");
+
+        let worker = CoreWorker::spawn_with_database(database.path());
+        let storage_event = worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("storage event");
+        assert!(matches!(
+            storage_event,
+            WorkerEvent::ProfileStorageUnavailable(error)
+                if error.kind == ErrorKind::Persistence
+        ));
+        assert_eq!(fs::read(&target).expect("database target"), original);
         assert!(matches!(
             worker.events.recv_timeout(Duration::from_secs(5)),
             Ok(WorkerEvent::DemoProviderReady { .. })

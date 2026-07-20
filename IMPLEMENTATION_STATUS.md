@@ -18,6 +18,19 @@ Ordered and Automatic modes.
   PR Flatpak `29712946158` (job `88260016478`), and PR Foundation `29712946166`
   (job `88260016565`). `gh pr checks` reports all six as pass.
 
+## 2026-07-20 — Linux final database component no-follow hardening
+
+Assumption: the Linux host should reject a final database path component swapped to a symbolic
+link during open, while the existing Core no-follow gate remains authoritative for SQLite.
+
+- Linux now opens the profile database with `O_NOFOLLOW | O_CLOEXEC` in addition to the existing
+  static path checks and post-open inode comparison. A regression proves a symlinked database file
+  is rejected without following or modifying its target.
+- Local `cargo fmt --all -- --check`, targeted and full demo-provider tests (`132 passed; 3 ignored`),
+  all-target/all-feature offline check, strict Clippy, Flatpak metadata validation, and diff checks
+  passed. Parent-directory replacement races still require a future directory-descriptor or
+  `openat2` design; this checkpoint does not claim that stronger guarantee.
+
 ## 2026-07-20 — Linux third-party Ollama interop harness
 
 Assumption: the deterministic `/api` fixture is not evidence of interoperability with an

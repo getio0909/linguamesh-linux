@@ -246,8 +246,9 @@ implementations.
 Before creating or opening the database, the host checks every existing path component for a
 symbolic link and prevalidates an existing leaf as a regular single-link file. It rechecks the
 directory after creation and the file's identity after open. This static preflight does not claim a
-directory-descriptor or `openat2` guarantee against concurrent same-UID path replacement; Core's
-no-follow open remains the final database-use gate.
+directory-descriptor or `openat2` guarantee against concurrent same-UID parent-directory replacement;
+the host also opens the final component with Linux `O_NOFOLLOW | O_CLOEXEC`, while Core's no-follow
+SQLite open remains the final database-use gate.
 
 Neither credential values nor session references are persisted. A runtime session reference is
 stripped before the profile reaches SQLite. When the user chooses Remember with a credential, the

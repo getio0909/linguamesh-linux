@@ -1031,6 +1031,7 @@ version = "0.1.0-alpha.2"
 dependencies = [
  "gtk4",
  "libadwaita",
+ "libc",
  "linguamesh-application",
  "linguamesh-document",
  "linguamesh-domain",

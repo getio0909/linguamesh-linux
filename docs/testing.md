@@ -178,7 +178,8 @@ restores the full list and active ID without provider requests, reconnects after
 re-entry, proves two credential values remain isolated, scans SQLite side files for both credential
 and `session:` canaries, deletes inactive/missing/connected rows, keeps a deleted connected runtime
 usable without recreating it, verifies exact `0700`/`0600` permissions, rejects a permissive parent,
-symbolic ancestor, and hard-linked database without following static unsafe paths, preserves every
+symbolic ancestor, final database symlink, and hard-linked database without following unsafe paths,
+preserves every
 restart row/default across session switches, failed persistent changes, and public connection
 cancellation, and keeps session mode usable after storage initialization fails. It also verifies
 that a completed standard translation is recorded in bounded history, an Incognito completion is
