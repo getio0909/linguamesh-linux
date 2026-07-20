@@ -8,7 +8,8 @@ use linguamesh_document::{DocumentError, DocumentJob, DocumentJobState};
 use linguamesh_domain::{
     CompatibilityRequirements, CoreCompatibility, ErrorKind, Glossary, ModelDescriptor,
     RoutingCandidate, RoutingContext, RoutingProfile, SecretValue, TranslationError,
-    TranslationEvent, TranslationPrivacyMode, TranslationQualityMode, TranslationRequest,
+    TranslationEvent, TranslationPreset, TranslationPrivacyMode, TranslationQualityMode,
+    TranslationRequest,
 };
 use linguamesh_engine::{CancellationHandle, TranslationOperation, core_compatibility};
 use linguamesh_storage::{
@@ -160,6 +161,8 @@ pub enum WorkerCommand {
         glossary: Option<Glossary>,
         /// 文档任务使用的质量与调用策略。
         quality_mode: TranslationQualityMode,
+        /// 文档任务使用的语言风格预设。
+        translation_preset: TranslationPreset,
         /// 本地隐私策略；隐身模式禁止写入文档任务状态。
         privacy_mode: TranslationPrivacyMode,
     },
@@ -175,6 +178,8 @@ pub enum WorkerCommand {
         glossary: Option<Glossary>,
         /// 文档任务使用的质量与调用策略。
         quality_mode: TranslationQualityMode,
+        /// 文档任务使用的语言风格预设。
+        translation_preset: TranslationPreset,
         /// 本地隐私策略；隐身模式禁止写入文档任务状态。
         privacy_mode: TranslationPrivacyMode,
         /// 已保存路由配置标识。
@@ -635,6 +640,7 @@ enum QueuedCommand {
         target_locale: String,
         glossary: Option<Glossary>,
         quality_mode: TranslationQualityMode,
+        translation_preset: TranslationPreset,
         privacy_mode: TranslationPrivacyMode,
     },
     TranslateDocumentJobWithRouting {
@@ -643,6 +649,7 @@ enum QueuedCommand {
         target_locale: String,
         glossary: Option<Glossary>,
         quality_mode: TranslationQualityMode,
+        translation_preset: TranslationPreset,
         privacy_mode: TranslationPrivacyMode,
         routing_profile_id: String,
     },
@@ -877,6 +884,7 @@ impl CoreWorker {
                 target_locale,
                 glossary,
                 quality_mode,
+                translation_preset,
                 privacy_mode,
             } => self
                 .commands
@@ -886,6 +894,7 @@ impl CoreWorker {
                     target_locale,
                     glossary,
                     quality_mode,
+                    translation_preset,
                     privacy_mode,
                 })
                 .map_err(|_| WorkerSendError),
@@ -895,6 +904,7 @@ impl CoreWorker {
                 target_locale,
                 glossary,
                 quality_mode,
+                translation_preset,
                 privacy_mode,
                 routing_profile_id,
             } => self
@@ -905,6 +915,7 @@ impl CoreWorker {
                     target_locale,
                     glossary,
                     quality_mode,
+                    translation_preset,
                     privacy_mode,
                     routing_profile_id,
                 })
@@ -1042,6 +1053,7 @@ struct ActiveDocumentTranslation {
     target_locale: String,
     glossary: Option<Glossary>,
     quality_mode: TranslationQualityMode,
+    translation_preset: TranslationPreset,
     privacy_mode: TranslationPrivacyMode,
     model_id: String,
     provider_identity: Option<String>,
@@ -1073,6 +1085,7 @@ struct RunningDocumentTranslation {
     target_locale: String,
     glossary: Option<Glossary>,
     quality_mode: TranslationQualityMode,
+    translation_preset: TranslationPreset,
     privacy_mode: TranslationPrivacyMode,
     model_id: String,
     provider_identity: Option<String>,
@@ -1116,6 +1129,7 @@ fn activate_document_translation(
         target_locale,
         glossary,
         quality_mode,
+        translation_preset,
         privacy_mode,
         model_id,
         provider_identity,
@@ -1164,6 +1178,7 @@ fn activate_document_translation(
             target_locale,
             glossary,
             quality_mode,
+            translation_preset,
             privacy_mode,
             model_id,
             provider_identity,
@@ -1183,6 +1198,7 @@ struct DocumentTranslationOptions {
     target_locale: String,
     glossary: Option<Glossary>,
     quality_mode: TranslationQualityMode,
+    translation_preset: TranslationPreset,
     privacy_mode: TranslationPrivacyMode,
     provider_identity: Option<String>,
 }
@@ -1843,6 +1859,7 @@ async fn run_worker(
                     target_locale,
                     glossary,
                     quality_mode,
+                    translation_preset,
                     privacy_mode,
                 })) => {
                     let result =
@@ -1866,6 +1883,7 @@ async fn run_worker(
                                         target_locale,
                                         glossary,
                                         quality_mode,
+                                        translation_preset,
                                         privacy_mode,
                                     )
                                 })
@@ -1891,6 +1909,7 @@ async fn run_worker(
                     target_locale,
                     glossary,
                     quality_mode,
+                    translation_preset,
                     privacy_mode,
                     routing_profile_id,
                 })) => {
@@ -1910,6 +1929,7 @@ async fn run_worker(
                                     target_locale,
                                     glossary,
                                     quality_mode,
+                                    translation_preset,
                                     privacy_mode,
                                     &routing_profile_id,
                                     false,
@@ -2130,6 +2150,9 @@ async fn run_worker(
                                                     .clone(),
                                                 glossary: document_translation.glossary.clone(),
                                                 quality_mode: document_translation.quality_mode,
+                                                translation_preset: document_translation
+                                                    .translation_preset
+                                                    .clone(),
                                                 privacy_mode: document_translation.privacy_mode,
                                                 provider_identity: document_translation
                                                     .provider_identity
@@ -2880,6 +2903,7 @@ async fn run_worker(
                 target_locale,
                 glossary,
                 quality_mode,
+                translation_preset,
                 privacy_mode,
                 routing_profile_id,
             }) => {
@@ -2903,6 +2927,7 @@ async fn run_worker(
                             target_locale,
                             glossary,
                             quality_mode,
+                            translation_preset,
                             privacy_mode,
                             &routing_profile_id,
                             false,
@@ -2961,6 +2986,7 @@ async fn run_worker(
                 target_locale,
                 glossary,
                 quality_mode,
+                translation_preset,
                 privacy_mode,
             }) => {
                 if let Some(mut previous) = routing_manager.take() {
@@ -2984,6 +3010,7 @@ async fn run_worker(
                     target_locale.clone(),
                     glossary.clone(),
                     quality_mode,
+                    translation_preset.clone(),
                 ) {
                     Ok(options) => options,
                     Err(error) => {
@@ -3033,6 +3060,7 @@ async fn run_worker(
                                 target_locale,
                                 glossary,
                                 quality_mode,
+                                translation_preset,
                                 privacy_mode,
                                 provider_identity: None,
                             },
@@ -4550,7 +4578,8 @@ fn begin_document_segment(
         model_id,
     )
     .with_privacy_mode(options.privacy_mode)
-    .with_quality_mode(options.quality_mode);
+    .with_quality_mode(options.quality_mode)
+    .with_preset(options.translation_preset.clone());
     if let Some(glossary) = options.glossary.clone() {
         request = request.with_glossary(glossary);
     }
@@ -4572,6 +4601,7 @@ fn begin_document_segment(
         target_locale: options.target_locale,
         glossary: options.glossary,
         quality_mode: options.quality_mode,
+        translation_preset: options.translation_preset,
         privacy_mode: options.privacy_mode,
         model_id: model_id.to_owned(),
         provider_identity,
@@ -4629,6 +4659,7 @@ fn persisted_document_options(
     target_locale: String,
     glossary: Option<Glossary>,
     quality_mode: TranslationQualityMode,
+    translation_preset: TranslationPreset,
 ) -> Result<DocumentJobOptions, TranslationError> {
     let model_id = selected_model.ok_or_else(|| {
         TranslationError::new(
@@ -4649,6 +4680,7 @@ fn persisted_document_options(
         provider_id: profile.id().as_str().to_owned(),
         routing_profile_id: None,
         quality_mode,
+        translation_preset,
         glossary,
     })
 }
@@ -4664,6 +4696,7 @@ fn start_plain_document_job_translation(
     target_locale: String,
     glossary: Option<Glossary>,
     quality_mode: TranslationQualityMode,
+    translation_preset: TranslationPreset,
     privacy_mode: TranslationPrivacyMode,
 ) -> Result<ActiveDocumentTranslation, TranslationError> {
     if privacy_mode == TranslationPrivacyMode::Incognito {
@@ -4679,6 +4712,7 @@ fn start_plain_document_job_translation(
         target_locale.clone(),
         glossary.clone(),
         quality_mode,
+        translation_preset.clone(),
     )?;
     let snapshot = storage.document_job(job_id)?.ok_or_else(|| {
         TranslationError::new(
@@ -4711,6 +4745,7 @@ fn start_plain_document_job_translation(
             target_locale,
             glossary,
             quality_mode,
+            translation_preset,
             privacy_mode,
             provider_identity: None,
         },
@@ -4727,6 +4762,7 @@ async fn start_routed_document_job_translation(
     target_locale: String,
     glossary: Option<Glossary>,
     quality_mode: TranslationQualityMode,
+    translation_preset: TranslationPreset,
     privacy_mode: TranslationPrivacyMode,
     routing_profile_id: &str,
     retry: bool,
@@ -4819,6 +4855,7 @@ async fn start_routed_document_job_translation(
         provider_id: profile.id().as_str().to_owned(),
         routing_profile_id: Some(routing_profile_id.to_owned()),
         quality_mode,
+        translation_preset: translation_preset.clone(),
         glossary: glossary.clone(),
     };
     let result = storage
@@ -4837,6 +4874,7 @@ async fn start_routed_document_job_translation(
                     target_locale,
                     glossary,
                     quality_mode,
+                    translation_preset,
                     privacy_mode,
                     provider_identity: Some(provider_identity),
                 },
@@ -4895,6 +4933,7 @@ async fn start_persisted_routed_document_job_translation(
         options.target_locale,
         options.glossary,
         options.quality_mode,
+        options.translation_preset,
         TranslationPrivacyMode::Standard,
         &routing_profile_id,
         retry,
@@ -5007,6 +5046,7 @@ fn start_persisted_document_job_translation(
             target_locale: options.target_locale,
             glossary: options.glossary,
             quality_mode: options.quality_mode,
+            translation_preset: options.translation_preset,
             privacy_mode: TranslationPrivacyMode::Standard,
             provider_identity: None,
         },
@@ -5101,8 +5141,8 @@ mod tests {
     use linguamesh_domain::{
         CoreCompatibility, ErrorKind, RoutingCandidate, RoutingConstraints, RoutingMode,
         RoutingPreference, RoutingProfile, SecretRef, SecretRefNamespace, SecretValue,
-        TranslationError, TranslationEvent, TranslationPrivacyMode, TranslationQualityMode,
-        TranslationRequest,
+        TranslationError, TranslationEvent, TranslationPreset, TranslationPrivacyMode,
+        TranslationQualityMode, TranslationRequest,
     };
     use linguamesh_engine::core_compatibility;
     use linguamesh_storage::Storage;
@@ -6507,6 +6547,7 @@ mod tests {
                 target_locale: "zh-CN".to_owned(),
                 glossary: None,
                 quality_mode: TranslationQualityMode::Balanced,
+                translation_preset: TranslationPreset::general(),
                 privacy_mode: TranslationPrivacyMode::Standard,
             })
             .expect("translate document job");
@@ -6608,6 +6649,7 @@ mod tests {
                 target_locale: "zh-CN".to_owned(),
                 glossary: None,
                 quality_mode: TranslationQualityMode::Balanced,
+                translation_preset: TranslationPreset::general(),
                 privacy_mode: TranslationPrivacyMode::Standard,
                 routing_profile_id: "document-route".to_owned(),
             })
@@ -6734,6 +6776,7 @@ mod tests {
                 target_locale: "zh-CN".to_owned(),
                 glossary: None,
                 quality_mode: TranslationQualityMode::Best,
+                translation_preset: TranslationPreset::technical(),
                 privacy_mode: TranslationPrivacyMode::Standard,
                 routing_profile_id: "document-restart-route".to_owned(),
             })
@@ -6822,6 +6865,14 @@ mod tests {
         );
         assert_eq!(
             completed
+                .options
+                .as_ref()
+                .expect("persisted document preset")
+                .translation_preset,
+            TranslationPreset::technical()
+        );
+        assert_eq!(
+            completed
                 .job
                 .reconstruct()
                 .expect("restarted routed document reconstruct"),
@@ -6865,6 +6916,7 @@ mod tests {
                 target_locale: "zh-CN".to_owned(),
                 glossary: None,
                 quality_mode: TranslationQualityMode::Balanced,
+                translation_preset: TranslationPreset::general(),
                 privacy_mode: TranslationPrivacyMode::Standard,
             })
             .expect("translate document job");
@@ -6938,6 +6990,7 @@ mod tests {
                 target_locale: "zh-CN".to_owned(),
                 glossary: None,
                 quality_mode: TranslationQualityMode::Balanced,
+                translation_preset: TranslationPreset::general(),
                 privacy_mode: TranslationPrivacyMode::Standard,
             })
             .expect("translate document job");
@@ -7019,6 +7072,7 @@ mod tests {
                 target_locale: "zh-CN".to_owned(),
                 glossary: None,
                 quality_mode: TranslationQualityMode::Balanced,
+                translation_preset: TranslationPreset::general(),
                 privacy_mode: TranslationPrivacyMode::Standard,
             })
             .expect("translate document job");
@@ -7098,6 +7152,7 @@ mod tests {
                 target_locale: "zh-CN".to_owned(),
                 glossary: None,
                 quality_mode: TranslationQualityMode::Balanced,
+                translation_preset: TranslationPreset::general(),
                 privacy_mode: TranslationPrivacyMode::Standard,
             })
             .expect("translate document job");
@@ -7172,6 +7227,7 @@ mod tests {
                 target_locale: "zh-CN".to_owned(),
                 glossary: None,
                 quality_mode: TranslationQualityMode::Balanced,
+                translation_preset: TranslationPreset::general(),
                 privacy_mode: TranslationPrivacyMode::Standard,
             })
             .expect("start active document job");
@@ -7198,6 +7254,7 @@ mod tests {
                             target_locale: "zh-CN".to_owned(),
                             glossary: None,
                             quality_mode: TranslationQualityMode::Balanced,
+                            translation_preset: TranslationPreset::general(),
                             privacy_mode: TranslationPrivacyMode::Standard,
                         })
                         .expect("queue second document job");
@@ -7299,6 +7356,7 @@ mod tests {
                 target_locale: "zh-CN".to_owned(),
                 glossary: None,
                 quality_mode: TranslationQualityMode::Balanced,
+                translation_preset: TranslationPreset::general(),
                 privacy_mode: TranslationPrivacyMode::Standard,
             })
             .expect("start cancellable document job");
@@ -7324,6 +7382,7 @@ mod tests {
                             target_locale: "zh-CN".to_owned(),
                             glossary: None,
                             quality_mode: TranslationQualityMode::Balanced,
+                            translation_preset: TranslationPreset::general(),
                             privacy_mode: TranslationPrivacyMode::Standard,
                         })
                         .expect("start survivor document job");
@@ -7389,6 +7448,7 @@ mod tests {
                 target_locale: "zh-CN".to_owned(),
                 glossary: None,
                 quality_mode: TranslationQualityMode::Balanced,
+                translation_preset: TranslationPreset::general(),
                 privacy_mode: TranslationPrivacyMode::Standard,
             })
             .expect("start document job");
@@ -7489,6 +7549,7 @@ mod tests {
                 target_locale: "zh-CN".to_owned(),
                 glossary: None,
                 quality_mode: TranslationQualityMode::Balanced,
+                translation_preset: TranslationPreset::general(),
                 privacy_mode: TranslationPrivacyMode::Standard,
             })
             .expect("translate document job");
@@ -7575,6 +7636,7 @@ mod tests {
                 target_locale: "zh-CN".to_owned(),
                 glossary: None,
                 quality_mode: TranslationQualityMode::Balanced,
+                translation_preset: TranslationPreset::general(),
                 privacy_mode: TranslationPrivacyMode::Standard,
             })
             .expect("translate document job");

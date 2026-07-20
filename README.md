@@ -20,10 +20,11 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `f79631fd3e83a55077000c888aee6c0fc580c115`, which adds strict
+reviewed Core functional revision `0d5351340990544dc25921d522834e1e622f64a1`, which adds strict
 routing-profile validation, schema-15 routing-profile persistence, schema-16 document-job
 routing-profile persistence, and schema-17 document quality-mode persistence on top of the existing
-document and provider contract. Earlier reviewed revisions added
+document and provider contract, including schema-18 document translation-preset persistence.
+Earlier reviewed revisions added
 `SQLITE_OPEN_NOFOLLOW` to file-backed storage, protected-span and request-level glossary
 restoration, bounded semantic chunking for long streamed text, bounded translation history, and
 optional translation-memory storage with versioned request identity, and the bounded TXT/Markdown/
@@ -99,14 +100,14 @@ Each successful TXT, Markdown, CSV, JSON, HTML, SRT, WebVTT, DOCX, PPTX, XLSX, E
 **Translate**
 then sends pending prose segments sequentially through the confirmed provider, emits segment events,
 persists each completed segment, and saves only validated non-secret source/target locale,
-provider/model identifiers, quality mode, and glossary rules. A worker restart can restore the unfinished snapshot;
+provider/model identifiers, quality mode, translation preset, and glossary rules. A worker restart can restore the unfinished snapshot;
 **Resume** and **Retry** reuse those options only after the active provider and model match. **Stop**
 cancels the active document segment and leaves the source unchanged; Incognito mode intentionally
 rejects new document jobs because their progress must be persisted. Subtitle timestamps and cue IDs
 remain unchanged; cue text is translated without automatic timing or line-length rewriting. Core
 The text workspace also provides localized `General`, `Technical`, and `Marketing` translation
-presets. Each preset is a bounded request-level preference; document jobs continue to use `General`
-until their persisted options schema is explicitly extended.
+presets. Each preset is a bounded request-level preference; document jobs persist and reuse the
+selected preset across pause, retry, and restart.
 
 reports cue-level warnings when the configured line-length or reading-speed guidance is exceeded;
 the Linux UI shows cue numbers without source text. CSV

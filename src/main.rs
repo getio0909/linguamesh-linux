@@ -3241,6 +3241,7 @@ fn connect_action_handlers(
                                             target_locale,
                                             glossary,
                                             quality_mode: state.quality_mode(),
+                                            translation_preset: state.translation_preset().clone(),
                                             privacy_mode: state.privacy_mode(),
                                             routing_profile_id,
                                         }
@@ -3251,6 +3252,7 @@ fn connect_action_handlers(
                                         target_locale,
                                         glossary,
                                         quality_mode: state.quality_mode(),
+                                        translation_preset: state.translation_preset().clone(),
                                         privacy_mode: state.privacy_mode(),
                                     },
                                 };
@@ -4097,10 +4099,15 @@ fn show_file_export_error(bindings: &UiBindings, message: &str) {
 }
 
 // 将队列中的任务选为当前编辑器任务并同步其源文本和状态。
-// 将持久化的文档质量模式恢复到当前编辑状态。
-fn restore_document_quality_mode(state: &Rc<RefCell<AppState>>, snapshot: &DocumentJobSnapshot) {
+// 将持久化的文档翻译选项恢复到当前编辑状态。
+fn restore_document_translation_options(
+    state: &Rc<RefCell<AppState>>,
+    snapshot: &DocumentJobSnapshot,
+) {
     if let Some(options) = snapshot.options.as_ref() {
-        state.borrow_mut().set_quality_mode(options.quality_mode);
+        let mut state = state.borrow_mut();
+        state.set_quality_mode(options.quality_mode);
+        state.set_translation_preset(options.translation_preset.clone());
     }
 }
 
@@ -4119,7 +4126,7 @@ fn select_document_job(
     bindings.source.set_text(&source_text);
     bindings.document_job_guard.set(false);
     *bindings.document_warnings.borrow_mut() = selected.job.warnings().unwrap_or_default();
-    restore_document_quality_mode(state, selected);
+    restore_document_translation_options(state, selected);
     state.borrow_mut().set_source_text(&source_text);
     refresh_ui(bindings, &state.borrow());
 }
@@ -6062,7 +6069,7 @@ fn apply_worker_event(
                 bindings.document_job_guard.set(false);
                 *bindings.document_warnings.borrow_mut() =
                     snapshot.job.warnings().unwrap_or_default();
-                restore_document_quality_mode(state, snapshot);
+                restore_document_translation_options(state, snapshot);
             }
         }
         WorkerEvent::DocumentJobsListed { jobs } => {
@@ -6083,7 +6090,7 @@ fn apply_worker_event(
                 .document_progress
                 .set(Some(document_progress(&snapshot)));
             *bindings.document_warnings.borrow_mut() = snapshot.job.warnings().unwrap_or_default();
-            restore_document_quality_mode(state, &snapshot);
+            restore_document_translation_options(state, &snapshot);
             if let Ok(output) = snapshot.job.reconstruct() {
                 let mut state = state.borrow_mut();
                 match snapshot.state {

@@ -125,7 +125,7 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`f79631fd3e83a55077000c888aee6c0fc580c115`. This revision carries the explicit request-level
+`0d5351340990544dc25921d522834e1e622f64a1`. This revision carries the explicit request-level
 Incognito privacy policy and changes file-backed Core storage to add SQLite's `SQLITE_OPEN_NOFOLLOW`
 flag, adds protected-span restoration and request-level glossary
 protection for streamed text, and adds bounded semantic chunking. On
@@ -134,9 +134,9 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e f79631fd3e83a55077000c888aee6c0fc580c115^{commit}
+git -C ../linguamesh-core cat-file -e 0d5351340990544dc25921d522834e1e622f64a1^{commit}
 git -C ../linguamesh-core diff --quiet \
-  f79631fd3e83a55077000c888aee6c0fc580c115..HEAD -- \
+  0d5351340990544dc25921d522834e1e622f64a1..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -146,6 +146,7 @@ The same Core pin also negotiates `bounded_text_document_v1`, `routing_planner_v
 Markdown, CSV, JSON, HTML, SRT, WebVTT, DOCX, PPTX, XLSX, EPUB packages, and text-based PDF pages, preserves line endings, keeps Markdown fenced code and subtitle timing
 structure verbatim, and
 persists pending/running/paused document jobs and validated non-secret translation options, including
+the selected translation preset and
 the optional routing-profile ID, for worker
 restart recovery. The Linux worker tests also cover
 sequential prose-segment translation, per-segment persistence, safe reconstruction (including DOCX/PPTX/XLSX/EPUB package resources and PDF page association), structured HTML fallback for unsupported PDF encodings, and cancellation
@@ -511,7 +512,7 @@ dispatch only. It does not replace a human listening review, physical desktop re
 about speech quality across locales.
 
 The GitHub Actions native workflow pins Core revision
-`f79631fd3e83a55077000c888aee6c0fc580c115`, installs the headers plus D-Bus, Xvfb, test-only
+`0d5351340990544dc25921d522834e1e622f64a1`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
 namespace test through the unprivileged path.
