@@ -12,7 +12,11 @@ while live Gemini account, quota, and credential behavior remain explicitly unve
   `你好，Gemini！` without a credential. The Flatpak and Native workflows pin this Core revision.
 - Local Core workspace tests passed (including 7 testkit tests); Linux formatting, GUI check,
   strict Clippy, demo-provider tests (`137 passed; 3 ignored`), localization audits, Flatpak
-  metadata, and diff checks passed. Remote gates are pending for the new source heads.
+  metadata, and diff checks passed. Core CI/Native SDK `29735977442`/`29735977484` passed.
+- Linux push Native/Flatpak/Foundation `29736052299`/`29736052289`/`29736052336` and PR
+  `29736054831`/`29736054822`/`29736054819` all passed. The PR remains Draft/Open and CLEAN;
+  live Gemini account/quota behavior, human review, other clients, signing, rollback, and stable
+  release remain open.
 
 ## 2026-07-20 — Linux Google Gemini Generate Content provider
 
