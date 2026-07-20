@@ -11,8 +11,12 @@ Ordered and Automatic modes.
 - Local `cargo fmt --all -- --check`, `cargo check --all-targets --all-features --locked --offline`,
   `cargo clippy --all-targets --all-features --locked --offline -- -D warnings`,
   `cargo test --features demo-provider --offline` (`131 passed; 3 ignored`),
-  `bash tools/validate-flatpak-metadata.sh`, and `git diff --check` passed. Remote six-gate
-  validation and Flatpak source-pin update are pending for this checkpoint.
+  `bash tools/validate-flatpak-metadata.sh`, and `git diff --check` passed. Source revision
+  `9fb87ab2578506c6913e572af48a9ab63c73657c` then passed all six GitHub checks: push Native
+  `29712752610` (job `88259449611`), push Flatpak `29712752618` (job `88259449652`), push
+  Foundation `29712752586` (job `88259449502`), PR Native `29712754191` (job `88259454430`),
+  PR Flatpak `29712754198` (job `88259454472`), and PR Foundation `29712754203`
+  (job `88259454433`).
 
 ## 2026-07-20 — Linux third-party Ollama interop harness
 
