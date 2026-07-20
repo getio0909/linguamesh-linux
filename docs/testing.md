@@ -68,8 +68,8 @@ profile tests also verify preference-index round trips and preservation of hidde
 when visible privacy/capability controls are edited. Constraint parser tests cover comma-separated
 provider/model lists, positive numeric limits, and rejection of unsafe or empty values.
 
-Quality-mode UI tests verify the localized Fast/Balanced/Best dropdown maps to the Core
-`TranslationQualityMode` values and that a selected document job keeps the selector enabled. The
+Quality-mode UI behavior maps the localized Fast/Balanced/Best dropdown to the Core
+`TranslationQualityMode` values and keeps the selector enabled for a selected document job. The
 worker restart regression selects `Best`, persists it through a routed dispatch, and verifies the
 resumed snapshot retains `Best`. Core
 tests cover the versioned `translation-prompt-v2` directives and deterministic rejection of empty
