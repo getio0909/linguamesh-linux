@@ -17,10 +17,15 @@ use linguamesh_storage::{
     TranslationMemoryEntry,
 };
 use linguamesh_testkit::FakeProviderServer;
+use rustix::fs::{
+    CWD, FileType as RustixFileType, Mode as RustixMode, OFlags as RustixOFlags, ResolveFlags,
+    fchmod, fstat, openat, openat2,
+};
 use std::error::Error;
 use std::fmt;
-use std::fs::{self, DirBuilder, OpenOptions};
-use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt, PermissionsExt};
+use std::fs::{self, DirBuilder};
+use std::os::fd::AsRawFd;
+use std::os::unix::fs::{DirBuilderExt, MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver, SyncSender, TryRecvError};
 use std::sync::{Arc, Mutex};
@@ -3476,8 +3481,8 @@ fn reject_queued_commands_for_shutdown(
 fn open_profile_storage(
     path: &Path,
 ) -> Result<(Storage, Vec<ProviderProfile>, Option<ProviderProfileId>), TranslationError> {
-    prepare_database_file(path)?;
-    let storage = Storage::open(path)?;
+    let prepared = prepare_database_file(path)?;
+    let storage = Storage::open_from_trusted_descriptor(prepared.storage_path())?;
     let profiles = storage.provider_profiles()?;
     let active_profile_id = storage
         .active_provider_profile()?
@@ -3485,7 +3490,36 @@ fn open_profile_storage(
     Ok((storage, profiles, active_profile_id))
 }
 
-fn prepare_database_file(path: &Path) -> Result<(), TranslationError> {
+struct PreparedDatabase {
+    storage_path: PathBuf,
+    _file_fd: rustix::fd::OwnedFd,
+}
+
+impl PreparedDatabase {
+    fn storage_path(&self) -> &Path {
+        &self.storage_path
+    }
+}
+
+fn prepare_database_file(path: &Path) -> Result<PreparedDatabase, TranslationError> {
+    let parent = validate_database_path(path)?;
+    let parent_fd = pin_database_parent(parent)?;
+    let file_name = path.file_name().ok_or_else(|| {
+        TranslationError::new(
+            ErrorKind::Persistence,
+            "The profile database file name is invalid.",
+        )
+    })?;
+    let file_fd = open_database_file(&parent_fd, file_name)?;
+    let mut storage_path = PathBuf::from("/proc/self/fd");
+    storage_path.push(file_fd.as_raw_fd().to_string());
+    Ok(PreparedDatabase {
+        storage_path,
+        _file_fd: file_fd,
+    })
+}
+
+fn validate_database_path(path: &Path) -> Result<&Path, TranslationError> {
     if !path.is_absolute() {
         return Err(TranslationError::new(
             ErrorKind::Persistence,
@@ -3540,53 +3574,88 @@ fn prepare_database_file(path: &Path) -> Result<(), TranslationError> {
             ));
         }
     }
-    let file = OpenOptions::new()
-        .create(true)
-        .truncate(false)
-        .read(true)
-        .write(true)
-        .mode(0o600)
-        // 仅允许打开最终的普通路径组件，拒绝竞态期间替换成的符号链接。
-        .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
-        .open(path)
-        .map_err(|_| {
-            TranslationError::new(
-                ErrorKind::Persistence,
-                "The profile database file could not be opened.",
-            )
-        })?;
-    let opened_metadata = file.metadata().map_err(|_| {
+    Ok(parent)
+}
+
+fn pin_database_parent(path: &Path) -> Result<rustix::fd::OwnedFd, TranslationError> {
+    let parent_fd = openat2(
+        CWD,
+        path,
+        RustixOFlags::PATH | RustixOFlags::DIRECTORY | RustixOFlags::CLOEXEC,
+        RustixMode::empty(),
+        ResolveFlags::NO_SYMLINKS,
+    )
+    .map_err(|_| {
+        TranslationError::new(
+            ErrorKind::Persistence,
+            "The profile database directory could not be opened without following links.",
+        )
+    })?;
+    let opened_parent = fstat(&parent_fd).map_err(|_| {
+        TranslationError::new(
+            ErrorKind::Persistence,
+            "The profile database directory could not be inspected.",
+        )
+    })?;
+    let current_parent = fs::symlink_metadata(path).map_err(|_| {
+        TranslationError::new(
+            ErrorKind::Persistence,
+            "The profile database directory could not be inspected.",
+        )
+    })?;
+    if !RustixFileType::from_raw_mode(opened_parent.st_mode).is_dir()
+        || RustixMode::from_raw_mode(opened_parent.st_mode).bits() & 0o077 != 0
+        || !current_parent.is_dir()
+        || current_parent.file_type().is_symlink()
+        || current_parent.dev() != opened_parent.st_dev
+        || current_parent.ino() != opened_parent.st_ino
+    {
+        return Err(TranslationError::new(
+            ErrorKind::Persistence,
+            "The profile database directory was replaced during validation.",
+        ));
+    }
+    Ok(parent_fd)
+}
+
+fn open_database_file(
+    parent_fd: &rustix::fd::OwnedFd,
+    file_name: &std::ffi::OsStr,
+) -> Result<rustix::fd::OwnedFd, TranslationError> {
+    let file_fd = openat(
+        parent_fd,
+        file_name,
+        RustixOFlags::CREATE
+            | RustixOFlags::WRONLY
+            | RustixOFlags::NOFOLLOW
+            | RustixOFlags::CLOEXEC,
+        RustixMode::from_raw_mode(0o600),
+    )
+    .map_err(|_| {
+        TranslationError::new(
+            ErrorKind::Persistence,
+            "The profile database file could not be opened.",
+        )
+    })?;
+    let opened_file = fstat(&file_fd).map_err(|_| {
         TranslationError::new(
             ErrorKind::Persistence,
             "The profile database file could not be inspected.",
         )
     })?;
-    let path_metadata = fs::symlink_metadata(path).map_err(|_| {
-        TranslationError::new(
-            ErrorKind::Persistence,
-            "The profile database path could not be inspected.",
-        )
-    })?;
-    if !opened_metadata.is_file()
-        || opened_metadata.nlink() != 1
-        || path_metadata.file_type().is_symlink()
-        || !path_metadata.is_file()
-        || path_metadata.nlink() != 1
-        || opened_metadata.dev() != path_metadata.dev()
-        || opened_metadata.ino() != path_metadata.ino()
-    {
+    if !RustixFileType::from_raw_mode(opened_file.st_mode).is_file() || opened_file.st_nlink != 1 {
         return Err(TranslationError::new(
             ErrorKind::Persistence,
             "The profile database must be a private regular file.",
         ));
     }
-    file.set_permissions(fs::Permissions::from_mode(0o600))
-        .map_err(|_| {
-            TranslationError::new(
-                ErrorKind::Persistence,
-                "The profile database file permissions could not be restricted.",
-            )
-        })
+    fchmod(&file_fd, RustixMode::from_raw_mode(0o600)).map_err(|_| {
+        TranslationError::new(
+            ErrorKind::Persistence,
+            "The profile database file permissions could not be restricted.",
+        )
+    })?;
+    Ok(file_fd)
 }
 
 fn ensure_no_symbolic_path_components(path: &Path) -> Result<(), TranslationError> {
@@ -4542,8 +4611,8 @@ fn cancel_active(active_cancellation: &Mutex<Option<ActiveCancellation>>) {
 mod tests {
     use super::{
         COMMAND_CAPACITY, CoreWorker, PersistenceIntent, QueuedCommand, REQUIRED_CORE_FEATURES,
-        WorkerCommand, WorkerEvent, alternative_pdf_source_name, profile_without_secret,
-        validate_core_contract,
+        WorkerCommand, WorkerEvent, alternative_pdf_source_name, prepare_database_file,
+        profile_without_secret, validate_core_contract,
     };
     use crate::model::{ProviderProfile, ProviderProfileId};
     use linguamesh_document::{DocumentFormat, DocumentJob, DocumentJobState};
@@ -8260,6 +8329,46 @@ mod tests {
             Ok(WorkerEvent::DemoProviderReady { .. })
         ));
         shutdown(&worker);
+    }
+
+    #[test]
+    fn pinned_database_parent_survives_path_replacement() {
+        let database = TestDatabase::new();
+        fs::create_dir(&database.directory).expect("database directory");
+        fs::set_permissions(&database.directory, fs::Permissions::from_mode(0o700))
+            .expect("database directory permissions");
+        let alternate = database.directory.with_file_name(format!(
+            "{}-alternate",
+            database
+                .directory
+                .file_name()
+                .expect("database directory name")
+                .to_string_lossy()
+        ));
+        fs::create_dir(&alternate).expect("alternate directory");
+        fs::set_permissions(&alternate, fs::Permissions::from_mode(0o700))
+            .expect("alternate directory permissions");
+        let prepared = prepare_database_file(database.path()).expect("pinned database path");
+        let moved = database.directory.with_file_name(format!(
+            "{}-moved",
+            database
+                .directory
+                .file_name()
+                .expect("database directory name")
+                .to_string_lossy()
+        ));
+        fs::rename(&database.directory, &moved).expect("move pinned directory");
+        symlink(&alternate, &database.directory).expect("replace path with symlink");
+
+        let storage = Storage::open_from_trusted_descriptor(prepared.storage_path())
+            .expect("open pinned database");
+        drop(storage);
+        assert!(moved.join("state.sqlite3").is_file());
+        assert!(!alternate.join("state.sqlite3").exists());
+
+        fs::remove_file(&database.directory).expect("remove replacement symlink");
+        fs::rename(&moved, &database.directory).expect("restore pinned directory");
+        fs::remove_dir_all(alternate).expect("remove alternate directory");
     }
 
     #[test]

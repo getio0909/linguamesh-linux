@@ -26,7 +26,7 @@ confirmation, or rollback.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `9926d0f9bf6394c6011c6cc886d142bfeb54e10f`; compared with the prior
+functional revision is `b5febb8daec88ab0401af4d6ceb20ec848f65138`; compared with the prior
 alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW`, adds streamed
 protected-span and request-level glossary restoration, and rejects suspicious OOXML compression
 ratios and unsupported macro/signature parts before XML inspection. The required contract
@@ -244,11 +244,13 @@ behavior is a Linux security prerequisite for the integration and is not claimed
 implementations.
 
 Before creating or opening the database, the host checks every existing path component for a
-symbolic link and prevalidates an existing leaf as a regular single-link file. It rechecks the
-directory after creation and the file's identity after open. This static preflight does not claim a
-directory-descriptor or `openat2` guarantee against concurrent same-UID parent-directory replacement;
-the host also opens the final component with Linux `O_NOFOLLOW | O_CLOEXEC`, while Core's no-follow
-SQLite open remains the final database-use gate.
+symbolic link and prevalidates an existing leaf as a regular single-link file. It then opens the
+parent with Linux `openat2(RESOLVE_NO_SYMLINKS)`, opens the final component with
+`O_NOFOLLOW | O_CLOEXEC`, and keeps that file descriptor alive while Core opens the exact
+`/proc/self/fd/<fd>` path. Core's ordinary path open remains the no-follow SQLite gate; the
+descriptor-backed API rejects paths outside that exact form. This prevents a concurrent parent
+path replacement from redirecting the migration/open operation, while broader filesystem and VFS
+guarantees remain platform-specific.
 
 Neither credential values nor session references are persisted. A runtime session reference is
 stripped before the profile reaches SQLite. When the user chooses Remember with a credential, the

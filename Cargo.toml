@@ -28,7 +28,7 @@ linguamesh-engine = { version = "=0.1.0-alpha.2", path = "../linguamesh-core/cra
 linguamesh-protocol = { version = "=0.1.0-alpha.2", path = "../linguamesh-core/crates/linguamesh-protocol" }
 linguamesh-storage = { version = "=0.1.0-alpha.2", path = "../linguamesh-core/crates/linguamesh-storage", optional = true }
 linguamesh-testkit = { version = "=0.1.0-alpha.2", path = "../linguamesh-core/crates/linguamesh-testkit", optional = true }
-libc = "0.2.172"
+rustix = { version = "1.1.4", features = ["fs"] }
 tokio = { version = "1.46.1", features = ["rt-multi-thread", "sync", "time"], optional = true }
 tokio-util = { version = "0.7.15", features = ["rt"], optional = true }
 

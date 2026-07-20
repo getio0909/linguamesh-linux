@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-20 — Linux descriptor-pinned database open
+
+Assumption: Linux profile storage must keep the exact validated database inode fixed through the
+Core migration/open call, not merely preflight a pathname.
+
+- Linux opens the parent directory with `openat2(RESOLVE_NO_SYMLINKS)`, opens the final regular
+  file with `O_NOFOLLOW | O_CLOEXEC`, and hands Core the live `/proc/self/fd/<fd>` descriptor path.
+  Core's ordinary path open remains no-follow; only the validated descriptor form is accepted by
+  `Storage::open_from_trusted_descriptor`.
+- The regression `pinned_database_parent_survives_path_replacement` renames the validated parent,
+  replaces its visible path with a symlink to an alternate directory, and verifies migrations
+  still land in the pinned inode's directory. Local format/check/Clippy/full-test validation and
+  Flatpak metadata/source validation passed; remote gates are required before this checkpoint is
+  considered published.
+
 ## 2026-07-20 — Linux final database no-follow hardening remote verification
 
 - Source revision `39712ab0dabe26980a076a9068d6fb7282364d94` passed all six required GitHub checks.

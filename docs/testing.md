@@ -81,7 +81,7 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`9926d0f9bf6394c6011c6cc886d142bfeb54e10f`. This revision carries the explicit request-level
+`b5febb8daec88ab0401af4d6ceb20ec848f65138`. This revision carries the explicit request-level
 Incognito privacy policy and changes file-backed Core storage to add SQLite's `SQLITE_OPEN_NOFOLLOW`
 flag, adds protected-span restoration and request-level glossary
 protection for streamed text, and adds bounded semantic chunking. On
@@ -90,9 +90,9 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 9926d0f9bf6394c6011c6cc886d142bfeb54e10f^{commit}
+git -C ../linguamesh-core cat-file -e b5febb8daec88ab0401af4d6ceb20ec848f65138^{commit}
 git -C ../linguamesh-core diff --quiet \
-  9926d0f9bf6394c6011c6cc886d142bfeb54e10f..HEAD -- \
+  b5febb8daec88ab0401af4d6ceb20ec848f65138..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -179,7 +179,8 @@ re-entry, proves two credential values remain isolated, scans SQLite side files 
 and `session:` canaries, deletes inactive/missing/connected rows, keeps a deleted connected runtime
 usable without recreating it, verifies exact `0700`/`0600` permissions, rejects a permissive parent,
 symbolic ancestor, final database symlink, and hard-linked database without following unsafe paths,
-preserves every
+and replaces the visible parent after `openat2(RESOLVE_NO_SYMLINKS)` while verifying the
+descriptor-pinned Core migration remains in the original directory. It preserves every
 restart row/default across session switches, failed persistent changes, and public connection
 cancellation, and keeps session mode usable after storage initialization fails. It also verifies
 that a completed standard translation is recorded in bounded history, an Incognito completion is
