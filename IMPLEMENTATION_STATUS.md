@@ -11,9 +11,11 @@ unfreezing the other clients or claiming a stable release.
 - Added regression coverage for independent concurrent completion and targeted cancellation of one
   job while its survivor completes. Full local validation passed: formatting, GUI all-target check,
   strict Clippy, demo-provider tests (`136 passed; 3 ignored`), and `git diff --check`.
-- Native/Flatpak/Repository Foundation CI remains the authoritative GTK, packaging, and sandbox
-  evidence after the next pushed code head. Cross-platform clients, human accessibility/visual
-  review, signing, rollback, and stable-release authorization remain open.
+- Native/Flatpak/Repository Foundation push runs `29732668572`, `29732668556`, and `29732668568`
+  passed; the matching PR runs `29732671353`, `29732671354`, and `29732671362` also passed. These
+  are the authoritative GTK, packaging, and sandbox evidence for code head `42b5ff3`. Cross-platform
+  clients, human accessibility/visual review, signing, rollback, and stable-release authorization
+  remain open.
 
 ## 2026-07-20 — Linux document-job concurrency isolation regression
 
