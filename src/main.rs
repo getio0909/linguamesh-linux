@@ -8171,7 +8171,12 @@ mod tests {
         let approve = descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
             .iter()
             .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
-            .find(|button| button.label().as_deref() == Some("Translate"))
+            .find(|button| {
+                button
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.trim_start_matches('_') == "Translate")
+            })
             .cloned()
             .expect("second fallback approve button");
         approve.emit_clicked();
