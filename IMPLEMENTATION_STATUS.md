@@ -12,6 +12,14 @@ request to remember credentials; the Linux client must provide an explicit sessi
 - Local Linux formatting, all-target/all-feature check, strict Clippy, demo-provider tests
   (`134 passed; 3 ignored`), Flatpak metadata validation, and diff checks passed. End-user approval
   of the desktop keyring prompt and physical visual review remain manual boundaries.
+- The first `7c2fe0a` push/PR Native and Flatpak runs (`29717314361`/`29717314328` and
+  `29717312990`/`29717312998`) correctly failed on the canonical placeholder audit and stale
+  Flatpak source pin; the fallback text and pin were corrected without weakening either check.
+- Final source-pin head `89e2b534d3efb3c6719eb4c731ab22820419f0b9` passed push
+  Native/Flatpak/Foundation `29717505522`/`29717505525`/`29717505575` (jobs
+  `88273550108`/`88273550195`/`88273550212`) and PR Native/Flatpak/Foundation
+  `29717506936`/`29717506979`/`29717506956` (jobs `88273554142`/`88273554144`/
+  `88273554114`).
 
 ## 2026-07-20 — Linux read-only profile storage fallback
 
