@@ -9,8 +9,10 @@ independently running Ollama daemon, so the external path must be opt-in and mod
   `/api/tags` discovery and `/api/chat` translation through the `ollama` preset without a secret.
   The script can start an isolated daemon and only pulls a model when `LINGUAMESH_OLLAMA_PULL=1`.
 - Local default validation passed with `131 passed; 3 ignored`, including the new external test.
-  This host has no `ollama` binary and the third-party daemon/model regression was not run; no
-  interoperability claim is made until an external daemon and installed model are exercised.
+  A Docker `ollama/ollama:0.11.10` daemon also started successfully and answered `/api/tags`, but
+  pulling `smollm:135m` failed with an Ollama registry timeout (HTTP 500); the temporary container
+  was removed. No translation interoperability claim is made until an external daemon has an
+  installed model and the worker regression completes.
 
 ## 2026-07-20 — Linux fallback-send confirmation checkpoint
 
