@@ -1,5 +1,22 @@
 # Implementation Status
 
+## 2026-07-20 — Core ABI FileLease lifecycle controls pinned
+
+Assumption: Linux must consume the exact Core revision that defines the native ABI lease lifecycle,
+even though this client continues to use the direct typed Rust lease path until document commands
+can consume ABI resource tokens.
+
+- Updated the Native workflow, Flatpak source manifest, host testing instructions, release notes,
+  and architecture pin to Core `0396736235d4dc5c8992d3bfef5aded3abadf457`. This revision adds
+  bounded engine-scoped create, active-state, expire, revoke, and destroy calls for validated
+  paths and platform descriptors without returning resource values across the ABI.
+- Linux continues to validate `file_lease_v1` around portal-backed reads and to revoke after the
+  bounded document bytes are copied. It does not yet call the C ABI lease functions; document-command
+  resource consumption and OS-handle transfer remain open.
+
+Local Linux validation and the PR's Native/Flatpak/Foundation gates are required before this pin is
+considered verified. The PR remains Draft/Open and this is unreleased Linux-first evidence.
+
 ## 2026-07-20 — Linux FileLease document-import boundary
 
 Assumption: Linux portal-backed document reads must borrow a Core file lease only for the bounded
