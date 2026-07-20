@@ -8694,9 +8694,6 @@ mod tests {
         );
         assert_eq!(restored_bindings.status.label(), "Status: Unavailable");
         assert!(!restored_bindings.connect.is_sensitive());
-        let _ = restored_worker.try_send(WorkerCommand::Shutdown);
-        restored_window.close();
-
         let candidate = RoutingCandidate::new("profile-b", "fake-slow-translator", true, 64 * 1024)
             .expect("routing candidate");
         let routing_profile = RoutingProfile::new(
@@ -8717,6 +8714,12 @@ mod tests {
                 updated_at: 0,
             }],
         );
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Routing profiles"))
+        });
         let routing_dialog = application
             .windows()
             .into_iter()
@@ -8741,6 +8744,8 @@ mod tests {
         routing_dialog.close();
 
         run_gtk_native_ollama_preset_flow(&application);
+        let _ = restored_worker.try_send(WorkerCommand::Shutdown);
+        restored_window.close();
         let _ = worker.try_send(WorkerCommand::Shutdown);
         window.close();
         let _ = fs::remove_dir_all(restored_database_directory);
