@@ -180,9 +180,11 @@ directory. The X11 path also runs `tools/run-gtk-keyboard-focus-test.sh` under `
 Tab/Shift+Tab traversal for the tested controls; an application-window Capture-phase handler keeps
 the provider fields in an explicit order while preserving modified shortcuts. The
 `tools/run-gtk-atspi-test.sh` fixture separately reads the live tree through `python3-pyatspi` and
-checks the named Stop control plus both text-editor roles. These are headless protocol/backend and
-AT-SPI semantic gates, not claims about physical compositors, GPU rendering, desktop integration,
-physical desktop keyboard coverage, or Orca speech.
+checks the named Stop control plus both text-editor roles. Native CI also runs
+`tools/run-orca-atspi-test.sh`, which starts Orca with Speech Dispatcher, focuses that named control
+through AT-SPI, and checks Orca's speech-generator debug record. These remain headless
+protocol/backend and Orca-integration gates, not claims about physical compositors, GPU rendering,
+desktop integration, physical desktop keyboard coverage, human listening, or speech quality.
 
 The user-facing endpoint example is loopback. Under its shared endpoint policy, Core accepts
 loopback HTTP and also accepts HTTPS endpoints; the Linux client does not duplicate URL parsing.

@@ -7,7 +7,8 @@ GNOME 49 SDK workflow builds a prerelease CI bundle from pinned sources and runs
 Xvfb/private-D-Bus sandbox smoke. The native gate verifies the real document-portal lease lifecycle,
 the real interactive `xdg-desktop-portal-gtk` FileChooser backend, the application-level GTK
 FileDialog callback, a real source-editor drag/drop gesture, and visible desktop-shell delivery to a
-real `dunst` notification daemon under Xvfb, but no physical compositor/GPU rendering, signed artifact, or
+real `dunst` notification daemon under Xvfb, and now exercises headless Orca AT-SPI speech-generation
+dispatch in its isolated X11 session. It still has no physical compositor/GPU rendering, signed artifact, or
 distributable release has been verified. The
 vertical slice must not be tagged or published as a product release, and no packaging claim beyond
 the recorded CI build is valid. Native CI now uploads the release-mode Linux binary together with

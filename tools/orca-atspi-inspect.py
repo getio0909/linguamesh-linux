@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+"""Focus the production Stop control through the live Linux AT-SPI tree."""
+
+from __future__ import annotations
+
+import sys
+import time
+from collections.abc import Iterator
+
+import pyatspi
+
+
+def descendants(node: object) -> Iterator[object]:
+    """遍历辅助技术树，并忽略应用退出时失效的节点。"""
+    yield node
+    try:
+        count = int(node.childCount)  # type: ignore[attr-defined]
+    except Exception:
+        return
+    for index in range(count):
+        try:
+            child = node.getChildAtIndex(index)  # type: ignore[attr-defined]
+        except Exception:
+            continue
+        yield from descendants(child)
+
+
+def role_name(node: object) -> str:
+    """返回节点的稳定人类可读角色名称。"""
+    try:
+        return str(node.getRoleName())  # type: ignore[attr-defined]
+    except Exception:
+        return ""
+
+
+def find_stop_control(deadline: float) -> object | None:
+    """等待应用注册并找到名为 Stop translation 的按钮。"""
+    while time.monotonic() < deadline:
+        try:
+            desktop = pyatspi.Registry.getDesktop(0)
+            for node in descendants(desktop):
+                if str(getattr(node, "name", "")) != "Stop translation":
+                    continue
+                if "button" in role_name(node).lower():
+                    return node
+        except Exception:
+            pass
+        time.sleep(0.1)
+    return None
+
+
+def main() -> int:
+    """通过 AT-SPI 聚焦生产控件，触发 Orca 的可访问对象处理路径。"""
+    node = find_stop_control(time.monotonic() + 20.0)
+    if node is None:
+        print(
+            "Orca AT-SPI fixture could not find the named Stop translation button.",
+            file=sys.stderr,
+        )
+        return 1
+    try:
+        component = node.queryComponent()  # type: ignore[attr-defined]
+        focused = bool(component.grabFocus())
+    except Exception as error:
+        print(f"Orca AT-SPI fixture could not focus the Stop translation button: {error}", file=sys.stderr)
+        return 1
+    if not focused:
+        print("Orca AT-SPI fixture could not focus the Stop translation button.", file=sys.stderr)
+        return 1
+    print(
+        f"Orca AT-SPI fixture focused accessible control: {role_name(node)}: Stop translation."
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

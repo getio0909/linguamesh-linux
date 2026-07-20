@@ -59,6 +59,7 @@ jobs:
             gnome-keyring \
             imagemagick \
             mount \
+            orca \
             poppler-utils \
             pkg-config \
             python3 \
@@ -73,6 +74,7 @@ jobs:
             xdg-desktop-portal-gtk \
             xauth \
             python3-pyatspi \
+            speech-dispatcher-espeak-ng \
             xvfb
       - name: Install pinned Rust toolchain
         # 固定 dtolnay/rust-toolchain 当前提交。
@@ -145,6 +147,9 @@ jobs:
       - name: Run GTK AT-SPI fixture
         working-directory: linguamesh-linux
         run: bash tools/run-gtk-atspi-test.sh
+      - name: Run Orca AT-SPI fixture
+        working-directory: linguamesh-linux
+        run: bash tools/run-orca-atspi-test.sh
       - name: Run optional OCR fixture
         working-directory: linguamesh-linux
         run: bash tools/run-ocr-test.sh

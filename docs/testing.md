@@ -424,6 +424,13 @@ rendering. The diagnostics panel uses the catalog-backed `diagnostics.summary` t
 Core ABI/protocol header, localizes fixed labels and state values through the Linux diagnostics
 keys, and keeps source content, endpoints, identifiers, and secret references redacted.
 
+`tools/run-orca-atspi-test.sh` adds the installed Orca process to a separate Xvfb/private-D-Bus
+session. `tools/orca-atspi-inspect.py` finds the production `Stop translation` push button through
+AT-SPI and focuses it; the fixture then requires Orca's debug stream to contain that accessible name
+and a `SPEECH GENERATOR` record. This proves headless Orca integration and speech-generation
+dispatch only. It does not replace a human listening review, physical desktop review, or a claim
+about speech quality across locales.
+
 The GitHub Actions native workflow pins Core revision
 `c3ccf229af29058fe05b9e1a13b12542cb87f2b9`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both

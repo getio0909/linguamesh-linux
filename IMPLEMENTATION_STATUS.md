@@ -1,5 +1,22 @@
 # Implementation Status
 
+## 2026-07-20 — Linux headless Orca/AT-SPI integration checkpoint
+
+Assumption: the next accessibility gate should exercise the installed Orca process against the live
+GTK accessibility tree while keeping human listening and physical desktop review as separate gates.
+
+- Linux adds `tools/run-orca-atspi-test.sh` and `tools/orca-atspi-inspect.py`. The fixture starts
+  Orca with Speech Dispatcher in an isolated Xvfb/private-D-Bus session, focuses the production
+  `Stop translation` control through AT-SPI, and requires Orca's debug stream to contain the
+  accessible name plus a `SPEECH GENERATOR` record.
+- Native CI installs the test-only Orca and Speech Dispatcher packages and runs this fixture after
+  the existing AT-SPI semantic export check; Foundation protects both fixture files from omission.
+- Local execution is unavailable on this host because `xvfb-run` and `python3-pyatspi` are not
+  installed. Shell syntax and Python bytecode compilation were checked; remote Native CI is required
+  before this checkpoint is treated as verified.
+- This advances headless Orca integration evidence only. Human listening, translated-copy/RTL review,
+  physical desktop behavior, other clients, signing, rollback, and stable release remain open.
+
 ## 2026-07-19 — Linux localization fallback-template consistency checkpoint
 
 Assumption: a catalog-backed key must use its canonical English source text as the literal runtime

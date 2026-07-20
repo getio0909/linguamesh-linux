@@ -49,8 +49,11 @@ read-only properties; editable fields and dropdowns are labelled by visible mnem
 output region reports translation busy state; document-job progress exposes a native progress-bar
 role with a bounded completed/total fraction; empty errors are hidden from the accessibility tree;
 and Stop has the explicit accessible name “Stop translation”. A CI fixture reads the running
-application through AT-SPI and verifies the named Stop control plus both text-editor roles. This
-does not claim Orca speech, physical-keyboard, high-contrast, or physical-compositor coverage. The
+application through AT-SPI and verifies the named Stop control plus both text-editor roles. Native
+CI also starts Orca with Speech Dispatcher in the isolated X11 session, focuses that named control
+through AT-SPI, and requires Orca's speech-generator debug record. This remains headless Orca
+integration evidence, not a human listening, physical-keyboard, high-contrast, or physical-compositor
+review. The
 non-sensitive Diagnostics panel localizes its Core ABI/protocol summary, fixed field labels, state
 values, and profile-storage status through the runtime catalog while omitting source text, endpoints,
 and secret references.
