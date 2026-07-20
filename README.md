@@ -20,7 +20,7 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `58075c997cecdcd9a179b9397cb493da375d3a50`, which adds strict
+reviewed Core functional revision `d304afe01e21023a1e1f37ad8f674d49a23b5d42`, which adds strict
 routing-profile validation, schema-15 routing-profile persistence, and schema-16 document-job
 routing-profile persistence on top of the existing
 document and provider contract. Earlier reviewed revisions added
@@ -208,8 +208,8 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`95078b1a0c30defe98995a9879c4c669d213e5bc` and validated with `msgfmt`; the 405-message bundle
-adds Linux routing-profile persistence/editor, profile-ID validation and duplicate protection, ordinary-text selection labels, routing preference/privacy/document constraints, provider/model allowlists and denylists, quality/request-size limits, and source/output character plus approximate-token metrics. The locale selector
+`e03d8ccc548d7d2eeeef9163b4b12b8204e68d6d` and validated with `msgfmt`; the 410-message bundle
+adds Linux routing-profile persistence/editor, profile-ID validation and duplicate protection, ordinary-text selection labels, routing preference/privacy/document constraints, provider/model allowlists and denylists, quality/request-size limits, translation quality-mode labels, and source/output character plus approximate-token metrics. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
 active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, construction-stage provider/default-control copy, and diagnostics labels/state values without replacing active source text;
 Arabic also switches the GTK workspace root to right-to-left direction. Document-job actions,

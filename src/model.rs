@@ -1,7 +1,7 @@
 use crate::localization;
 use linguamesh_domain::{
     ErrorKind, Glossary, ModelDescriptor, TranslationError, TranslationEvent,
-    TranslationPrivacyMode, TranslationRequest,
+    TranslationPrivacyMode, TranslationQualityMode, TranslationRequest,
 };
 pub use linguamesh_domain::{ProviderProfile, ProviderProfileId, RoutingMode};
 use linguamesh_protocol::{ABI_VERSION_MAJOR, PROTOCOL_VERSION};
@@ -449,6 +449,7 @@ pub struct AppState {
     target_locale: String,
     glossary: Option<Glossary>,
     privacy_mode: TranslationPrivacyMode,
+    quality_mode: TranslationQualityMode,
     translation_history_count: usize,
     translation_history_enabled: bool,
     translation_memory_count: usize,
@@ -484,6 +485,7 @@ impl Default for AppState {
             target_locale: "zh-CN".to_owned(),
             glossary: None,
             privacy_mode: TranslationPrivacyMode::Standard,
+            quality_mode: TranslationQualityMode::Balanced,
             translation_history_count: 0,
             translation_history_enabled: true,
             translation_memory_count: 0,
@@ -1168,6 +1170,12 @@ impl AppState {
         self.privacy_mode
     }
 
+    /// 返回当前请求的质量与调用策略。
+    #[must_use]
+    pub const fn quality_mode(&self) -> TranslationQualityMode {
+        self.quality_mode
+    }
+
     /// 指示当前请求是否启用隐身模式。
     #[must_use]
     pub const fn is_incognito(&self) -> bool {
@@ -1233,6 +1241,11 @@ impl AppState {
         self.privacy_mode = privacy_mode;
     }
 
+    /// 更新当前请求的质量与调用策略。
+    pub const fn set_quality_mode(&mut self, quality_mode: TranslationQualityMode) {
+        self.quality_mode = quality_mode;
+    }
+
     /// 更新外观偏好。
     pub const fn set_theme(&mut self, theme: ThemePreference) {
         self.theme = theme;
@@ -1277,6 +1290,7 @@ impl AppState {
             request = request.with_glossary(glossary);
         }
         request = request.with_privacy_mode(self.privacy_mode);
+        request = request.with_quality_mode(self.quality_mode);
         self.output.clear();
         self.partial_output = false;
         self.status = AppStatus::Translating;
@@ -2112,6 +2126,7 @@ mod tests {
     use linguamesh_domain::{
         ErrorKind, Glossary, GlossaryEntry, ModelDescriptor, ModelSource, SecretRef,
         SecretRefNamespace, TranslationError, TranslationEvent, TranslationPrivacyMode,
+        TranslationQualityMode,
     };
 
     fn profile(
@@ -2291,6 +2306,15 @@ mod tests {
             state.privacy_mode(),
             linguamesh_domain::TranslationPrivacyMode::Incognito
         );
+    }
+
+    #[test]
+    fn request_carries_quality_mode_without_changing_privacy_policy() {
+        let mut state = connected_state();
+        state.set_quality_mode(TranslationQualityMode::Best);
+        let request = state.begin_translation().expect("request");
+        assert_eq!(request.quality_mode, TranslationQualityMode::Best);
+        assert_eq!(request.privacy_mode, TranslationPrivacyMode::Standard);
     }
 
     #[test]

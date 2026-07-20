@@ -1,18 +1,33 @@
 # Implementation Status
 
+## 2026-07-20 — Linux translation quality-mode control
+
+Assumption: Linux is the first active client target; `Best` requests an internal provider critique
+and revision in one call, while Core's deterministic validation rejects malformed completion and no
+hidden paid follow-up call is introduced.
+
+- Core `d304afe01e21023a1e1f37ad8f674d49a23b5d42` adds `TranslationQualityMode`, the versioned
+  `translation-prompt-v2` helper, `translation_quality_modes_v1`, and deterministic output checks.
+- Linux adds localized Fast/Balanced/Best selection to the text workspace and propagates the choice
+  into `TranslationRequest`; document jobs keep the selector disabled because their persisted
+  options have no quality-mode field yet.
+- Canonical l10n `e03d8ccc548d7d2eeeef9163b4b12b8204e68d6d` contains 410 messages and generated
+  Linux resources. Local Linux validation passed format, GUI check, strict Clippy, and 140 demo-
+  provider tests (3 ignored). Stable release and human prompt/copy review remain open.
+
 ## 2026-07-20 — Linux OpenAI Responses typed-SSE slice
 
 Assumption: Linux is the first active client target; the OpenAI Responses preset uses the shared
 `/v1/models` discovery path and a session-only credential while live account, quota, and model
 availability remain external gates.
 
-- Core `58075c997cecdcd9a179b9397cb493da375d3a50` adds the `openai_responses` adapter, typed
+- Core `d304afe01e21023a1e1f37ad8f674d49a23b5d42` adds the `openai_responses` adapter, typed
   `response.output_text.delta`/`response.completed` decoding, and the `openai_responses_v1`
   compatibility feature.
 - Linux adds the localized `openai-responses` preset and a worker regression that discovers
   `fake-translator`, makes one authenticated `/v1/responses` request, and streams
   `你好，Responses！` through the real `ProviderManager` path.
-- Canonical l10n `95078b1a0c30defe98995a9879c4c669d213e5bc` contains 405 messages and generated Linux
+- Canonical l10n `e03d8ccc548d7d2eeeef9163b4b12b8204e68d6d` contains 405 messages and generated Linux
   resources. This checkpoint does not claim a stable release.
 
 ## 2026-07-20 — Linux Azure OpenAI end-to-end worker fixture

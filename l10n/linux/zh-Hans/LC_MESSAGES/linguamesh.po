@@ -2282,6 +2282,36 @@ msgctxt "routing.preference.none"
 msgid "No preference"
 msgstr "无偏好"
 
+#. Label for the Linux text translation quality-mode selector.
+#, fuzzy
+msgctxt "label.quality_mode"
+msgid "Quality mode"
+msgstr "质量模式"
+
+#. Fast quality mode uses one direct translation pass.
+#, fuzzy
+msgctxt "quality.mode.fast"
+msgid "Fast"
+msgstr "快速"
+
+#. Balanced quality mode adds deterministic structural validation.
+#, fuzzy
+msgctxt "quality.mode.balanced"
+msgid "Balanced"
+msgstr "平衡"
+
+#. Best quality mode requests an internal critique and revision before output.
+#, fuzzy
+msgctxt "quality.mode.best"
+msgid "Best"
+msgstr "最佳"
+
+#. Explains the Linux translation quality-mode trade-offs.
+#, fuzzy
+msgctxt "tooltip.quality_mode"
+msgid "Fast uses one direct pass; Balanced adds deterministic structure checks; Best asks for an internal critique and revision."
+msgstr "快速使用一次直接翻译；平衡模式增加确定性结构检查；最佳模式要求内部批评和修订。"
+
 #. Automatic routing preference for highest quality tier.
 #, fuzzy
 msgctxt "routing.preference.quality"

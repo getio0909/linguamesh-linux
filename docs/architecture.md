@@ -26,7 +26,7 @@ confirmation, or rollback.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `58075c997cecdcd9a179b9397cb493da375d3a50`; compared with the prior
+functional revision is `d304afe01e21023a1e1f37ad8f674d49a23b5d42`; compared with the prior
 alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW`, adds streamed
 protected-span and request-level glossary restoration, and rejects suspicious OOXML compression
 ratios and unsupported macro/signature parts before XML inspection. The required contract
@@ -40,6 +40,7 @@ is exact Core `0.1.0-alpha.2`, ABI 1, protocol 1, provider catalog `0.1.0`, and 
 - `long_text_chunking_v1`
 - `bounded_text_document_v1`
 - `routing_planner_v1`
+- `translation_quality_modes_v1`
 - `streaming_text_v1`
 - `text_translation_v1`
 
@@ -63,6 +64,12 @@ The pinned Core also protects common URLs, email addresses, Markdown code, and p
 prompt construction. The adapter restores those spans across split streamed deltas and rejects
 missing, duplicate, or changed markers as typed malformed responses; Linux therefore never renders
 provider output that structurally drops one of these spans.
+
+The text workspace exposes Core's `Fast`, `Balanced`, and `Best` quality modes as a request-scoped
+selector. Fast uses one direct pass, Balanced adds deterministic output checks, and Best asks the
+model for an internal critique and revision before final text. Core does not add hidden paid
+follow-up calls. The selector is disabled for document jobs until their persisted option schema
+also carries a quality-mode field.
 
 The provider catalog's `local-loopback` preset uses the OpenAI-compatible `/v1/` adapter, while its
 loopback-only `ollama` preset uses Core's native `/api/` adapter. The Linux form also exposes the

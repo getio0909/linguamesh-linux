@@ -51,7 +51,7 @@ The Linux checkpoint has a reproducible external pass using Docker image
 were removed after validation. This evidence is prerelease-only and does not cover GPU execution.
 
 The Linux checkout consumes the canonical gettext bundle from immutable l10n revision
-`95078b1a0c30defe98995a9879c4c669d213e5bc`. The bundle contains 405 messages, and
+`e03d8ccc548d7d2eeeef9163b4b12b8204e68d6d`. The bundle contains 410 messages, and
 `bash tools/sync-l10n.sh --check` verifies every PO/MO catalog and the generated manifest before
 the native build. History/memory row metadata, document-job IDs, active-provider mode summaries,
 unavailable provider/model labels, and routing-profile actions/mode labels are asserted through
@@ -61,6 +61,11 @@ counts and an explicitly approximate token estimate without exposing text in dia
 profile tests also verify preference-index round trips and preservation of hidden Core constraints
 when visible privacy/capability controls are edited. Constraint parser tests cover comma-separated
 provider/model lists, positive numeric limits, and rejection of unsafe or empty values.
+
+Quality-mode UI tests verify the localized Fast/Balanced/Best dropdown maps to the Core
+`TranslationQualityMode` values and that document jobs disable the request-scoped selector. Core
+tests cover the versioned `translation-prompt-v2` directives and deterministic rejection of empty
+or Unicode-replacement output before `Completed`; no hidden extra provider request is introduced.
 
 The source-level localization checks are reproducible without GTK or third-party packages:
 
@@ -106,7 +111,7 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`58075c997cecdcd9a179b9397cb493da375d3a50`. This revision carries the explicit request-level
+`d304afe01e21023a1e1f37ad8f674d49a23b5d42`. This revision carries the explicit request-level
 Incognito privacy policy and changes file-backed Core storage to add SQLite's `SQLITE_OPEN_NOFOLLOW`
 flag, adds protected-span restoration and request-level glossary
 protection for streamed text, and adds bounded semantic chunking. On
@@ -115,14 +120,15 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 58075c997cecdcd9a179b9397cb493da375d3a50^{commit}
+git -C ../linguamesh-core cat-file -e d304afe01e21023a1e1f37ad8f674d49a23b5d42^{commit}
 git -C ../linguamesh-core diff --quiet \
-  58075c997cecdcd9a179b9397cb493da375d3a50..HEAD -- \
+  d304afe01e21023a1e1f37ad8f674d49a23b5d42..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
 
-The same Core pin also negotiates `bounded_text_document_v1` and `routing_planner_v1`: Linux imports only bounded UTF-8 TXT,
+The same Core pin also negotiates `bounded_text_document_v1`, `routing_planner_v1`, and
+`translation_quality_modes_v1`: Linux imports only bounded UTF-8 TXT,
 Markdown, CSV, JSON, HTML, SRT, WebVTT, DOCX, PPTX, XLSX, EPUB packages, and text-based PDF pages, preserves line endings, keeps Markdown fenced code and subtitle timing
 structure verbatim, and
 persists pending/running/paused document jobs and validated non-secret translation options, including
@@ -491,7 +497,7 @@ dispatch only. It does not replace a human listening review, physical desktop re
 about speech quality across locales.
 
 The GitHub Actions native workflow pins Core revision
-`58075c997cecdcd9a179b9397cb493da375d3a50`, installs the headers plus D-Bus, Xvfb, test-only
+`d304afe01e21023a1e1f37ad8f674d49a23b5d42`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
 namespace test through the unprivileged path.
@@ -499,8 +505,8 @@ namespace test through the unprivileged path.
 The GTK AT-SPI fixture bounds cleanup of its private application, window manager, and accessibility
 launcher processes; a fixture that prints successful accessibility assertions but cannot reap its
 processes is recorded as a failed gate rather than accepted as evidence.
-The current Linux diagnostics localization revision `95078b1a0c30defe98995a9879c4c669d213e5bc`
-contains 405 catalog messages; the source-level catalog
+The current Linux diagnostics localization revision `e03d8ccc548d7d2eeeef9163b4b12b8204e68d6d`
+contains 410 catalog messages; the source-level catalog
 audit and runtime locale tests cover the diagnostics labels. The current fixed-error localization revision `b6d2503`
 passed Native Linux run `29627668119`, Foundation run `29627668093`, and
 Flatpak run `29627668108`; the native job validated the pinned 117-message catalog and GTK
