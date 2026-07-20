@@ -114,6 +114,14 @@ jobs:
           --server-args="-screen 0 1280x800x24"
           cargo test --all-targets --all-features --locked
           -- --test-threads=1
+      - name: Run fallback approval GTK lifecycle fixture
+        working-directory: linguamesh-linux
+        run: >-
+          dbus-run-session -- xvfb-run --auto-servernum
+          --server-args="-screen 0 1280x800x24"
+          env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
+          tests::gtk_fallback_approval_dialog_requires_an_explicit_one_shot_action
+          -- --exact --ignored --test-threads=1
       - name: Run runtime storage write-fault test
         working-directory: linguamesh-linux
         run: bash tools/run-storage-fault-test.sh

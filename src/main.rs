@@ -8072,6 +8072,7 @@ mod tests {
     }
 
     #[allow(clippy::too_many_lines)]
+    #[ignore = "run in dedicated serialized GTK fixture"]
     #[test]
     fn gtk_fallback_approval_dialog_requires_an_explicit_one_shot_action() {
         adw::init().expect("initialize GTK and libadwaita");
