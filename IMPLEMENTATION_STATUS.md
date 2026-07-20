@@ -1,5 +1,27 @@
 # Implementation Status
 
+## 2026-07-20 — Linux routing candidate dialog accessibility lifecycle
+
+Assumption: candidate-management acceptance requires the production GTK dialog to expose
+focusable, screen-reader-labelled controls and to preserve the selected profile through close/use.
+
+- `gtk_routing_profile_candidate_controls_have_accessible_lifecycle` constructs the real Routing
+  profiles dialog with two saved provider/model candidates, verifies the labelled profile ID field,
+  stable Manual/Ordered/Automatic mode order, explicit fallback control, focusable candidate
+  checkboxes, and accessible up/down labels. It exercises row reordering, Manual-mode single-
+  candidate enforcement, and the Use action's close-and-select lifecycle.
+- The test remains ignored in the parallel Rust suite because GTK initialization is thread-bound;
+  Native CI runs it as a dedicated serialized DBus/Xvfb fixture. Local formatting, GUI all-target
+  check, strict Clippy, no-default-feature tests (`80 passed; 1 ignored`), demo-provider tests
+  (`142 passed; 3 ignored`), Flatpak metadata validation, and diff checks passed. This host has no
+  `xvfb-run`, so the GTK runtime result is CI-only here.
+- Source/pin head `1c47ff9b6b103ee16d564480d3dd3cdfcda5e083` passed push Native/Flatpak/Foundation
+  `29771475803`/`29771475775`/`29771475669` and PR Native/Flatpak/Foundation
+  `29771479057`/`29771478869`/`29771478884`, including the new candidate fixture. The PR remains
+  Draft/Open and the release train remains unreleased; visual/translated-copy review, Orca
+  end-user acceptance, other clients, signing, rollback, and stable-release authorization remain
+  open.
+
 ## 2026-07-20 — Linux fallback approval dialog lifecycle
 
 Assumption: an approved fallback may be used only after an explicit, one-shot user action;

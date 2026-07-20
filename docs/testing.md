@@ -112,6 +112,12 @@ copy and focusable actions, that `Close` dismisses without dispatch or approval,
 `Translate` click records one-shot approval and exactly one translation dispatch. The test is
 marked ignored in the parallel Rust suite and is run explicitly under `dbus-run-session` and
 `xvfb-run` in the Native workflow so GTK initialization remains on one thread.
+The dedicated GTK test `gtk_routing_profile_candidate_controls_have_accessible_lifecycle` covers
+the production candidate editor with two saved provider/model pairs. It checks the labelled profile
+ID field, stable mode choices, explicit fallback checkbox, focusable candidate rows, accessible
+up/down button labels, row reordering, Manual-mode single-candidate enforcement, and the Use
+close-and-select lifecycle. It uses the same serialized DBus/Xvfb fixture boundary as the fallback
+dialog test and remains prerelease evidence until visual, translated-copy, and end-user Orca review.
 The GTK dialog creates a bounded profile from saved provider/model selections and now exposes the
 Core `Manual`, `Ordered`, and `Automatic` modes in a stable order. Its separate explicit fallback
 checkbox is off by default; when a routing profile is selected, it takes precedence over the
