@@ -20,7 +20,7 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `9cacf6364a2a2c6e63f65b336bb7dfe5d460518f`, which adds strict
+reviewed Core functional revision `115535c76d804020f045708867af7798b8d0294a`, which adds strict
 routing-profile validation, schema-15 routing-profile persistence, schema-16 document-job
 routing-profile persistence, and schema-17 document quality-mode persistence on top of the existing
 document and provider contract, including schema-18 document translation-preset persistence.
@@ -217,7 +217,7 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`7f65596bd71be3ed6e179ade3bf2e436545436a2` and validated with `msgfmt`; the 415-message bundle
+`026c35b8dbb1c13c22d77809cc5fe72e6af6f5a3` and validated with `msgfmt`; the 422-message bundle
 adds Linux routing-profile persistence/editor, profile-ID validation and duplicate protection, ordinary-text selection labels, routing preference/privacy/document constraints, provider/model allowlists and denylists, quality/request-size limits, translation quality-mode and translation-preset labels, and source/output character plus approximate-token metrics. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
 active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, construction-stage provider/default-control copy, and diagnostics labels/state values without replacing active source text;
@@ -253,6 +253,10 @@ same non-secret profile ID on **Save routing profile**.
 New profiles use a bounded ID field (1–128 ASCII letters, numbers, `.`, `_`, or `-`); editing locks
 the existing ID so references remain stable, while distinct IDs allow multiple saved routing profiles.
 Attempting to create a new profile with an existing ID is rejected instead of silently replacing it.
+**Import profile** and per-row **Export** use a bounded Core JSON exchange format containing only
+validated candidate capabilities and privacy constraints. Unknown fields, endpoint/credential-shaped
+data, malformed or non-UTF-8 files, payloads over 64 KiB, and duplicate IDs are rejected; imports
+never overwrite an existing profile.
 
 When an ordinary text request ends in a failed or cancelled state, **Retry translation** becomes
 available. It reuses the current source, target, glossary, privacy mode, confirmed provider, and

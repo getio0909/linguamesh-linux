@@ -26,7 +26,7 @@ confirmation, or rollback.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `9cacf6364a2a2c6e63f65b336bb7dfe5d460518f`; compared with the prior
+functional revision is `115535c76d804020f045708867af7798b8d0294a`; compared with the prior
 alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW`, adds streamed
 protected-span and request-level glossary restoration, and rejects suspicious OOXML compression
 ratios and unsupported macro/signature parts before XML inspection. The required contract
@@ -125,6 +125,11 @@ candidate order, and stable ID back into the same editor; saving replaces that I
 storage upsert without exposing secrets. New profiles use Core-compatible 1–128 byte ASCII IDs;
 edit mode locks the existing ID so references remain stable, and new profiles reject duplicate IDs
 before reaching the upsert path.
+
+The same dialog imports and exports a bounded JSON exchange format. Core serializes only validated
+profile fields (candidate capabilities and privacy constraints); endpoint, credential, user-content,
+unknown-field, malformed, non-UTF-8, and over-64-KiB payloads are rejected. Imports never overwrite
+an existing ID, so replacing a profile remains an explicit in-app edit.
 
 Core also performs bounded long-text chunking before provider calls. It prefers paragraph, sentence,
 and whitespace boundaries, treats protected markers as indivisible, streams chunks in source order,

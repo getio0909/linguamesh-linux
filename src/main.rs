@@ -6,10 +6,10 @@ use linguamesh_document::{
 };
 use linguamesh_domain::{
     ErrorKind, Glossary, GlossaryEntry, MAX_GLOSSARY_CSV_BYTES, MAX_ROUTING_IDENTIFIER_BYTES,
-    OperationId, ProviderProfileId, RoutingCandidate, RoutingConstraints, RoutingMode,
-    RoutingPreference, RoutingProfile, SecretRef, SecretRefNamespace, SecretValue,
-    TranslationError, TranslationEvent, TranslationPreset, TranslationPrivacyMode,
-    TranslationQualityMode,
+    MAX_ROUTING_PROFILE_JSON_BYTES, OperationId, ProviderProfileId, RoutingCandidate,
+    RoutingConstraints, RoutingMode, RoutingPreference, RoutingProfile, SecretRef,
+    SecretRefNamespace, SecretValue, TranslationError, TranslationEvent, TranslationPreset,
+    TranslationPrivacyMode, TranslationQualityMode,
 };
 use linguamesh_linux::file_import;
 use linguamesh_linux::localization;
@@ -4914,8 +4914,20 @@ fn show_routing_profiles_dialog(
         "Create local-first profile",
     ));
     create.set_focusable(true);
+    let import = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.import_routing_profile",
+        "Import profile",
+    ));
+    import.set_focusable(true);
+    import.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.routing_profiles",
+        "Create, inspect, and delete non-secret routing planner profiles",
+    )));
     let close = gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.close", "Close"));
     close.set_focusable(true);
+    actions.append(&import);
     actions.append(&create);
     actions.append(&close);
     root.append(&actions);
@@ -5029,6 +5041,25 @@ fn show_routing_profiles_dialog(
                     .replace(Some(use_profile_id.clone()));
                 use_dialog.close();
             });
+            let export = gtk::Button::with_mnemonic(&localized_mnemonic(
+                locale,
+                "action.export_routing_profile",
+                "Export",
+            ));
+            export.set_focusable(true);
+            let export_worker = worker.clone();
+            let export_bindings = bindings.clone();
+            let export_state = Rc::clone(state);
+            let export_profile_id = record.id.clone();
+            export.connect_clicked(move |_| {
+                if let Err(error) = export_worker.export_routing_profile(export_profile_id.clone())
+                {
+                    export_state
+                        .borrow_mut()
+                        .record_client_error(error.to_string());
+                    refresh_ui(&export_bindings, &export_state.borrow());
+                }
+            });
             let delete = gtk::Button::with_mnemonic(&localized_mnemonic(
                 locale,
                 "action.delete_routing_profile",
@@ -5054,6 +5085,7 @@ fn show_routing_profiles_dialog(
             row.append(&label);
             row.append(&edit);
             row.append(&use_button);
+            row.append(&export);
             row.append(&delete);
             list.append(&row);
         }
@@ -5176,7 +5208,188 @@ fn show_routing_profiles_dialog(
     });
     let close_dialog = dialog.clone();
     close.connect_clicked(move |_| close_dialog.close());
+    let import_bindings = bindings.clone();
+    let import_state = Rc::clone(state);
+    let import_worker = worker.clone();
+    let import_dialog = dialog.clone();
+    import.connect_clicked(move |_| {
+        begin_routing_profile_import(
+            &import_bindings,
+            &import_state,
+            &import_worker,
+            &import_dialog,
+        );
+    });
     dialog.present();
+}
+
+// 通过受限的 GIO 异步读取导入文件，只把 UTF-8 JSON 交给核心校验。
+fn begin_routing_profile_import(
+    bindings: &UiBindings,
+    state: &Rc<RefCell<AppState>>,
+    worker: &WorkerCommandHandle,
+    dialog: &gtk::Window,
+) {
+    let locale = state.borrow().locale();
+    let filter_name = localization::text(locale, "file.filter.json", "JSON files");
+    let filter = gtk::FileFilter::new();
+    filter.set_name(Some(&filter_name));
+    filter.add_mime_type("application/json");
+    filter.add_suffix("json");
+    let filters = gtk::gio::ListStore::new::<gtk::FileFilter>();
+    filters.append(&filter);
+    let dialog_title = localization::text(
+        locale,
+        "dialog.open_routing_profile",
+        "Import routing profile",
+    );
+    let dialog_accept = localization::text(locale, "dialog.open", "Open");
+    let file_dialog = gtk::FileDialog::builder()
+        .title(&dialog_title)
+        .accept_label(&dialog_accept)
+        .modal(true)
+        .build();
+    file_dialog.set_filters(Some(&filters));
+    let import_bindings = bindings.clone();
+    let import_state = Rc::clone(state);
+    let import_worker = worker.clone();
+    let import_dialog = dialog.clone();
+    file_dialog.open(
+        Some(&bindings.window),
+        None::<&gtk::gio::Cancellable>,
+        move |result| match result {
+            Ok(file) => {
+                let bytes_read = Rc::new(Cell::new(0_usize));
+                let too_large = Rc::new(Cell::new(false));
+                let read_bytes = Rc::clone(&bytes_read);
+                let read_too_large = Rc::clone(&too_large);
+                let callback_bindings = import_bindings.clone();
+                let callback_state = Rc::clone(&import_state);
+                let callback_worker = import_worker.clone();
+                let callback_dialog = import_dialog.clone();
+                file.load_partial_contents_async(
+                    None::<&gtk::gio::Cancellable>,
+                    move |chunk| {
+                        let next = read_bytes.get().saturating_add(chunk.len());
+                        if next > MAX_ROUTING_PROFILE_JSON_BYTES {
+                            read_too_large.set(true);
+                            false
+                        } else {
+                            read_bytes.set(next);
+                            true
+                        }
+                    },
+                    move |read_result| {
+                        if too_large.get() {
+                            show_file_import_error(
+                                &callback_bindings,
+                                &localization::text(
+                                    callback_state.borrow().locale(),
+                                    "error.routing_profile_import",
+                                    "The routing profile JSON could not be imported.",
+                                ),
+                            );
+                            return;
+                        }
+                        match read_result {
+                            Ok((contents, _)) => {
+                                if let Err(error) = callback_worker
+                                    .import_routing_profile(contents.as_ref().to_vec())
+                                {
+                                    callback_state
+                                        .borrow_mut()
+                                        .record_client_error(error.to_string());
+                                    refresh_ui(&callback_bindings, &callback_state.borrow());
+                                } else {
+                                    callback_dialog.close();
+                                }
+                            }
+                            Err(_) => show_file_import_error(
+                                &callback_bindings,
+                                &localization::text(
+                                    callback_state.borrow().locale(),
+                                    "error.routing_profile_import",
+                                    "The routing profile JSON could not be imported.",
+                                ),
+                            ),
+                        }
+                    },
+                );
+            }
+            Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
+            Err(_) => show_file_import_error(
+                &import_bindings,
+                &localization::text(
+                    import_state.borrow().locale(),
+                    "error.routing_profile_import",
+                    "The routing profile JSON could not be imported.",
+                ),
+            ),
+        },
+    );
+}
+
+// 通过 GTK 原生保存对话框写出核心编码的非秘密路由配置 JSON。
+fn begin_routing_profile_export(
+    bindings: &UiBindings,
+    state: &Rc<RefCell<AppState>>,
+    profile_id: &str,
+    contents: Vec<u8>,
+) {
+    let locale = state.borrow().locale();
+    let dialog_title = localization::text(
+        locale,
+        "dialog.export_routing_profile",
+        "Export routing profile",
+    );
+    let dialog_accept = localization::text(locale, "dialog.save", "Save");
+    let file_dialog = gtk::FileDialog::builder()
+        .title(&dialog_title)
+        .accept_label(&dialog_accept)
+        .modal(true)
+        .build();
+    file_dialog.set_initial_name(Some(&format!("linguamesh-routing-{profile_id}.json")));
+    let export_bindings = bindings.clone();
+    let export_state = Rc::clone(state);
+    let contents = glib::Bytes::from_owned(contents);
+    file_dialog.save(
+        Some(&bindings.window),
+        None::<&gtk::gio::Cancellable>,
+        move |result| match result {
+            Ok(file) => {
+                let callback_bindings = export_bindings.clone();
+                let callback_state = Rc::clone(&export_state);
+                file.replace_contents_bytes_async(
+                    &contents,
+                    None,
+                    false,
+                    gtk::gio::FileCreateFlags::NONE,
+                    None::<&gtk::gio::Cancellable>,
+                    move |write_result| {
+                        if write_result.is_err() {
+                            show_file_export_error(
+                                &callback_bindings,
+                                &localization::text(
+                                    callback_state.borrow().locale(),
+                                    "error.routing_profile_export",
+                                    "The routing profile JSON could not be saved.",
+                                ),
+                            );
+                        }
+                    },
+                );
+            }
+            Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
+            Err(_) => show_file_export_error(
+                &export_bindings,
+                &localization::text(
+                    export_state.borrow().locale(),
+                    "error.routing_profile_export",
+                    "The routing profile JSON could not be saved.",
+                ),
+            ),
+        },
+    );
 }
 
 // 展示持久化文档任务并允许用户选择或控制队列中的任务。
@@ -6021,6 +6234,12 @@ fn apply_worker_event(
             let routing_worker = worker.command_handle();
             show_routing_profiles_dialog(bindings, state, &routing_worker, profiles);
         }
+        WorkerEvent::RoutingProfileExported {
+            profile_id,
+            contents,
+        } => {
+            begin_routing_profile_export(bindings, state, &profile_id, contents);
+        }
         WorkerEvent::RoutingDecisionSelected {
             profile_id,
             provider_id,
@@ -6040,7 +6259,7 @@ fn apply_worker_event(
                     fallback_count,
                 });
         }
-        WorkerEvent::RoutingProfileSaved(_) => {
+        WorkerEvent::RoutingProfileSaved(_) | WorkerEvent::RoutingProfileImported(_) => {
             if let Err(error) = worker.command_handle().list_routing_profiles() {
                 state.borrow_mut().record_client_error(error.to_string());
             }

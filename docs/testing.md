@@ -57,7 +57,7 @@ The Linux checkpoint has a reproducible external pass using Docker image
 were removed after validation. This evidence is prerelease-only and does not cover GPU execution.
 
 The Linux checkout consumes the canonical gettext bundle from immutable l10n revision
-`7f65596bd71be3ed6e179ade3bf2e436545436a2`. The bundle contains 415 messages, and
+`026c35b8dbb1c13c22d77809cc5fe72e6af6f5a3`. The bundle contains 422 messages, and
 `bash tools/sync-l10n.sh --check` verifies every PO/MO catalog and the generated manifest before
 the native build. History/memory row metadata, document-job IDs, active-provider mode summaries,
 unavailable provider/model labels, and routing-profile actions/mode labels are asserted through
@@ -78,8 +78,8 @@ or Unicode-replacement output before `Completed`; no hidden extra provider reque
 Translation-preset UI behavior maps the localized General/Technical/Marketing dropdown to the Core
 `TranslationPreset` values and carries the selection into ordinary requests. Linux tests cover all
 stable IDs and compatibility negotiation rejects a Core that does not advertise
-`translation_presets_v1`; document jobs intentionally remain General until their persisted options
-schema is extended.
+`translation_presets_v1`; document jobs persist and restore the selected preset through schema 18
+after pause, retry, and worker restart.
 
 The source-level localization checks are reproducible without GTK or third-party packages:
 
@@ -116,6 +116,10 @@ selections and invalid drag IDs are rejected before persistence. Each saved prof
 ID; saving updates the same profile record rather than creating a duplicate.
 New profiles validate IDs against Core's 1–128 byte ASCII identifier rule; edit mode locks the
 existing ID to protect saved references, and a new profile cannot reuse an existing ID.
+Core exchange tests round-trip a bounded profile, reject malformed/oversized JSON and unknown
+fields, and assert that no endpoint or credential-shaped field can be exported. Worker tests cover
+UTF-8 import, duplicate-ID rejection, persistence errors, and export of the validated profile.
+Native and Flatpak CI remain authoritative for the GTK file chooser callbacks.
 The restart regression `document_job_resume_reconnects_saved_routing_profile_after_restart`
 interrupts a routed job, reopens the database, reconnects the saved profile through the host secret
 broker, and completes the remaining segments while asserting a zero-fallback decision.
@@ -125,7 +129,7 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`9cacf6364a2a2c6e63f65b336bb7dfe5d460518f`. This revision carries the explicit request-level
+`115535c76d804020f045708867af7798b8d0294a`. This revision carries the explicit request-level
 Incognito privacy policy and changes file-backed Core storage to add SQLite's `SQLITE_OPEN_NOFOLLOW`
 flag, adds protected-span restoration and request-level glossary
 protection for streamed text, and adds bounded semantic chunking. On
@@ -134,9 +138,9 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 9cacf6364a2a2c6e63f65b336bb7dfe5d460518f^{commit}
+git -C ../linguamesh-core cat-file -e 115535c76d804020f045708867af7798b8d0294a^{commit}
 git -C ../linguamesh-core diff --quiet \
-  9cacf6364a2a2c6e63f65b336bb7dfe5d460518f..HEAD -- \
+  115535c76d804020f045708867af7798b8d0294a..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -512,7 +516,7 @@ dispatch only. It does not replace a human listening review, physical desktop re
 about speech quality across locales.
 
 The GitHub Actions native workflow pins Core revision
-`9cacf6364a2a2c6e63f65b336bb7dfe5d460518f`, installs the headers plus D-Bus, Xvfb, test-only
+`115535c76d804020f045708867af7798b8d0294a`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
 namespace test through the unprivileged path.
@@ -520,8 +524,8 @@ namespace test through the unprivileged path.
 The GTK AT-SPI fixture bounds cleanup of its private application, window manager, and accessibility
 launcher processes; a fixture that prints successful accessibility assertions but cannot reap its
 processes is recorded as a failed gate rather than accepted as evidence.
-The current Linux diagnostics localization revision `7f65596bd71be3ed6e179ade3bf2e436545436a2`
-contains 415 catalog messages; the source-level catalog
+The current Linux diagnostics localization revision `026c35b8dbb1c13c22d77809cc5fe72e6af6f5a3`
+contains 422 catalog messages; the source-level catalog
 audit and runtime locale tests cover the diagnostics labels. The current fixed-error localization revision `b6d2503`
 passed Native Linux run `29627668119`, Foundation run `29627668093`, and
 Flatpak run `29627668108`; the native job validated the pinned 117-message catalog and GTK

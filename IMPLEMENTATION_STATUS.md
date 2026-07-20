@@ -1,10 +1,29 @@
 # Implementation Status
 
+## 2026-07-20 — Linux routing profile exchange
+
+Assumption: imported profiles must be new IDs; replacing an existing profile remains an explicit
+editor action so an exchange file cannot silently change a document job's routing reference.
+
+- Core `115535c76d804020f045708867af7798b8d0294a` exposes bounded routing-profile JSON codecs. The
+  codec validates the profile, rejects unknown fields (including endpoint/credential-shaped data),
+  enforces the 64 KiB limit, and keeps the exchange payload to non-secret routing metadata.
+- Linux adds worker export/import commands and GTK file chooser actions. Export serializes only the
+  validated Core profile; import requires UTF-8 JSON, rejects duplicate IDs, malformed/oversized
+  files, and persistence failures without logging file contents.
+- Canonical l10n `026c35b8dbb1c13c22d77809cc5fe72e6af6f5a3` adds five Linux-only exchange strings and
+  regenerated PO/MO resources for all official and pseudo-locale packs; non-English values remain
+  machine-generated drafts.
+
+Local validation: Core workspace tests (all targets/features, 33 storage tests and 29 domain tests),
+Linux all-target check, localization check/generate-check, localization key/visible/placeholder
+audits, and Flatpak metadata validation passed. Remote Linux GUI/Flatpak gates remain authoritative
+for the GTK file chooser path.
+
 ## 2026-07-20 — Linux request-level translation presets
 
 Assumption: Linux is the first active client target; the GTK surface exposes the three bounded
-Core built-ins while document jobs remain `General` until a persisted document-preset field is
-approved.
+Core built-ins and document jobs persist the selected preset through schema 18.
 
 - Core `f79631fd3e83a55077000c888aee6c0fc580c115` adds the validated request contract and
   `translation_presets_v1`. The text workspace now offers localized `General`, `Technical`, and `Marketing` presets. The
@@ -13,7 +32,7 @@ approved.
 - Worker compatibility negotiation now requires Core feature `translation_presets_v1`; stale cores
   fail closed before provider work. The request-level preset is independent of quality mode and
   does not add provider calls or persist credentials.
-- Canonical l10n `7f65596bd71be3ed6e179ade3bf2e436545436a2` adds five Linux-only source keys and
+- Canonical l10n `026c35b8dbb1c13c22d77809cc5fe72e6af6f5a3` adds five Linux-only source keys and
   regenerated PO/MO resources for all official locale packs; non-English values remain
   machine-generated drafts.
 

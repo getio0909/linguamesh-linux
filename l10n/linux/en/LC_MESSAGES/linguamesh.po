@@ -1213,6 +1213,11 @@ msgctxt "error.glossary_import"
 msgid "The glossary CSV could not be imported."
 msgstr "The glossary CSV could not be imported."
 
+#. Native file chooser filter for routing profile JSON files.
+msgctxt "file.filter.json"
+msgid "JSON files"
+msgstr "JSON files"
+
 #. Safe error shown when a glossary CSV cannot be written.
 msgctxt "error.glossary_export"
 msgid "The glossary CSV could not be saved."
@@ -1809,6 +1814,16 @@ msgctxt "action.create_routing_profile"
 msgid "Create local-first profile"
 msgstr "Create local-first profile"
 
+#. Imports one non-secret Linux routing planner profile from a JSON exchange file.
+msgctxt "action.import_routing_profile"
+msgid "Import profile"
+msgstr "Import profile"
+
+#. Exports one non-secret Linux routing planner profile to a JSON exchange file.
+msgctxt "action.export_routing_profile"
+msgid "Export"
+msgstr "Export"
+
 #. Loads one saved Linux routing planner profile into the editor.
 msgctxt "action.edit_routing_profile"
 msgid "Edit"
@@ -1849,6 +1864,16 @@ msgctxt "tooltip.routing_profiles"
 msgid "Create, inspect, and delete non-secret routing planner profiles"
 msgstr "Create, inspect, and delete non-secret routing planner profiles"
 
+#. Title of the Linux routing planner profile JSON import dialog.
+msgctxt "dialog.open_routing_profile"
+msgid "Import routing profile"
+msgstr "Import routing profile"
+
+#. Title of the Linux routing planner profile JSON export dialog.
+msgctxt "dialog.export_routing_profile"
+msgid "Export routing profile"
+msgstr "Export routing profile"
+
 #. Empty state for the Linux routing planner profile dialog.
 msgctxt "status.routing_profile_empty"
 msgid "No routing profiles are saved."
@@ -1874,6 +1899,16 @@ msgstr "Use 1-128 ASCII letters, numbers, '.', '_' or '-' for the routing profil
 msgctxt "error.routing_profile_id_exists"
 msgid "A routing profile with this ID already exists. Edit it or choose another ID."
 msgstr "A routing profile with this ID already exists. Edit it or choose another ID."
+
+#. Fixed error shown when a Linux routing planner profile JSON file cannot be imported.
+msgctxt "error.routing_profile_import"
+msgid "The routing profile JSON could not be imported."
+msgstr "The routing profile JSON could not be imported."
+
+#. Fixed error shown when a Linux routing planner profile JSON file cannot be exported.
+msgctxt "error.routing_profile_export"
+msgid "The routing profile JSON could not be saved."
+msgstr "The routing profile JSON could not be saved."
 
 #. Localized label for manual routing mode.
 msgctxt "routing.mode.manual"

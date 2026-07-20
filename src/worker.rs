@@ -9,7 +9,7 @@ use linguamesh_domain::{
     CompatibilityRequirements, CoreCompatibility, ErrorKind, Glossary, ModelDescriptor,
     RoutingCandidate, RoutingContext, RoutingProfile, SecretValue, TranslationError,
     TranslationEvent, TranslationPreset, TranslationPrivacyMode, TranslationQualityMode,
-    TranslationRequest,
+    TranslationRequest, deserialize_routing_profile, serialize_routing_profile,
 };
 use linguamesh_engine::{CancellationHandle, TranslationOperation, core_compatibility};
 use linguamesh_storage::{
@@ -132,6 +132,16 @@ pub enum WorkerCommand {
     DeleteRoutingProfile {
         /// 路由配置稳定标识。
         profile_id: String,
+    },
+    /// 将一个不含秘密的路由配置编码为交换文件。
+    ExportRoutingProfile {
+        /// 路由配置稳定标识。
+        profile_id: String,
+    },
+    /// 从受限交换文件导入一个新的路由配置。
+    ImportRoutingProfile {
+        /// UTF-8 JSON 文件内容。
+        contents: Vec<u8>,
     },
     /// 创建或替换一个本地文档任务快照。
     CreateDocumentJob {
@@ -335,6 +345,15 @@ pub enum WorkerEvent {
     },
     /// 路由配置操作被精确拒绝。
     RoutingProfileActionRejected(TranslationError),
+    /// 路由配置已编码为不含秘密的 JSON。
+    RoutingProfileExported {
+        /// 路由配置稳定标识。
+        profile_id: String,
+        /// 交换文件内容。
+        contents: Vec<u8>,
+    },
+    /// 路由配置已从交换文件导入。
+    RoutingProfileImported(RoutingProfileRecord),
     /// 路由配置已为一次普通文本请求选择候选。
     RoutingDecisionSelected {
         /// 使用的路由配置标识。
@@ -586,6 +605,20 @@ impl WorkerCommandHandle {
             .try_send(QueuedCommand::DeleteRoutingProfile { profile_id })
             .map_err(|_| WorkerSendError)
     }
+
+    /// 非阻塞导出一个不含秘密的路由配置。
+    pub fn export_routing_profile(&self, profile_id: String) -> Result<(), WorkerSendError> {
+        self.commands
+            .try_send(QueuedCommand::ExportRoutingProfile { profile_id })
+            .map_err(|_| WorkerSendError)
+    }
+
+    /// 非阻塞导入一个新的不含秘密路由配置。
+    pub fn import_routing_profile(&self, contents: Vec<u8>) -> Result<(), WorkerSendError> {
+        self.commands
+            .try_send(QueuedCommand::ImportRoutingProfile { contents })
+            .map_err(|_| WorkerSendError)
+    }
 }
 
 enum QueuedCommand {
@@ -624,6 +657,12 @@ enum QueuedCommand {
     ListRoutingProfiles,
     DeleteRoutingProfile {
         profile_id: String,
+    },
+    ExportRoutingProfile {
+        profile_id: String,
+    },
+    ImportRoutingProfile {
+        contents: Vec<u8>,
     },
     CreateDocumentJob {
         job_id: String,
@@ -861,6 +900,14 @@ impl CoreWorker {
             WorkerCommand::DeleteRoutingProfile { profile_id } => self
                 .commands
                 .try_send(QueuedCommand::DeleteRoutingProfile { profile_id })
+                .map_err(|_| WorkerSendError),
+            WorkerCommand::ExportRoutingProfile { profile_id } => self
+                .commands
+                .try_send(QueuedCommand::ExportRoutingProfile { profile_id })
+                .map_err(|_| WorkerSendError),
+            WorkerCommand::ImportRoutingProfile { contents } => self
+                .commands
+                .try_send(QueuedCommand::ImportRoutingProfile { contents })
                 .map_err(|_| WorkerSendError),
             WorkerCommand::CreateDocumentJob { job_id, job } => self
                 .commands
@@ -1498,7 +1545,9 @@ async fn run_worker(
                 ActiveStep::Command(Some(
                     QueuedCommand::SaveRoutingProfile { .. }
                     | QueuedCommand::ListRoutingProfiles
-                    | QueuedCommand::DeleteRoutingProfile { .. },
+                    | QueuedCommand::DeleteRoutingProfile { .. }
+                    | QueuedCommand::ExportRoutingProfile { .. }
+                    | QueuedCommand::ImportRoutingProfile { .. },
                 )) => {
                     let _ = events.send(WorkerEvent::RoutingProfileActionRejected(
                         TranslationError::new(
@@ -2807,6 +2856,106 @@ async fn run_worker(
                     }
                 }
             }
+            Some(QueuedCommand::ExportRoutingProfile { profile_id }) => {
+                let result = storage
+                    .as_ref()
+                    .ok_or_else(|| {
+                        TranslationError::new(
+                            ErrorKind::Persistence,
+                            "Local routing profile storage is unavailable.",
+                        )
+                    })
+                    .and_then(|storage| {
+                        let record =
+                            storage
+                                .routing_profile(profile_id.as_str())?
+                                .ok_or_else(|| {
+                                    TranslationError::new(
+                                        ErrorKind::InvalidConfiguration,
+                                        "The routing profile no longer exists.",
+                                    )
+                                })?;
+                        let contents =
+                            serialize_routing_profile(&record.profile).map_err(|error| {
+                                TranslationError::new(
+                                    ErrorKind::InvalidConfiguration,
+                                    error.to_string(),
+                                )
+                            })?;
+                        Ok((record.id, contents.into_bytes()))
+                    });
+                match result {
+                    Ok((profile_id, contents)) => {
+                        if events
+                            .send(WorkerEvent::RoutingProfileExported {
+                                profile_id,
+                                contents,
+                            })
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::RoutingProfileActionRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
+            Some(QueuedCommand::ImportRoutingProfile { contents }) => {
+                let result = String::from_utf8(contents)
+                    .map_err(|_| {
+                        TranslationError::new(
+                            ErrorKind::InvalidConfiguration,
+                            "The routing profile file must be UTF-8 JSON.",
+                        )
+                    })
+                    .and_then(|contents| {
+                        deserialize_routing_profile(&contents).map_err(|error| {
+                            TranslationError::new(
+                                ErrorKind::InvalidConfiguration,
+                                error.to_string(),
+                            )
+                        })
+                    })
+                    .and_then(|profile| {
+                        let storage = storage.as_mut().ok_or_else(|| {
+                            TranslationError::new(
+                                ErrorKind::Persistence,
+                                "Local routing profile storage is unavailable.",
+                            )
+                        })?;
+                        if storage.routing_profile(&profile.id)?.is_some() {
+                            return Err(TranslationError::new(
+                                ErrorKind::InvalidConfiguration,
+                                "A routing profile with this ID already exists.",
+                            ));
+                        }
+                        storage.save_routing_profile(&profile)
+                    });
+                match result {
+                    Ok(record) => {
+                        if events
+                            .send(WorkerEvent::RoutingProfileImported(record))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::RoutingProfileActionRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
             Some(QueuedCommand::OcrDocumentJob {
                 job_id,
                 source_name,
@@ -3867,7 +4016,9 @@ fn reject_queued_commands_for_shutdown(
             ),
             QueuedCommand::SaveRoutingProfile { .. }
             | QueuedCommand::ListRoutingProfiles
-            | QueuedCommand::DeleteRoutingProfile { .. } => events.send(
+            | QueuedCommand::DeleteRoutingProfile { .. }
+            | QueuedCommand::ExportRoutingProfile { .. }
+            | QueuedCommand::ImportRoutingProfile { .. } => events.send(
                 WorkerEvent::RoutingProfileActionRejected(TranslationError::cancelled()),
             ),
             QueuedCommand::CreateDocumentJob { .. }
@@ -5142,7 +5293,7 @@ mod tests {
         CoreCompatibility, ErrorKind, RoutingCandidate, RoutingConstraints, RoutingMode,
         RoutingPreference, RoutingProfile, SecretRef, SecretRefNamespace, SecretValue,
         TranslationError, TranslationEvent, TranslationPreset, TranslationPrivacyMode,
-        TranslationQualityMode, TranslationRequest,
+        TranslationQualityMode, TranslationRequest, serialize_routing_profile,
     };
     use linguamesh_engine::core_compatibility;
     use linguamesh_storage::Storage;
@@ -6123,6 +6274,77 @@ mod tests {
             _ => panic!("unexpected routing update event"),
         }
         worker
+            .try_send(WorkerCommand::ExportRoutingProfile {
+                profile_id: "linux-local-first".to_owned(),
+            })
+            .expect("export routing profile");
+        let exported = match worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("routing export event")
+        {
+            WorkerEvent::RoutingProfileExported {
+                profile_id,
+                contents,
+            } => {
+                assert_eq!(profile_id, "linux-local-first");
+                assert!(!String::from_utf8_lossy(&contents).contains("endpoint"));
+                assert!(!String::from_utf8_lossy(&contents).contains("secret"));
+                contents
+            }
+            _ => panic!("unexpected routing export event"),
+        };
+        let imported_profile = RoutingProfile::new(
+            "linux-imported",
+            updated_profile.mode,
+            updated_profile.candidates.clone(),
+            updated_profile.constraints.clone(),
+        )
+        .expect("imported routing profile");
+        worker
+            .try_send(WorkerCommand::ImportRoutingProfile {
+                contents: serialize_routing_profile(&imported_profile)
+                    .expect("serialize imported profile")
+                    .into_bytes(),
+            })
+            .expect("import routing profile");
+        match worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("routing import event")
+        {
+            WorkerEvent::RoutingProfileImported(record) => {
+                assert_eq!(record.id, "linux-imported");
+                assert_eq!(record.profile, imported_profile);
+            }
+            _ => panic!("unexpected routing import event"),
+        }
+        worker
+            .try_send(WorkerCommand::ImportRoutingProfile { contents: exported })
+            .expect("duplicate routing import");
+        match worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("duplicate routing import event")
+        {
+            WorkerEvent::RoutingProfileActionRejected(error) => {
+                assert!(error.to_string().contains("already exists"));
+            }
+            _ => panic!("unexpected duplicate routing import event"),
+        }
+        worker
+            .try_send(WorkerCommand::ImportRoutingProfile {
+                contents: b"not-json".to_vec(),
+            })
+            .expect("malformed routing import");
+        assert!(matches!(
+            worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("malformed routing import event"),
+            WorkerEvent::RoutingProfileActionRejected(_)
+        ));
+        worker
             .try_send(WorkerCommand::ListRoutingProfiles)
             .expect("list updated routing profiles");
         match worker
@@ -6131,8 +6353,17 @@ mod tests {
             .expect("updated routing list event")
         {
             WorkerEvent::RoutingProfilesListed { profiles } => {
-                assert_eq!(profiles.len(), 1);
-                assert_eq!(profiles[0].profile, updated_profile);
+                assert_eq!(profiles.len(), 2);
+                assert!(
+                    profiles
+                        .iter()
+                        .any(|record| record.profile == updated_profile)
+                );
+                assert!(
+                    profiles
+                        .iter()
+                        .any(|record| record.profile == imported_profile)
+                );
             }
             _ => panic!("unexpected updated routing list event"),
         }
@@ -6147,6 +6378,18 @@ mod tests {
                 .recv_timeout(Duration::from_secs(5))
                 .expect("routing delete event"),
             WorkerEvent::RoutingProfileDeleted { profile_id } if profile_id == "linux-local-first"
+        ));
+        worker
+            .try_send(WorkerCommand::DeleteRoutingProfile {
+                profile_id: "linux-imported".to_owned(),
+            })
+            .expect("delete imported routing profile");
+        assert!(matches!(
+            worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("imported routing delete event"),
+            WorkerEvent::RoutingProfileDeleted { profile_id } if profile_id == "linux-imported"
         ));
         shutdown(&worker);
     }
