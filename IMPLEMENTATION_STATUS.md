@@ -5,7 +5,7 @@
 Assumption: a retryable provider failure may advance only through the configured routing chain;
 backoff and circuit state must be bounded, cancellation-aware, and free of sensitive inputs.
 
-- Core revision `8790eb41a52c4e2c908044699e8c12597d3c42a5` carries the validated `RetryPolicy` and
+- Core revision `6e8c40224943a6ba892e5a064fb3b00657b3bf47` carries the validated `RetryPolicy` deserialization and
   optional `retry_after_ms`
   field on `TranslationError`. The shared parser accepts delta-seconds or HTTP-date values,
   caps them at sixty seconds, and all four HTTP providers preserve the hint without changing
