@@ -1,5 +1,18 @@
 # Implementation Status
 
+## 2026-07-20 — Linux document-job concurrency isolation regression
+
+Assumption: until bounded concurrent document execution is implemented, Linux must fail closed on
+an overlapping document start rather than interrupting the active job or mutating the queued job.
+
+- Added `concurrent_document_start_is_rejected_without_interrupting_active_job`, which starts a
+  slow document translation, submits a second job while the first is streaming, asserts the typed
+  configuration rejection, cancels the active job, and verifies the second job remains pending.
+- Local targeted validation passed: `cargo fmt --all -- --check` and the filtered demo-provider test
+  (`1 passed; 0 failed`). No Core, l10n, Flatpak, workspace-manifest, or release-manifest pin
+  changed; true concurrent document execution, cross-platform clients, signing, rollback, and
+  stable-release authorization remain open.
+
 ## 2026-07-20 — Linux GTK routing candidate reorder behavior
 
 Assumption: candidate-management evidence must exercise the button callbacks and resulting row

@@ -6620,6 +6620,128 @@ mod tests {
         shutdown(&worker);
     }
 
+    #[allow(clippy::too_many_lines)]
+    #[test]
+    fn concurrent_document_start_is_rejected_without_interrupting_active_job() {
+        let database = TestDatabase::new();
+        let (worker, _, endpoint) = started_worker_with_database(database.path());
+        connect(
+            &worker,
+            profile("document-concurrent-provider", &endpoint, None, None),
+            None,
+            PersistenceIntent::SessionOnly,
+        )
+        .expect("connection");
+        select(
+            &worker,
+            "document-concurrent-provider",
+            "fake-slow-translator",
+        );
+        for job_id in ["document-concurrent-active", "document-concurrent-pending"] {
+            worker
+                .try_send(WorkerCommand::CreateDocumentJob {
+                    job_id: job_id.to_owned(),
+                    job: DocumentJob::from_text("notes.txt", DocumentFormat::Txt, "one"),
+                })
+                .expect("create document job");
+            assert!(matches!(
+                worker
+                    .events
+                    .recv_timeout(Duration::from_secs(5))
+                    .expect("created event"),
+                WorkerEvent::DocumentJobUpdated(snapshot)
+                    if snapshot.state == DocumentJobState::Pending
+            ));
+        }
+        worker
+            .try_send(WorkerCommand::TranslateDocumentJob {
+                job_id: "document-concurrent-active".to_owned(),
+                source_locale: Some("en".to_owned()),
+                target_locale: "zh-CN".to_owned(),
+                glossary: None,
+                privacy_mode: TranslationPrivacyMode::Standard,
+            })
+            .expect("start active document job");
+
+        let mut second_start_sent = false;
+        let mut rejection_seen = false;
+        while !rejection_seen {
+            match worker
+                .events
+                .recv_timeout(Duration::from_secs(10))
+                .expect("concurrent document event")
+            {
+                WorkerEvent::DocumentJobSegment { job_id, event, .. }
+                    if job_id == "document-concurrent-active"
+                        && matches!(event, TranslationEvent::TextDelta { .. })
+                        && !second_start_sent =>
+                {
+                    worker
+                        .try_send(WorkerCommand::TranslateDocumentJob {
+                            job_id: "document-concurrent-pending".to_owned(),
+                            source_locale: Some("en".to_owned()),
+                            target_locale: "zh-CN".to_owned(),
+                            glossary: None,
+                            privacy_mode: TranslationPrivacyMode::Standard,
+                        })
+                        .expect("queue second document job");
+                    second_start_sent = true;
+                }
+                WorkerEvent::DocumentJobActionRejected(error) => {
+                    assert_eq!(error.kind, ErrorKind::InvalidConfiguration);
+                    assert_eq!(
+                        error.message,
+                        "A document job cannot change while another document job is translating."
+                    );
+                    rejection_seen = true;
+                }
+                _ => {}
+            }
+        }
+        assert!(second_start_sent);
+
+        worker
+            .try_send(WorkerCommand::CancelDocumentJob {
+                job_id: "document-concurrent-active".to_owned(),
+            })
+            .expect("cancel active document job");
+        loop {
+            match worker
+                .events
+                .recv_timeout(Duration::from_secs(10))
+                .expect("cancelled document event")
+            {
+                WorkerEvent::DocumentJobUpdated(snapshot)
+                    if snapshot.job_id == "document-concurrent-active"
+                        && snapshot.state == DocumentJobState::Cancelled =>
+                {
+                    break;
+                }
+                _ => {}
+            }
+        }
+
+        worker
+            .try_send(WorkerCommand::ListDocumentJobs)
+            .expect("list document jobs");
+        let jobs = loop {
+            if let WorkerEvent::DocumentJobsListed { jobs } = worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("document jobs list event")
+            {
+                break jobs;
+            }
+        };
+        assert_eq!(
+            jobs.iter()
+                .find(|snapshot| snapshot.job_id == "document-concurrent-pending")
+                .map(|snapshot| snapshot.state),
+            Some(DocumentJobState::Pending)
+        );
+        shutdown(&worker);
+    }
+
     #[test]
     fn cancelled_document_job_can_be_retried_without_losing_pending_segments() {
         let database = TestDatabase::new();

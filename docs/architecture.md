@@ -134,7 +134,9 @@ cue number; the Linux UI renders only those numbers and fixed guidance text. EPU
 metadata, navigation, CSS, and binary resources while rewriting visible XHTML/HTML text and updating
 OPF language metadata at export. Encrypted, malformed, traversal, and DTD-bearing packages are rejected.
 The GTK surface presents multiple persisted jobs for explicit selection; execution remains
-single-active-job and concurrent document translation stays outside the current validation gate.
+single-active-job. A second document-start request is rejected with a typed configuration error,
+leaving the active job and the pending snapshot isolated; true concurrent document translation
+stays outside the current validation gate.
 
 Image-only PDF pages are a separate, explicit opt-in path. The GTK toggle is only used when Core
 reports a PDF with no extractable text. The worker then invokes `pdftoppm` and `tesseract` through
