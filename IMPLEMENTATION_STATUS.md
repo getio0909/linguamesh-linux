@@ -1,5 +1,24 @@
 # Implementation Status
 
+## 2026-07-20 — Linux explainable routing decision diagnostics
+
+Assumption: Linux routing decisions must be inspectable without exposing provider endpoints,
+credentials, request text, or model output; Core's bounded candidate keys, reason codes, and score
+components are safe diagnostic inputs.
+
+- Linux now carries eligible candidates, rejected candidates with stable reasons, ranking inputs,
+  and configured fallback order from each Core `RoutingDecision` through `WorkerEvent` and
+  `AppState` into the localized GTK diagnostics panel. Empty collections render as `None`.
+- The model and worker regressions assert the complete redacted summary for Manual, Ordered, and
+  Automatic routing, including quality-ranked candidates and fallback order. The serialized GTK
+  candidate lifecycle test also asserts that the diagnostics label displays these details.
+- Canonical l10n revision `737d890e60fd34f15fd8708698448ef9ab96299f` adds the localized detail
+  template and regenerated PO/MO resources for all twelve packs. Local source validation passed;
+  Native/Flatpak/Foundation remote evidence will be recorded after the Linux push.
+- The PR remains Draft/Open and the release train remains unreleased; human visual/translated-copy
+  review, Orca acceptance, other clients, signing, rollback, and stable-release authorization stay
+  open.
+
 ## 2026-07-20 — Linux routing candidate dialog accessibility lifecycle
 
 Assumption: candidate-management acceptance requires the production GTK dialog to expose

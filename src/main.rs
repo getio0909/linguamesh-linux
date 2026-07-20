@@ -6380,6 +6380,10 @@ fn apply_worker_event(
             eligible_count,
             rejected_count,
             fallback_count,
+            eligible_candidates,
+            rejected_candidates,
+            ranking_inputs,
+            fallback_order,
         } => {
             state
                 .borrow_mut()
@@ -6390,6 +6394,10 @@ fn apply_worker_event(
                     eligible_count,
                     rejected_count,
                     fallback_count,
+                    eligible_candidates,
+                    rejected_candidates,
+                    ranking_inputs,
+                    fallback_order,
                 });
         }
         WorkerEvent::RoutingProfileSaved(_) | WorkerEvent::RoutingProfileImported(_) => {
@@ -7931,10 +7939,10 @@ mod tests {
         ErrorKind, GEMINI_ADAPTER_TYPE, GEMINI_PROVIDER_PRESET_ID, OLLAMA_ADAPTER_TYPE,
         OLLAMA_PROVIDER_PRESET_ID, OPENAI_ADAPTER_TYPE, OnboardingStage, ProviderProfileId,
         RESPONSES_ADAPTER_TYPE, RESPONSES_PROVIDER_PRESET_ID, RoutingCandidate,
-        RoutingConstraintTextValues, RoutingProfile, RoutingProfileRecord, SecretRef,
-        SecretRefNamespace, SecretValue, TranslationError, UiLocale, WorkerCommand, WorkerEvent,
-        apply_worker_event, connect_action_handlers, connect_selection_handlers, create_window,
-        custom_provider_profile, destination_matches_source, document_format_label,
+        RoutingConstraintTextValues, RoutingDecisionSummary, RoutingProfile, RoutingProfileRecord,
+        SecretRef, SecretRefNamespace, SecretValue, TranslationError, UiLocale, WorkerCommand,
+        WorkerEvent, apply_worker_event, connect_action_handlers, connect_selection_handlers,
+        create_window, custom_provider_profile, destination_matches_source, document_format_label,
         endpoint_matches_preset_default, fallback_confirmation_needed, generate_custom_provider_id,
         localized_document_job_state, localized_document_warnings, localized_provider_default_name,
         localized_template, normalized_candidate_ids_for_mode, preset_requires_manual_model,
@@ -8241,7 +8249,30 @@ mod tests {
             .borrow_mut()
             .restore_saved_profiles(vec![profile_b.clone(), profile_a.clone()], None)
             .expect("restore routing candidates");
+        // 验证诊断面板展示经过脱敏的路由候选、拒绝原因、排名输入和回退顺序。
+        state
+            .borrow_mut()
+            .record_routing_decision(RoutingDecisionSummary {
+                profile_id: "linux-candidates".to_owned(),
+                provider_id: "profile-a".to_owned(),
+                model_id: "model-a".to_owned(),
+                eligible_count: 2,
+                rejected_count: 1,
+                fallback_count: 1,
+                eligible_candidates: vec!["profile-a@model-a".to_owned()],
+                rejected_candidates: vec!["profile-c@model-c (RemoteDisallowed)".to_owned()],
+                ranking_inputs: vec!["profile-a@model-a [1,0]".to_owned()],
+                fallback_order: vec!["profile-b@model-b".to_owned()],
+            });
         refresh_ui(&bindings, &state.borrow());
+        assert!(bindings.diagnostics.label().contains("profile-a@model-a"));
+        assert!(
+            bindings
+                .diagnostics
+                .label()
+                .contains("profile-c@model-c (RemoteDisallowed)")
+        );
+        assert!(bindings.diagnostics.label().contains("profile-b@model-b"));
         window.present();
         let context = glib::MainContext::default();
         spin_main_context_until(&context, Duration::from_secs(1), || {

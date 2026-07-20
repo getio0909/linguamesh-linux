@@ -104,6 +104,14 @@ pub struct RoutingDecisionSummary {
     pub rejected_count: usize,
     /// 配置允许的显式回退候选数量。
     pub fallback_count: usize,
+    /// 通过约束的候选稳定键，不包含端点、凭据或用户内容。
+    pub eligible_candidates: Vec<String>,
+    /// 被拒绝候选及其稳定原因代码。
+    pub rejected_candidates: Vec<String>,
+    /// 自动模式使用的稳定排名输入摘要。
+    pub ranking_inputs: Vec<String>,
+    /// 配置允许的显式回退候选稳定键顺序。
+    pub fallback_order: Vec<String>,
 }
 
 /// 描述原生客户端的可见操作状态。
@@ -1610,7 +1618,7 @@ impl AppState {
             locale,
             "diagnostics.routing_decision",
             "Routing decision",
-            routing_decision_text(self.routing_decision.as_ref()),
+            localized_routing_decision_text(locale, self.routing_decision.as_ref()),
         ));
         lines.push(diagnostic_line(
             locale,
@@ -1640,20 +1648,69 @@ impl AppState {
     }
 }
 
-// 将路由决策限制为标识和计数，避免诊断摘要包含端点、秘密或文本内容。
+// 将路由决策限制为稳定标识、原因代码和排名分量，避免诊断摘要包含端点、秘密或文本内容。
 fn routing_decision_text(decision: Option<&RoutingDecisionSummary>) -> String {
     decision.map_or_else(
         || "None".to_owned(),
         |decision| {
+            let (eligible, rejected, ranking, fallback) = routing_decision_detail_values(decision);
             format!(
-                "{} -> {} (eligible {}, rejected {}, fallback {})",
+                "{} -> {} (eligible {}, rejected {}, fallback {}): {} | {} | {} | {}",
                 decision.profile_id,
                 decision.provider_id,
                 decision.eligible_count,
                 decision.rejected_count,
-                decision.fallback_count
+                decision.fallback_count,
+                eligible,
+                rejected,
+                ranking,
+                fallback
             )
         },
+    )
+}
+
+// 使用当前界面语言展示路由细节，但只传递已经校验过的非敏感候选标识。
+fn localized_routing_decision_text(
+    locale: UiLocale,
+    decision: Option<&RoutingDecisionSummary>,
+) -> String {
+    let Some(decision) = decision else {
+        return "None".to_owned();
+    };
+    let (eligible, rejected, ranking, fallback) = routing_decision_detail_values(decision);
+    localization::text(
+        locale,
+        "diagnostics.routing_decision_details",
+        "{profile} → {selected}; eligible: {eligible}; rejected: {rejected}; ranking: {ranking}; fallback: {fallback}",
+    )
+    .replace("{profile}", &decision.profile_id)
+    .replace(
+        "{selected}",
+        &format!("{}@{}", decision.provider_id, decision.model_id),
+    )
+    .replace("{eligible}", &eligible)
+    .replace("{rejected}", &rejected)
+    .replace("{ranking}", &ranking)
+    .replace("{fallback}", &fallback)
+}
+
+// 把空集合显式显示为 None，避免诊断面板产生歧义或暴露可变端点信息。
+fn routing_decision_detail_values(
+    decision: &RoutingDecisionSummary,
+) -> (String, String, String, String) {
+    let render = |values: &[String]| {
+        if values.is_empty() {
+            "None".to_owned()
+        } else {
+            values.join(", ")
+        }
+    };
+    (
+        render(&decision.eligible_candidates),
+        render(&decision.rejected_candidates),
+        render(&decision.ranking_inputs),
+        render(&decision.fallback_order),
     )
 }
 
@@ -2520,11 +2577,18 @@ mod tests {
             eligible_count: 2,
             rejected_count: 1,
             fallback_count: 1,
+            eligible_candidates: vec!["provider-local@model-local".to_owned()],
+            rejected_candidates: vec!["provider-remote@model-remote (RemoteDisallowed)".to_owned()],
+            ranking_inputs: vec!["provider-local@model-local [1,0]".to_owned()],
+            fallback_order: vec!["provider-fallback@model-fallback".to_owned()],
         });
 
         let diagnostics = state.localized_diagnostics_text(UiLocale::SimplifiedChinese);
-        assert!(diagnostics.contains("路由决策: route-local -> provider-local"));
-        assert!(diagnostics.contains("eligible 2, rejected 1, fallback 1"));
+        assert!(diagnostics.contains("路由决策: route-local → provider-local@model-local"));
+        assert!(diagnostics.contains("合格：provider-local@model-local"));
+        assert!(diagnostics.contains("拒绝：provider-remote@model-remote (RemoteDisallowed)"));
+        assert!(diagnostics.contains("排名：provider-local@model-local [1,0]"));
+        assert!(diagnostics.contains("回退：provider-fallback@model-fallback"));
         assert!(!diagnostics.contains("127.0.0.1"));
         assert!(!diagnostics.contains("secret"));
     }

@@ -2056,6 +2056,12 @@ msgctxt "diagnostics.routing_decision"
 msgid "Routing decision"
 msgstr "［Ŕøûŧïñĝ ðëçïšïøñ~~~~~］"
 
+#. Non-sensitive details of the most recent routing decision.
+#, fuzzy, python-brace-format
+msgctxt "diagnostics.routing_decision_details"
+msgid "{profile} → {selected}; eligible: {eligible}; rejected: {rejected}; ranking: {ranking}; fallback: {fallback}"
+msgstr "［{profile} → {selected}; ëŀïĝïƀŀë: {eligible}; ŕëĵëçŧëð: {rejected}; ŕåñķïñĝ: {ranking}; ƒåŀŀƀåçķ: {fallback}~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~］"
+
 #. Label for the application status in diagnostics.
 #, fuzzy
 msgctxt "diagnostics.status"

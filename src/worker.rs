@@ -7,9 +7,10 @@ use linguamesh_application::{
 use linguamesh_document::{DocumentError, DocumentJob, DocumentJobState};
 use linguamesh_domain::{
     CompatibilityRequirements, CoreCompatibility, ErrorKind, Glossary, ModelDescriptor,
-    RoutingCandidate, RoutingContext, RoutingProfile, SecretValue, TranslationError,
-    TranslationEvent, TranslationPreset, TranslationPrivacyMode, TranslationQualityMode,
-    TranslationRequest, deserialize_routing_profile, serialize_routing_profile,
+    RoutingCandidate, RoutingContext, RoutingDecision, RoutingProfile, SecretValue,
+    TranslationError, TranslationEvent, TranslationPreset, TranslationPrivacyMode,
+    TranslationQualityMode, TranslationRequest, deserialize_routing_profile,
+    serialize_routing_profile,
 };
 use linguamesh_engine::{CancellationHandle, TranslationOperation, core_compatibility};
 use linguamesh_storage::{
@@ -375,6 +376,14 @@ pub enum WorkerEvent {
         rejected_count: usize,
         /// 配置允许的显式回退候选数量。
         fallback_count: usize,
+        /// 通过约束的候选稳定键，不包含端点、凭据或用户内容。
+        eligible_candidates: Vec<String>,
+        /// 被拒绝候选及其稳定原因代码。
+        rejected_candidates: Vec<String>,
+        /// 自动模式使用的稳定排名输入摘要。
+        ranking_inputs: Vec<String>,
+        /// 配置允许的显式回退候选稳定键顺序。
+        fallback_order: Vec<String>,
     },
     /// 路由主候选失败后已切换到下一个合格候选。
     RoutingFallbackSelected {
@@ -1288,6 +1297,51 @@ struct RoutedDocumentStart {
     model_id: String,
     eligible_count: usize,
     rejected_count: usize,
+    decision_details: RoutingDecisionDetails,
+}
+
+#[derive(Clone, Debug, Default)]
+struct RoutingDecisionDetails {
+    eligible_candidates: Vec<String>,
+    rejected_candidates: Vec<String>,
+    ranking_inputs: Vec<String>,
+    fallback_order: Vec<String>,
+}
+
+impl RoutingDecisionDetails {
+    // 只提取 Core 已验证的候选键、稳定原因和排名分量，禁止端点、凭据与正文进入诊断。
+    fn from_decision(decision: &RoutingDecision) -> Self {
+        Self {
+            eligible_candidates: decision
+                .eligible_candidates
+                .iter()
+                .map(RoutingCandidate::key)
+                .collect(),
+            rejected_candidates: decision
+                .rejected_candidates
+                .iter()
+                .map(|rejection| format!("{} ({:?})", rejection.candidate.key(), rejection.reason))
+                .collect(),
+            ranking_inputs: decision
+                .ranking
+                .iter()
+                .map(|rank| {
+                    let scores = rank
+                        .score_components
+                        .iter()
+                        .map(ToString::to_string)
+                        .collect::<Vec<_>>()
+                        .join(",");
+                    format!("{} [{}]", rank.candidate.key(), scores)
+                })
+                .collect(),
+            fallback_order: decision
+                .fallback_order
+                .iter()
+                .map(RoutingCandidate::key)
+                .collect(),
+        }
+    }
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -2040,6 +2094,16 @@ async fn run_worker(
                                 eligible_count: start.eligible_count,
                                 rejected_count: start.rejected_count,
                                 fallback_count: 0,
+                                eligible_candidates: start
+                                    .decision_details
+                                    .eligible_candidates
+                                    .clone(),
+                                rejected_candidates: start
+                                    .decision_details
+                                    .rejected_candidates
+                                    .clone(),
+                                ranking_inputs: start.decision_details.ranking_inputs.clone(),
+                                fallback_order: start.decision_details.fallback_order.clone(),
                             });
                             let mut document_translation = start.translation;
                             document_translation.provider_manager = Some(start.manager);
@@ -3189,6 +3253,16 @@ async fn run_worker(
                                 eligible_count: start.eligible_count,
                                 rejected_count: start.rejected_count,
                                 fallback_count: 0,
+                                eligible_candidates: start
+                                    .decision_details
+                                    .eligible_candidates
+                                    .clone(),
+                                rejected_candidates: start
+                                    .decision_details
+                                    .rejected_candidates
+                                    .clone(),
+                                ranking_inputs: start.decision_details.ranking_inputs.clone(),
+                                fallback_order: start.decision_details.fallback_order.clone(),
                             })
                             .is_err()
                         {
@@ -3501,6 +3575,16 @@ async fn run_worker(
                                 eligible_count: start.eligible_count,
                                 rejected_count: start.rejected_count,
                                 fallback_count: 0,
+                                eligible_candidates: start
+                                    .decision_details
+                                    .eligible_candidates
+                                    .clone(),
+                                rejected_candidates: start
+                                    .decision_details
+                                    .rejected_candidates
+                                    .clone(),
+                                ranking_inputs: start.decision_details.ranking_inputs.clone(),
+                                fallback_order: start.decision_details.fallback_order.clone(),
                             })
                             .is_err()
                         {
@@ -3577,6 +3661,16 @@ async fn run_worker(
                                 eligible_count: start.eligible_count,
                                 rejected_count: start.rejected_count,
                                 fallback_count: 0,
+                                eligible_candidates: start
+                                    .decision_details
+                                    .eligible_candidates
+                                    .clone(),
+                                rejected_candidates: start
+                                    .decision_details
+                                    .rejected_candidates
+                                    .clone(),
+                                ranking_inputs: start.decision_details.ranking_inputs.clone(),
+                                fallback_order: start.decision_details.fallback_order.clone(),
                             })
                             .is_err()
                         {
@@ -3858,6 +3952,40 @@ async fn run_worker(
                             eligible_count: decision.eligible_candidates.len(),
                             rejected_count: decision.rejected_candidates.len(),
                             fallback_count: decision.fallback_order.len(),
+                            eligible_candidates: decision
+                                .eligible_candidates
+                                .iter()
+                                .map(RoutingCandidate::key)
+                                .collect(),
+                            rejected_candidates: decision
+                                .rejected_candidates
+                                .iter()
+                                .map(|rejection| {
+                                    format!(
+                                        "{} ({:?})",
+                                        rejection.candidate.key(),
+                                        rejection.reason
+                                    )
+                                })
+                                .collect(),
+                            ranking_inputs: decision
+                                .ranking
+                                .iter()
+                                .map(|rank| {
+                                    let scores = rank
+                                        .score_components
+                                        .iter()
+                                        .map(ToString::to_string)
+                                        .collect::<Vec<_>>()
+                                        .join(",");
+                                    format!("{} [{}]", rank.candidate.key(), scores)
+                                })
+                                .collect(),
+                            fallback_order: decision
+                                .fallback_order
+                                .iter()
+                                .map(RoutingCandidate::key)
+                                .collect(),
                         })
                         .is_err()
                     {
@@ -5134,6 +5262,7 @@ async fn start_routed_document_job_translation(
             model_id,
             eligible_count: decision.eligible_candidates.len(),
             rejected_count: decision.rejected_candidates.len(),
+            decision_details: RoutingDecisionDetails::from_decision(&decision),
         }),
         Err(error) => {
             manager.disconnect();
@@ -6574,6 +6703,10 @@ mod tests {
                     eligible_count,
                     rejected_count,
                     fallback_count,
+                    eligible_candidates,
+                    rejected_candidates,
+                    ranking_inputs,
+                    fallback_order,
                 } => {
                     assert_eq!(profile_id, "ordinary-text-route");
                     assert_eq!(provider_id, "routing-provider");
@@ -6581,6 +6714,14 @@ mod tests {
                     assert_eq!(eligible_count, 1);
                     assert_eq!(rejected_count, 0);
                     assert_eq!(fallback_count, 0);
+                    assert_eq!(
+                        eligible_candidates,
+                        vec!["routing-provider@fake-translator".to_owned()]
+                    );
+                    assert!(rejected_candidates.is_empty());
+                    assert_eq!(ranking_inputs.len(), 1);
+                    assert!(ranking_inputs[0].starts_with("routing-provider@fake-translator ["));
+                    assert!(fallback_order.is_empty());
                     selected = true;
                 }
                 WorkerEvent::Translation(TranslationEvent::TextDelta { text, .. }) => {
@@ -6677,6 +6818,10 @@ mod tests {
                     eligible_count,
                     rejected_count,
                     fallback_count,
+                    eligible_candidates,
+                    rejected_candidates,
+                    ranking_inputs,
+                    fallback_order,
                 } => {
                     assert_eq!(profile_id, "ordered-route-fallback");
                     assert_eq!(provider_id, "ordered-fallback");
@@ -6684,6 +6829,19 @@ mod tests {
                     assert_eq!(eligible_count, 2);
                     assert_eq!(rejected_count, 0);
                     assert_eq!(fallback_count, 1);
+                    assert_eq!(
+                        eligible_candidates,
+                        vec![
+                            "ordered-primary@fake-translator".to_owned(),
+                            "ordered-fallback@fake-translator".to_owned()
+                        ]
+                    );
+                    assert!(rejected_candidates.is_empty());
+                    assert!(ranking_inputs.is_empty());
+                    assert_eq!(
+                        fallback_order,
+                        vec!["ordered-fallback@fake-translator".to_owned()]
+                    );
                     selected = true;
                 }
                 WorkerEvent::RoutingFallbackSelected {
@@ -6797,6 +6955,10 @@ mod tests {
                     eligible_count,
                     rejected_count,
                     fallback_count,
+                    eligible_candidates,
+                    rejected_candidates,
+                    ranking_inputs,
+                    fallback_order,
                 } => {
                     assert_eq!(profile_id, "automatic-quality-route");
                     assert_eq!(provider_id, "automatic-higher");
@@ -6804,6 +6966,29 @@ mod tests {
                     assert_eq!(eligible_count, 2);
                     assert_eq!(rejected_count, 0);
                     assert_eq!(fallback_count, 1);
+                    assert_eq!(eligible_candidates.len(), 2);
+                    assert!(
+                        eligible_candidates
+                            .iter()
+                            .any(|candidate| candidate == "automatic-higher@fake-translator")
+                    );
+                    assert!(
+                        eligible_candidates
+                            .iter()
+                            .any(|candidate| candidate == "automatic-lower@fake-translator")
+                    );
+                    assert!(rejected_candidates.is_empty());
+                    assert_eq!(ranking_inputs.len(), 2);
+                    assert!(ranking_inputs.iter().any(|candidate| {
+                        candidate.starts_with("automatic-higher@fake-translator [")
+                    }));
+                    assert!(ranking_inputs.iter().any(|candidate| {
+                        candidate.starts_with("automatic-lower@fake-translator [")
+                    }));
+                    assert_eq!(
+                        fallback_order,
+                        vec!["automatic-lower@fake-translator".to_owned()]
+                    );
                     selected = true;
                 }
                 WorkerEvent::RoutingFallbackSelected {
@@ -7153,6 +7338,7 @@ mod tests {
                     eligible_count,
                     rejected_count,
                     fallback_count,
+                    ..
                 } => {
                     assert_eq!(profile_id, "document-route");
                     assert_eq!(provider_id, "document-route-provider");

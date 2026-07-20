@@ -57,7 +57,7 @@ The Linux checkpoint has a reproducible external pass using Docker image
 were removed after validation. This evidence is prerelease-only and does not cover GPU execution.
 
 The Linux checkout consumes the canonical gettext bundle from immutable l10n revision
-`026c35b8dbb1c13c22d77809cc5fe72e6af6f5a3`. The bundle contains 422 messages, and
+`737d890e60fd34f15fd8708698448ef9ab96299f`. The bundle contains 426 messages, and
 `bash tools/sync-l10n.sh --check` verifies every PO/MO catalog and the generated manifest before
 the native build. History/memory row metadata, document-job IDs, active-provider mode summaries,
 unavailable provider/model labels, and routing-profile actions/mode labels are asserted through
@@ -67,6 +67,11 @@ counts and an explicitly approximate token estimate without exposing text in dia
 profile tests also verify preference-index round trips and preservation of hidden Core constraints
 when visible privacy/capability controls are edited. Constraint parser tests cover comma-separated
 provider/model lists, positive numeric limits, and rejection of unsafe or empty values.
+
+Every routing decision carries a redacted explanation into the diagnostics panel: the eligible
+candidate keys, rejected candidate keys with stable reason codes, ranking inputs, and configured
+fallback order. Model, worker, and GTK lifecycle tests assert these details while ensuring that
+endpoints, credentials, and translated content never enter the event or visible diagnostics.
 
 Quality-mode UI behavior maps the localized Fast/Balanced/Best dropdown to the Core
 `TranslationQualityMode` values and keeps the selector enabled for a selected document job. The
