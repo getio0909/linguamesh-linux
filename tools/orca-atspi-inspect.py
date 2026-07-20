@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import subprocess
 import sys
 import time
 from collections.abc import Iterator
@@ -50,6 +51,37 @@ def state_summary(node: object) -> str:
     return ",".join(names) or "none"
 
 
+def focus_by_pointer(node: object) -> bool:
+    """使用 AT-SPI 几何信息点击控件，让 GTK 按真实输入路径取得焦点。"""
+    try:
+        rectangle = node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS)  # type: ignore[attr-defined]
+        x = int(rectangle.x + rectangle.width / 2)
+        y = int(rectangle.y + rectangle.height / 2)
+    except Exception:
+        return False
+    result = subprocess.run(
+        ["xdotool", "mousemove", "--sync", str(x), str(y)],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    if result.returncode != 0:
+        return False
+    result = subprocess.run(
+        ["xdotool", "click", "1"],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    if result.returncode != 0:
+        return False
+    time.sleep(0.2)
+    try:
+        return bool(node.getState().contains(pyatspi.STATE_FOCUSED))  # type: ignore[attr-defined]
+    except Exception:
+        return False
+
+
 def find_stop_control(deadline: float) -> object | None:
     """等待应用注册并找到名为 Stop translation 的按钮。"""
     while time.monotonic() < deadline:
@@ -78,15 +110,16 @@ def main() -> int:
     try:
         component = node.queryComponent()  # type: ignore[attr-defined]
         focused = bool(component.grabFocus())
-    except Exception as error:
+    except Exception:
+        focused = False
+    if not focused:
+        focused = focus_by_pointer(node)
+    if not focused:
         print(
-            "Orca AT-SPI fixture could not focus the Stop translation button: "
-            f"{error} (states: {state_summary(node)})",
+            "Orca AT-SPI fixture could not focus the Stop translation button "
+            f"(states: {state_summary(node)}).",
             file=sys.stderr,
         )
-        return 1
-    if not focused:
-        print("Orca AT-SPI fixture could not focus the Stop translation button.", file=sys.stderr)
         return 1
     print(
         f"Orca AT-SPI fixture focused accessible control: {role_name(node)}: Stop translation."
