@@ -106,6 +106,12 @@ quality candidate is selected, then shuts it down before dispatch and proves the
 the next approved candidate. A document-job regression selects a saved document-capable routing candidate while a
 different provider is active, translates every pending segment through that candidate, and asserts
 that the document decision reports no fallback even when the profile permits explicit fallback.
+The production fallback confirmation window is covered by the dedicated GTK test
+`gtk_fallback_approval_dialog_requires_an_explicit_one_shot_action`. It verifies the modal warning
+copy and focusable actions, that `Close` dismisses without dispatch or approval, and that one
+`Translate` click records one-shot approval and exactly one translation dispatch. The test is
+marked ignored in the parallel Rust suite and is run explicitly under `dbus-run-session` and
+`xvfb-run` in the Native workflow so GTK initialization remains on one thread.
 The GTK dialog creates a bounded profile from saved provider/model selections and now exposes the
 Core `Manual`, `Ordered`, and `Automatic` modes in a stable order. Its separate explicit fallback
 checkbox is off by default; when a routing profile is selected, it takes precedence over the

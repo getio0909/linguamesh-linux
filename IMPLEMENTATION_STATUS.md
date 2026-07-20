@@ -1,5 +1,32 @@
 # Implementation Status
 
+## 2026-07-20 — Linux fallback approval dialog lifecycle
+
+Assumption: an approved fallback may be used only after an explicit, one-shot user action;
+closing the confirmation must leave the translation request untouched.
+
+- The GTK fallback dialog introduced in `6996e5b9c97a53311790dc9c44859e9e170720a5` is covered
+  by `gtk_fallback_approval_dialog_requires_an_explicit_one_shot_action`. The regression inspects
+  the production dialog's modal state, fixed warning copy, and focusable actions; `Close` leaves
+  approval disabled and dispatch count at zero, while `Translate` closes the dialog, records
+  approval, and dispatches exactly once. The approval flag is consumed by the existing
+  `fallback_confirmation_needed` gate.
+- The test runs as a dedicated serialized GTK fixture because GTK initialization is thread-bound
+  in the Rust test harness. The full suite keeps the lifecycle test ignored; Native CI runs it
+  under DBus/Xvfb as a separate step. Mnemonic labels are asserted by their visible text.
+
+Local `cargo fmt --all -- --check`, GUI all-target `cargo check --features gui --offline`, strict
+Clippy with `demo-provider`, Flatpak metadata validation, and `git diff --check` passed. This host
+does not provide `xvfb-run`, so the GUI lifecycle execution is CI-only here; the Native fixture
+passed remotely.
+
+Final source/pin head `62d70b1c57662515fadb447aa625cabe1b5d74e9` passed push Native/Flatpak/Foundation
+`29769540559`/`29769540441`/`29769540542` and PR Native/Flatpak/Foundation
+`29769543788`/`29769543782`/`29769543814`. Earlier corrective failures are retained: Native
+thread-bound GTK initialization `29768782136`/`29768784889`, Flatpak stale-pin checks
+`29768781689`/`29768786334`, and the mnemonic-label assertion `29769089675`/`29769095258`.
+The PR remains Draft/Open and the release train remains unreleased.
+
 ## 2026-07-20 — Linux automatic routing fallback integration
 
 Assumption: Automatic routing must be verified at the client worker boundary, not only by Core
