@@ -9,10 +9,13 @@ independently running Ollama daemon, so the external path must be opt-in and mod
   `/api/tags` discovery and `/api/chat` translation through the `ollama` preset without a secret.
   The script can start an isolated daemon and only pulls a model when `LINGUAMESH_OLLAMA_PULL=1`.
 - Local default validation passed with `131 passed; 3 ignored`, including the new external test.
-  A Docker `ollama/ollama:0.11.10` daemon also started successfully and answered `/api/tags`, but
-  pulling `smollm:135m` failed with an Ollama registry timeout (HTTP 500); the temporary container
-  was removed. No translation interoperability claim is made until an external daemon has an
-  installed model and the worker regression completes.
+  External validation then passed with `LINGUAMESH_OLLAMA_MODEL=qwen2.5-0.5b-instruct:latest`
+  through a temporary Docker `ollama/ollama:0.11.10` daemon: the harness reported `1 passed;
+  0 failed`. The source GGUF was fetched from the public Qwen repository with SHA-256
+  `9ee36184e616dfc76df4f5dd66f908dbde6979524ae36e6cefb67f532f798cb8`; the Ollama model digest was
+  `91a334af822cdceab2234d673b0099d726d4944e1997b275744f4418e8b6a254`. The model and daemon were
+  removed after the run. This closes the Linux third-party Ollama daemon/model interoperability
+  gate for this prerelease checkpoint; it does not claim GPU or stable-release evidence.
 
 ## 2026-07-20 — Linux fallback-send confirmation checkpoint
 
@@ -25,8 +28,8 @@ approved provider, not only when the checkbox is configured.
 - The one-shot approval state is reset after dispatch, and a focused unit regression covers enabled,
   approved, and disabled combinations. Local `cargo fmt --all -- --check` and
   `cargo test --features demo-provider --offline` passed (`131 passed; 2 ignored`).
-- Secret Service and portal unlock prompts, physical desktop review, third-party daemon
-  interoperability, other clients, signing, rollback, and stable release remain open.
+- Secret Service and portal unlock prompts, physical desktop review, other clients, signing,
+  rollback, and stable release remain open.
 
 ## 2026-07-20 — Linux headless Orca remote gate evidence
 
@@ -459,7 +462,7 @@ Linux push Native/Flatpak/Foundation `29695192479`/`29695192489`/`29695192477`, 
 Native/Flatpak/Foundation `29695193793`/`29695193826`/`29695193809`, all passed for the published
 commits.
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics including accessible document progress, live AT-SPI tree export checks, a headless GTK keyboard traversal fixture for tested controls, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF document-job translation with sequential segment persistence, bounded DOCX/PPTX/XLSX/EPUB package reconstruction and resource retention, bounded optional image-only PDF OCR with page-marked text output, page-aware text-PDF reconstruction with structured HTML fallback, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, both Ollama-compatible OpenAI `/v1/` and native Ollama `/api` deterministic discovery/streaming fixtures, a GTK provider preset selector for OpenAI-compatible and native Ollama profiles, bounded Linux ordinary-text dispatch through saved Core routing profiles, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; source-referenced Linux gettext keys are statically checked against the canonical catalog; complete candidate-management/fallback-chain UI, a running third-party Ollama daemon, Orca speech, end-user prompt acceptance, visual/translated copy review, other clients, and release artifacts remain open
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics including accessible document progress, live AT-SPI tree export checks, a headless GTK keyboard traversal fixture for tested controls, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF document-job translation with sequential segment persistence, bounded DOCX/PPTX/XLSX/EPUB package reconstruction and resource retention, bounded optional image-only PDF OCR with page-marked text output, page-aware text-PDF reconstruction with structured HTML fallback, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, deterministic and third-party Ollama OpenAI `/v1/` and native `/api` discovery/streaming evidence, a GTK provider preset selector for OpenAI-compatible and native Ollama profiles, bounded Linux ordinary-text dispatch through saved Core routing profiles, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; source-referenced Linux gettext keys are statically checked against the canonical catalog; complete candidate-management/fallback-chain UI, Orca speech, end-user prompt acceptance, visual/translated copy review, other clients, and release artifacts remain open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
 
@@ -1481,8 +1484,8 @@ in the GitHub Actions evidence above, but those native checks remain unavailable
   are implemented, while session-only fallback remains available when the keyring is unavailable.
 - Central release-manifest integration for this exact Linux/Core revision; broader product
   compatibility beyond the alpha.2 startup gate remains unclaimed.
-- Native Ollama `/api` and other third-party local-server interoperability; the deterministic
-  Ollama-compatible OpenAI `/v1/` loopback contract is covered, but no running daemon is claimed.
+- Other third-party local-server variants beyond the verified Ollama daemon; the deterministic
+  Ollama-compatible OpenAI `/v1/` loopback contract and native `/api` daemon path are covered.
 - Complete canonical UI gettext coverage, plural/placeholder handling, and visual locale/RTL verification.
 - Runtime database faults beyond the verified private-tmpfs `ENOSPC` transaction boundary,
   including read-only media, corruption, power loss, and broader SQLite VFS failures.

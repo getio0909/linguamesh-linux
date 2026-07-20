@@ -68,8 +68,9 @@ The provider catalog's `local-loopback` preset uses the OpenAI-compatible `/v1/`
 loopback-only `ollama` preset uses Core's native `/api/` adapter. The worker's deterministic native
 fixture covers `/api/tags` model discovery and `/api/chat` NDJSON streaming with explicit model
 selection. The GTK provider form now exposes both presets, restores the selected preset for saved
-profiles, and changes untouched default fields when the user switches protocol. Interoperability
-with an independently running daemon remains an external validation gate.
+profiles, and changes untouched default fields when the user switches protocol. The opt-in harness
+also passed against an independently running Docker Ollama daemon and an installed Qwen GGUF model;
+GPU execution remains outside this prerelease evidence.
 
 The Linux text workspace adds an in-memory request-level glossary field. Core validates duplicate
 rules and credential-shaped terms, selects only locale-matching entries, protects immutable names,
@@ -189,11 +190,11 @@ desktop integration, physical desktop keyboard coverage, human listening, or spe
 The user-facing endpoint example is loopback. Under its shared endpoint policy, Core accepts
 loopback HTTP and also accepts HTTPS endpoints; the Linux client does not duplicate URL parsing.
 Automated client evidence covers the built-in provider and a deterministic Ollama-compatible
-OpenAI `/v1/` fixture on loopback. Native Ollama `/api` behavior and a running third-party daemon
-remain outside the default evidence. `tools/run-ollama-interop-test.sh` provides an explicit
+OpenAI `/v1/` fixture on loopback. `tools/run-ollama-interop-test.sh` provides an explicit
 real-daemon path that starts an isolated local daemon when needed and runs the worker regression
 against a caller-selected installed model; the test remains opt-in because model installation is
-an external prerequisite.
+an external prerequisite. The Linux checkpoint passed this path against Docker
+`ollama/ollama:0.11.10` with `qwen2.5-0.5b-instruct:latest`.
 
 ## Secret lifecycle and persistence boundary
 

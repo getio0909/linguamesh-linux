@@ -164,10 +164,11 @@ The tested external-provider path includes deterministic loopback fixtures for b
 OpenAI `/v1/` and native Ollama `/api`: model discovery returns `llama3.2:latest`, the worker requires
 deliberate selection, and streaming uses `/v1/chat/completions` or `/api/chat` without a credential.
 The GTK provider form exposes localized OpenAI-compatible and native Ollama presets and preserves
-custom endpoint edits when switching between them. This proves the bounded local contracts, but not
-a running third-party daemon. `tools/run-ollama-interop-test.sh` provides an opt-in regression
-against a caller-selected installed model and starts an isolated daemon when needed; the default
-suite keeps it ignored because model installation is external. Full
+custom endpoint edits when switching between them. `tools/run-ollama-interop-test.sh` provides an
+opt-in regression against a caller-selected installed model; the default suite keeps it ignored
+because model installation is external. The Linux checkpoint passed this harness against Docker
+`ollama/ollama:0.11.10` with `qwen2.5-0.5b-instruct:latest`; GPU and stable-release evidence remain
+separate gates. Full
 validation commands, the header-free local path, and the GTK gates for X11/Xvfb and forced
 Wayland/headless Weston are documented in
 [`docs/testing.md`](docs/testing.md). Native CI also builds a release-mode binary and uploads it

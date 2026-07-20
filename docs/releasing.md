@@ -35,8 +35,9 @@ be edited and saved through the same stable ID. New profiles use Core-compatible
 IDs, and edit mode locks the existing ID so release references do not drift. This is configuration-surface evidence only
 and does not satisfy the complete candidate-management release gate.
 The external-provider path includes deterministic Ollama-compatible OpenAI `/v1/` and native
-`/api/` loopback fixtures; they do not claim interoperability with a running third-party daemon.
-The GTK form now exposes the native Ollama preset and its `ollama_chat` adapter, while persistent
+`/api/` loopback fixtures plus a passed opt-in third-party daemon regression using Docker
+`ollama/ollama:0.11.10` and `qwen2.5-0.5b-instruct:latest`. The GTK form exposes the native Ollama
+preset and its `ollama_chat` adapter, while persistent
 secret references use the Linux GIO Secret Service adapter and fail closed when the desktop keyring
 is unavailable or requires an interactive prompt. The native workflow
 pins reviewed Core functional revision

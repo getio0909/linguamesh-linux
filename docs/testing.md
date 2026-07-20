@@ -19,6 +19,12 @@ pulled through Ollama's `/api/pull`; the script then exercises real `/api/tags` 
 `/api/chat` translation through the Linux worker. The default test suite keeps this regression
 ignored because the daemon and model are external prerequisites.
 
+The Linux checkpoint has a reproducible external pass using Docker image
+`ollama/ollama:0.11.10`, model `qwen2.5-0.5b-instruct:latest`, and the Qwen GGUF SHA-256
+`9ee36184e616dfc76df4f5dd66f908dbde6979524ae36e6cefb67f532f798cb8`. The harness reported
+`1 passed; 0 failed` through native `/api/tags` and `/api/chat`; the temporary daemon and model
+were removed after validation. This evidence is prerelease-only and does not cover GPU execution.
+
 The Linux checkout consumes the canonical gettext bundle from immutable l10n revision
 `3362732be198450ff1ca00f30ec092aab2cf4189`. The bundle contains 387 messages, and
 `bash tools/sync-l10n.sh --check` verifies every PO/MO catalog and the generated manifest before
@@ -553,8 +559,7 @@ asserts Simplified Chinese translations while preserving safe dynamic diagnostic
 
 Broader GTK component/UI automation, AT-SPI/Orca, and broader physical-keyboard coverage,
 physical-compositor and GPU-backed Wayland coverage, a broader X11/desktop matrix, prompted
-interactive Secret Service flows, broader XDG and portal tests, third-party local-server
-interoperability (the opt-in daemon script still requires external Ollama/model evidence), Flatpak
+interactive Secret Service flows, broader XDG and portal tests, Flatpak
 smoke tests, runtime localization behavior beyond the
 currently catalog-backed UI and stable error paths, workspace-widget, active-provider, status summary/partial-output, text-file import, provider-profile, source/target language, onboarding stage/detail, and theme-option labels, runtime database
 faults beyond the implemented Linux `ENOSPC` transaction boundary, dependency/license automation,
