@@ -2485,3 +2485,33 @@ msgstr "HTTPS OpenAI Responses /v1 endpoint with typed streaming events"
 msgctxt "tooltip.model.openai_responses"
 msgid "Models are discovered from the OpenAI Responses-compatible endpoint"
 msgstr "Models are discovered from the OpenAI Responses-compatible endpoint"
+
+#. Label for the Linux translation preset selector.
+#, fuzzy
+msgctxt "label.translation_preset"
+msgid "Translation preset"
+msgstr "번역 프리셋"
+
+#. General translation preset with no domain-specific preference.
+#, fuzzy
+msgctxt "translation.preset.general"
+msgid "General"
+msgstr "일반"
+
+#. Marketing translation preset for audience-focused copy.
+#, fuzzy
+msgctxt "translation.preset.marketing"
+msgid "Marketing"
+msgstr "마케팅"
+
+#. Technical translation preset for terminology-focused content.
+#, fuzzy
+msgctxt "translation.preset.technical"
+msgid "Technical"
+msgstr "기술"
+
+#. Tooltip explaining the bounded translation preset preferences.
+#, fuzzy
+msgctxt "tooltip.translation_preset"
+msgid "Apply a bounded domain, tone, formality, and audience preference to the next request"
+msgstr "다음 요청에 도메인, 어조, 격식, 대상 독자에 대한 제한된 선호를 적용합니다"

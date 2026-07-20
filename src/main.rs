@@ -8,7 +8,8 @@ use linguamesh_domain::{
     ErrorKind, Glossary, GlossaryEntry, MAX_GLOSSARY_CSV_BYTES, MAX_ROUTING_IDENTIFIER_BYTES,
     OperationId, ProviderProfileId, RoutingCandidate, RoutingConstraints, RoutingMode,
     RoutingPreference, RoutingProfile, SecretRef, SecretRefNamespace, SecretValue,
-    TranslationError, TranslationEvent, TranslationPrivacyMode, TranslationQualityMode,
+    TranslationError, TranslationEvent, TranslationPreset, TranslationPrivacyMode,
+    TranslationQualityMode,
 };
 use linguamesh_linux::file_import;
 use linguamesh_linux::localization;
@@ -136,6 +137,7 @@ struct UiBindings {
     source_locale: gtk::DropDown,
     target_locale: gtk::DropDown,
     quality_mode: gtk::DropDown,
+    translation_preset: gtk::DropDown,
     glossary: gtk::Entry,
     import_glossary: gtk::Button,
     export_glossary: gtk::Button,
@@ -308,6 +310,33 @@ fn quality_mode_for_selection(selection: u32) -> TranslationQualityMode {
         0 => TranslationQualityMode::Fast,
         2 => TranslationQualityMode::Best,
         _ => TranslationQualityMode::Balanced,
+    }
+}
+
+// 根据界面语言生成内置翻译预设标签。
+fn translation_preset_labels(locale: UiLocale) -> [String; 3] {
+    [
+        localization::text(locale, "translation.preset.general", "General"),
+        localization::text(locale, "translation.preset.technical", "Technical"),
+        localization::text(locale, "translation.preset.marketing", "Marketing"),
+    ]
+}
+
+// 将内置翻译预设映射到稳定的下拉框索引。
+fn translation_preset_selection(preset: &TranslationPreset) -> u32 {
+    match preset.id() {
+        "technical" => 1,
+        "marketing" => 2,
+        _ => 0,
+    }
+}
+
+// 将下拉框索引还原为经过 Core 校验的内置翻译预设。
+fn translation_preset_for_selection(selection: u32) -> TranslationPreset {
+    match selection {
+        1 => TranslationPreset::technical(),
+        2 => TranslationPreset::marketing(),
+        _ => TranslationPreset::general(),
     }
 }
 
@@ -699,6 +728,7 @@ fn create_window(
         source_locale,
         target_locale,
         quality_mode,
+        translation_preset,
         glossary,
         import_glossary,
         export_glossary,
@@ -965,6 +995,7 @@ fn create_window(
         source_locale,
         target_locale,
         quality_mode,
+        translation_preset,
         glossary,
         import_glossary,
         export_glossary,
@@ -1630,6 +1661,7 @@ fn create_controls() -> (
     gtk::DropDown,
     gtk::DropDown,
     gtk::DropDown,
+    gtk::DropDown,
     gtk::Entry,
     gtk::Button,
     gtk::Button,
@@ -1686,6 +1718,19 @@ fn create_controls() -> (
         locale,
         "tooltip.quality_mode",
         "Fast uses one direct pass; Balanced adds deterministic structure checks; Best asks for an internal critique and revision.",
+    )));
+    let translation_preset_labels = translation_preset_labels(locale);
+    let translation_preset = gtk::DropDown::from_strings(
+        &translation_preset_labels
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>(),
+    );
+    translation_preset.set_selected(0);
+    translation_preset.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.translation_preset",
+        "Apply a bounded domain, tone, formality, and audience preference to the next request",
     )));
     let glossary = gtk::Entry::new();
     glossary.set_hexpand(true);
@@ -1848,6 +1893,14 @@ fn create_controls() -> (
             quality_mode.upcast_ref::<gtk::Widget>(),
         ),
         (
+            localized_mnemonic(
+                UiLocale::default(),
+                "label.translation_preset",
+                "Translation preset",
+            ),
+            translation_preset.upcast_ref::<gtk::Widget>(),
+        ),
+        (
             localized_mnemonic(UiLocale::default(), "field.glossary", "Glossary"),
             glossary.upcast_ref::<gtk::Widget>(),
         ),
@@ -1882,6 +1935,7 @@ fn create_controls() -> (
         source_locale,
         target_locale,
         quality_mode,
+        translation_preset,
         glossary,
         import_glossary,
         export_glossary,
@@ -2454,6 +2508,16 @@ fn connect_selection_handlers(
             let mode = quality_mode_for_selection(drop_down.selected());
             quality_state.borrow_mut().set_quality_mode(mode);
             refresh_ui(&quality_bindings, &quality_state.borrow());
+        });
+
+    let preset_bindings = bindings.clone();
+    let preset_state = Rc::clone(state);
+    bindings
+        .translation_preset
+        .connect_selected_notify(move |drop_down| {
+            let preset = translation_preset_for_selection(drop_down.selected());
+            preset_state.borrow_mut().set_translation_preset(preset);
+            refresh_ui(&preset_bindings, &preset_state.borrow());
         });
 
     let model_bindings = bindings.clone();
@@ -6824,6 +6888,10 @@ fn refresh_localized_widgets(bindings: &UiBindings, locale: UiLocale) {
         &localized_mnemonic(locale, "label.quality_mode", "Quality mode"),
     );
     set_labeled_control_label(
+        bindings.translation_preset.upcast_ref(),
+        &localized_mnemonic(locale, "label.translation_preset", "Translation preset"),
+    );
+    set_labeled_control_label(
         bindings.glossary.upcast_ref(),
         &localized_mnemonic(locale, "field.glossary", "Glossary"),
     );
@@ -6881,6 +6949,17 @@ fn refresh_localized_widgets(bindings: &UiBindings, locale: UiLocale) {
         "tooltip.quality_mode",
         "Fast uses one direct pass; Balanced adds deterministic structure checks; Best asks for an internal critique and revision.",
     )));
+    refresh_dropdown_labels(
+        &bindings.translation_preset,
+        &translation_preset_labels(locale),
+    );
+    bindings
+        .translation_preset
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.translation_preset",
+            "Apply a bounded domain, tone, formality, and audience preference to the next request",
+        )));
     let locale_labels = UiLocale::ALL
         .map(|displayed_locale| localized_locale_name(locale, displayed_locale))
         .to_vec();
@@ -7422,6 +7501,11 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             .set_selected(quality_mode_selection(state.quality_mode()));
     }
     bindings.quality_mode.set_sensitive(!blocked);
+    let preset_selection = translation_preset_selection(state.translation_preset());
+    if bindings.translation_preset.selected() != preset_selection {
+        bindings.translation_preset.set_selected(preset_selection);
+    }
+    bindings.translation_preset.set_sensitive(!blocked);
     bindings.glossary.set_sensitive(!blocked);
 }
 
@@ -7450,7 +7534,8 @@ mod tests {
         routing_optional_limit_from_text, routing_preference_for_selection,
         routing_preference_selection, routing_profile_id_conflicts, show_new_profile_in_form,
         show_routing_profiles_dialog, start_event_pump, text_metrics_label,
-        valid_routing_profile_id, validate_provider_preset_catalog,
+        translation_preset_for_selection, translation_preset_selection, valid_routing_profile_id,
+        validate_provider_preset_catalog,
     };
     use adw::prelude::*;
     use gtk::glib;
@@ -7458,7 +7543,8 @@ mod tests {
         DocumentFormat, DocumentJobState, DocumentWarning, DocumentWarningKind,
     };
     use linguamesh_domain::{
-        RoutingConstraints, RoutingMode, RoutingPreference, TranslationQualityMode,
+        RoutingConstraints, RoutingMode, RoutingPreference, TranslationPreset,
+        TranslationQualityMode,
     };
     use linguamesh_testkit::FakeProviderServer;
     use std::cell::RefCell;
@@ -7507,6 +7593,24 @@ mod tests {
         assert_eq!(
             quality_mode_for_selection(99),
             TranslationQualityMode::Balanced
+        );
+    }
+
+    #[test]
+    fn translation_preset_selection_round_trips_core_values() {
+        for preset in [
+            TranslationPreset::general(),
+            TranslationPreset::technical(),
+            TranslationPreset::marketing(),
+        ] {
+            assert_eq!(
+                translation_preset_for_selection(translation_preset_selection(&preset)),
+                preset
+            );
+        }
+        assert_eq!(
+            translation_preset_for_selection(99),
+            TranslationPreset::general()
         );
     }
 

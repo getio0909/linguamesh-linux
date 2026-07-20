@@ -1,5 +1,26 @@
 # Implementation Status
 
+## 2026-07-20 — Linux request-level translation presets
+
+Assumption: Linux is the first active client target; the GTK surface exposes the three bounded
+Core built-ins while document jobs remain `General` until a persisted document-preset field is
+approved.
+
+- Core `f79631fd3e83a55077000c888aee6c0fc580c115` adds the validated request contract and
+  `translation_presets_v1`. The text workspace now offers localized `General`, `Technical`, and `Marketing` presets. The
+  selected Core `TranslationPreset` is carried into ordinary requests and is disabled while work
+  is blocked, with state mapping tests covering all stable IDs.
+- Worker compatibility negotiation now requires Core feature `translation_presets_v1`; stale cores
+  fail closed before provider work. The request-level preset is independent of quality mode and
+  does not add provider calls or persist credentials.
+- Canonical l10n `7f65596bd71be3ed6e179ade3bf2e436545436a2` adds five Linux-only source keys and
+  regenerated PO/MO resources for all official locale packs; non-English values remain
+  machine-generated drafts.
+
+Local validation: GUI all-target check, strict Clippy, full demo-provider tests (`140 passed;
+3 ignored`), locked build, localization format/lint/test/generate-check, and diff checks passed.
+Remote Native/Flatpak/Foundation evidence is recorded after the pinned commits are pushed.
+
 ## 2026-07-20 — Linux Provider Catalog compatibility guard
 
 Assumption: the Core provider catalog is the authoritative non-secret source for adapter type and

@@ -20,7 +20,7 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `f62f2df91584eeebdf5c30bd06c5e0893f2345d8`, which adds strict
+reviewed Core functional revision `f79631fd3e83a55077000c888aee6c0fc580c115`, which adds strict
 routing-profile validation, schema-15 routing-profile persistence, schema-16 document-job
 routing-profile persistence, and schema-17 document quality-mode persistence on top of the existing
 document and provider contract. Earlier reviewed revisions added
@@ -104,6 +104,10 @@ provider/model identifiers, quality mode, and glossary rules. A worker restart c
 cancels the active document segment and leaves the source unchanged; Incognito mode intentionally
 rejects new document jobs because their progress must be persisted. Subtitle timestamps and cue IDs
 remain unchanged; cue text is translated without automatic timing or line-length rewriting. Core
+The text workspace also provides localized `General`, `Technical`, and `Marketing` translation
+presets. Each preset is a bounded request-level preference; document jobs continue to use `General`
+until their persisted options schema is explicitly extended.
+
 reports cue-level warnings when the configured line-length or reading-speed guidance is exceeded;
 the Linux UI shows cue numbers without source text. CSV
 delimiters, quoted fields, variable-width rows, and line endings remain unchanged; the Linux chooser
@@ -212,8 +216,8 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`e03d8ccc548d7d2eeeef9163b4b12b8204e68d6d` and validated with `msgfmt`; the 410-message bundle
-adds Linux routing-profile persistence/editor, profile-ID validation and duplicate protection, ordinary-text selection labels, routing preference/privacy/document constraints, provider/model allowlists and denylists, quality/request-size limits, translation quality-mode labels, and source/output character plus approximate-token metrics. The locale selector
+`7f65596bd71be3ed6e179ade3bf2e436545436a2` and validated with `msgfmt`; the 415-message bundle
+adds Linux routing-profile persistence/editor, profile-ID validation and duplicate protection, ordinary-text selection labels, routing preference/privacy/document constraints, provider/model allowlists and denylists, quality/request-size limits, translation quality-mode and translation-preset labels, and source/output character plus approximate-token metrics. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
 active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, construction-stage provider/default-control copy, and diagnostics labels/state values without replacing active source text;
 Arabic also switches the GTK workspace root to right-to-left direction. Document-job actions,

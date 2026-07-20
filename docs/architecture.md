@@ -26,7 +26,7 @@ confirmation, or rollback.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `f62f2df91584eeebdf5c30bd06c5e0893f2345d8`; compared with the prior
+functional revision is `f79631fd3e83a55077000c888aee6c0fc580c115`; compared with the prior
 alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW`, adds streamed
 protected-span and request-level glossary restoration, and rejects suspicious OOXML compression
 ratios and unsupported macro/signature parts before XML inspection. The required contract
@@ -41,6 +41,7 @@ is exact Core `0.1.0-alpha.2`, ABI 1, protocol 1, provider catalog `0.1.0`, and 
 - `bounded_text_document_v1`
 - `routing_planner_v1`
 - `translation_quality_modes_v1`
+- `translation_presets_v1`
 - `streaming_text_v1`
 - `text_translation_v1`
 
@@ -70,6 +71,12 @@ selector. Fast uses one direct pass, Balanced adds deterministic output checks, 
 model for an internal critique and revision before final text. Core does not add hidden paid
 follow-up calls. Document jobs persist the selected mode in schema 17 and reuse it for each segment
 after pause, retry, or restart.
+
+The same workspace exposes localized `General`, `Technical`, and `Marketing` translation presets.
+The reducer stores the selected Core `TranslationPreset` and attaches it to ordinary text requests;
+compatibility negotiation requires `translation_presets_v1`. Presets are bounded request metadata,
+not executable instructions or credentials, and document jobs remain `General` until their persisted
+options schema is deliberately extended.
 
 The Linux GTK form consumes the bundled Core provider catalog for adapter compatibility and model
 listing policy before creating a window; a stale mapping fails closed. Its localized labels and

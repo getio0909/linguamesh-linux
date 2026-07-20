@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           repository: ${{ github.repository_owner }}/linguamesh-l10n
-          ref: e03d8ccc548d7d2eeeef9163b4b12b8204e68d6d
+          ref: 7f65596bd71be3ed6e179ade3bf2e436545436a2
           path: linguamesh-l10n
           persist-credentials: false
       - name: Install native development headers
@@ -165,7 +165,7 @@ jobs:
       - name: Run Linux performance baseline
         working-directory: linguamesh-linux
         env:
-          L10N_REVISION: e03d8ccc548d7d2eeeef9163b4b12b8204e68d6d
+          L10N_REVISION: 7f65596bd71be3ed6e179ade3bf2e436545436a2
         run: bash tools/run-performance-baseline.sh native-evidence
       - name: Create native checksum and SBOM evidence
         working-directory: linguamesh-linux
@@ -182,7 +182,7 @@ jobs:
           > native-evidence/linguamesh-linux-source.tar.gz
           && sha256sum native-evidence/linguamesh-linux-source.tar.gz >> native-evidence/SHA256SUMS
           && printf 'Linux native CI evidence\nLinux revision: %s\nCore revision: %s\nLocalization revision: %s\nPerformance baseline: LINUX-PERFORMANCE-BASELINE.tsv\nArtifact status: unsigned release-mode prerelease evidence\n'
-          "$GITHUB_SHA" "$CORE_REVISION" "e03d8ccc548d7d2eeeef9163b4b12b8204e68d6d"
+          "$GITHUB_SHA" "$CORE_REVISION" "7f65596bd71be3ed6e179ade3bf2e436545436a2"
           > native-evidence/BUILD-INFO.txt
       - name: Upload native checksum and SBOM evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

@@ -43,7 +43,7 @@ const REVIEWED_CORE_VERSION: &str = "0.1.0-alpha.2";
 const REVIEWED_ABI_MAJOR: u32 = 1;
 const REVIEWED_PROTOCOL_VERSION: u32 = 1;
 const REVIEWED_PROVIDER_CATALOG_VERSION: &str = "0.1.0";
-const REQUIRED_CORE_FEATURES: [&str; 12] = [
+const REQUIRED_CORE_FEATURES: [&str; 14] = [
     "cancellation_v1",
     "azure_openai_chat_v1",
     "openai_responses_v1",
@@ -54,6 +54,8 @@ const REQUIRED_CORE_FEATURES: [&str; 12] = [
     "long_text_chunking_v1",
     "bounded_text_document_v1",
     "routing_planner_v1",
+    "translation_quality_modes_v1",
+    "translation_presets_v1",
     "streaming_text_v1",
     "text_translation_v1",
 ];
