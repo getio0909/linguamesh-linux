@@ -80,6 +80,15 @@ resumed snapshot retains `Best`. Core
 tests cover the versioned `translation-prompt-v2` directives and deterministic rejection of empty
 or Unicode-replacement output before `Completed`; no hidden extra provider request is introduced.
 
+Retry policy is covered at both contract boundaries. Core provider adapters parse numeric or HTTP-date
+`Retry-After` headers into an optional, backward-compatible error field capped at sixty seconds.
+Linux consumes that hint with an eight-second maximum wait, otherwise uses bounded exponential backoff
+with stable candidate-key jitter, cancels the wait on shutdown, and opens an in-memory candidate
+circuit after two retryable failures for a thirty-second cooldown. The worker tests
+`routing_backoff_prefers_retry_hint_and_stays_bounded` and
+`routing_circuit_breaker_opens_after_repeated_failures_and_resets` cover the policy without logging
+endpoints, credentials, request text, or provider output.
+
 Translation-preset UI behavior maps the localized General/Technical/Marketing dropdown to the Core
 `TranslationPreset` values and carries the selection into ordinary requests. Linux tests cover all
 stable IDs and compatibility negotiation rejects a Core that does not advertise
@@ -148,7 +157,7 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`115535c76d804020f045708867af7798b8d0294a`. This revision carries the explicit request-level
+`c03bd205e1d135c024f3a0a767dd94770030a723`. This revision carries the explicit request-level
 Incognito privacy policy and changes file-backed Core storage to add SQLite's `SQLITE_OPEN_NOFOLLOW`
 flag, adds protected-span restoration and request-level glossary
 protection for streamed text, and adds bounded semantic chunking. On
@@ -157,9 +166,9 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 115535c76d804020f045708867af7798b8d0294a^{commit}
+git -C ../linguamesh-core cat-file -e c03bd205e1d135c024f3a0a767dd94770030a723^{commit}
 git -C ../linguamesh-core diff --quiet \
-  115535c76d804020f045708867af7798b8d0294a..HEAD -- \
+  c03bd205e1d135c024f3a0a767dd94770030a723..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -535,7 +544,7 @@ dispatch only. It does not replace a human listening review, physical desktop re
 about speech quality across locales.
 
 The GitHub Actions native workflow pins Core revision
-`115535c76d804020f045708867af7798b8d0294a`, installs the headers plus D-Bus, Xvfb, test-only
+`c03bd205e1d135c024f3a0a767dd94770030a723`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
 namespace test through the unprivileged path.

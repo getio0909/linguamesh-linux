@@ -1,5 +1,29 @@
 # Implementation Status
 
+## 2026-07-20 — Linux bounded routing retry and circuit-breaker policy
+
+Assumption: a retryable provider failure may advance only through the configured routing chain;
+backoff and circuit state must be bounded, cancellation-aware, and free of sensitive inputs.
+
+- Core revision `c03bd205e1d135c024f3a0a767dd94770030a723` carries an optional `retry_after_ms`
+  field on `TranslationError`. The shared parser accepts delta-seconds or HTTP-date values,
+  caps them at sixty seconds, and all four HTTP providers preserve the hint without changing
+  legacy error JSON when it is absent.
+- Linux applies the hint with an eight-second maximum, otherwise uses bounded exponential backoff
+  and deterministic candidate-key jitter. A candidate opens after two retryable failures and is
+  skipped for a thirty-second in-memory cooldown; successful connection clears its state, and
+  shutdown cancels the wait. Candidate keys contain only the reviewed provider/model identifiers.
+- `routing_backoff_prefers_retry_hint_and_stays_bounded` and
+  `routing_circuit_breaker_opens_after_repeated_failures_and_resets` cover the policy. Local Core
+  workspace validation passed 150 tests; Linux GUI all-target check, strict Clippy, no-default
+  tests (`80 passed; 1 ignored`), demo-provider tests (`144 passed; 3 ignored`), and formatting
+  checks passed. The exact Linux source/pin and CI gate IDs are recorded after the packaging pin
+  commit; GTK runtime evidence remains CI-only on this host because `xvfb-run` is unavailable.
+
+The PR remains Draft/Open and the release train remains unreleased; provider quota behavior,
+physical desktop review, other clients, signing, rollback, and stable-release authorization remain
+open.
+
 ## 2026-07-20 — Linux explainable routing decision diagnostics
 
 Assumption: Linux routing decisions must be inspectable without exposing provider endpoints,
