@@ -12,11 +12,16 @@ unit tests; a retryable failure may continue only through the profile's explicit
   fallback events before completing through the lower-quality candidate. No unapproved provider,
   credential, or document-job fallback is introduced.
 - Local `cargo fmt --all -- --check`, GUI all-target `cargo check --features gui --offline`, strict
-  Clippy with `demo-provider`, and `git diff --check` passed. The GUI test binary remains linker-
-  limited on this host by installed GTK symbols; Native CI is authoritative for the runtime test.
+  Clippy with `demo-provider`, full `cargo test --no-default-features --locked --offline`
+  (`80 passed; 1 ignored`), full `cargo test --features demo-provider --locked --offline`
+  (`142 passed; 3 ignored`), Flatpak metadata validation, and `git diff --check` passed. The
+  feature-gated GTK binary is linker-limited on this host by installed GTK symbols; Native CI
+  executed the runtime regression successfully.
 
-Remote push/PR Native, Flatpak, and Foundation gates are pending for this head. The PR remains
-Draft/Open and the release train remains unreleased.
+Remote push Native/Flatpak/Foundation runs `29767242226`/`29767242244`/`29767242325` and PR
+Native/Flatpak/Foundation runs `29767246017`/`29767246202`/`29767246112` all passed. The initial
+Flatpak pin failures `29767075134`/`29767080595` are retained as corrective evidence; the source
+pin now follows the test head. The PR remains Draft/Open and the release train remains unreleased.
 
 ## 2026-07-20 — Linux explicit provider connection test
 
