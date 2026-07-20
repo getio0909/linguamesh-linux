@@ -8071,6 +8071,7 @@ mod tests {
         assert!(!fallback_confirmation_needed(false, false));
     }
 
+    #[allow(clippy::too_many_lines)]
     #[test]
     fn gtk_fallback_approval_dialog_requires_an_explicit_one_shot_action() {
         adw::init().expect("initialize GTK and libadwaita");
