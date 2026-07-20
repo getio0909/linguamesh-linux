@@ -11,8 +11,8 @@ editor action so an exchange file cannot silently change a document job's routin
 - Linux adds worker export/import commands and GTK file chooser actions. Export serializes only the
   validated Core profile; import requires UTF-8 JSON, rejects duplicate IDs, malformed/oversized
   files, and persistence failures without logging file contents.
-- Canonical l10n `026c35b8dbb1c13c22d77809cc5fe72e6af6f5a3` adds five Linux-only exchange strings and
-  regenerated PO/MO resources for all official and pseudo-locale packs; non-English values remain
+- Canonical l10n `026c35b8dbb1c13c22d77809cc5fe72e6af6f5a3` adds Linux-only exchange strings and a
+  JSON file-filter label, with regenerated PO/MO resources for all official and pseudo-locale packs; non-English values remain
   machine-generated drafts.
 
 Local validation: Core workspace tests (all targets/features, 33 storage tests and 29 domain tests),
