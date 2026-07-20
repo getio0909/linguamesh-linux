@@ -8492,7 +8492,6 @@ mod tests {
             None,
             Some("fake-translator".to_owned()),
         )
-        .map(|profile| profile.with_enabled(false))
         .expect("first restored profile");
         let restored_profile_b = custom_provider_profile(
             ProviderProfileId::parse("profile-b").expect("second profile ID"),
@@ -8549,12 +8548,15 @@ mod tests {
         );
         assert!(restored_bindings.remember_profile.is_active());
         assert_eq!(restored_bindings.model.selected(), 0);
-        let candidate = RoutingCandidate::new("profile-b", "fake-slow-translator", true, 64 * 1024)
-            .expect("routing candidate");
+        let candidate_a = RoutingCandidate::new("profile-a", "fake-translator", true, 64 * 1024)
+            .expect("first routing candidate");
+        let candidate_b =
+            RoutingCandidate::new("profile-b", "fake-slow-translator", true, 64 * 1024)
+                .expect("second routing candidate");
         let routing_profile = RoutingProfile::new(
             "gtk-routing-fixture",
             RoutingMode::Ordered,
-            vec![candidate],
+            vec![candidate_b, candidate_a],
             RoutingConstraints::default(),
         )
         .expect("routing profile");
@@ -8595,6 +8597,61 @@ mod tests {
             movement_tooltips
                 .iter()
                 .any(|text| text == "Move candidate down")
+        );
+        let candidate_labels = || {
+            descendant_widgets(routing_dialog.upcast_ref::<gtk::Widget>())
+                .iter()
+                .filter_map(|widget| widget.downcast_ref::<gtk::CheckButton>())
+                .filter_map(gtk::prelude::CheckButtonExt::label)
+                .map(|label| label.to_string())
+                .filter(|label| label.starts_with("Restored provider "))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            candidate_labels(),
+            vec![
+                "Restored provider B · fake-slow-translator",
+                "Restored provider A · fake-translator",
+            ]
+        );
+        let candidate_b_row = descendant_widgets(routing_dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Box>())
+            .find(|row| {
+                row.first_child()
+                    .and_then(|child| child.downcast::<gtk::CheckButton>().ok())
+                    .and_then(|check| check.label())
+                    .is_some_and(|label| label == "Restored provider B · fake-slow-translator")
+            })
+            .cloned()
+            .expect("first routing candidate row");
+        let candidate_b_check = candidate_b_row
+            .first_child()
+            .and_then(|child| child.downcast::<gtk::CheckButton>().ok())
+            .expect("candidate checkbox");
+        let candidate_b_up = candidate_b_check
+            .next_sibling()
+            .and_then(|child| child.downcast::<gtk::Button>().ok())
+            .expect("candidate up button");
+        let candidate_b_down = candidate_b_up
+            .next_sibling()
+            .and_then(|child| child.downcast::<gtk::Button>().ok())
+            .expect("candidate down button");
+        candidate_b_down.emit_clicked();
+        assert_eq!(
+            candidate_labels(),
+            vec![
+                "Restored provider A · fake-translator",
+                "Restored provider B · fake-slow-translator",
+            ]
+        );
+        candidate_b_up.emit_clicked();
+        assert_eq!(
+            candidate_labels(),
+            vec![
+                "Restored provider B · fake-slow-translator",
+                "Restored provider A · fake-translator",
+            ]
         );
         routing_dialog.close();
         apply_worker_event(
