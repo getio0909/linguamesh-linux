@@ -29,7 +29,8 @@ model selection without storing a completion flag, distinguishes worker failure 
 shows the confirmed next-request stable ID/model identity.
 The routing-profile dialog now persists an explicit Core mode (`Manual`, `Ordered`, or `Automatic`);
 approved fallback remains a separate opt-in checkbox that defaults off, and candidate checkboxes limit
-the saved provider/model pairs included in a profile; adjacent up/down controls and row drag-and-drop
+the saved provider/model pairs included in a profile. Manual mode persists exactly the first selected
+provider/model pair; Ordered and Automatic preserve the selected chain. Adjacent up/down controls and row drag-and-drop
 set their Ordered-mode sequence and expose catalog-backed accessible labels. Existing profiles can
 be edited and saved through the same stable ID. New profiles use Core-compatible 1–128 byte ASCII
 IDs, and edit mode locks the existing ID so release references do not drift. This is configuration-surface evidence only

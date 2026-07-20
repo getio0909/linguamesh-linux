@@ -3865,7 +3865,33 @@ fn routing_profile_id_conflicts(
     editing_profile_id.is_none() && existing_ids.iter().any(|id| id == profile_id)
 }
 
+// 将 Manual 模式的候选集合限制为当前显示顺序中的首个候选。
+fn normalized_candidate_ids_for_mode(
+    mode: RoutingMode,
+    candidate_ids: Vec<ProviderProfileId>,
+) -> Vec<ProviderProfileId> {
+    if mode == RoutingMode::Manual {
+        candidate_ids.into_iter().take(1).collect()
+    } else {
+        candidate_ids
+    }
+}
+
 type RoutingCandidateControls = Rc<RefCell<Vec<(ProviderProfileId, gtk::Box, gtk::CheckButton)>>>;
+
+// 在 Manual 模式下同步复选框，避免界面继续展示多个精确候选。
+fn enforce_manual_candidate_selection(controls: &RoutingCandidateControls) {
+    let mut selected = false;
+    for (_, _, check) in controls.borrow().iter() {
+        if check.is_active() {
+            if selected {
+                check.set_active(false);
+            } else {
+                selected = true;
+            }
+        }
+    }
+}
 
 // 清空并按当前顺序重建路由候选行，避免 GTK 列表顺序与持久化顺序分离。
 fn rebuild_routing_candidate_rows(container: &gtk::Box, controls: &RoutingCandidateControls) {
@@ -4051,6 +4077,9 @@ fn load_routing_profile_editor(
     }
     for pair in candidate_ids.windows(2) {
         move_routing_candidate_row_before(container, controls, &pair[1], &pair[0]);
+    }
+    if profile.mode == RoutingMode::Manual {
+        enforce_manual_candidate_selection(controls);
     }
 }
 
@@ -4389,6 +4418,12 @@ fn show_routing_profiles_dialog(
     }
     rebuild_routing_candidate_rows(&candidates_box, &candidate_controls);
     root.append(&candidates_box);
+    let manual_candidate_controls = Rc::clone(&candidate_controls);
+    mode.connect_selected_notify(move |drop_down| {
+        if routing_mode_for_selection(drop_down.selected()) == RoutingMode::Manual {
+            enforce_manual_candidate_selection(&manual_candidate_controls);
+        }
+    });
     let editing_profile: Rc<RefCell<Option<RoutingProfile>>> = Rc::new(RefCell::new(None));
     let create = gtk::Button::with_mnemonic(&localized_mnemonic(
         locale,
@@ -4588,6 +4623,10 @@ fn show_routing_profiles_dialog(
             .filter(|(_, _, check)| check.is_active())
             .map(|(id, _, _)| id.clone())
             .collect::<Vec<_>>();
+        let selected_candidate_ids = normalized_candidate_ids_for_mode(
+            routing_mode_for_selection(mode.selected()),
+            selected_candidate_ids,
+        );
         let editing_profile = create_editing_profile.borrow();
         let Ok(constraints) = routing_constraints_from_text_controls(
             editing_profile.as_ref().map(|profile| &profile.constraints),
@@ -6942,19 +6981,19 @@ mod tests {
         custom_provider_profile, destination_matches_source, document_format_label,
         endpoint_matches_preset_default, fallback_confirmation_needed, generate_custom_provider_id,
         localized_document_job_state, localized_document_warnings, localized_provider_default_name,
-        localized_template, provider_preset_config, provider_preset_index, refresh_ui,
-        routing_constraints_from_controls, routing_constraints_from_text_values,
-        routing_identifier_list_from_text, routing_optional_limit_from_text,
-        routing_preference_for_selection, routing_preference_selection,
-        routing_profile_id_conflicts, show_new_profile_in_form, start_event_pump,
-        text_metrics_label, valid_routing_profile_id,
+        localized_template, normalized_candidate_ids_for_mode, provider_preset_config,
+        provider_preset_index, refresh_ui, routing_constraints_from_controls,
+        routing_constraints_from_text_values, routing_identifier_list_from_text,
+        routing_optional_limit_from_text, routing_preference_for_selection,
+        routing_preference_selection, routing_profile_id_conflicts, show_new_profile_in_form,
+        start_event_pump, text_metrics_label, valid_routing_profile_id,
     };
     use adw::prelude::*;
     use gtk::glib;
     use linguamesh_document::{
         DocumentFormat, DocumentJobState, DocumentWarning, DocumentWarningKind,
     };
-    use linguamesh_domain::{RoutingConstraints, RoutingPreference};
+    use linguamesh_domain::{RoutingConstraints, RoutingMode, RoutingPreference};
     use linguamesh_testkit::FakeProviderServer;
     use std::cell::RefCell;
     use std::fs;
@@ -6994,6 +7033,26 @@ mod tests {
             None,
             "team-apac"
         ));
+    }
+
+    #[test]
+    fn manual_routing_profile_keeps_only_the_first_candidate() {
+        let candidates = vec![
+            ProviderProfileId::parse("first").expect("first candidate"),
+            ProviderProfileId::parse("second").expect("second candidate"),
+        ];
+        assert_eq!(
+            normalized_candidate_ids_for_mode(RoutingMode::Manual, candidates.clone()),
+            vec![candidates[0].clone()]
+        );
+        assert_eq!(
+            normalized_candidate_ids_for_mode(RoutingMode::Ordered, candidates.clone()),
+            candidates
+        );
+        assert_eq!(
+            normalized_candidate_ids_for_mode(RoutingMode::Automatic, candidates.clone()),
+            candidates
+        );
     }
 
     #[test]

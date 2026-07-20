@@ -1,5 +1,19 @@
 # Implementation Status
 
+## 2026-07-20 — Linux Manual routing candidate cardinality
+
+Assumption: Manual routing must identify exactly one provider/model; candidate chains belong to
+Ordered and Automatic modes.
+
+- The GTK editor now deactivates extra Manual selections when a profile is loaded or the mode changes,
+  and the save path normalizes Manual selections to the first displayed candidate. Ordered and
+  Automatic retain their selected chains.
+- Local `cargo fmt --all -- --check`, `cargo check --all-targets --all-features --locked --offline`,
+  `cargo clippy --all-targets --all-features --locked --offline -- -D warnings`,
+  `cargo test --features demo-provider --offline` (`131 passed; 3 ignored`),
+  `bash tools/validate-flatpak-metadata.sh`, and `git diff --check` passed. Remote six-gate
+  validation and Flatpak source-pin update are pending for this checkpoint.
+
 ## 2026-07-20 — Linux third-party Ollama interop harness
 
 Assumption: the deterministic `/api` fixture is not evidence of interoperability with an

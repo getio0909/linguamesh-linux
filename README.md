@@ -223,8 +223,9 @@ window explaining that content may reach the approved provider. **Translate** gr
 The routing-profile dialog also lets the user choose Core's **Manual**, **Ordered**, or **Automatic**
 mode before saving a profile. Fallback consent is separate, explicit, and disabled by default; a
 manual profile never falls through to another candidate. The candidate editor lists saved provider/
-model pairs as focusable checkboxes, so a profile can include only the approved candidates; adjacent
-up/down controls and row drag-and-drop reorder them for Ordered mode and expose localized accessible
+model pairs as focusable checkboxes. Manual mode saves only the first selected pair and deactivates
+additional selections when switching to or editing Manual; Ordered and Automatic retain the selected
+candidate chain. Adjacent up/down controls and row drag-and-drop reorder them for Ordered mode and expose localized accessible
 labels for screen readers and keyboard users. Existing saved profiles can be loaded with **Edit**;
 the editor restores their mode, fallback consent, candidate checks, and order, then replaces the
 same non-secret profile ID on **Save routing profile**.

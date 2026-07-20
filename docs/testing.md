@@ -65,7 +65,8 @@ Core `Manual`, `Ordered`, and `Automatic` modes in a stable order. Its separate 
 checkbox is off by default; when a routing profile is selected, it takes precedence over the
 ordinary text fallback path, while document jobs never auto-fallback. Candidate checkboxes and
 adjacent up/down controls and row drag-and-drop allow a profile to include and order a subset of
-saved provider/model pairs; the icon controls expose localized accessible labels, while empty
+saved provider/model pairs. Manual mode persists only the first selected pair and deactivates extra
+selections when loaded or selected; Ordered and Automatic preserve the candidate chain. The icon controls expose localized accessible labels, while empty
 selections and invalid drag IDs are rejected before persistence. Each saved profile row also has an
 **Edit** action that restores the persisted mode, fallback consent, candidate selection/order, and
 ID; saving updates the same profile record rather than creating a duplicate.
