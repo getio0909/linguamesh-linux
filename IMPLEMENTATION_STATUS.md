@@ -13,8 +13,13 @@ components are safe diagnostic inputs.
   Automatic routing, including quality-ranked candidates and fallback order. The serialized GTK
   candidate lifecycle test also asserts that the diagnostics label displays these details.
 - Canonical l10n revision `737d890e60fd34f15fd8708698448ef9ab96299f` adds the localized detail
-  template and regenerated PO/MO resources for all twelve packs. Local source validation passed;
-  Native/Flatpak/Foundation remote evidence will be recorded after the Linux push.
+  template and regenerated PO/MO resources for all twelve packs. Local formatting, GUI all-target
+  check, strict Clippy, no-default tests (`80 passed; 1 ignored`), demo-provider tests
+  (`142 passed; 3 ignored`), l10n synchronization, Flatpak metadata, and diff checks passed.
+- Source/pin head `ab82f36963a63f43091d94e960541fc173175724` passed push Native/Flatpak/Foundation
+  `29773735297`/`29773735296`/`29773735294` and PR Native/Flatpak/Foundation
+  `29773738883`/`29773738887`/`29773738924`. The host lacks `xvfb-run`, so GTK runtime evidence
+  remains CI-only.
 - The PR remains Draft/Open and the release train remains unreleased; human visual/translated-copy
   review, Orca acceptance, other clients, signing, rollback, and stable-release authorization stay
   open.
