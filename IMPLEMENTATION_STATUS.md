@@ -1,5 +1,17 @@
 # Implementation Status
 
+## 2026-07-20 — Linux Secret Service prompt protocol evidence
+
+Assumption: automated prompt fixtures may prove Secret Service signal/response handling, but they
+must not be presented as evidence of a real user's desktop approval or visual review.
+
+- `bash tools/run-secret-service-prompt-test.sh` passed all four private-D-Bus cases: approved and
+  dismissed `CreateItem` prompts, plus approved and dismissed `Delete` prompts. The accepted cases
+  complete the operation; dismissed cases return the typed `SecureStorageUnavailable` error.
+- Updated `docs/testing.md` to distinguish adapter protocol coverage from the still-manual end-user
+  prompt approval and unlock-UX gate. No credential value, production source pin, or release status
+  changed.
+
 ## 2026-07-20 — Linux document queue documentation consistency
 
 Assumption: the existing GTK queue-selection surface should be described as implemented, while

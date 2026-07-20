@@ -231,18 +231,20 @@ worker secure-onboarding connect/translate/restart test and the GTK Remember/cle
 an authenticated loopback provider under Xvfb. It proves CRUD, persistent restoration, locked-item
 handling, cleanup, and SecretRef-only persistence without touching a developer keyring.
 
-The prompted-flow runner starts a separate Python Secret Service fixture twice. It returns a non-root
-prompt path from `CreateItem` and `Delete`, then requires the Linux adapter to reject each operation
-with `SecureStorageUnavailable` and the stable interactive-prompt message:
+The prompted-flow runner starts a separate Python Secret Service fixture four times. It returns a
+non-root prompt path from `CreateItem` and `Delete`, then exercises both completion outcomes: an
+approved prompt completes the store/delete operation, while a dismissed prompt fails closed with
+`SecureStorageUnavailable` and the stable interactive-prompt message:
 
 ```sh
 bash tools/run-secret-service-prompt-test.sh
 ```
 
-This proves the fail-closed boundary without automating user approval or unlock UI; end-user prompt
-acceptance remains a separate validation gate. The GTK connection flow's localized session-only
-recovery dialog is covered by source-level key audits and native CI compilation; physical prompt
-approval and visual review remain manual.
+This proves the adapter's prompt signal handling and fail-closed boundary through a private D-Bus
+fixture; it does not claim that a real user approved or visually reviewed a desktop prompt. End-user
+prompt acceptance and unlock UX remain separate manual validation gates. The GTK connection flow's
+localized session-only recovery dialog is covered by source-level key audits and native CI
+compilation; physical prompt approval and visual review remain manual.
 
 The localization unit suite parses every official Linux MO catalog, checks action entries are
 available, and verifies unique BCP 47 tags plus Arabic RTL metadata:
