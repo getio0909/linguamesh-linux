@@ -9,9 +9,12 @@ persistent mutations while preserving session-only translation.
   the worker against a private `0500` database directory, verifies a typed persistence failure,
   completes a session-only fake-provider translation, and confirms that no database file is
   created. Directory permissions are restored before test cleanup.
-- The targeted regression passed locally; the broader Linux test and CI gates remain required
-  before this checkpoint is considered remotely verified. Corruption and `ENOSPC` boundaries
-  remain separately documented; power-loss and broader SQLite VFS behavior are still open.
+- Local format/check/Clippy/full-test validation and Flatpak metadata/source validation passed.
+- Push Native/Flatpak/Foundation `29716560386`/`29716560397`/`29716560392` (jobs
+  `88270888992`/`88270889198`/`88270889141`) and PR Native/Flatpak/Foundation
+  `29716561843`/`29716561828`/`29716561907` (jobs `88270892907`/`88270892905`/
+  `88270893106`) all completed successfully. Corruption and `ENOSPC` boundaries remain
+  separately documented; power-loss and broader SQLite VFS behavior are still open.
 
 ## 2026-07-20 — Linux descriptor-pinned database open
 
