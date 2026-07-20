@@ -18,7 +18,9 @@ components are safe diagnostic inputs.
   (`142 passed; 3 ignored`), l10n synchronization, Flatpak metadata, and diff checks passed.
 - Source/pin head `ab82f36963a63f43091d94e960541fc173175724` passed push Native/Flatpak/Foundation
   `29773735297`/`29773735296`/`29773735294` and PR Native/Flatpak/Foundation
-  `29773738883`/`29773738887`/`29773738924`. The host lacks `xvfb-run`, so GTK runtime evidence
+  `29773738883`/`29773738887`/`29773738924`. Documentation head `2b97fd8f9dd7f60955a09cf1a516b7f81d590cf3`
+  then passed push Native/Flatpak/Foundation `29774208247`/`29774208158`/`29774208115` and PR
+  `29774212826`/`29774212386`/`29774212439`. The host lacks `xvfb-run`, so GTK runtime evidence
   remains CI-only.
 - The PR remains Draft/Open and the release train remains unreleased; human visual/translated-copy
   review, Orca acceptance, other clients, signing, rollback, and stable-release authorization stay
