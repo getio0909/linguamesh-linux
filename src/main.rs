@@ -8125,12 +8125,22 @@ mod tests {
             .collect::<Vec<_>>();
         let close = buttons
             .iter()
-            .find(|button| button.label().as_deref() == Some("Close"))
+            .find(|button| {
+                button
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.trim_start_matches('_') == "Close")
+            })
             .cloned()
             .expect("fallback close button");
         let approve = buttons
             .iter()
-            .find(|button| button.label().as_deref() == Some("Translate"))
+            .find(|button| {
+                button
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.trim_start_matches('_') == "Translate")
+            })
             .cloned()
             .expect("fallback approve button");
         assert!(close.is_focusable());
