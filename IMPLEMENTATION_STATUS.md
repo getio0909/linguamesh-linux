@@ -1,5 +1,19 @@
 # Implementation Status
 
+## 2026-07-20 — Linux Gemini end-to-end worker fixture
+
+Assumption: deterministic loopback coverage is sufficient for the Linux/Core integration gate,
+while live Gemini account, quota, and credential behavior remain explicitly unverified.
+
+- Core `232881263f4f523ce54b3713d83513f2d0170ff2` adds a Gemini Generate Content test server with
+  `/v1beta/models` filtering and fragmented SSE candidates ending in `finishReason`.
+- Linux adds `gemini_provider_discovers_and_streams_without_secret`, which exercises the real
+  `ProviderManager` and worker path, deliberately selects `gemini-2.0-flash`, and completes
+  `你好，Gemini！` without a credential. The Flatpak and Native workflows pin this Core revision.
+- Local Core workspace tests passed (including 7 testkit tests); Linux formatting, GUI check,
+  strict Clippy, demo-provider tests (`137 passed; 3 ignored`), localization audits, Flatpak
+  metadata, and diff checks passed. Remote gates are pending for the new source heads.
+
 ## 2026-07-20 — Linux Google Gemini Generate Content provider
 
 Assumption: Linux remains the only active client target for this slice; Android, Windows, and macOS

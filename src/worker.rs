@@ -5088,6 +5088,7 @@ mod tests {
         Delayed(Duration),
         OllamaCompatible,
         OllamaNative,
+        Gemini,
     }
 
     fn docx_worker_fixture() -> Vec<u8> {
@@ -5426,6 +5427,7 @@ mod tests {
                     .expect("external provider runtime");
                 runtime.block_on(async move {
                     let native_ollama = matches!(&mode, FakeMode::OllamaNative);
+                    let gemini = matches!(&mode, FakeMode::Gemini);
                     let server = match mode {
                         FakeMode::Standard => FakeProviderServer::start().await,
                         FakeMode::Authenticated(required_secret) => {
@@ -5441,12 +5443,15 @@ mod tests {
                             FakeProviderServer::start_ollama_compatible().await
                         }
                         FakeMode::OllamaNative => FakeProviderServer::start_ollama_native().await,
+                        FakeMode::Gemini => FakeProviderServer::start_gemini().await,
                     }
                     .expect("external fake provider");
                     ready_sender
                         .send((
                             if native_ollama {
                                 server.ollama_base_url()
+                            } else if gemini {
+                                server.gemini_base_url()
                             } else {
                                 server.base_url()
                             },
@@ -5518,10 +5523,10 @@ mod tests {
             ProviderProfileId::parse(id).expect("profile ID"),
             format!("{id} display name"),
             preset_id,
-            if preset_id == "ollama" {
-                "ollama_chat"
-            } else {
-                "openai_chat_completions"
+            match preset_id {
+                "ollama" => "ollama_chat",
+                "gemini" => "gemini_generate_content",
+                _ => "openai_chat_completions",
             },
             endpoint,
             secret_ref,
@@ -7942,6 +7947,23 @@ mod tests {
             .expect("select native Ollama model");
         let (output, terminal) = translate(&worker, "llama3.2:latest");
         assert_eq!(output, "你好，Ollama！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        assert_eq!(external.chat_requests.load(Ordering::SeqCst), 1);
+        shutdown(&worker);
+    }
+
+    #[test]
+    fn gemini_provider_discovers_and_streams_without_secret() {
+        let external = ExternalFakeProvider::start(FakeMode::Gemini);
+        let (worker, _) = started_worker();
+        let runtime =
+            profile_with_preset("gemini-loopback", "gemini", &external.endpoint, None, None);
+        let models = connect(&worker, runtime, None, PersistenceIntent::SessionOnly)
+            .expect("Gemini provider connection");
+        assert!(models.iter().any(|model| model.id == "gemini-2.0-flash"));
+        select_event(&worker, "gemini-loopback", "gemini-2.0-flash").expect("select Gemini model");
+        let (output, terminal) = translate(&worker, "gemini-2.0-flash");
+        assert_eq!(output, "你好，Gemini！");
         assert!(matches!(terminal, TranslationEvent::Completed { .. }));
         assert_eq!(external.chat_requests.load(Ordering::SeqCst), 1);
         shutdown(&worker);

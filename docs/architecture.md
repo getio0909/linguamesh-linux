@@ -26,7 +26,7 @@ confirmation, or rollback.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `638713c34ce7d5bcc8003bb0d7e54c514ab49ea7`; compared with the prior
+functional revision is `232881263f4f523ce54b3713d83513f2d0170ff2`; compared with the prior
 alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW`, adds streamed
 protected-span and request-level glossary restoration, and rejects suspicious OOXML compression
 ratios and unsupported macro/signature parts before XML inspection. The required contract
@@ -70,6 +70,8 @@ localized Anthropic Messages preset backed by Core's `anthropic_messages` manual
 the Google Gemini preset backed by `gemini_generate_content`. Gemini discovers only models that
 advertise `generateContent`, streams `/v1beta/` SSE candidates, and sends an optional credential as
 `x-goog-api-key`; its deterministic fixture does not represent live account/quota validation.
+The Linux worker also runs the same contract through `ProviderManager` and the GTK-facing worker
+path, deliberately selecting the discovered `gemini-2.0-flash` model before translation.
 Anthropic defaults to HTTPS `/v1/`, requires a non-empty Model ID before Connect, and validates that
 ID before resolving any host SecretRef. The worker's deterministic native
 fixture covers `/api/tags` model discovery and `/api/chat` NDJSON streaming with explicit model
