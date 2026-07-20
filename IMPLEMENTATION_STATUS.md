@@ -1,5 +1,16 @@
 # Implementation Status
 
+## 2026-07-20 — Linux final database no-follow hardening remote verification
+
+- Source revision `39712ab0dabe26980a076a9068d6fb7282364d94` passed all six required GitHub checks.
+- Push evidence: Native `29713770948` (job `88262506277`), Flatpak `29713770918` (job
+  `88262506137`), and Foundation `29713770942` (job `88262506324`) all completed successfully.
+- Pull-request evidence: Native `29713772062` (job `88262510191`), Flatpak `29713772061` (job
+  `88262510201`), and Foundation `29713772058` (job `88262510179`) all completed successfully.
+- The final database component is opened with Linux `O_NOFOLLOW | O_CLOEXEC`; local regression and
+  full validation passed. Parent-directory replacement races still require a future
+  directory-descriptor or `openat2` design and remain outside this checkpoint.
+
 ## 2026-07-20 — Linux Manual routing candidate cardinality
 
 Assumption: Manual routing must identify exactly one provider/model; candidate chains belong to
