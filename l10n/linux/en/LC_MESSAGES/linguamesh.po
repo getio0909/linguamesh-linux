@@ -115,6 +115,11 @@ msgctxt "provider.name"
 msgid "Provider name"
 msgstr "Provider name"
 
+#. Display label for the Anthropic Messages provider preset in the Linux provider form.
+msgctxt "provider.preset.anthropic"
+msgid "Anthropic Messages"
+msgstr "Anthropic Messages"
+
 #. Display label for the OpenAI-compatible provider preset in the Linux provider form.
 msgctxt "provider.preset.openai"
 msgid "OpenAI-compatible"
@@ -209,6 +214,11 @@ msgstr "Translation cancelled. Partial output was kept."
 msgctxt "error.invalid_profile"
 msgid "Enter a provider name, endpoint, and model."
 msgstr "Enter a provider name, endpoint, and model."
+
+#. Validation error shown when an Anthropic provider has no manually selected model.
+msgctxt "error.anthropic_model_required"
+msgid "Enter an Anthropic model ID before connecting."
+msgstr "Enter an Anthropic model ID before connecting."
 
 #. Authentication guidance that does not expose credential content.
 msgctxt "error.authentication"
@@ -377,6 +387,11 @@ msgctxt "tooltip.endpoint"
 msgid "HTTPS or loopback HTTP OpenAI-compatible base endpoint"
 msgstr "HTTPS or loopback HTTP OpenAI-compatible base endpoint"
 
+#. Tooltip for the Linux Anthropic Messages endpoint field.
+msgctxt "tooltip.endpoint.anthropic"
+msgid "HTTPS Anthropic Messages /v1 endpoint"
+msgstr "HTTPS Anthropic Messages /v1 endpoint"
+
 #. Tooltip for the Linux native Ollama endpoint field.
 msgctxt "tooltip.endpoint.ollama"
 msgid "HTTPS or loopback HTTP native Ollama /api endpoint"
@@ -391,6 +406,11 @@ msgstr "Choose the provider protocol used for model discovery and streaming"
 msgctxt "tooltip.credential"
 msgid "Optional credential; it is kept in memory unless remembered through Secret Service"
 msgstr "Optional credential; it is kept in memory unless remembered through Secret Service"
+
+#. Tooltip for the Linux manually entered Anthropic model identifier.
+msgctxt "tooltip.model.anthropic"
+msgid "Enter the Anthropic model ID before connecting; model discovery is manual for this preset"
+msgstr "Enter the Anthropic model ID before connecting; model discovery is manual for this preset"
 
 #. Label for remembering a Linux provider profile in Secret Service.
 msgctxt "option.remember_profile"
@@ -436,6 +456,11 @@ msgstr "Credential (optional; secure when remembered)"
 msgctxt "label.endpoint_loopback"
 msgid "Endpoint (loopback example)"
 msgstr "Endpoint (loopback example)"
+
+#. Placeholder for the Linux Anthropic model identifier entered before connection.
+msgctxt "option.model.manual"
+msgid "Enter a model ID manually..."
+msgstr "Enter a model ID manually..."
 
 #. Placeholder entry shown before a Linux model is selected.
 msgctxt "option.model.select"
@@ -1049,6 +1074,11 @@ msgstr "The translated output could not be saved."
 msgctxt "profile.default_name"
 msgid "Local OpenAI-compatible provider"
 msgstr "Local OpenAI-compatible provider"
+
+#. Default display name for the Linux Anthropic Messages provider profile.
+msgctxt "profile.default_anthropic_name"
+msgid "Anthropic Messages provider"
+msgstr "Anthropic Messages provider"
 
 #. Linux error shown when the shared Core compatibility description cannot be read.
 #, python-brace-format

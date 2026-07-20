@@ -1,5 +1,24 @@
 # Implementation Status
 
+## 2026-07-20 — Linux Anthropic Messages provider preset
+
+Assumption: Anthropic Messages remains a manual-model provider on Linux until a provider catalog
+service is intentionally introduced; the UI must collect the model ID before any SecretRef is
+resolved.
+
+- Added the localized Anthropic Messages preset with the HTTPS `/v1/` default endpoint, manual
+  Model ID field, saved-model restoration, and the existing session-only/Secret Service credential
+  flow. Empty model IDs fail locally before a worker connection or host-secret request.
+- Added the GTK focus/accessibility path for the conditional manual-model field and the regression
+  `anthropic_preset_requires_manual_model_before_connecting`.
+- Canonical l10n revision `e1ee15a5e9470e2c49077e52b4969597a5c8283f` contains 393 messages and all
+  generated PO/MO resources. Local l10n tests, generation, build, Linux localization audits,
+  formatting, all-target/all-feature check, strict Clippy, demo-provider tests (`134 passed; 3
+  ignored`), synchronization, and diff checks passed.
+- The host cannot link the all-feature GTK test binary because its installed GTK runtime lacks
+  symbols required by gtk-rs; Native CI remains the authoritative GUI/Secret Service/Flatpak gate.
+  The PR remains Draft/Open and the release train remains unreleased.
+
 ## 2026-07-20 — Linux Core Anthropic compatibility pin
 
 Assumption: the Linux-first client should consume the verified Core Anthropic Messages adapter even
@@ -25,9 +44,9 @@ adapter while preserving the existing Linux provider choices and exact compatibi
   `29719144935`/`29719144961` (jobs `88278214130`/`88278214125`/`88278214202`) and PR
   `29719143513`/`29719143521`/`29719143509` (jobs `88278209789`/`88278209742`/
   `88278209753`). `gh pr checks 1` reports all six checks passing.
-- The Linux UI does not claim Anthropic preset support yet; human visual review, end-user Secret
-  Service prompt approval, other native clients, signing, rollback, and stable-release evidence
-  remain open.
+- The Linux UI now claims the Anthropic preset at the source and automated GTK-regression level;
+  human visual review, end-user Secret Service prompt approval, other native clients, signing,
+  rollback, and stable-release evidence remain open.
 
 ## 2026-07-20 — Linux Secret Service session-only fallback guidance
 

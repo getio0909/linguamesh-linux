@@ -37,12 +37,16 @@ const MAX_EVENTS_PER_TICK: usize = 64;
 const PROFILE_ID_GENERATION_ATTEMPTS: usize = 8;
 const CUSTOM_PROVIDER_PRESET_ID: &str = "custom-openai-compatible";
 const OLLAMA_PROVIDER_PRESET_ID: &str = "ollama";
+const ANTHROPIC_PROVIDER_PRESET_ID: &str = "anthropic";
 const OPENAI_ADAPTER_TYPE: &str = "openai_chat_completions";
 const OLLAMA_ADAPTER_TYPE: &str = "ollama_chat";
+const ANTHROPIC_ADAPTER_TYPE: &str = "anthropic_messages";
 const DEFAULT_PROVIDER_NAME: &str = "Local OpenAI-compatible provider";
 const DEFAULT_OLLAMA_PROVIDER_NAME: &str = "Local Ollama provider";
+const DEFAULT_ANTHROPIC_PROVIDER_NAME: &str = "Anthropic Messages provider";
 const DEFAULT_PROVIDER_ENDPOINT: &str = "http://127.0.0.1:11434/v1/";
 const DEFAULT_OLLAMA_ENDPOINT: &str = "http://127.0.0.1:11434/api/";
+const DEFAULT_ANTHROPIC_ENDPOINT: &str = "https://api.anthropic.com/v1/";
 
 #[derive(Clone)]
 struct UiBindings {
@@ -58,6 +62,8 @@ struct UiBindings {
     provider_preset: gtk::DropDown,
     provider_name: gtk::Entry,
     provider_endpoint: gtk::Entry,
+    manual_model_row: gtk::Box,
+    manual_model: gtk::Entry,
     provider_credential: gtk::PasswordEntry,
     remember_profile: gtk::CheckButton,
     remove_saved_profile: gtk::Button,
@@ -153,6 +159,12 @@ fn provider_preset_config(index: u32) -> (&'static str, &'static str, &'static s
             DEFAULT_OLLAMA_PROVIDER_NAME,
             DEFAULT_OLLAMA_ENDPOINT,
         ),
+        2 => (
+            ANTHROPIC_PROVIDER_PRESET_ID,
+            ANTHROPIC_ADAPTER_TYPE,
+            DEFAULT_ANTHROPIC_PROVIDER_NAME,
+            DEFAULT_ANTHROPIC_ENDPOINT,
+        ),
         _ => (
             CUSTOM_PROVIDER_PRESET_ID,
             OPENAI_ADAPTER_TYPE,
@@ -164,14 +176,19 @@ fn provider_preset_config(index: u32) -> (&'static str, &'static str, &'static s
 
 // 将持久化的预设标识还原为界面下拉框索引。
 fn provider_preset_index(preset_id: &str) -> u32 {
-    u32::from(preset_id == OLLAMA_PROVIDER_PRESET_ID)
+    match preset_id {
+        OLLAMA_PROVIDER_PRESET_ID => 1,
+        ANTHROPIC_PROVIDER_PRESET_ID => 2,
+        _ => 0,
+    }
 }
 
 // 根据活动界面语言生成提供商预设标签。
-fn provider_preset_labels(locale: UiLocale) -> [String; 2] {
+fn provider_preset_labels(locale: UiLocale) -> [String; 3] {
     [
         localization::text(locale, "provider.preset.openai", "OpenAI-compatible"),
         localization::text(locale, "provider.preset.ollama", "Ollama (native /api)"),
+        localization::text(locale, "provider.preset.anthropic", "Anthropic Messages"),
     ]
 }
 
@@ -182,6 +199,12 @@ fn provider_endpoint_tooltip(locale: UiLocale, preset_index: u32) -> String {
             locale,
             "tooltip.endpoint.ollama",
             "HTTPS or loopback HTTP native Ollama /api endpoint",
+        )
+    } else if preset_index == 2 {
+        localization::text(
+            locale,
+            "tooltip.endpoint.anthropic",
+            "HTTPS Anthropic Messages /v1 endpoint",
         )
     } else {
         localization::text(
@@ -200,6 +223,12 @@ fn localized_provider_default_name(locale: UiLocale, preset_index: u32) -> Strin
             "profile.default_ollama_name",
             DEFAULT_OLLAMA_PROVIDER_NAME,
         )
+    } else if preset_index == 2 {
+        localization::text(
+            locale,
+            "profile.default_anthropic_name",
+            DEFAULT_ANTHROPIC_PROVIDER_NAME,
+        )
     } else {
         localization::text(locale, "profile.default_name", DEFAULT_PROVIDER_NAME)
     }
@@ -211,6 +240,8 @@ fn endpoint_matches_preset_default(endpoint: &str, preset_index: u32) -> bool {
     if preset_index == 1 {
         endpoint == DEFAULT_OLLAMA_ENDPOINT
             || (endpoint.starts_with("http://127.0.0.1:") && endpoint.ends_with("/api/"))
+    } else if preset_index == 2 {
+        endpoint == DEFAULT_ANTHROPIC_ENDPOINT
     } else {
         endpoint == DEFAULT_PROVIDER_ENDPOINT
             || (endpoint.starts_with("http://127.0.0.1:") && endpoint.ends_with("/v1/"))
@@ -450,6 +481,8 @@ fn create_window(
         provider_preset,
         provider_name,
         provider_endpoint,
+        manual_model_row,
+        manual_model,
         provider_credential,
         remember_profile,
         remove_saved_profile,
@@ -719,6 +752,8 @@ fn create_window(
         provider_preset,
         provider_name,
         provider_endpoint,
+        manual_model_row,
+        manual_model,
         provider_credential,
         remember_profile,
         remove_saved_profile,
@@ -815,6 +850,7 @@ fn create_window(
             bindings.provider_preset.clone().upcast::<gtk::Widget>(),
             bindings.provider_name.clone().upcast::<gtk::Widget>(),
             bindings.provider_endpoint.clone().upcast::<gtk::Widget>(),
+            bindings.manual_model.clone().upcast::<gtk::Widget>(),
             bindings.provider_credential.clone().upcast::<gtk::Widget>(),
             bindings.connect.clone().upcast::<gtk::Widget>(),
             bindings.remember_profile.clone().upcast::<gtk::Widget>(),
@@ -851,6 +887,10 @@ fn install_keyboard_focus_probe(
         (
             "provider_endpoint",
             bindings.provider_endpoint.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "manual_model",
+            bindings.manual_model.clone().upcast::<gtk::Widget>(),
         ),
         (
             "provider_credential",
@@ -1149,12 +1189,14 @@ fn create_editors() -> EditorBindings {
     }
 }
 
-#[allow(clippy::too_many_lines)]
+#[allow(clippy::too_many_lines, clippy::type_complexity)]
 fn create_provider_session() -> (
     gtk::Box,
     gtk::DropDown,
     gtk::DropDown,
     gtk::Entry,
+    gtk::Entry,
+    gtk::Box,
     gtk::Entry,
     gtk::PasswordEntry,
     gtk::CheckButton,
@@ -1248,6 +1290,23 @@ fn create_provider_session() -> (
         "tooltip.endpoint",
         "HTTPS or loopback HTTP OpenAI-compatible base endpoint",
     )));
+    let manual_model = gtk::Entry::new();
+    manual_model.set_hexpand(true);
+    manual_model.set_placeholder_text(Some(&localization::text(
+        locale,
+        "option.model.manual",
+        "Enter a model ID manually...",
+    )));
+    manual_model.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.model.anthropic",
+        "Enter the Anthropic model ID before connecting; model discovery is manual for this preset",
+    )));
+    let manual_model_row = labeled_control(
+        &localized_mnemonic(locale, "field.model", "Model"),
+        manual_model.upcast_ref::<gtk::Widget>(),
+    );
+    manual_model_row.set_visible(false);
     let provider_credential = gtk::PasswordEntry::builder()
         .show_peek_icon(true)
         .hexpand(true)
@@ -1283,6 +1342,7 @@ fn create_provider_session() -> (
         ),
         provider_endpoint.upcast_ref::<gtk::Widget>(),
     ));
+    fields.append(&manual_model_row);
     fields.append(&labeled_control(
         &localized_mnemonic(
             locale,
@@ -1304,6 +1364,8 @@ fn create_provider_session() -> (
         provider_preset,
         provider_name,
         provider_endpoint,
+        manual_model_row,
+        manual_model,
         provider_credential,
         remember_profile,
         remove_saved_profile,
@@ -1922,6 +1984,10 @@ fn show_saved_profile_in_form(bindings: &UiBindings, profile: &ProviderProfile) 
     bindings.provider_preset_guard.set(false);
     bindings.provider_name.set_text(profile.display_name());
     bindings.provider_endpoint.set_text(profile.base_endpoint());
+    bindings
+        .manual_model
+        .set_text(profile.selected_model().unwrap_or_default());
+    bindings.manual_model_row.set_visible(preset_index == 2);
     bindings.provider_credential.set_text("");
     bindings.remember_profile.set_active(true);
     bindings.draft_profile_id.replace(None);
@@ -1943,6 +2009,8 @@ fn show_new_profile_in_form(
     bindings
         .provider_endpoint
         .set_text(DEFAULT_PROVIDER_ENDPOINT);
+    bindings.manual_model.set_text("");
+    bindings.manual_model_row.set_visible(false);
     bindings.provider_credential.set_text("");
     bindings.remember_profile.set_active(false);
     Ok(())
@@ -2135,6 +2203,13 @@ fn connect_provider_preset_handler(bindings: &UiBindings) {
             preset_bindings
                 .provider_endpoint
                 .set_tooltip_text(Some(&provider_endpoint_tooltip(locale, selected)));
+            preset_bindings.manual_model_row.set_visible(selected == 2);
+            preset_bindings.manual_model.set_sensitive(selected == 2);
+            preset_bindings.manual_model.set_tooltip_text(Some(&localization::text(
+                locale,
+                "tooltip.model.anthropic",
+                "Enter the Anthropic model ID before connecting; model discovery is manual for this preset",
+            )));
         });
 }
 
@@ -2669,23 +2744,38 @@ fn connect_action_handlers(
             refresh_ui(&connect_bindings, &state);
             return;
         }
-        let (preset_id, adapter_type, _, _) =
-            provider_preset_config(connect_bindings.provider_preset.selected());
+        let preset_index = connect_bindings.provider_preset.selected();
+        let (preset_id, adapter_type, _, _) = provider_preset_config(preset_index);
         let preset_id = preset_id.to_owned();
         let adapter_type = adapter_type.to_owned();
+        let manual_model = connect_bindings.manual_model.text().trim().to_owned();
+        if preset_index == 2 && manual_model.is_empty() {
+            let message = localization::text(
+                state.locale(),
+                "error.anthropic_model_required",
+                "Enter an Anthropic model ID before connecting.",
+            );
+            state.provider_failed(TranslationError::new(ErrorKind::ModelUnavailable, message));
+            refresh_ui(&connect_bindings, &state);
+            return;
+        }
         let (profile_id, saved_secret_ref, enabled, selected_model) =
             match state.selected_saved_profile() {
                 Some(saved) => (
                     Ok(saved.id().clone()),
                     saved.secret_ref().cloned(),
                     saved.enabled(),
-                    saved.selected_model().map(str::to_owned),
+                    if preset_index == 2 {
+                        Some(manual_model.clone())
+                    } else {
+                        saved.selected_model().map(str::to_owned)
+                    },
                 ),
                 None => (
                     ensure_draft_profile_id(&connect_bindings, &state),
                     None,
                     true,
-                    None,
+                    (preset_index == 2).then_some(manual_model.clone()),
                 ),
             };
         let profile_id = match profile_id {
@@ -6361,6 +6451,22 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
             locale,
             bindings.provider_preset.selected(),
         )));
+    set_labeled_control_label(
+        bindings.manual_model.upcast_ref(),
+        &localized_mnemonic(locale, "field.model", "Model"),
+    );
+    bindings
+        .manual_model
+        .set_placeholder_text(Some(&localization::text(
+            locale,
+            "option.model.manual",
+            "Enter a model ID manually...",
+        )));
+    bindings.manual_model.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.model.anthropic",
+        "Enter the Anthropic model ID before connecting; model discovery is manual for this preset",
+    )));
     bindings
         .provider_credential
         .set_tooltip_text(Some(&localization::text(
@@ -6905,6 +7011,12 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         .provider_endpoint
         .set_sensitive(provider_controls_enabled);
     bindings
+        .manual_model_row
+        .set_visible(bindings.provider_preset.selected() == 2);
+    bindings
+        .manual_model
+        .set_sensitive(provider_controls_enabled && bindings.provider_preset.selected() == 2);
+    bindings
         .provider_credential
         .set_sensitive(provider_controls_enabled);
     bindings
@@ -7043,21 +7155,23 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
 #[cfg(test)]
 mod tests {
     use super::{
-        AppState, AppStatus, CUSTOM_PROVIDER_PRESET_ID, CoreWorker, DEFAULT_OLLAMA_ENDPOINT,
-        DEFAULT_OLLAMA_PROVIDER_NAME, DEFAULT_PROVIDER_ENDPOINT, DEFAULT_PROVIDER_NAME, ErrorKind,
-        OLLAMA_ADAPTER_TYPE, OLLAMA_PROVIDER_PRESET_ID, OPENAI_ADAPTER_TYPE, OnboardingStage,
-        ProviderProfileId, RoutingConstraintTextValues, SecretRef, SecretRefNamespace, SecretValue,
-        TranslationError, UiLocale, WorkerCommand, WorkerEvent, apply_worker_event,
-        connect_action_handlers, connect_selection_handlers, create_window,
-        custom_provider_profile, destination_matches_source, document_format_label,
-        endpoint_matches_preset_default, fallback_confirmation_needed, generate_custom_provider_id,
-        localized_document_job_state, localized_document_warnings, localized_provider_default_name,
-        localized_template, normalized_candidate_ids_for_mode, provider_preset_config,
-        provider_preset_index, refresh_ui, routing_constraints_from_controls,
-        routing_constraints_from_text_values, routing_identifier_list_from_text,
-        routing_optional_limit_from_text, routing_preference_for_selection,
-        routing_preference_selection, routing_profile_id_conflicts, show_new_profile_in_form,
-        start_event_pump, text_metrics_label, valid_routing_profile_id,
+        ANTHROPIC_ADAPTER_TYPE, ANTHROPIC_PROVIDER_PRESET_ID, AppState, AppStatus,
+        CUSTOM_PROVIDER_PRESET_ID, CoreWorker, DEFAULT_ANTHROPIC_ENDPOINT,
+        DEFAULT_ANTHROPIC_PROVIDER_NAME, DEFAULT_OLLAMA_ENDPOINT, DEFAULT_OLLAMA_PROVIDER_NAME,
+        DEFAULT_PROVIDER_ENDPOINT, DEFAULT_PROVIDER_NAME, ErrorKind, OLLAMA_ADAPTER_TYPE,
+        OLLAMA_PROVIDER_PRESET_ID, OPENAI_ADAPTER_TYPE, OnboardingStage, ProviderProfileId,
+        RoutingConstraintTextValues, SecretRef, SecretRefNamespace, SecretValue, TranslationError,
+        UiLocale, WorkerCommand, WorkerEvent, apply_worker_event, connect_action_handlers,
+        connect_selection_handlers, create_window, custom_provider_profile,
+        destination_matches_source, document_format_label, endpoint_matches_preset_default,
+        fallback_confirmation_needed, generate_custom_provider_id, localized_document_job_state,
+        localized_document_warnings, localized_provider_default_name, localized_template,
+        normalized_candidate_ids_for_mode, provider_preset_config, provider_preset_index,
+        refresh_ui, routing_constraints_from_controls, routing_constraints_from_text_values,
+        routing_identifier_list_from_text, routing_optional_limit_from_text,
+        routing_preference_for_selection, routing_preference_selection,
+        routing_profile_id_conflicts, show_new_profile_in_form, start_event_pump,
+        text_metrics_label, valid_routing_profile_id,
     };
     use adw::prelude::*;
     use gtk::glib;
@@ -7376,6 +7490,7 @@ mod tests {
     #[test]
     fn provider_presets_map_to_stable_native_and_compatible_defaults() {
         assert_eq!(provider_preset_index(OLLAMA_PROVIDER_PRESET_ID), 1);
+        assert_eq!(provider_preset_index(ANTHROPIC_PROVIDER_PRESET_ID), 2);
         assert_eq!(provider_preset_index(CUSTOM_PROVIDER_PRESET_ID), 0);
         assert_eq!(
             provider_preset_config(0),
@@ -7395,11 +7510,24 @@ mod tests {
                 DEFAULT_OLLAMA_ENDPOINT,
             )
         );
+        assert_eq!(
+            provider_preset_config(2),
+            (
+                ANTHROPIC_PROVIDER_PRESET_ID,
+                ANTHROPIC_ADAPTER_TYPE,
+                DEFAULT_ANTHROPIC_PROVIDER_NAME,
+                DEFAULT_ANTHROPIC_ENDPOINT,
+            )
+        );
         assert!(endpoint_matches_preset_default(
             DEFAULT_PROVIDER_ENDPOINT,
             0
         ));
         assert!(endpoint_matches_preset_default(DEFAULT_OLLAMA_ENDPOINT, 1));
+        assert!(endpoint_matches_preset_default(
+            DEFAULT_ANTHROPIC_ENDPOINT,
+            2
+        ));
         assert!(!endpoint_matches_preset_default(
             "https://api.example.test/v1/",
             0
@@ -7408,6 +7536,53 @@ mod tests {
             "https://api.example.test/api/",
             1
         ));
+        assert!(!endpoint_matches_preset_default(
+            "https://api.example.test/v1/",
+            2
+        ));
+    }
+
+    #[test]
+    fn anthropic_preset_requires_manual_model_before_connecting() {
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.AnthropicManualModelTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK test application");
+        let state = Rc::new(RefCell::new(AppState::default()));
+        state.borrow_mut().mark_worker_ready();
+        let worker = Rc::new(CoreWorker::spawn());
+        let (window, bindings, theme, locale) = create_window(&application);
+        connect_action_handlers(&bindings, &state, &worker);
+        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
+        refresh_ui(&bindings, &state.borrow());
+        bindings.provider_preset.set_selected(2);
+        bindings
+            .provider_name
+            .set_text(DEFAULT_ANTHROPIC_PROVIDER_NAME);
+        bindings
+            .provider_endpoint
+            .set_text(DEFAULT_ANTHROPIC_ENDPOINT);
+        assert!(bindings.manual_model_row.is_visible());
+        bindings.connect.emit_clicked();
+        assert_eq!(state.borrow().status(), AppStatus::Failed);
+        assert!(
+            state
+                .borrow()
+                .error_text()
+                .is_some_and(|text| text.contains("Anthropic model ID"))
+        );
+        assert!(state.borrow().active_provider().is_none());
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        drop(window);
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
     }
 
     #[test]
@@ -7419,6 +7594,10 @@ mod tests {
         assert_eq!(
             localized_provider_default_name(UiLocale::English, 1),
             DEFAULT_OLLAMA_PROVIDER_NAME
+        );
+        assert_eq!(
+            localized_provider_default_name(UiLocale::English, 2),
+            DEFAULT_ANTHROPIC_PROVIDER_NAME
         );
         assert_eq!(
             localized_provider_default_name(UiLocale::SimplifiedChinese, 0),
@@ -7871,6 +8050,7 @@ mod tests {
             bindings.provider_preset.upcast_ref::<gtk::Widget>(),
             bindings.provider_name.upcast_ref::<gtk::Widget>(),
             bindings.provider_endpoint.upcast_ref::<gtk::Widget>(),
+            bindings.manual_model.upcast_ref::<gtk::Widget>(),
             bindings.provider_credential.upcast_ref::<gtk::Widget>(),
             bindings.model.upcast_ref::<gtk::Widget>(),
             bindings.source_locale.upcast_ref::<gtk::Widget>(),

@@ -38,7 +38,8 @@ and does not satisfy the complete candidate-management release gate.
 The external-provider path includes deterministic Ollama-compatible OpenAI `/v1/` and native
 `/api/` loopback fixtures plus a passed opt-in third-party daemon regression using Docker
 `ollama/ollama:0.11.10` and `qwen2.5-0.5b-instruct:latest`. The GTK form exposes the native Ollama
-preset and its `ollama_chat` adapter, while persistent
+preset and its `ollama_chat` adapter plus the Anthropic Messages preset with a manual Model ID field,
+while persistent
 secret references use the Linux GIO Secret Service adapter and fail closed when the desktop keyring
 is unavailable or requires an interactive prompt. The native workflow
 pins reviewed Core functional revision
@@ -61,8 +62,8 @@ Wayland/headless Weston. Neither validation creates a distributable artifact or 
 future release gate below.
 
 The current Linux gate consumes Core `a87aaf2bef7cca287c4a6faa8addd340e0245b0e` and l10n
-`85b9d45569ce840c17dc0acc7d7366d6810be48e` (334 catalog messages, bundle SHA-256
-`028d25b3637fbc19d41d497a860b414353615b9576db6f852a9f236bcbe770ce`). Request-level glossary rules, bounded CSV,
+`e1ee15a5e9470e2c49077e52b4969597a5c8283f` (393 catalog messages, bundle SHA-256
+`a30db30a44a16588db3b79b1958c849149677d40939cf5427413539b18d73282`). Request-level glossary rules, bounded CSV,
 interchange are implemented in the Linux slice; persistent glossary libraries and TBX import
 remain outside the release claim.
 

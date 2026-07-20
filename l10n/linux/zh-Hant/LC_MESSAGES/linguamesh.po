@@ -122,6 +122,12 @@ msgctxt "provider.name"
 msgid "Provider name"
 msgstr "供應商名稱"
 
+#. Display label for the Anthropic Messages provider preset in the Linux provider form.
+#, fuzzy
+msgctxt "provider.preset.anthropic"
+msgid "Anthropic Messages"
+msgstr "Anthropic Messages"
+
 #. Display label for the OpenAI-compatible provider preset in the Linux provider form.
 #, fuzzy
 msgctxt "provider.preset.openai"
@@ -235,6 +241,12 @@ msgstr "翻譯已取消。已保留部分輸出。"
 msgctxt "error.invalid_profile"
 msgid "Enter a provider name, endpoint, and model."
 msgstr "請輸入供應商名稱、端點和模型。"
+
+#. Validation error shown when an Anthropic provider has no manually selected model.
+#, fuzzy
+msgctxt "error.anthropic_model_required"
+msgid "Enter an Anthropic model ID before connecting."
+msgstr "Enter an Anthropic model ID before connecting."
 
 #. Authentication guidance that does not expose credential content.
 #, fuzzy
@@ -434,6 +446,12 @@ msgctxt "tooltip.endpoint"
 msgid "HTTPS or loopback HTTP OpenAI-compatible base endpoint"
 msgstr "HTTPS 或回環 HTTP OpenAI 相容基礎端點"
 
+#. Tooltip for the Linux Anthropic Messages endpoint field.
+#, fuzzy
+msgctxt "tooltip.endpoint.anthropic"
+msgid "HTTPS Anthropic Messages /v1 endpoint"
+msgstr "HTTPS Anthropic Messages /v1 endpoint"
+
 #. Tooltip for the Linux native Ollama endpoint field.
 #, fuzzy
 msgctxt "tooltip.endpoint.ollama"
@@ -451,6 +469,12 @@ msgstr "Choose the provider protocol used for model discovery and streaming"
 msgctxt "tooltip.credential"
 msgid "Optional credential; it is kept in memory unless remembered through Secret Service"
 msgstr "選用憑證；除非透過 Secret Service 記住，否則只保留在記憶體中"
+
+#. Tooltip for the Linux manually entered Anthropic model identifier.
+#, fuzzy
+msgctxt "tooltip.model.anthropic"
+msgid "Enter the Anthropic model ID before connecting; model discovery is manual for this preset"
+msgstr "Enter the Anthropic model ID before connecting; model discovery is manual for this preset"
 
 #. Label for remembering a Linux provider profile in Secret Service.
 #, fuzzy
@@ -505,6 +529,12 @@ msgstr "憑證（選用；記住時安全儲存）"
 msgctxt "label.endpoint_loopback"
 msgid "Endpoint (loopback example)"
 msgstr "端點（回環範例）"
+
+#. Placeholder for the Linux Anthropic model identifier entered before connection.
+#, fuzzy
+msgctxt "option.model.manual"
+msgid "Enter a model ID manually..."
+msgstr "Enter a model ID manually..."
 
 #. Placeholder entry shown before a Linux model is selected.
 #, fuzzy
@@ -1231,6 +1261,12 @@ msgstr "無法儲存譯文。"
 msgctxt "profile.default_name"
 msgid "Local OpenAI-compatible provider"
 msgstr "本機 OpenAI 相容提供商"
+
+#. Default display name for the Linux Anthropic Messages provider profile.
+#, fuzzy
+msgctxt "profile.default_anthropic_name"
+msgid "Anthropic Messages provider"
+msgstr "Anthropic Messages provider"
 
 #. Linux error shown when the shared Core compatibility description cannot be read.
 #, fuzzy, python-brace-format

@@ -167,8 +167,9 @@ unverified.
 The tested external-provider path includes deterministic loopback fixtures for both Ollama-compatible
 OpenAI `/v1/` and native Ollama `/api`: model discovery returns `llama3.2:latest`, the worker requires
 deliberate selection, and streaming uses `/v1/chat/completions` or `/api/chat` without a credential.
-The GTK provider form exposes localized OpenAI-compatible and native Ollama presets and preserves
-custom endpoint edits when switching between them. `tools/run-ollama-interop-test.sh` provides an
+The GTK provider form exposes localized OpenAI-compatible, native Ollama, and Anthropic Messages
+presets. Anthropic uses the HTTPS `/v1/` endpoint and requires a manual Model ID before Connect;
+custom endpoint edits remain preserved when switching presets. `tools/run-ollama-interop-test.sh` provides an
 opt-in regression against a caller-selected installed model; the default suite keeps it ignored
 because model installation is external. The Linux checkpoint passed this harness against Docker
 `ollama/ollama:0.11.10` with `qwen2.5-0.5b-instruct:latest`; GPU and stable-release evidence remain
@@ -200,7 +201,7 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`3362732be198450ff1ca00f30ec092aab2cf4189` and validated with `msgfmt`; the 387-message bundle
+`e1ee15a5e9470e2c49077e52b4969597a5c8283f` and validated with `msgfmt`; the 393-message bundle
 adds Linux routing-profile persistence/editor, profile-ID validation and duplicate protection, ordinary-text selection labels, routing preference/privacy/document constraints, provider/model allowlists and denylists, quality/request-size limits, and source/output character plus approximate-token metrics. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
 active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, construction-stage provider/default-control copy, and diagnostics labels/state values without replacing active source text;

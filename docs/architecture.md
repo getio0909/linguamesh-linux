@@ -65,11 +65,12 @@ missing, duplicate, or changed markers as typed malformed responses; Linux there
 provider output that structurally drops one of these spans.
 
 The provider catalog's `local-loopback` preset uses the OpenAI-compatible `/v1/` adapter, while its
-loopback-only `ollama` preset uses Core's native `/api/` adapter. Core also exposes an
-`anthropic_messages` manual-model adapter, but the Linux form does not yet bind an Anthropic-specific
-preset. The worker's deterministic native
+loopback-only `ollama` preset uses Core's native `/api/` adapter. The Linux form also exposes the
+localized Anthropic Messages preset backed by Core's `anthropic_messages` manual-model adapter. It
+defaults to HTTPS `/v1/`, requires a non-empty Model ID before Connect, and validates that ID before
+resolving any host SecretRef. The worker's deterministic native
 fixture covers `/api/tags` model discovery and `/api/chat` NDJSON streaming with explicit model
-selection. The GTK provider form now exposes both presets, restores the selected preset for saved
+selection. The GTK provider form now exposes all three presets, restores the selected preset for saved
 profiles, and changes untouched default fields when the user switches protocol. The opt-in harness
 also passed against an independently running Docker Ollama daemon and an installed Qwen GGUF model;
 GPU execution remains outside this prerelease evidence.

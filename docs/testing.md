@@ -7,6 +7,10 @@ fragmented UTF-8 handling, cancellation, and the translated `你好，Ollama！`
 credential. These tests do not replace interoperability testing against a running third-party
 Ollama daemon.
 
+The GTK provider regression also selects the Anthropic Messages preset, verifies its HTTPS `/v1/`
+default, and requires a manual Model ID before Connect. The model is validated locally before any
+worker connection or host SecretRef resolution; saved profiles restore the non-secret model ID.
+
 The real-daemon regression is opt-in and never downloads a model by default. With a running
 third-party daemon and an installed model, execute:
 
@@ -26,7 +30,7 @@ The Linux checkpoint has a reproducible external pass using Docker image
 were removed after validation. This evidence is prerelease-only and does not cover GPU execution.
 
 The Linux checkout consumes the canonical gettext bundle from immutable l10n revision
-`3362732be198450ff1ca00f30ec092aab2cf4189`. The bundle contains 387 messages, and
+`e1ee15a5e9470e2c49077e52b4969597a5c8283f`. The bundle contains 393 messages, and
 `bash tools/sync-l10n.sh --check` verifies every PO/MO catalog and the generated manifest before
 the native build. History/memory row metadata, document-job IDs, active-provider mode summaries,
 unavailable provider/model labels, and routing-profile actions/mode labels are asserted through
@@ -468,9 +472,9 @@ namespace test through the unprivileged path.
 The GTK AT-SPI fixture bounds cleanup of its private application, window manager, and accessibility
 launcher processes; a fixture that prints successful accessibility assertions but cannot reap its
 processes is recorded as a failed gate rather than accepted as evidence.
-The current Linux diagnostics localization revision `85b9d45569ce840c17dc0acc7d7366d6810be48e`
-contains 334 catalog messages and bundle SHA-256
-`028d25b3637fbc19d41d497a860b414353615b9576db6f852a9f236bcbe770ce`; the source-level catalog
+The current Linux diagnostics localization revision `e1ee15a5e9470e2c49077e52b4969597a5c8283f`
+contains 393 catalog messages and bundle SHA-256
+`a30db30a44a16588db3b79b1958c849149677d40939cf5427413539b18d73282`; the source-level catalog
 audit and runtime locale tests cover the diagnostics labels. The current fixed-error localization revision `b6d2503`
 passed Native Linux run `29627668119`, Foundation run `29627668093`, and
 Flatpak run `29627668108`; the native job validated the pinned 117-message catalog and GTK
