@@ -33,6 +33,7 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver, SyncSender, TryRecvError};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
+use std::time::{Duration, Instant};
 use tokio::runtime::Builder;
 use tokio::sync::mpsc::{Receiver as CommandReceiver, Sender as CommandSender};
 use tokio_util::sync::CancellationToken;
@@ -41,6 +42,9 @@ const COMMAND_CAPACITY: usize = 16;
 const EVENT_CAPACITY: usize = 64;
 const MAX_ACTIVE_DOCUMENT_JOBS: usize = 4;
 const SECRET_REQUEST_CAPACITY: usize = 1;
+const MAX_ROUTING_BACKOFF_MS: u64 = 8_000;
+const ROUTING_CIRCUIT_FAILURE_THRESHOLD: u32 = 2;
+const ROUTING_CIRCUIT_COOLDOWN: Duration = Duration::from_secs(30);
 const REVIEWED_CORE_VERSION: &str = "0.1.0-alpha.2";
 const REVIEWED_ABI_MAJOR: u32 = 1;
 const REVIEWED_PROTOCOL_VERSION: u32 = 1;
@@ -1131,6 +1135,55 @@ struct ActiveTranslation {
     routing_provider_id: Option<String>,
 }
 
+#[derive(Default)]
+struct RoutingCircuitBreaker {
+    states: HashMap<String, RoutingCircuitState>,
+}
+
+struct RoutingCircuitState {
+    consecutive_failures: u32,
+    open_until: Option<Instant>,
+}
+
+impl RoutingCircuitBreaker {
+    // 连续失败达到阈值后暂时跳过候选，成功连接会立即清除该候选的熔断状态。
+    fn is_open(&mut self, candidate_key: &str) -> bool {
+        let now = Instant::now();
+        let Some(state) = self.states.get_mut(candidate_key) else {
+            return false;
+        };
+        match state.open_until {
+            Some(open_until) if open_until > now => true,
+            Some(_) => {
+                state.open_until = None;
+                state.consecutive_failures = 0;
+                false
+            }
+            None => false,
+        }
+    }
+
+    // 只为网络和超时失败累计熔断次数，其他失败由上层策略直接终止。
+    fn record_failure(&mut self, candidate_key: &str) {
+        let state = self
+            .states
+            .entry(candidate_key.to_owned())
+            .or_insert(RoutingCircuitState {
+                consecutive_failures: 0,
+                open_until: None,
+            });
+        state.consecutive_failures = state.consecutive_failures.saturating_add(1);
+        if state.consecutive_failures >= ROUTING_CIRCUIT_FAILURE_THRESHOLD {
+            state.open_until = Some(Instant::now() + ROUTING_CIRCUIT_COOLDOWN);
+        }
+    }
+
+    // 连接成功表示候选恢复可用，避免旧失败影响后续请求。
+    fn record_success(&mut self, candidate_key: &str) {
+        self.states.remove(candidate_key);
+    }
+}
+
 struct ActiveDocumentTranslation {
     job_id: String,
     segment_index: usize,
@@ -1512,6 +1565,7 @@ async fn run_worker(
 
     let mut manager = ProviderManager::new(secret_broker.clone());
     let mut routing_manager: Option<ProviderManager> = None;
+    let mut routing_circuit = RoutingCircuitBreaker::default();
     let mut fallback_manager: Option<ProviderManager> = None;
     let mut fallback_profile: Option<ProviderProfile> = None;
     let mut active_profile: Option<ProviderProfile> = None;
@@ -1691,6 +1745,12 @@ async fn run_worker(
                             .is_some_and(|_| is_retryable_fallback(error))
                     {
                         let mut switched = false;
+                        let mut retry_error = error.clone();
+                        if let Some(provider_id) = active_translation.routing_provider_id.as_ref() {
+                            let candidate_key =
+                                format!("{}@{}", provider_id, active_translation.request.model_id);
+                            routing_circuit.record_failure(&candidate_key);
+                        }
                         if let Some(routing_profile_id) =
                             active_translation.routing_profile_id.clone()
                         {
@@ -1702,6 +1762,19 @@ async fn run_worker(
                                     active_translation.routing_candidates[candidate_index].clone();
                                 active_translation.routing_fallback_index =
                                     candidate_index.saturating_add(1);
+                                let candidate_key = candidate.key();
+                                if routing_circuit.is_open(&candidate_key) {
+                                    continue;
+                                }
+                                let delay = routing_backoff_delay(
+                                    &retry_error,
+                                    candidate_index,
+                                    &candidate_key,
+                                );
+                                if !wait_for_routing_backoff(delay, &shutdown_cancellation).await {
+                                    stop_after_active = true;
+                                    break;
+                                }
                                 let cancellation = shutdown_cancellation.child_token();
                                 set_active_cancellation(
                                     &active_cancellation,
@@ -1716,9 +1789,18 @@ async fn run_worker(
                                 )
                                 .await;
                                 clear_active_cancellation(&active_cancellation);
-                                let Ok((candidate_manager, _profile, candidate_model)) = result
-                                else {
-                                    continue;
+                                let (candidate_manager, _profile, candidate_model) = match result {
+                                    Ok(result) => {
+                                        routing_circuit.record_success(&candidate_key);
+                                        result
+                                    }
+                                    Err(error) => {
+                                        if is_retryable_fallback(&error) {
+                                            routing_circuit.record_failure(&candidate_key);
+                                        }
+                                        retry_error = error;
+                                        continue;
+                                    }
                                 };
                                 let fallback_request =
                                     active_translation.request.clone().with_provider_identity(
@@ -3871,6 +3953,17 @@ async fn run_worker(
                     let mut selected_index = 0;
                     let mut last_error = None;
                     for (index, candidate) in candidates.iter().enumerate() {
+                        let candidate_key = candidate.key();
+                        if routing_circuit.is_open(&candidate_key) {
+                            continue;
+                        }
+                        if let Some(error) = last_error.as_ref() {
+                            let delay = routing_backoff_delay(error, index, &candidate_key);
+                            if !wait_for_routing_backoff(delay, &shutdown_cancellation).await {
+                                shutting_down = true;
+                                break;
+                            }
+                        }
                         let active_matches = index == 0
                             && active_profile.as_ref().is_some_and(|profile| {
                                 profile.id().as_str() == candidate.provider_id
@@ -3900,12 +3993,18 @@ async fn run_worker(
                         clear_active_cancellation(&active_cancellation);
                         match result {
                             Ok((candidate_manager, _profile, _model)) => {
+                                routing_circuit.record_success(&candidate_key);
                                 routing_manager = Some(candidate_manager);
                                 selected = Some(candidate.clone());
                                 selected_index = index;
                                 break;
                             }
-                            Err(error) => last_error = Some(error),
+                            Err(error) => {
+                                if is_retryable_fallback(&error) {
+                                    routing_circuit.record_failure(&candidate_key);
+                                }
+                                last_error = Some(error);
+                            }
                         }
                     }
                     let Some(selected) = selected else {
@@ -4900,6 +4999,52 @@ fn is_retryable_fallback(error: &TranslationError) -> bool {
     matches!(error.kind, ErrorKind::Network | ErrorKind::Timeout)
 }
 
+// 生成稳定的候选抖动值，不使用端点、凭据或请求内容作为输入。
+fn routing_jitter(candidate_key: &str, attempt_index: usize) -> u64 {
+    let mut hash = 14_695_981_039_346_656_037_u64;
+    for byte in candidate_key.bytes() {
+        hash ^= u64::from(byte);
+        hash = hash.wrapping_mul(1_099_511_628_211);
+    }
+    hash ^ (attempt_index as u64).wrapping_mul(1_099_511_628_211)
+}
+
+// 优先使用提供商的 Retry-After，缺失时使用有界指数退避和稳定抖动。
+fn routing_backoff_delay(
+    error: &TranslationError,
+    attempt_index: usize,
+    candidate_key: &str,
+) -> Duration {
+    if let Some(retry_after_ms) = error.retry_after_ms {
+        return Duration::from_millis(retry_after_ms.min(MAX_ROUTING_BACKOFF_MS));
+    }
+    let exponent = u32::try_from(attempt_index.min(6)).unwrap_or(6);
+    let base_ms = 100_u64
+        .saturating_mul(1_u64 << exponent)
+        .min(MAX_ROUTING_BACKOFF_MS);
+    let jitter_bound = base_ms / 2;
+    let jitter = if jitter_bound == 0 {
+        0
+    } else {
+        routing_jitter(candidate_key, attempt_index) % (jitter_bound + 1)
+    };
+    Duration::from_millis(base_ms.saturating_add(jitter).min(MAX_ROUTING_BACKOFF_MS))
+}
+
+// 在退避等待期间保留 shutdown 响应，避免熔断或网络等待阻塞 worker 退出。
+async fn wait_for_routing_backoff(
+    delay: Duration,
+    shutdown_cancellation: &CancellationToken,
+) -> bool {
+    if delay.is_zero() {
+        return !shutdown_cancellation.is_cancelled();
+    }
+    tokio::select! {
+        () = shutdown_cancellation.cancelled() => false,
+        () = tokio::time::sleep(delay) => true,
+    }
+}
+
 // 将回退操作序号接续到主操作之后，保留已收到的部分输出。
 fn remap_translation_event(event: TranslationEvent, sequence: u64) -> TranslationEvent {
     match event {
@@ -5506,8 +5651,9 @@ fn cancel_active(active_cancellation: &Mutex<Option<ActiveCancellation>>) {
 mod tests {
     use super::{
         COMMAND_CAPACITY, CoreWorker, PersistenceIntent, QueuedCommand, REQUIRED_CORE_FEATURES,
-        WorkerCommand, WorkerEvent, alternative_pdf_source_name, prepare_database_file,
-        profile_without_secret, validate_core_contract,
+        RoutingCircuitBreaker, WorkerCommand, WorkerEvent, alternative_pdf_source_name,
+        prepare_database_file, profile_without_secret, routing_backoff_delay,
+        validate_core_contract,
     };
     use crate::model::{ProviderProfile, ProviderProfileId};
     use linguamesh_document::{DocumentFormat, DocumentJob, DocumentJobState};
@@ -9323,6 +9469,39 @@ mod tests {
         assert_eq!(restored_b.selected_model(), Some("fake-slow-translator"));
         shutdown(&restarted);
         database.assert_absent_from_files(&forbidden_storage_values);
+    }
+
+    #[test]
+    fn routing_backoff_prefers_retry_hint_and_stays_bounded() {
+        let network = TranslationError::new(ErrorKind::Network, "retryable");
+        let first = routing_backoff_delay(&network, 0, "provider-a@model-a");
+        let later = routing_backoff_delay(&network, 6, "provider-a@model-a");
+        let hinted = routing_backoff_delay(
+            &network.clone().with_retry_after_ms(Some(1_500)),
+            0,
+            "provider-a@model-a",
+        );
+        let capped = routing_backoff_delay(
+            &network.with_retry_after_ms(Some(60_000)),
+            0,
+            "provider-a@model-a",
+        );
+        assert!(first >= Duration::from_millis(100));
+        assert!(later > first);
+        assert_eq!(hinted, Duration::from_millis(1_500));
+        assert_eq!(capped, Duration::from_secs(8));
+    }
+
+    #[test]
+    fn routing_circuit_breaker_opens_after_repeated_failures_and_resets() {
+        let mut circuit = RoutingCircuitBreaker::default();
+        assert!(!circuit.is_open("provider-a@model-a"));
+        circuit.record_failure("provider-a@model-a");
+        assert!(!circuit.is_open("provider-a@model-a"));
+        circuit.record_failure("provider-a@model-a");
+        assert!(circuit.is_open("provider-a@model-a"));
+        circuit.record_success("provider-a@model-a");
+        assert!(!circuit.is_open("provider-a@model-a"));
     }
 
     #[test]
