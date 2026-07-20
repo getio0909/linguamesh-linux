@@ -148,7 +148,7 @@ until startup finishes. Credential values are never written to the database; onl
 `SecretRef` identifiers are stored. Secret Service absence, locked items, and unsupported
 interactive prompts fail closed with typed errors instead of falling back to plaintext. Native CI
 also exercises non-root prompt paths for store and delete and verifies the same typed rejection;
-end-user prompt approval and unlock UI remain outside the automated gate. Session-only
+Secret Service and portal unlock prompts remain outside the automated gate. Session-only
 connection remains available when remembering is disabled or profile storage/keyring access is
 unavailable. Connection and translation can both be cancelled, and a failed provider switch
 preserves the previously confirmed provider and model.
@@ -213,6 +213,9 @@ must choose a different saved provider; only network or timeout failures from th
 provider can select it. The UI records the selection and warns that content may be sent there. Fallback
 is unavailable for document jobs, incognito requests, cancellation, authentication failures, model
 errors, and unapproved or session-only profiles; partial primary output is retained across the switch.
+Before an ordinary request with fallback enabled is dispatched, Linux shows a localized confirmation
+window explaining that content may reach the approved provider. **Translate** grants one request;
+**Close** cancels without sending. Secret Service or portal unlock prompts remain fail-closed/manual.
 
 The routing-profile dialog also lets the user choose Core's **Manual**, **Ordered**, or **Automatic**
 mode before saving a profile. Fallback consent is separate, explicit, and disabled by default; a

@@ -124,6 +124,7 @@ struct UiBindings {
     ocr_pending: Rc<Cell<bool>>,
     export_notice: Rc<Cell<bool>>,
     fallback_notice: Rc<Cell<bool>>,
+    fallback_approval: Rc<Cell<bool>>,
     glossary_notice: Rc<Cell<bool>>,
     glossary_from_csv: Rc<Cell<bool>>,
     history_notice: Rc<Cell<bool>>,
@@ -784,6 +785,7 @@ fn create_window(
         ocr_pending: Rc::new(Cell::new(false)),
         export_notice: Rc::new(Cell::new(false)),
         fallback_notice: Rc::new(Cell::new(false)),
+        fallback_approval: Rc::new(Cell::new(false)),
         glossary_notice: Rc::new(Cell::new(false)),
         glossary_from_csv: Rc::new(Cell::new(false)),
         history_notice: Rc::new(Cell::new(false)),
@@ -2242,6 +2244,72 @@ fn connect_selection_handlers(
     });
 }
 
+// 在普通文本请求可能触发回退前要求用户再次确认内容边界。
+fn show_fallback_approval_dialog(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
+    let locale = state.borrow().locale();
+    let dialog = gtk::Window::builder()
+        .application(&bindings.application)
+        .transient_for(&bindings.window)
+        .modal(true)
+        .title(localization::text(
+            locale,
+            "action.enable_fallback",
+            "Allow approved fallback",
+        ))
+        .default_width(520)
+        .default_height(220)
+        .build();
+    let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    root.set_margin_top(16);
+    root.set_margin_bottom(16);
+    root.set_margin_start(16);
+    root.set_margin_end(16);
+    let message = gtk::Label::new(Some(&format!(
+        "{}\n\n{}",
+        localization::text(
+            locale,
+            "status.fallback_selected",
+            "The approved fallback provider was selected; content may be sent there.",
+        ),
+        localization::text(
+            locale,
+            "tooltip.fallback",
+            "Retry only retryable network failures with this saved provider; document jobs, cancellation, and credential failures never fall back",
+        )
+    )));
+    message.set_xalign(0.0);
+    message.set_wrap(true);
+    message.set_focusable(true);
+    root.append(&message);
+    let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let approve =
+        gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.translate", "Translate"));
+    approve.set_focusable(true);
+    let cancel = gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.close", "Close"));
+    cancel.set_focusable(true);
+    actions.append(&approve);
+    actions.append(&cancel);
+    root.append(&actions);
+    dialog.set_child(Some(&root));
+
+    let approve_bindings = bindings.clone();
+    let approve_dialog = dialog.clone();
+    approve.connect_clicked(move |_| {
+        approve_bindings.fallback_approval.set(true);
+        approve_dialog.close();
+        approve_bindings.translate.emit_clicked();
+    });
+    let cancel_dialog = dialog.clone();
+    cancel.connect_clicked(move |_| cancel_dialog.close());
+    dialog.present();
+}
+
+// 只有用户尚未确认且开启了回退时才显示一次发送前提示。
+#[must_use]
+fn fallback_confirmation_needed(enabled: bool, approved: bool) -> bool {
+    enabled && !approved
+}
+
 // 四个原生操作共享同一状态与工作线程绑定，集中注册可保持生命周期一致。
 #[allow(clippy::too_many_lines)]
 fn connect_action_handlers(
@@ -2741,8 +2809,17 @@ fn connect_action_handlers(
                     );
                     state.record_client_error(message);
                 } else {
+                    if fallback_confirmation_needed(
+                        fallback_enabled,
+                        translate_bindings.fallback_approval.get(),
+                    ) {
+                        drop(state);
+                        show_fallback_approval_dialog(&translate_bindings, &translate_state);
+                        return;
+                    }
                     match state.begin_translation() {
                         Ok(request) => {
+                            translate_bindings.fallback_approval.set(false);
                             let command = if let Some(routing_profile_id) = routing_profile_id {
                                 WorkerCommand::TranslateWithRouting {
                                     request,
@@ -6863,9 +6940,9 @@ mod tests {
         TranslationError, UiLocale, WorkerCommand, WorkerEvent, apply_worker_event,
         connect_action_handlers, connect_selection_handlers, create_window,
         custom_provider_profile, destination_matches_source, document_format_label,
-        endpoint_matches_preset_default, generate_custom_provider_id, localized_document_job_state,
-        localized_document_warnings, localized_provider_default_name, localized_template,
-        provider_preset_config, provider_preset_index, refresh_ui,
+        endpoint_matches_preset_default, fallback_confirmation_needed, generate_custom_provider_id,
+        localized_document_job_state, localized_document_warnings, localized_provider_default_name,
+        localized_template, provider_preset_config, provider_preset_index, refresh_ui,
         routing_constraints_from_controls, routing_constraints_from_text_values,
         routing_identifier_list_from_text, routing_optional_limit_from_text,
         routing_preference_for_selection, routing_preference_selection,
@@ -6917,6 +6994,13 @@ mod tests {
             None,
             "team-apac"
         ));
+    }
+
+    #[test]
+    fn fallback_requires_one_shot_user_confirmation() {
+        assert!(fallback_confirmation_needed(true, false));
+        assert!(!fallback_confirmation_needed(true, true));
+        assert!(!fallback_confirmation_needed(false, false));
     }
 
     #[test]

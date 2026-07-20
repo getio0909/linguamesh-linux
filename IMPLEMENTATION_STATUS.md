@@ -1,5 +1,19 @@
 # Implementation Status
 
+## 2026-07-20 — Linux fallback-send confirmation checkpoint
+
+Assumption: explicit fallback consent must be visible at the moment content could cross to the
+approved provider, not only when the checkbox is configured.
+
+- Linux now opens a localized, modal confirmation window before an ordinary text request with
+  fallback enabled is dispatched. **Translate** grants one request and **Close** cancels without
+  queueing a worker command; the existing retryable-error and partial-output policy is unchanged.
+- The one-shot approval state is reset after dispatch, and a focused unit regression covers enabled,
+  approved, and disabled combinations. Local `cargo fmt --all -- --check` and
+  `cargo test --features demo-provider --offline` passed (`131 passed; 2 ignored`).
+- Secret Service and portal unlock prompts, physical desktop review, third-party daemon
+  interoperability, other clients, signing, rollback, and stable release remain open.
+
 ## 2026-07-20 — Linux headless Orca remote gate evidence
 
 - Source revision `94e98e71eeb9edd9d0196230e1864ba2a63a9644` passed all six required GitHub checks.

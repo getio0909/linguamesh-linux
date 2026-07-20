@@ -284,7 +284,9 @@ source editor. The application-level drag fixture performs an actual XTest drag 
 bash tools/run-gtk-drag-and-drop-test.sh
 ```
 
-Physical desktop-shell rendering and prompted portal/keyring approval UI remain manual boundaries.
+The fallback-enabled ordinary-text path also requires a localized confirmation window before dispatch;
+the dialog's **Translate** action grants one request and **Close** sends nothing. Physical
+desktop-shell rendering and prompted portal/keyring approval UI remain manual boundaries.
 
 The GTK Rust source can be checked without native linking as a limited diagnostic. The `v4_10`
 gtk-rs feature is enabled because the accessibility test helpers and semantic update APIs require
