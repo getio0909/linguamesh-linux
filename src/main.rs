@@ -7559,6 +7559,7 @@ mod tests {
         connect_action_handlers(&bindings, &state, &worker);
         connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
         refresh_ui(&bindings, &state.borrow());
+        window.present();
         bindings.provider_preset.set_selected(2);
         bindings
             .provider_name
