@@ -8493,6 +8493,7 @@ mod tests {
             Some("fake-translator".to_owned()),
         )
         .expect("first restored profile");
+        let restored_profile_a_disabled = restored_profile_a.clone().with_enabled(false);
         let restored_profile_b = custom_provider_profile(
             ProviderProfileId::parse("profile-b").expect("second profile ID"),
             "Restored provider B".to_owned(),
@@ -8654,6 +8655,16 @@ mod tests {
             ]
         );
         routing_dialog.close();
+        apply_worker_event(
+            &restored_bindings,
+            &restored_state,
+            &restored_worker,
+            WorkerEvent::ProfilesRestored {
+                profiles: vec![restored_profile_b.clone(), restored_profile_a_disabled],
+                active_profile_id: Some(restored_profile_b.id().clone()),
+            },
+        );
+        refresh_ui(&restored_bindings, &restored_state.borrow());
         apply_worker_event(
             &restored_bindings,
             &restored_state,
