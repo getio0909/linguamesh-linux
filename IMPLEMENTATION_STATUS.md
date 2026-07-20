@@ -5,7 +5,7 @@
 Assumption: Linux portal-backed document reads must borrow a Core file lease only for the bounded
 read and must fail closed if the host lease expires before decoding completes.
 
-- Core revision `8b096475b00fbb4b8f5c88db3d6c7f35d7e046b9` adds the validated `file_lease_v1` feature
+- Core revision `8b096478b1623bdaf5105e8a8f59e55e2fa8015d` adds the validated `file_lease_v1` feature
   and monotonic expiry/revocation contract. Linux now creates a lease for each selected file URI,
   checks it in the asynchronous GIO read callback and document decoder, and revokes it after bytes
   are copied into the bounded `DocumentJob`.

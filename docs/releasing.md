@@ -46,7 +46,7 @@ while persistent
 secret references use the Linux GIO Secret Service adapter and fail closed when the desktop keyring
 is unavailable or requires an interactive prompt. The native workflow
 pins reviewed Core functional revision
-`8b096475b00fbb4b8f5c88db3d6c7f35d7e046b9`, whose Core delta adds the bounded FileLease lifecycle
+`8b096478b1623bdaf5105e8a8f59e55e2fa8015d`, whose Core delta adds the bounded FileLease lifecycle
 and whose storage delta adds
 `SQLITE_OPEN_NOFOLLOW`, adds the trusted `/proc/self/fd/<fd>` descriptor path for hosts that pin a
 private inode, rejects suspicious OOXML compression ratios and unsupported macro/signature
@@ -65,7 +65,7 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `8b096475b00fbb4b8f5c88db3d6c7f35d7e046b9` and l10n
+The current Linux gate consumes Core `8b096478b1623bdaf5105e8a8f59e55e2fa8015d` and l10n
 `026c35b8dbb1c13c22d77809cc5fe72e6af6f5a3` (422 catalog messages). Request-level glossary rules, bounded CSV,
 interchange are implemented in the Linux slice; persistent glossary libraries and TBX import
 remain outside the release claim.

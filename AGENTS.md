@@ -27,7 +27,7 @@ Use the pinned Rust toolchain and exact commands in `docs/testing.md`. Hosts wit
 libadwaita development headers can format, lint, and test the toolkit-independent state and the
 real shared-core worker with `--features demo-provider`. Run `--all-features` only when native
 headers are present. Native CI pins the approved Core revision
-`8b096475b00fbb4b8f5c88db3d6c7f35d7e046b9`; changing it requires a new compatibility review. Do
+`8b096478b1623bdaf5105e8a8f59e55e2fa8015d`; changing it requires a new compatibility review. Do
 not invent successful GTK, Flatpak, packaging, Wayland, or X11 results.
 
 ## Safety
