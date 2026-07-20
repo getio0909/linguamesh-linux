@@ -6929,6 +6929,12 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     let export = localization::text(locale, "action.export_output", "Export translation");
     let open_output = localization::text(locale, "action.open_output", "Open exported output");
     let connect = localization::text(locale, "action.connect", "Connect");
+    let test_connection = localization::text(locale, "action.test_connection", "Test connection");
+    let test_connection_tooltip = localization::text(
+        locale,
+        "tooltip.test_connection",
+        "Check the provider model endpoint without switching or saving the active profile",
+    );
     let remove_profile =
         localization::text(locale, "action.remove_profile", "Remove saved profile");
     let remember_profile = localization::text(
@@ -7008,6 +7014,12 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     bindings.resume_document.set_label(&format!("_{resume}"));
     bindings.retry_document.set_label(&format!("_{retry}"));
     bindings.connect.set_label(&format!("_{connect}"));
+    bindings
+        .test_connection
+        .set_label(&format!("_{test_connection}"));
+    bindings
+        .test_connection
+        .set_tooltip_text(Some(&test_connection_tooltip));
     bindings.remove_saved_profile.set_label(&remove_profile);
     bindings.remember_profile.set_label(Some(&remember_profile));
     bindings

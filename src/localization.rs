@@ -367,6 +367,14 @@ mod tests {
             text(UiLocale::SimplifiedChinese, "action.translate", "Translate"),
             "翻译"
         );
+        assert_eq!(
+            text(
+                UiLocale::SimplifiedChinese,
+                "action.test_connection",
+                "Test connection"
+            ),
+            "测试连接"
+        );
     }
 
     #[test]
@@ -435,6 +443,7 @@ mod tests {
             assert!(!text(locale, "dialog.open", "").is_empty());
             assert!(!text(locale, "section.provider_profiles", "").is_empty());
             assert!(!text(locale, "action.connect", "").is_empty());
+            assert!(!text(locale, "action.test_connection", "").is_empty());
             assert!(!text(locale, "option.source.auto", "").is_empty());
             assert!(!text(locale, "onboarding.stage.starting", "").is_empty());
             assert!(!text(locale, "onboarding.detail.ready", "").is_empty());
