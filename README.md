@@ -20,7 +20,7 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `a87aaf2bef7cca287c4a6faa8addd340e0245b0e`, which adds strict
+reviewed Core functional revision `638713c34ce7d5bcc8003bb0d7e54c514ab49ea7`, which adds strict
 routing-profile validation, schema-15 routing-profile persistence, and schema-16 document-job
 routing-profile persistence on top of the existing
 document and provider contract. Earlier reviewed revisions added
@@ -167,8 +167,9 @@ unverified.
 The tested external-provider path includes deterministic loopback fixtures for both Ollama-compatible
 OpenAI `/v1/` and native Ollama `/api`: model discovery returns `llama3.2:latest`, the worker requires
 deliberate selection, and streaming uses `/v1/chat/completions` or `/api/chat` without a credential.
-The GTK provider form exposes localized OpenAI-compatible, native Ollama, and Anthropic Messages
-presets. Anthropic uses the HTTPS `/v1/` endpoint and requires a manual Model ID before Connect;
+The GTK provider form exposes localized OpenAI-compatible, native Ollama, Anthropic Messages, and
+Google Gemini presets. Anthropic uses the HTTPS `/v1/` endpoint and requires a manual Model ID
+before Connect; Gemini uses the HTTPS `/v1beta/` Generate Content endpoint with model discovery;
 custom endpoint edits remain preserved when switching presets. `tools/run-ollama-interop-test.sh` provides an
 opt-in regression against a caller-selected installed model; the default suite keeps it ignored
 because model installation is external. The Linux checkpoint passed this harness against Docker
@@ -201,7 +202,7 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`e1ee15a5e9470e2c49077e52b4969597a5c8283f` and validated with `msgfmt`; the 393-message bundle
+`f9d74a8f83a89540a58bba65477a5031031bd619` and validated with `msgfmt`; the 396-message bundle
 adds Linux routing-profile persistence/editor, profile-ID validation and duplicate protection, ordinary-text selection labels, routing preference/privacy/document constraints, provider/model allowlists and denylists, quality/request-size limits, and source/output character plus approximate-token metrics. The locale selector
 exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
 active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, construction-stage provider/default-control copy, and diagnostics labels/state values without replacing active source text;

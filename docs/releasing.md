@@ -35,10 +35,11 @@ set their Ordered-mode sequence and expose catalog-backed accessible labels. Exi
 be edited and saved through the same stable ID. New profiles use Core-compatible 1–128 byte ASCII
 IDs, and edit mode locks the existing ID so release references do not drift. This is configuration-surface evidence only
 and does not satisfy the complete candidate-management release gate.
-The external-provider path includes deterministic Ollama-compatible OpenAI `/v1/` and native
-`/api/` loopback fixtures plus a passed opt-in third-party daemon regression using Docker
-`ollama/ollama:0.11.10` and `qwen2.5-0.5b-instruct:latest`. The GTK form exposes the native Ollama
-preset and its `ollama_chat` adapter plus the Anthropic Messages preset with a manual Model ID field,
+The external-provider path includes deterministic Ollama-compatible OpenAI `/v1/`, native
+`/api/`, and Gemini `/v1beta/` loopback fixtures plus a passed opt-in third-party daemon regression
+using Docker `ollama/ollama:0.11.10` and `qwen2.5-0.5b-instruct:latest`. The GTK form exposes the
+native Ollama preset and its `ollama_chat` adapter plus the Anthropic Messages preset with a manual
+Model ID field and the Gemini Generate Content preset with discovered models,
 while persistent
 secret references use the Linux GIO Secret Service adapter and fail closed when the desktop keyring
 is unavailable or requires an interactive prompt. The native workflow
@@ -61,9 +62,8 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `a87aaf2bef7cca287c4a6faa8addd340e0245b0e` and l10n
-`e1ee15a5e9470e2c49077e52b4969597a5c8283f` (393 catalog messages, bundle SHA-256
-`a30db30a44a16588db3b79b1958c849149677d40939cf5427413539b18d73282`). Request-level glossary rules, bounded CSV,
+The current Linux gate consumes Core `638713c34ce7d5bcc8003bb0d7e54c514ab49ea7` and l10n
+`f9d74a8f83a89540a58bba65477a5031031bd619` (396 catalog messages). Request-level glossary rules, bounded CSV,
 interchange are implemented in the Linux slice; persistent glossary libraries and TBX import
 remain outside the release claim.
 

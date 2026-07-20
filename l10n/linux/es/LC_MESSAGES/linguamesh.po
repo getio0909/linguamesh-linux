@@ -2385,3 +2385,21 @@ msgstr "Leave blank for no profile-level request size limit; otherwise use a pos
 msgctxt "error.routing_constraints_invalid"
 msgid "Use comma-separated ASCII identifiers and positive numeric limits."
 msgstr "Use comma-separated ASCII identifiers and positive numeric limits."
+
+#. Display label for the Google Gemini provider preset in the Linux provider form.
+#, fuzzy
+msgctxt "provider.preset.gemini"
+msgid "Google Gemini"
+msgstr "Google Gemini"
+
+#. Default display name for a Google Gemini provider profile.
+#, fuzzy
+msgctxt "profile.default_gemini_name"
+msgid "Google Gemini provider"
+msgstr "Google Gemini provider"
+
+#. Endpoint tooltip for the Google Gemini Generate Content provider preset.
+#, fuzzy
+msgctxt "tooltip.endpoint.gemini"
+msgid "HTTPS or loopback HTTP Gemini Generate Content /v1beta endpoint"
+msgstr "HTTPS or loopback HTTP Gemini Generate Content /v1beta endpoint"

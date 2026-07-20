@@ -38,15 +38,19 @@ const PROFILE_ID_GENERATION_ATTEMPTS: usize = 8;
 const CUSTOM_PROVIDER_PRESET_ID: &str = "custom-openai-compatible";
 const OLLAMA_PROVIDER_PRESET_ID: &str = "ollama";
 const ANTHROPIC_PROVIDER_PRESET_ID: &str = "anthropic";
+const GEMINI_PROVIDER_PRESET_ID: &str = "gemini";
 const OPENAI_ADAPTER_TYPE: &str = "openai_chat_completions";
 const OLLAMA_ADAPTER_TYPE: &str = "ollama_chat";
 const ANTHROPIC_ADAPTER_TYPE: &str = "anthropic_messages";
+const GEMINI_ADAPTER_TYPE: &str = "gemini_generate_content";
 const DEFAULT_PROVIDER_NAME: &str = "Local OpenAI-compatible provider";
 const DEFAULT_OLLAMA_PROVIDER_NAME: &str = "Local Ollama provider";
 const DEFAULT_ANTHROPIC_PROVIDER_NAME: &str = "Anthropic Messages provider";
+const DEFAULT_GEMINI_PROVIDER_NAME: &str = "Google Gemini provider";
 const DEFAULT_PROVIDER_ENDPOINT: &str = "http://127.0.0.1:11434/v1/";
 const DEFAULT_OLLAMA_ENDPOINT: &str = "http://127.0.0.1:11434/api/";
 const DEFAULT_ANTHROPIC_ENDPOINT: &str = "https://api.anthropic.com/v1/";
+const DEFAULT_GEMINI_ENDPOINT: &str = "https://generativelanguage.googleapis.com/v1beta/";
 
 #[derive(Clone)]
 struct UiBindings {
@@ -165,6 +169,12 @@ fn provider_preset_config(index: u32) -> (&'static str, &'static str, &'static s
             DEFAULT_ANTHROPIC_PROVIDER_NAME,
             DEFAULT_ANTHROPIC_ENDPOINT,
         ),
+        3 => (
+            GEMINI_PROVIDER_PRESET_ID,
+            GEMINI_ADAPTER_TYPE,
+            DEFAULT_GEMINI_PROVIDER_NAME,
+            DEFAULT_GEMINI_ENDPOINT,
+        ),
         _ => (
             CUSTOM_PROVIDER_PRESET_ID,
             OPENAI_ADAPTER_TYPE,
@@ -179,16 +189,18 @@ fn provider_preset_index(preset_id: &str) -> u32 {
     match preset_id {
         OLLAMA_PROVIDER_PRESET_ID => 1,
         ANTHROPIC_PROVIDER_PRESET_ID => 2,
+        GEMINI_PROVIDER_PRESET_ID => 3,
         _ => 0,
     }
 }
 
 // 根据活动界面语言生成提供商预设标签。
-fn provider_preset_labels(locale: UiLocale) -> [String; 3] {
+fn provider_preset_labels(locale: UiLocale) -> [String; 4] {
     [
         localization::text(locale, "provider.preset.openai", "OpenAI-compatible"),
         localization::text(locale, "provider.preset.ollama", "Ollama (native /api)"),
         localization::text(locale, "provider.preset.anthropic", "Anthropic Messages"),
+        localization::text(locale, "provider.preset.gemini", "Google Gemini"),
     ]
 }
 
@@ -205,6 +217,12 @@ fn provider_endpoint_tooltip(locale: UiLocale, preset_index: u32) -> String {
             locale,
             "tooltip.endpoint.anthropic",
             "HTTPS Anthropic Messages /v1 endpoint",
+        )
+    } else if preset_index == 3 {
+        localization::text(
+            locale,
+            "tooltip.endpoint.gemini",
+            "HTTPS or loopback HTTP Gemini Generate Content /v1beta endpoint",
         )
     } else {
         localization::text(
@@ -229,6 +247,12 @@ fn localized_provider_default_name(locale: UiLocale, preset_index: u32) -> Strin
             "profile.default_anthropic_name",
             DEFAULT_ANTHROPIC_PROVIDER_NAME,
         )
+    } else if preset_index == 3 {
+        localization::text(
+            locale,
+            "profile.default_gemini_name",
+            DEFAULT_GEMINI_PROVIDER_NAME,
+        )
     } else {
         localization::text(locale, "profile.default_name", DEFAULT_PROVIDER_NAME)
     }
@@ -242,9 +266,28 @@ fn endpoint_matches_preset_default(endpoint: &str, preset_index: u32) -> bool {
             || (endpoint.starts_with("http://127.0.0.1:") && endpoint.ends_with("/api/"))
     } else if preset_index == 2 {
         endpoint == DEFAULT_ANTHROPIC_ENDPOINT
+    } else if preset_index == 3 {
+        endpoint == DEFAULT_GEMINI_ENDPOINT
     } else {
         endpoint == DEFAULT_PROVIDER_ENDPOINT
             || (endpoint.starts_with("http://127.0.0.1:") && endpoint.ends_with("/v1/"))
+    }
+}
+
+// 仅为需要手工指定模型的预设显示对应的模型提示。
+fn provider_model_tooltip(locale: UiLocale, preset_index: u32) -> String {
+    if preset_index == 2 {
+        localization::text(
+            locale,
+            "tooltip.model.anthropic",
+            "Enter the Anthropic model ID before connecting; model discovery is manual for this preset",
+        )
+    } else {
+        localization::text(
+            locale,
+            "option.model.manual",
+            "Enter a model ID manually...",
+        )
     }
 }
 
@@ -1297,11 +1340,7 @@ fn create_provider_session() -> (
         "option.model.manual",
         "Enter a model ID manually...",
     )));
-    manual_model.set_tooltip_text(Some(&localization::text(
-        locale,
-        "tooltip.model.anthropic",
-        "Enter the Anthropic model ID before connecting; model discovery is manual for this preset",
-    )));
+    manual_model.set_tooltip_text(Some(&provider_model_tooltip(locale, 0)));
     let manual_model_row = labeled_control(
         &localized_mnemonic(locale, "field.model", "Model"),
         manual_model.upcast_ref::<gtk::Widget>(),
@@ -2205,11 +2244,9 @@ fn connect_provider_preset_handler(bindings: &UiBindings) {
                 .set_tooltip_text(Some(&provider_endpoint_tooltip(locale, selected)));
             preset_bindings.manual_model_row.set_visible(selected == 2);
             preset_bindings.manual_model.set_sensitive(selected == 2);
-            preset_bindings.manual_model.set_tooltip_text(Some(&localization::text(
-                locale,
-                "tooltip.model.anthropic",
-                "Enter the Anthropic model ID before connecting; model discovery is manual for this preset",
-            )));
+            preset_bindings
+                .manual_model
+                .set_tooltip_text(Some(&provider_model_tooltip(locale, selected)));
         });
 }
 
@@ -6462,11 +6499,12 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
             "option.model.manual",
             "Enter a model ID manually...",
         )));
-    bindings.manual_model.set_tooltip_text(Some(&localization::text(
-        locale,
-        "tooltip.model.anthropic",
-        "Enter the Anthropic model ID before connecting; model discovery is manual for this preset",
-    )));
+    bindings
+        .manual_model
+        .set_tooltip_text(Some(&provider_model_tooltip(
+            locale,
+            bindings.provider_preset.selected(),
+        )));
     bindings
         .provider_credential
         .set_tooltip_text(Some(&localization::text(
@@ -7157,22 +7195,23 @@ mod tests {
     use super::{
         ANTHROPIC_ADAPTER_TYPE, ANTHROPIC_PROVIDER_PRESET_ID, AppState, AppStatus,
         CUSTOM_PROVIDER_PRESET_ID, CoreWorker, DEFAULT_ANTHROPIC_ENDPOINT,
-        DEFAULT_ANTHROPIC_PROVIDER_NAME, DEFAULT_OLLAMA_ENDPOINT, DEFAULT_OLLAMA_PROVIDER_NAME,
-        DEFAULT_PROVIDER_ENDPOINT, DEFAULT_PROVIDER_NAME, ErrorKind, OLLAMA_ADAPTER_TYPE,
-        OLLAMA_PROVIDER_PRESET_ID, OPENAI_ADAPTER_TYPE, OnboardingStage, ProviderProfileId,
-        RoutingCandidate, RoutingConstraintTextValues, RoutingProfile, RoutingProfileRecord,
-        SecretRef, SecretRefNamespace, SecretValue, TranslationError, UiLocale, WorkerCommand,
-        WorkerEvent, apply_worker_event, connect_action_handlers, connect_selection_handlers,
-        create_window, custom_provider_profile, destination_matches_source, document_format_label,
-        endpoint_matches_preset_default, fallback_confirmation_needed, generate_custom_provider_id,
-        localized_document_job_state, localized_document_warnings, localized_provider_default_name,
-        localized_template, normalized_candidate_ids_for_mode, provider_preset_config,
-        provider_preset_index, refresh_ui, routing_constraints_from_controls,
-        routing_constraints_from_text_values, routing_identifier_list_from_text,
-        routing_optional_limit_from_text, routing_preference_for_selection,
-        routing_preference_selection, routing_profile_id_conflicts, show_new_profile_in_form,
-        show_routing_profiles_dialog, start_event_pump, text_metrics_label,
-        valid_routing_profile_id,
+        DEFAULT_ANTHROPIC_PROVIDER_NAME, DEFAULT_GEMINI_ENDPOINT, DEFAULT_GEMINI_PROVIDER_NAME,
+        DEFAULT_OLLAMA_ENDPOINT, DEFAULT_OLLAMA_PROVIDER_NAME, DEFAULT_PROVIDER_ENDPOINT,
+        DEFAULT_PROVIDER_NAME, ErrorKind, GEMINI_ADAPTER_TYPE, GEMINI_PROVIDER_PRESET_ID,
+        OLLAMA_ADAPTER_TYPE, OLLAMA_PROVIDER_PRESET_ID, OPENAI_ADAPTER_TYPE, OnboardingStage,
+        ProviderProfileId, RoutingCandidate, RoutingConstraintTextValues, RoutingProfile,
+        RoutingProfileRecord, SecretRef, SecretRefNamespace, SecretValue, TranslationError,
+        UiLocale, WorkerCommand, WorkerEvent, apply_worker_event, connect_action_handlers,
+        connect_selection_handlers, create_window, custom_provider_profile,
+        destination_matches_source, document_format_label, endpoint_matches_preset_default,
+        fallback_confirmation_needed, generate_custom_provider_id, localized_document_job_state,
+        localized_document_warnings, localized_provider_default_name, localized_template,
+        normalized_candidate_ids_for_mode, provider_preset_config, provider_preset_index,
+        refresh_ui, routing_constraints_from_controls, routing_constraints_from_text_values,
+        routing_identifier_list_from_text, routing_optional_limit_from_text,
+        routing_preference_for_selection, routing_preference_selection,
+        routing_profile_id_conflicts, show_new_profile_in_form, show_routing_profiles_dialog,
+        start_event_pump, text_metrics_label, valid_routing_profile_id,
     };
     use adw::prelude::*;
     use gtk::glib;
@@ -7503,6 +7542,7 @@ mod tests {
     fn provider_presets_map_to_stable_native_and_compatible_defaults() {
         assert_eq!(provider_preset_index(OLLAMA_PROVIDER_PRESET_ID), 1);
         assert_eq!(provider_preset_index(ANTHROPIC_PROVIDER_PRESET_ID), 2);
+        assert_eq!(provider_preset_index(GEMINI_PROVIDER_PRESET_ID), 3);
         assert_eq!(provider_preset_index(CUSTOM_PROVIDER_PRESET_ID), 0);
         assert_eq!(
             provider_preset_config(0),
@@ -7531,6 +7571,15 @@ mod tests {
                 DEFAULT_ANTHROPIC_ENDPOINT,
             )
         );
+        assert_eq!(
+            provider_preset_config(3),
+            (
+                GEMINI_PROVIDER_PRESET_ID,
+                GEMINI_ADAPTER_TYPE,
+                DEFAULT_GEMINI_PROVIDER_NAME,
+                DEFAULT_GEMINI_ENDPOINT,
+            )
+        );
         assert!(endpoint_matches_preset_default(
             DEFAULT_PROVIDER_ENDPOINT,
             0
@@ -7540,6 +7589,7 @@ mod tests {
             DEFAULT_ANTHROPIC_ENDPOINT,
             2
         ));
+        assert!(endpoint_matches_preset_default(DEFAULT_GEMINI_ENDPOINT, 3));
         assert!(!endpoint_matches_preset_default(
             "https://api.example.test/v1/",
             0
@@ -7551,6 +7601,10 @@ mod tests {
         assert!(!endpoint_matches_preset_default(
             "https://api.example.test/v1/",
             2
+        ));
+        assert!(!endpoint_matches_preset_default(
+            "https://api.example.test/v1beta/",
+            3
         ));
     }
 
@@ -7567,6 +7621,10 @@ mod tests {
         assert_eq!(
             localized_provider_default_name(UiLocale::English, 2),
             DEFAULT_ANTHROPIC_PROVIDER_NAME
+        );
+        assert_eq!(
+            localized_provider_default_name(UiLocale::English, 3),
+            DEFAULT_GEMINI_PROVIDER_NAME
         );
         assert_eq!(
             localized_provider_default_name(UiLocale::SimplifiedChinese, 0),

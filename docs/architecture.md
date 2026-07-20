@@ -26,7 +26,7 @@ confirmation, or rollback.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `a87aaf2bef7cca287c4a6faa8addd340e0245b0e`; compared with the prior
+functional revision is `638713c34ce7d5bcc8003bb0d7e54c514ab49ea7`; compared with the prior
 alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW`, adds streamed
 protected-span and request-level glossary restoration, and rejects suspicious OOXML compression
 ratios and unsupported macro/signature parts before XML inspection. The required contract
@@ -66,11 +66,14 @@ provider output that structurally drops one of these spans.
 
 The provider catalog's `local-loopback` preset uses the OpenAI-compatible `/v1/` adapter, while its
 loopback-only `ollama` preset uses Core's native `/api/` adapter. The Linux form also exposes the
-localized Anthropic Messages preset backed by Core's `anthropic_messages` manual-model adapter. It
-defaults to HTTPS `/v1/`, requires a non-empty Model ID before Connect, and validates that ID before
-resolving any host SecretRef. The worker's deterministic native
+localized Anthropic Messages preset backed by Core's `anthropic_messages` manual-model adapter and
+the Google Gemini preset backed by `gemini_generate_content`. Gemini discovers only models that
+advertise `generateContent`, streams `/v1beta/` SSE candidates, and sends an optional credential as
+`x-goog-api-key`; its deterministic fixture does not represent live account/quota validation.
+Anthropic defaults to HTTPS `/v1/`, requires a non-empty Model ID before Connect, and validates that
+ID before resolving any host SecretRef. The worker's deterministic native
 fixture covers `/api/tags` model discovery and `/api/chat` NDJSON streaming with explicit model
-selection. The GTK provider form now exposes all three presets, restores the selected preset for saved
+selection. The GTK provider form now exposes all four presets, restores the selected preset for saved
 profiles, and changes untouched default fields when the user switches protocol. The opt-in harness
 also passed against an independently running Docker Ollama daemon and an installed Qwen GGUF model;
 GPU execution remains outside this prerelease evidence.
