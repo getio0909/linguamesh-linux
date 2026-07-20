@@ -4099,19 +4099,16 @@ fn load_source_file(
     let bytes_read = Rc::new(Cell::new(0_usize));
     let too_large = Rc::new(Cell::new(false));
     let source_uri = file.uri().to_string();
-    let source_lease = match FileLease::desktop_path(source_uri.clone()) {
-        Ok(lease) => lease,
-        Err(_) => {
-            show_file_import_error(
-                bindings,
-                &localization::text(
-                    state.borrow().locale(),
-                    "error.file_open",
-                    "The selected text file could not be opened.",
-                ),
-            );
-            return;
-        }
+    let Ok(source_lease) = FileLease::desktop_path(source_uri.clone()) else {
+        show_file_import_error(
+            bindings,
+            &localization::text(
+                state.borrow().locale(),
+                "error.file_open",
+                "The selected text file could not be opened.",
+            ),
+        );
+        return;
     };
     let source_name = file.basename().map_or_else(
         || "source.txt".to_owned(),
