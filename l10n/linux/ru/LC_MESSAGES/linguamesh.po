@@ -312,6 +312,12 @@ msgctxt "status.connecting"
 msgid "Connecting"
 msgstr "Подключение…"
 
+#. Result shown after an explicit provider connection test succeeds.
+#, fuzzy, python-brace-format
+msgctxt "status.connection_tested"
+msgid "Connection test passed for {provider}; {model_count} models are available."
+msgstr "Connection test passed for {provider}; {model_count} models are available."
+
 #. Status label shown while cancellation is being finalized.
 #, fuzzy
 msgctxt "status.cancelling"
@@ -492,11 +498,23 @@ msgctxt "tooltip.remember_profile"
 msgid "Save non-secret profile data and the credential through Secret Service"
 msgstr "Save non-secret profile data and the credential through Secret Service"
 
+#. Tooltip explaining that an explicit provider test does not change the active session.
+#, fuzzy
+msgctxt "tooltip.test_connection"
+msgid "Check the provider model endpoint without switching or saving the active profile"
+msgstr "Check the provider model endpoint without switching or saving the active profile"
+
 #. Action that validates and connects a Linux provider profile.
 #, fuzzy
 msgctxt "action.connect"
 msgid "Connect"
 msgstr "Connect"
+
+#. Action that tests a Linux provider endpoint without switching or saving the active profile.
+#, fuzzy
+msgctxt "action.test_connection"
+msgid "Test connection"
+msgstr "Test connection"
 
 #. Label for the saved Linux provider-profile selector.
 #, fuzzy

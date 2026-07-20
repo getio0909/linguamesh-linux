@@ -81,6 +81,13 @@ pub enum WorkerCommand {
         /// 用户明确选择的持久化行为。
         persistence: PersistenceIntent,
     },
+    /// 显式测试提供商连接，不切换或保存活动配置。
+    TestConnection {
+        /// 不含秘密值的核心配置。
+        profile: ProviderProfile,
+        /// 只允许消费一次的会话秘密。
+        secret: Option<SecretValue>,
+    },
     /// 明确选择当前提供商已经发现的模型。
     SelectModel {
         /// 发起选择时的活动提供商配置标识。
@@ -425,6 +432,20 @@ pub enum WorkerEvent {
         /// 本次原子保存成功的非秘密配置。
         saved_profile: Option<ProviderProfile>,
     },
+    /// 显式连接测试已完成且未改变活动会话。
+    ConnectionTested {
+        /// 被测试的配置标识。
+        profile_id: ProviderProfileId,
+        /// 测试端点返回的模型数量。
+        model_count: usize,
+    },
+    /// 显式连接测试被拒绝且未改变活动会话。
+    ConnectionTestRejected {
+        /// 被测试的配置标识。
+        profile_id: ProviderProfileId,
+        /// 不包含秘密的类型化错误。
+        error: TranslationError,
+    },
     /// 工作线程已确认用户选择的模型。
     ModelSelected {
         /// 当前活动提供商配置标识。
@@ -627,6 +648,10 @@ enum QueuedCommand {
         secret: Option<SecretValue>,
         persistence: PersistenceIntent,
         cancellation: CancellationToken,
+    },
+    TestConnection {
+        profile: ProviderProfile,
+        secret: Option<SecretValue>,
     },
     SelectModel {
         profile_id: ProviderProfileId,
@@ -843,6 +868,10 @@ impl CoreWorker {
                 }
                 result.map_err(|_| WorkerSendError)
             }
+            WorkerCommand::TestConnection { profile, secret } => self
+                .commands
+                .try_send(QueuedCommand::TestConnection { profile, secret })
+                .map_err(|_| WorkerSendError),
             WorkerCommand::SelectModel {
                 profile_id,
                 model_id,
@@ -1459,6 +1488,15 @@ async fn run_worker(
                         error: TranslationError::new(
                             ErrorKind::InvalidConfiguration,
                             "A provider cannot be changed while a translation is running.",
+                        ),
+                    });
+                }
+                ActiveStep::Command(Some(QueuedCommand::TestConnection { profile, .. })) => {
+                    let _ = events.send(WorkerEvent::ConnectionTestRejected {
+                        profile_id: profile.id().clone(),
+                        error: TranslationError::new(
+                            ErrorKind::InvalidConfiguration,
+                            "A connection test cannot run while a translation is running.",
                         ),
                     });
                 }
@@ -2098,6 +2136,15 @@ async fn run_worker(
                         ),
                     });
                 }
+                ActiveStep::Command(Some(QueuedCommand::TestConnection { profile, .. })) => {
+                    let _ = events.send(WorkerEvent::ConnectionTestRejected {
+                        profile_id: profile.id().clone(),
+                        error: TranslationError::new(
+                            ErrorKind::InvalidConfiguration,
+                            "A connection test cannot run while document jobs are running.",
+                        ),
+                    });
+                }
                 ActiveStep::Command(Some(_)) => {
                     let _ = events.send(WorkerEvent::DocumentJobActionRejected(
                         TranslationError::new(
@@ -2311,6 +2358,46 @@ async fn run_worker(
             command = commands.recv() => command,
         };
         match command {
+            Some(QueuedCommand::TestConnection { profile, secret }) => {
+                let profile_id = profile.id().clone();
+                let cancellation = shutdown_cancellation.child_token();
+                set_active_cancellation(
+                    &active_cancellation,
+                    ActiveCancellation::Connection(cancellation.clone()),
+                );
+                let mut candidate = ProviderManager::new(secret_broker.clone());
+                let result = connect_candidate(
+                    &mut candidate,
+                    &profile,
+                    secret,
+                    &cancellation,
+                    &mut secret_requests,
+                )
+                .await;
+                candidate.disconnect();
+                clear_active_cancellation(&active_cancellation);
+                match result {
+                    Ok(models) => {
+                        if events
+                            .send(WorkerEvent::ConnectionTested {
+                                profile_id,
+                                model_count: models.len(),
+                            })
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::ConnectionTestRejected { profile_id, error })
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
             Some(QueuedCommand::Connect {
                 profile,
                 secret,
@@ -3980,6 +4067,12 @@ fn reject_queued_commands_for_shutdown(
                 profile,
                 error: TranslationError::cancelled(),
             }),
+            QueuedCommand::TestConnection { profile, .. } => {
+                events.send(WorkerEvent::ConnectionTestRejected {
+                    profile_id: profile.id().clone(),
+                    error: TranslationError::cancelled(),
+                })
+            }
             QueuedCommand::SelectModel {
                 profile_id,
                 model_id,
@@ -5959,6 +6052,25 @@ mod tests {
         persistence: PersistenceIntent,
     ) -> Result<Vec<linguamesh_domain::ModelDescriptor>, TranslationError> {
         connect_event(worker, profile, secret, persistence).map(|(_, models, _)| models)
+    }
+
+    fn test_connection(
+        worker: &CoreWorker,
+        profile: ProviderProfile,
+        secret: Option<SecretValue>,
+    ) -> Result<usize, TranslationError> {
+        worker
+            .try_send(WorkerCommand::TestConnection { profile, secret })
+            .expect("connection test command");
+        match worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("connection test event")
+        {
+            WorkerEvent::ConnectionTested { model_count, .. } => Ok(model_count),
+            WorkerEvent::ConnectionTestRejected { error, .. } => Err(error),
+            _ => panic!("unexpected connection test event"),
+        }
     }
 
     fn select_event(
@@ -8095,6 +8207,43 @@ mod tests {
         let (output, terminal) = translate(&worker, "fake-translator");
         assert_eq!(output, "你好，LinguaMesh！");
         assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+    }
+
+    #[test]
+    fn explicit_connection_test_discovers_models_without_switching_active_session() {
+        let (worker, endpoint) = started_worker();
+        connect(
+            &worker,
+            profile("confirmed-provider", &endpoint, None, None),
+            None,
+            PersistenceIntent::SessionOnly,
+        )
+        .expect("confirmed connection");
+        select(&worker, "confirmed-provider", "fake-translator");
+
+        let model_count = test_connection(
+            &worker,
+            profile("test-only-provider", &endpoint, None, None),
+            None,
+        )
+        .expect("connection test");
+        assert!(model_count >= 1);
+
+        let (output, terminal) = translate(&worker, "fake-translator");
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+
+        let error = test_connection(
+            &worker,
+            profile("failed-test-provider", "http://127.0.0.1:1/v1/", None, None),
+            None,
+        )
+        .expect_err("failed connection test");
+        assert_eq!(error.kind, ErrorKind::Network);
+        let (output, terminal) = translate(&worker, "fake-translator");
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        shutdown(&worker);
     }
 
     #[test]

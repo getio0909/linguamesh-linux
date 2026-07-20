@@ -1,5 +1,22 @@
 # Implementation Status
 
+## 2026-07-20 — Linux explicit provider connection test
+
+Assumption: an explicit connection test may discover models with a temporary provider session,
+but must never switch or persist the active profile, model, or credential.
+
+- Worker exposes cancellable `TestConnection` command/events. The GTK provider form validates the
+  draft, clears the credential field immediately, and reports the discovered model count without
+  changing the active translation session or saved profile.
+- Failure paths are typed and localized; tests while translation/document work is active are
+  rejected, and shutdown cancellation is reported without persisting draft data.
+- Canonical l10n `7e8c987737444d4e0f8f2642b108eee4c7801f58` adds the Linux test action, tooltip, and
+  success status template across all generated locale resources.
+
+Local validation: cargo formatting/check, worker connection-test coverage, localization
+format/lint/generator tests, and generated-resource checks passed. Remote Native/Flatpak/Foundation
+gates remain authoritative for GTK runtime fixtures.
+
 ## 2026-07-20 — Linux routing profile exchange
 
 Assumption: imported profiles must be new IDs; replacing an existing profile remains an explicit
@@ -11,7 +28,7 @@ editor action so an exchange file cannot silently change a document job's routin
 - Linux adds worker export/import commands and GTK file chooser actions. Export serializes only the
   validated Core profile; import requires UTF-8 JSON, rejects duplicate IDs, malformed/oversized
   files, and persistence failures without logging file contents.
-- Canonical l10n `026c35b8dbb1c13c22d77809cc5fe72e6af6f5a3` adds Linux-only exchange strings and a
+- Canonical l10n `7e8c987737444d4e0f8f2642b108eee4c7801f58` adds Linux-only exchange strings and a
   JSON file-filter label, with regenerated PO/MO resources for all official and pseudo-locale packs; non-English values remain
   machine-generated drafts.
 
@@ -32,7 +49,7 @@ Core built-ins and document jobs persist the selected preset through schema 18.
 - Worker compatibility negotiation now requires Core feature `translation_presets_v1`; stale cores
   fail closed before provider work. The request-level preset is independent of quality mode and
   does not add provider calls or persist credentials.
-- Canonical l10n `026c35b8dbb1c13c22d77809cc5fe72e6af6f5a3` adds five Linux-only source keys and
+- Canonical l10n `7e8c987737444d4e0f8f2642b108eee4c7801f58` adds five Linux-only source keys and
   regenerated PO/MO resources for all official locale packs; non-English values remain
   machine-generated drafts.
 

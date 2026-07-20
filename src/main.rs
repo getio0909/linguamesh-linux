@@ -132,6 +132,7 @@ struct UiBindings {
     remember_profile: gtk::CheckButton,
     remove_saved_profile: gtk::Button,
     connect: gtk::Button,
+    test_connection: gtk::Button,
     active_provider: gtk::Label,
     model: gtk::DropDown,
     source_locale: gtk::DropDown,
@@ -194,6 +195,9 @@ struct UiBindings {
     document_progress: Rc<Cell<Option<(usize, usize)>>>,
     document_warnings: Rc<RefCell<Vec<DocumentWarning>>>,
     ocr_pending: Rc<Cell<bool>>,
+    connection_test_notice: Rc<Cell<bool>>,
+    connection_test_model_count: Rc<Cell<Option<usize>>>,
+    connection_test_profile_id: Rc<RefCell<Option<String>>>,
     export_notice: Rc<Cell<bool>>,
     fallback_notice: Rc<Cell<bool>>,
     fallback_approval: Rc<Cell<bool>>,
@@ -717,6 +721,7 @@ fn create_window(
         remember_profile,
         remove_saved_profile,
         connect,
+        test_connection,
         active_provider,
         provider_title,
         provider_note,
@@ -990,6 +995,7 @@ fn create_window(
         remember_profile,
         remove_saved_profile,
         connect,
+        test_connection,
         active_provider,
         model,
         source_locale,
@@ -1052,6 +1058,9 @@ fn create_window(
         document_progress: Rc::new(Cell::new(None)),
         document_warnings: Rc::new(RefCell::new(Vec::new())),
         ocr_pending: Rc::new(Cell::new(false)),
+        connection_test_notice: Rc::new(Cell::new(false)),
+        connection_test_model_count: Rc::new(Cell::new(None)),
+        connection_test_profile_id: Rc::new(RefCell::new(None)),
         export_notice: Rc::new(Cell::new(false)),
         fallback_notice: Rc::new(Cell::new(false)),
         fallback_approval: Rc::new(Cell::new(false)),
@@ -1436,6 +1445,7 @@ fn create_provider_session() -> (
     gtk::CheckButton,
     gtk::Button,
     gtk::Button,
+    gtk::Button,
     gtk::Label,
     gtk::Label,
     gtk::Label,
@@ -1559,6 +1569,17 @@ fn create_provider_session() -> (
     )));
     let connect =
         gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.connect", "Connect"));
+    let test_connection = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.test_connection",
+        "Test connection",
+    ));
+    test_connection.set_focusable(true);
+    test_connection.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.test_connection",
+        "Check the provider model endpoint without switching or saving the active profile",
+    )));
     connect.set_focusable(true);
     fields.append(&labeled_control(
         &localized_mnemonic(locale, "provider.name", "Provider name"),
@@ -1581,6 +1602,7 @@ fn create_provider_session() -> (
         ),
         provider_credential.upcast_ref::<gtk::Widget>(),
     ));
+    fields.append(&test_connection);
     fields.append(&connect);
     section.append(&fields);
     section.append(&remember_profile);
@@ -1600,6 +1622,7 @@ fn create_provider_session() -> (
         remember_profile,
         remove_saved_profile,
         connect,
+        test_connection,
         active_provider,
         title,
         note,
@@ -3004,6 +3027,116 @@ fn connect_action_handlers(
                 false
             }
         });
+
+    let test_bindings = bindings.clone();
+    let test_state = Rc::clone(state);
+    let test_worker = Rc::clone(worker);
+    bindings.test_connection.connect_clicked(move |_| {
+        if !test_state.borrow().worker_ready() {
+            return;
+        }
+        test_bindings.connection_test_notice.set(false);
+        test_bindings.connection_test_model_count.set(None);
+        test_bindings.connection_test_profile_id.replace(None);
+        let display_name = test_bindings.provider_name.text().trim().to_owned();
+        let endpoint = test_bindings.provider_endpoint.text().trim().to_owned();
+        let credential_text = test_bindings.provider_credential.text();
+        let has_credential = !credential_text.is_empty();
+        let session_secret = has_credential.then(|| SecretValue::new(credential_text.as_str()));
+        test_bindings.provider_credential.set_text("");
+        drop(credential_text);
+        let mut state = test_state.borrow_mut();
+        let locale = state.locale();
+        if display_name.is_empty() {
+            state.record_client_error(localization::text(
+                locale,
+                "error.provider_name_required",
+                "Enter a provider name.",
+            ));
+            refresh_ui(&test_bindings, &state);
+            return;
+        }
+        if endpoint.is_empty() {
+            state.record_client_error(localization::text(
+                locale,
+                "error.provider_endpoint_required",
+                "Enter a provider endpoint.",
+            ));
+            refresh_ui(&test_bindings, &state);
+            return;
+        }
+        let preset_index = test_bindings.provider_preset.selected();
+        let (preset_id, adapter_type, _, _) = provider_preset_config(preset_index);
+        let manual_model = test_bindings.manual_model.text().trim().to_owned();
+        if preset_requires_manual_model(preset_index) && manual_model.is_empty() {
+            state.record_client_error(localization::text(
+                locale,
+                if preset_index == 4 {
+                    "error.azure_openai_deployment_required"
+                } else {
+                    "error.anthropic_model_required"
+                },
+                if preset_index == 4 {
+                    "Enter an Azure OpenAI deployment name before connecting."
+                } else {
+                    "Enter an Anthropic model ID before connecting."
+                },
+            ));
+            refresh_ui(&test_bindings, &state);
+            return;
+        }
+        let (profile_id, saved_secret_ref, selected_model) = match state.selected_saved_profile() {
+            Some(saved) => (
+                saved.id().clone(),
+                saved.secret_ref().cloned(),
+                if preset_requires_manual_model(preset_index) {
+                    Some(manual_model.clone())
+                } else {
+                    saved.selected_model().map(str::to_owned)
+                },
+            ),
+            None => match ensure_draft_profile_id(&test_bindings, &state) {
+                Ok(profile_id) => (
+                    profile_id,
+                    None,
+                    preset_requires_manual_model(preset_index).then_some(manual_model.clone()),
+                ),
+                Err(error) => {
+                    state.record_client_error(error.to_string());
+                    refresh_ui(&test_bindings, &state);
+                    return;
+                }
+            },
+        };
+        let secret_ref = if has_credential {
+            Some(SecretRef::new(SecretRefNamespace::Session))
+        } else {
+            saved_secret_ref
+        };
+        let profile = match custom_provider_profile(
+            profile_id,
+            display_name,
+            preset_id.to_owned(),
+            adapter_type.to_owned(),
+            endpoint,
+            secret_ref,
+            selected_model,
+        ) {
+            Ok(profile) => profile,
+            Err(error) => {
+                state.record_client_error(error.to_string());
+                refresh_ui(&test_bindings, &state);
+                return;
+            }
+        };
+        if let Err(error) = test_worker.try_send(WorkerCommand::TestConnection {
+            profile,
+            secret: session_secret,
+        }) {
+            state.record_client_error(error.to_string());
+        }
+        refresh_ui(&test_bindings, &state);
+    });
 
     let connect_bindings = bindings.clone();
     let connect_state = Rc::clone(state);
@@ -6392,6 +6525,22 @@ fn apply_worker_event(
                 rebuild_saved_profile_dropdown(bindings, &state.borrow());
             }
         }
+        WorkerEvent::ConnectionTested {
+            profile_id,
+            model_count,
+        } => {
+            bindings.connection_test_notice.set(true);
+            bindings.connection_test_model_count.set(Some(model_count));
+            bindings
+                .connection_test_profile_id
+                .replace(Some(profile_id.as_str().to_owned()));
+        }
+        WorkerEvent::ConnectionTestRejected { error, .. } => {
+            bindings.connection_test_notice.set(false);
+            bindings.connection_test_model_count.set(None);
+            bindings.connection_test_profile_id.replace(None);
+            state.borrow_mut().record_client_error(error.message);
+        }
         WorkerEvent::ModelSelected {
             profile_id,
             model_id,
@@ -7434,6 +7583,26 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             "status.fallback_selected",
             "The approved fallback provider was selected; content may be sent there.",
         )
+    } else if bindings.connection_test_notice.get() {
+        let model_count = bindings
+            .connection_test_model_count
+            .get()
+            .unwrap_or_default()
+            .to_string();
+        let provider = bindings
+            .connection_test_profile_id
+            .borrow()
+            .clone()
+            .unwrap_or_else(|| "provider".to_owned());
+        localized_template(
+            state.locale(),
+            "status.connection_tested",
+            "Connection test passed for {provider}; {model_count} models are available.",
+            &[
+                ("{provider}", provider.as_str()),
+                ("{model_count}", &model_count),
+            ],
+        )
     } else if bindings.export_notice.get() {
         localization::text(
             state.locale(),
@@ -7602,6 +7771,9 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             && state.profile_storage_available()
             && state.selected_saved_profile_id().is_some(),
     );
+    bindings
+        .test_connection
+        .set_sensitive(provider_controls_enabled);
     bindings.connect.set_sensitive(provider_controls_enabled);
     bindings
         .translate
@@ -8605,6 +8777,10 @@ mod tests {
         );
         assert_eq!(bindings.connect.label().as_deref(), Some("_连接"));
         assert_eq!(
+            bindings.test_connection.label().as_deref(),
+            Some("_测试连接")
+        );
+        assert_eq!(
             bindings.remove_saved_profile.label().as_deref(),
             Some("移除已保存配置")
         );
@@ -8712,6 +8888,7 @@ mod tests {
         }
         for button in [
             &bindings.remove_saved_profile,
+            &bindings.test_connection,
             &bindings.connect,
             &bindings.open_source,
             &bindings.translate,
