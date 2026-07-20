@@ -7,7 +7,7 @@ model-listing policy; Linux keeps localized labels and endpoint defaults native,
 stale or incompatible preset mapping before creating the GTK window.
 
 - Linux now consumes Core's `linguamesh-provider-catalog` crate at the pinned Core revision
-  `f62f2dfc1d7170a1e376e4dfc4c2e9e8dcf08a64`, caches the bundled catalog, derives manual-model
+  `f62f2df91584eeebdf5c30bd06c5e0893f2345d8`, caches the bundled catalog, derives manual-model
   visibility from its `model_listing`, and validates all six GTK preset adapter mappings at startup.
 - The regression `provider_presets_map_to_stable_native_and_compatible_defaults` covers the stable
   GTK order and catalog compatibility without credentials or network access. A catalog mismatch
@@ -21,7 +21,7 @@ stale or incompatible preset mapping before creating the GTK window.
 Assumption: a document job captures the selected quality policy at dispatch time and reuses it for
 every segment after pause, retry, or process restart; older Core rows default to `Balanced`.
 
-- Core `f62f2dfc1d7170a1e376e4dfc4c2e9e8dcf08a64` adds schema 17 and the validated
+- Core `f62f2df91584eeebdf5c30bd06c5e0893f2345d8` adds schema 17 and the validated
   `DocumentJobOptions.quality_mode` field. Linux passes the mode into every document request,
   persists it for plain and routed jobs, restores it from queued snapshots, and keeps the GTK
   selector enabled while a document job is selected.
@@ -38,7 +38,7 @@ Assumption: Linux is the first active client target; `Best` requests an internal
 and revision in one call, while Core's deterministic validation rejects malformed completion and no
 hidden paid follow-up call is introduced.
 
-- Core `f62f2dfc1d7170a1e376e4dfc4c2e9e8dcf08a64` adds `TranslationQualityMode`, the versioned
+- Core `f62f2df91584eeebdf5c30bd06c5e0893f2345d8` adds `TranslationQualityMode`, the versioned
   `translation-prompt-v2` helper, `translation_quality_modes_v1`, and deterministic output checks.
 - Linux adds localized Fast/Balanced/Best selection to the text workspace and propagates the choice
   into both ordinary and persisted document `TranslationRequest` values.

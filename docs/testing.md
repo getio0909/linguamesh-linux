@@ -119,7 +119,7 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`f62f2dfc1d7170a1e376e4dfc4c2e9e8dcf08a64`. This revision carries the explicit request-level
+`f62f2df91584eeebdf5c30bd06c5e0893f2345d8`. This revision carries the explicit request-level
 Incognito privacy policy and changes file-backed Core storage to add SQLite's `SQLITE_OPEN_NOFOLLOW`
 flag, adds protected-span restoration and request-level glossary
 protection for streamed text, and adds bounded semantic chunking. On
@@ -128,9 +128,9 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e f62f2dfc1d7170a1e376e4dfc4c2e9e8dcf08a64^{commit}
+git -C ../linguamesh-core cat-file -e f62f2df91584eeebdf5c30bd06c5e0893f2345d8^{commit}
 git -C ../linguamesh-core diff --quiet \
-  f62f2dfc1d7170a1e376e4dfc4c2e9e8dcf08a64..HEAD -- \
+  f62f2df91584eeebdf5c30bd06c5e0893f2345d8..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -505,7 +505,7 @@ dispatch only. It does not replace a human listening review, physical desktop re
 about speech quality across locales.
 
 The GitHub Actions native workflow pins Core revision
-`f62f2dfc1d7170a1e376e4dfc4c2e9e8dcf08a64`, installs the headers plus D-Bus, Xvfb, test-only
+`f62f2df91584eeebdf5c30bd06c5e0893f2345d8`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
 namespace test through the unprivileged path.
