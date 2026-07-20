@@ -70,8 +70,9 @@ remain outside the release claim.
 The Linux document slice now persists bounded TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF jobs, translates pending prose segments
 sequentially, and restores completed or cancelled snapshots into the editor. Validated non-secret
 provider/model/glossary options are persisted and reused by Resume and Retry after restart only when
-the active runtime matches. This is not yet a release-ready multi-job queue: archive workflows and
-the document-job execution path still require the native Linux validation gate below. DOCX/PPTX/XLSX/EPUB export preserves
+the active runtime matches. The queue listing, explicit job selection, and document-job execution
+path are covered by the current Native/Flatpak validation gate; concurrent document execution remains
+outside the release claim. DOCX/PPTX/XLSX/EPUB export preserves
 non-text package resources and rewrites only supported OOXML text parts; malformed, encrypted, traversal,
 DTD-bearing, or over-limit packages are rejected. EPUB also requires a first `mimetype` entry,
 preserves navigation and resources, translates XHTML/HTML text, and updates OPF language metadata.
