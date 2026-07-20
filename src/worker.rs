@@ -7216,6 +7216,38 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires a running third-party Ollama daemon and an installed model"]
+    fn running_third_party_ollama_provider_translates_without_secret() {
+        let endpoint = std::env::var("LINGUAMESH_OLLAMA_ENDPOINT")
+            .expect("LINGUAMESH_OLLAMA_ENDPOINT must point to the running Ollama /api endpoint");
+        let model = std::env::var("LINGUAMESH_OLLAMA_MODEL")
+            .expect("LINGUAMESH_OLLAMA_MODEL must name an installed Ollama model");
+        let (worker, _) = started_worker();
+        let runtime = profile_with_preset(
+            "ollama-third-party",
+            "ollama",
+            &endpoint,
+            None,
+            Some(&model),
+        );
+        let models = connect(&worker, runtime, None, PersistenceIntent::SessionOnly)
+            .expect("third-party Ollama connection");
+        assert!(
+            models.iter().any(|candidate| candidate.id == model),
+            "third-party Ollama model discovery must include the selected model"
+        );
+        select_event(&worker, "ollama-third-party", &model)
+            .expect("select third-party Ollama model");
+        let (output, terminal) = translate(&worker, &model);
+        assert!(
+            !output.trim().is_empty(),
+            "third-party Ollama output must not be empty"
+        );
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        shutdown(&worker);
+    }
+
+    #[test]
     fn remembered_session_profile_and_model_restore_without_secret() {
         const SECRET_CANARY: &str = "PERSISTENCE_SECRET_CANARY";
         let external = ExternalFakeProvider::start(FakeMode::Authenticated(SECRET_CANARY));

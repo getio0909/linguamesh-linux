@@ -165,7 +165,9 @@ OpenAI `/v1/` and native Ollama `/api`: model discovery returns `llama3.2:latest
 deliberate selection, and streaming uses `/v1/chat/completions` or `/api/chat` without a credential.
 The GTK provider form exposes localized OpenAI-compatible and native Ollama presets and preserves
 custom endpoint edits when switching between them. This proves the bounded local contracts, but not
-a running third-party daemon. Full
+a running third-party daemon. `tools/run-ollama-interop-test.sh` provides an opt-in regression
+against a caller-selected installed model and starts an isolated daemon when needed; the default
+suite keeps it ignored because model installation is external. Full
 validation commands, the header-free local path, and the GTK gates for X11/Xvfb and forced
 Wayland/headless Weston are documented in
 [`docs/testing.md`](docs/testing.md). Native CI also builds a release-mode binary and uploads it

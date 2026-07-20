@@ -1,5 +1,17 @@
 # Implementation Status
 
+## 2026-07-20 — Linux third-party Ollama interop harness
+
+Assumption: the deterministic `/api` fixture is not evidence of interoperability with an
+independently running Ollama daemon, so the external path must be opt-in and model-explicit.
+
+- Linux adds `tools/run-ollama-interop-test.sh` and an ignored worker regression that performs real
+  `/api/tags` discovery and `/api/chat` translation through the `ollama` preset without a secret.
+  The script can start an isolated daemon and only pulls a model when `LINGUAMESH_OLLAMA_PULL=1`.
+- Local default validation passed with `131 passed; 3 ignored`, including the new external test.
+  This host has no `ollama` binary and the third-party daemon/model regression was not run; no
+  interoperability claim is made until an external daemon and installed model are exercised.
+
 ## 2026-07-20 — Linux fallback-send confirmation checkpoint
 
 Assumption: explicit fallback consent must be visible at the moment content could cross to the

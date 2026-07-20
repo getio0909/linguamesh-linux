@@ -7,6 +7,18 @@ fragmented UTF-8 handling, cancellation, and the translated `你好，Ollama！`
 credential. These tests do not replace interoperability testing against a running third-party
 Ollama daemon.
 
+The real-daemon regression is opt-in and never downloads a model by default. With a running
+third-party daemon and an installed model, execute:
+
+```sh
+LINGUAMESH_OLLAMA_MODEL=smollm:135m bash tools/run-ollama-interop-test.sh
+```
+
+Set `LINGUAMESH_OLLAMA_PULL=1` only in an isolated environment when the named model should be
+pulled through Ollama's `/api/pull`; the script then exercises real `/api/tags` discovery and
+`/api/chat` translation through the Linux worker. The default test suite keeps this regression
+ignored because the daemon and model are external prerequisites.
+
 The Linux checkout consumes the canonical gettext bundle from immutable l10n revision
 `3362732be198450ff1ca00f30ec092aab2cf4189`. The bundle contains 387 messages, and
 `bash tools/sync-l10n.sh --check` verifies every PO/MO catalog and the generated manifest before
@@ -541,8 +553,9 @@ asserts Simplified Chinese translations while preserving safe dynamic diagnostic
 
 Broader GTK component/UI automation, AT-SPI/Orca, and broader physical-keyboard coverage,
 physical-compositor and GPU-backed Wayland coverage, a broader X11/desktop matrix, prompted
-interactive Secret Service flows, broader XDG and portal tests, third-party
-local-server interoperability, Flatpak smoke tests, runtime localization behavior beyond the
+interactive Secret Service flows, broader XDG and portal tests, third-party local-server
+interoperability (the opt-in daemon script still requires external Ollama/model evidence), Flatpak
+smoke tests, runtime localization behavior beyond the
 currently catalog-backed UI and stable error paths, workspace-widget, active-provider, status summary/partial-output, text-file import, provider-profile, source/target language, onboarding stage/detail, and theme-option labels, runtime database
 faults beyond the implemented Linux `ENOSPC` transaction boundary, dependency/license automation,
 and release builds remain required before a supported release.

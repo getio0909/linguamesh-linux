@@ -190,7 +190,10 @@ The user-facing endpoint example is loopback. Under its shared endpoint policy, 
 loopback HTTP and also accepts HTTPS endpoints; the Linux client does not duplicate URL parsing.
 Automated client evidence covers the built-in provider and a deterministic Ollama-compatible
 OpenAI `/v1/` fixture on loopback. Native Ollama `/api` behavior and a running third-party daemon
-remain outside this evidence.
+remain outside the default evidence. `tools/run-ollama-interop-test.sh` provides an explicit
+real-daemon path that starts an isolated local daemon when needed and runs the worker regression
+against a caller-selected installed model; the test remains opt-in because model installation is
+an external prerequisite.
 
 ## Secret lifecycle and persistence boundary
 
