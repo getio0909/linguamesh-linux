@@ -48,6 +48,7 @@ python3 -c 'import pyatspi' >/dev/null 2>&1 || {
 cargo build --all-features --locked --bin linguamesh-linux
 
 LINGUAMESH_ORCA_LOG="$workspace/orca-debug.log" \
+LINGUAMESH_TEST_ORCA_ATSPI=1 \
 XDG_DATA_HOME="$workspace/data" \
 XDG_CONFIG_HOME="$workspace/config" \
 XDG_CACHE_HOME="$workspace/cache" \

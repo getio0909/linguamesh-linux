@@ -17,6 +17,15 @@ GTK accessibility tree while keeping human listening and physical desktop review
 - This advances headless Orca integration evidence only. Human listening, translated-copy/RTL review,
   physical desktop behavior, other clients, signing, rollback, and stable release remain open.
 
+## 2026-07-20 — Linux Orca fixture focus correction
+
+- Native push run `29709041999` reached the new Orca fixture but failed at job `88250409247` because
+  the production Stop button is intentionally disabled while idle, so AT-SPI correctly rejected
+  `grabFocus()` with an accessibility error. The existing AT-SPI semantic fixture passed first.
+- The fixture now sets `LINGUAMESH_TEST_ORCA_ATSPI=1`; `refresh_ui` enables only that named control
+  for the isolated test process, leaving normal idle production behavior unchanged. The exact
+  headless Orca and speech-generator assertions remain unchanged and require a rerun.
+
 ## 2026-07-19 — Linux localization fallback-template consistency checkpoint
 
 Assumption: a catalog-backed key must use its canonical English source text as the literal runtime

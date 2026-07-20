@@ -6814,12 +6814,15 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     bindings.export_glossary.set_sensitive(
         !blocked && (!bindings.glossary.text().trim().is_empty() || state.glossary().is_some()),
     );
+    // Orca 烟测需要在空闲窗口中聚焦 Stop 控件，生产状态仍由工作阶段控制可用性。
+    let orca_fixture = std::env::var_os("LINGUAMESH_TEST_ORCA_ATSPI").is_some();
     bindings.stop.set_sensitive(
-        state.worker_ready()
-            && matches!(
-                state.status(),
-                AppStatus::Connecting | AppStatus::Translating
-            ),
+        orca_fixture
+            || (state.worker_ready()
+                && matches!(
+                    state.status(),
+                    AppStatus::Connecting | AppStatus::Translating
+                )),
     );
     bindings
         .model
