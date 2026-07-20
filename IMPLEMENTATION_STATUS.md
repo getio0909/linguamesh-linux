@@ -18,6 +18,13 @@ adapter while preserving the existing Linux provider choices and exact compatibi
   workstation because the installed GTK runtime lacks symbols required by the gtk-rs headers;
   this is an environment linker limitation, not a Rust test assertion. Native CI remains the
   authoritative full GTK/Flatpak gate.
+- The first pin-refresh head `0b7696e65b322a0ba948c207fe3b10599e7b6f86` correctly failed only
+  Flatpak source-manifest validation because its Linux source entry still named the prior commit.
+  The manifest was refreshed to the final head `a381d726cb163b8c0546d77e99ef2704898d58ce`.
+  Final push and PR Native/Flatpak/Foundation runs all passed: push `29719144958`/
+  `29719144935`/`29719144961` (jobs `88278214130`/`88278214125`/`88278214202`) and PR
+  `29719143513`/`29719143521`/`29719143509` (jobs `88278209789`/`88278209742`/
+  `88278209753`). `gh pr checks 1` reports all six checks passing.
 - The Linux UI does not claim Anthropic preset support yet; human visual review, end-user Secret
   Service prompt approval, other native clients, signing, rollback, and stable-release evidence
   remain open.
