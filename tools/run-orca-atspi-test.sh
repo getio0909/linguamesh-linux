@@ -110,6 +110,8 @@ XDG_CACHE_HOME="$workspace/cache" \
     xdotool windowactivate --sync "$app_window" >/dev/null 2>&1 || true
     xdotool windowfocus --sync "$app_window" >/dev/null 2>&1 || true
     python3 tools/orca-atspi-inspect.py
+    xdotool windowactivate --sync "$app_window" >/dev/null 2>&1 || true
+    xdotool key --clearmodifiers KP_Enter >/dev/null 2>&1 || true
     for _ in {1..200}; do
       if [[ -s "$LINGUAMESH_ORCA_LOG" ]] \
         && grep -Fq "Stop translation" "$LINGUAMESH_ORCA_LOG" \
