@@ -12,11 +12,11 @@ Ordered and Automatic modes.
   `cargo clippy --all-targets --all-features --locked --offline -- -D warnings`,
   `cargo test --features demo-provider --offline` (`131 passed; 3 ignored`),
   `bash tools/validate-flatpak-metadata.sh`, and `git diff --check` passed. Source revision
-  `9fb87ab2578506c6913e572af48a9ab63c73657c` then passed all six GitHub checks: push Native
-  `29712752610` (job `88259449611`), push Flatpak `29712752618` (job `88259449652`), push
-  Foundation `29712752586` (job `88259449502`), PR Native `29712754191` (job `88259454430`),
-  PR Flatpak `29712754198` (job `88259454472`), and PR Foundation `29712754203`
-  (job `88259454433`).
+  `a75468a6666a1954b85a8dbc646b4cb07144bf93` then passed all six GitHub checks: push Native
+  `29712945266` (job `88260013464`), push Flatpak `29712945264` (job `88260013439`), push
+  Foundation `29712945321` (job `88260013652`), PR Native `29712946196` (job `88260016618`),
+  PR Flatpak `29712946158` (job `88260016478`), and PR Foundation `29712946166`
+  (job `88260016565`). `gh pr checks` reports all six as pass.
 
 ## 2026-07-20 — Linux third-party Ollama interop harness
 
