@@ -372,8 +372,10 @@ while physical compositor and broader desktop coverage remain incomplete.
 
 Before Core opens the pinned profile descriptor, Linux inspects any existing SQLite `-wal` and
 `-shm` sidecars through the pinned parent descriptor and rejects symbolic links, non-regular files,
-and hard-linked aliases. This prevents a pre-existing sidecar from redirecting journal writes to a
-second inode; replacement races after this inspection and non-default SQLite VFS behavior remain
+and hard-linked aliases. The pinned parent descriptor and pre-open sidecar identities are retained
+through Core migration/open; existing sidecars are inspected again afterward and a changed identity
+fails closed. SQLite-created sidecars that were absent at preflight are still required to be private
+regular files. Replacement after the second inspection and non-default SQLite VFS behavior remain
 outside the current claim.
 
 Changes affecting shared contracts, the security model, display support, GTK/libadwaita policy, or distribution packaging require central compatibility review. GTK and other LGPL dependencies require documented license compliance before distribution.

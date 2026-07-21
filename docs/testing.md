@@ -299,7 +299,9 @@ path with a symlink, distinct regular file, or hard link after preflight; a file
 missing-file preflight is also rejected by the exclusive open. All require rejection before an unsafe
 descriptor is accepted. Existing SQLite `-wal` and `-shm` sidecars are inspected through the pinned
 parent descriptor; `hard_linked_database_sidecars_are_rejected_without_modifying_targets` rejects
-hard-linked aliases for both sidecars before Core opens the database. It also verifies that a completed standard translation is recorded in bounded
+hard-linked aliases for both sidecars before Core opens the database, while
+`replaced_database_sidecar_is_rejected_after_snapshot` verifies that a changed existing sidecar
+identity is rejected after Core open. It also verifies that a completed standard translation is recorded in bounded
 history,
 an Incognito completion is
 skipped, and the startup count/clear command path uses the same database. A Linux-side
@@ -723,10 +725,11 @@ The storage regressions cover parent-directory replacement with a symlink or reg
 final-database-component replacement with a symlink, distinct regular file, or hard link through
 descriptor-pinned `openat2`/`O_NOFOLLOW` opens; a missing final leaf is created only through an
 exclusive open. Existing SQLite `-wal`/`-shm` sidecars are checked through the pinned parent and
-hard-linked aliases are rejected before Core opens the database. The preflight suite also replaces
-the validated parent with a distinct private directory and rejects the device/inode change.
-Sidecar replacement after inspection, broader same-UID filesystem/VFS variants, and power loss
-remain outside the tested boundary.
+hard-linked aliases are rejected before Core opens the database; existing identities are checked
+again after Core open. The preflight suite also replaces the validated parent with a distinct
+private directory and rejects the device/inode change. Replacement after the second sidecar
+inspection, broader same-UID filesystem/VFS variants, and power loss remain outside the tested
+boundary.
 Remaining evidence is deliberately explicit: human screen-reader listening and translated-copy/
 RTL/visual review; physical compositor, GPU-backed Wayland, and broader X11/desktop coverage;
 prompted interactive Secret Service approval; broader filesystem/VFS and power-loss races; signed

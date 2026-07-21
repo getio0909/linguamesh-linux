@@ -105,10 +105,11 @@ session-only post-fault model selection, and restart recovery of only pre-fault 
 worker suite also covers corrupt-database and non-writable-directory fail-closed behavior. This is
 not evidence for power-loss recovery or every storage-failure path.
 
-Linux profile startup also inspects existing SQLite `-wal` and `-shm` sidecars through the pinned
-parent descriptor and rejects symbolic-link, non-regular, or hard-linked aliases before Core opens
-the database. Sidecar replacement after that inspection and non-default SQLite VFS behavior remain
-unverified release boundaries.
+Linux profile startup inspects existing SQLite `-wal` and `-shm` sidecars through the pinned parent
+descriptor and rejects symbolic-link, non-regular, or hard-linked aliases before Core opens the
+database. The parent descriptor and existing sidecar identities remain pinned through Core open;
+the sidecars are checked again afterward and changed identities fail closed. Replacement after that
+second inspection and non-default SQLite VFS behavior remain unverified release boundaries.
 
 ## Future release gate
 
