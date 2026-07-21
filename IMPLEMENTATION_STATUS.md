@@ -1,5 +1,32 @@
 # Implementation Status
 
+## 2026-07-21 — Linux GTK offline session preservation
+
+Assumption: Linux Scenario 17 must prove that an unavailable provider does not replace a previously
+confirmed session, lose the selected model, or discard the source buffer at the GTK boundary.
+
+- Linux code revision `3242133acbf77a7e72374ab680a83f4ff676ff0c` adds the ignored serialized fixture
+  `gtk_offline_connection_failure_preserves_confirmed_session`. It connects the deterministic
+  bearer-token provider through the production GTK form, selects `fake-translator`, captures the
+  active provider/models/source, releases a loopback port, and submits a second connection attempt
+  with an offline endpoint. The fixture asserts that the credential field is cleared, the
+  localized network `Alert` contains no canary, status returns to Ready, and the confirmed
+  provider, model, and source text remain unchanged.
+- Local `cargo fmt --all -- --check`, all-target/all-feature `cargo check`, no-default tests
+  (`83 passed; 1 ignored`), demo-provider tests (`156 passed; 3 ignored`), localization audits,
+  Flatpak metadata validation, and diff checks passed. The host lacks `xvfb-run`, so the
+  display-backed fixture is CI-authoritative here.
+- The Linux Native workflow explicitly runs this exact fixture with
+  `--exact --ignored --test-threads=1`. Packaging/source pin `c81aae6935922f1b309834ebd963b82e7d962f58`
+  passed push Native/Flatpak/Foundation gates `29861352913`/`29861352803`/`29861352991` and PR
+  gates `29861357585`/`29861356699`/`29861357514`; the Native job recorded the offline fixture as
+  successful before completing the remaining GTK, Wayland, AT-SPI, Orca, portal, and release
+  matrix.
+
+This advances unreleased Linux evidence for mandatory Scenario 17. Human offline/visual/copy/Orca
+review, physical outage simulation, other clients, live-provider interoperability, signing,
+rollback, and stable release remain open.
+
 ## 2026-07-21 — Linux GTK authentication-failure presentation
 
 Assumption: the Linux client must prove the complete wrong-credential path from the GTK Connect
