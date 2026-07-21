@@ -11,8 +11,8 @@ across streamed deltas.
   `gtk_glossary_and_protected_terms_preserve_translation`. It enters a real glossary mapping through
   the GTK form, inspects the loopback request to confirm `LinguaMesh` is replaced by a protected
   marker, streams that marker in two fragments, and verifies the completed output is `你好，凌瓦网！`.
-  Flatpak source pin `aa0e0206c20e325bf0dd340dab039eea400a9ab0` is synchronized in packaging head
-  `c5070b103465ca8583209da10912be4cd529c088`.
+  Flatpak source pin `aa0e0206c20e325bf0dd340dab039eea400a9ab0` remains synchronized in final
+  status/docs head `a544d025a2a23ab18b0cac65b3ee5423d71ac165`.
 - Local `cargo test --all-targets --features demo-provider --locked` passed (`156 passed; 3
   ignored`), alongside formatting, all-target/all-feature checks, strict Clippy, no-default tests
   (`83 passed; 1 ignored`), localization audits, l10n synchronization, Flatpak metadata, and diff
@@ -20,7 +20,9 @@ across streamed deltas.
 - Code-head push Native/Flatpak/Foundation gates `29868747478`/`29868747474`/`29868747461` and PR
   gates `29868750361`/`29868750281`/`29868750341` all passed. Native explicitly reports the exact
   serialized glossary/protected-span fixture successful before the remaining accessibility and
-  release matrix.
+  release matrix. Final status-head push Native/Flatpak/Foundation gates
+  `29869372767`/`29869372826`/`29869372830` and PR gates
+  `29869375704`/`29869375716`/`29869375648` also passed.
 
 This advances unreleased Linux evidence for mandatory Scenario 9. Provider-specific glossary
 semantics, human visual/copy/Orca review, other clients, signed artifacts, rollback authorization,
