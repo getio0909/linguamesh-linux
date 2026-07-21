@@ -64,6 +64,13 @@ disabled, Retry becomes available, and no later provider delta changes the cance
 Native CI runs this exact test under the same DBus/Xvfb serialization; it is Linux evidence for
 Scenario 6 and does not claim physical transport cancellation for every provider.
 
+The serialized GTK fixture `gtk_glossary_and_protected_terms_preserve_translation` drives the real
+glossary entry field and Translate action against a request-inspecting loopback provider. The
+provider receives an opaque protected marker instead of `LinguaMesh` and returns that marker split
+across streamed deltas; the production reducer restores `凌瓦网` in the completed output. Native CI
+runs the exact fixture under DBus/Xvfb, providing Linux Scenario 9 glossary/protected-span evidence
+without persisting glossary content or claiming provider-specific behavior beyond the contract.
+
 The GTK regression `provider_presets_map_to_stable_native_and_compatible_defaults` validates the
 six-position Linux preset order against the bundled Core provider catalog. Adapter types must match
 the catalog, and manual-model visibility is derived from its `model_listing` field. The application

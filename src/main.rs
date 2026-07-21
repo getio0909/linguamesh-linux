@@ -8098,7 +8098,9 @@ mod tests {
     };
     use linguamesh_testkit::FakeProviderServer;
     use std::cell::RefCell;
+    use std::fmt::Write as FmtWrite;
     use std::fs;
+    use std::io::{Read, Write};
     use std::net::TcpListener;
     use std::os::unix::fs::PermissionsExt;
     use std::rc::Rc;
@@ -9301,6 +9303,45 @@ mod tests {
         panic!("Timed out while waiting for the GTK state transition.");
     }
 
+    fn read_http_request(stream: &mut std::net::TcpStream) -> Vec<u8> {
+        let mut request = Vec::new();
+        let mut chunk = [0_u8; 4096];
+        let body_start = loop {
+            let read = stream.read(&mut chunk).expect("HTTP request headers");
+            assert!(read > 0);
+            request.extend_from_slice(&chunk[..read]);
+            if let Some(position) = request.windows(4).position(|window| window == b"\r\n\r\n") {
+                break position + 4;
+            }
+        };
+        let content_length = String::from_utf8_lossy(&request[..body_start])
+            .lines()
+            .find_map(|line| {
+                let (name, value) = line.split_once(':')?;
+                name.eq_ignore_ascii_case("content-length")
+                    .then(|| value.trim().parse::<usize>().ok())
+                    .flatten()
+            })
+            .unwrap_or(0);
+        while request.len() - body_start < content_length {
+            let read = stream.read(&mut chunk).expect("HTTP request body");
+            assert!(read > 0);
+            request.extend_from_slice(&chunk[..read]);
+        }
+        request
+    }
+
+    fn write_http_response(stream: &mut std::net::TcpStream, content_type: &str, body: &[u8]) {
+        let header = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+            body.len()
+        );
+        stream
+            .write_all(header.as_bytes())
+            .expect("HTTP response headers");
+        stream.write_all(body).expect("HTTP response body");
+    }
+
     struct ExternalFakeProvider {
         endpoint: String,
         shutdown: Option<oneshot::Sender<()>>,
@@ -9809,6 +9850,122 @@ mod tests {
         drop(locale);
         drop(state);
         drop(worker);
+    }
+
+    #[allow(clippy::too_many_lines)]
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_glossary_and_protected_terms_preserve_translation() {
+        const EXPECTED_SECRET: &str = "GTK_EXPECTED_GLOSSARY_SECRET";
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.GtkGlossaryTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK test application");
+
+        let listener = TcpListener::bind("127.0.0.1:0").expect("glossary provider listener");
+        let endpoint = format!(
+            "http://{}/v1/",
+            listener.local_addr().expect("listener address")
+        );
+        let (request_sender, request_receiver) = mpsc::sync_channel(1);
+        let provider_thread = std::thread::spawn(move || {
+            let (mut model_stream, _) = listener.accept().expect("model request");
+            let _ = read_http_request(&mut model_stream);
+            let models = r#"{"data":[{"id":"glossary-translator","object":"model"}]}"#;
+            write_http_response(&mut model_stream, "application/json", models.as_bytes());
+
+            let (mut chat_stream, _) = listener.accept().expect("chat request");
+            let request = read_http_request(&mut chat_stream);
+            let request_text = String::from_utf8_lossy(&request);
+            request_sender
+                .send(request_text.contains("LinguaMesh"))
+                .expect("request observation");
+            let prefix = b"__LINGUAMESH_PROTECTED_";
+            let marker_start = request
+                .windows(prefix.len())
+                .rposition(|window| window == prefix)
+                .expect("protected glossary marker");
+            let suffix_start = marker_start + prefix.len();
+            let suffix_offset = request[suffix_start..]
+                .windows(2)
+                .position(|window| window == b"__")
+                .expect("protected marker suffix");
+            let marker =
+                String::from_utf8(request[marker_start..suffix_start + suffix_offset + 2].to_vec())
+                    .expect("protected marker text");
+            let split = marker.len() / 2;
+            let mut events = String::new();
+            for fragment in [
+                "你好，".to_owned(),
+                marker[..split].to_owned(),
+                marker[split..].to_owned(),
+                "！".to_owned(),
+            ] {
+                writeln!(
+                    &mut events,
+                    "data: {{\"choices\":[{{\"delta\":{{\"content\":\"{fragment}\"}}}}]}}"
+                )
+                .expect("SSE event");
+                events.push('\n');
+            }
+            events.push_str("data: [DONE]\n\n");
+            write_http_response(&mut chat_stream, "text/event-stream", events.as_bytes());
+        });
+
+        let context = glib::MainContext::default();
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn());
+        let (window, bindings, theme, locale) = create_window(&application);
+        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
+        connect_action_handlers(&bindings, &state, &worker);
+        start_event_pump(&bindings, &state, &worker);
+        window.present();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().worker_ready()
+        });
+
+        bindings.provider_name.set_text("GTK glossary provider");
+        bindings.provider_endpoint.set_text(&endpoint);
+        bindings.provider_credential.set_text(EXPECTED_SECRET);
+        bindings.connect.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Ready
+                && state.borrow().active_provider().is_some()
+                && !state.borrow().models().is_empty()
+        });
+
+        bindings.model.set_selected(1);
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().selected_model() == Some("glossary-translator")
+        });
+        bindings.source.set_text("LinguaMesh");
+        bindings.glossary.set_text("LinguaMesh => 凌瓦网");
+        bindings.translate.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Completed
+                && state.borrow().output() == "你好，凌瓦网！"
+        });
+        assert_eq!(state.borrow().output(), "你好，凌瓦网！");
+        assert!(state.borrow().glossary().is_some());
+        assert!(
+            !request_receiver
+                .recv_timeout(Duration::from_secs(5))
+                .expect("request observation")
+        );
+
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
+        provider_thread.join().expect("glossary provider shutdown");
     }
 
     #[ignore = "run in dedicated serialized GTK fixture"]
