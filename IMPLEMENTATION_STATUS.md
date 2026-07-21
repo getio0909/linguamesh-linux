@@ -1,5 +1,17 @@
 # Implementation Status
 
+## 2026-07-21 — Linux visible GTK localization audit scope
+
+Assumption: the source audit must cover every Rust UI module, including file-filter names, while
+allowing empty label resets used to clear transient state.
+
+- `tools/check-visible-localization.py` now discovers every `src/**/*.rs` file instead of a fixed
+  pair of modules and checks `set_name` alongside labels, titles, tooltips, placeholders, dialog
+  actions, and direct list literals. The current source passes with three intentional empty/reset
+  call sites and no non-empty hard-coded GTK strings.
+- This is stronger repeatable source evidence, not a claim that translated copy, plural forms, or
+  visual locale review has been completed; non-English catalogs remain machine-generated drafts.
+
 ## 2026-07-21 — Linux Arabic headless Orca fixture
 
 Assumption: the Linux screen-reader automation should exercise the same production Stop control in

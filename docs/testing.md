@@ -110,9 +110,12 @@ python3 -B tools/check-visible-localization.py
 ```
 
 The first command checks catalog key coverage for localization calls, diagnostics, and error-message
-mappings; the second checks canonical English fallback text, placeholder identity, and malformed braces in literal templates; the third rejects non-empty literal
-strings passed directly to GTK visible-control APIs and direct string-list options. Empty strings
-used to clear a transient label are intentionally permitted.
+mappings; the second checks canonical English fallback text, placeholder identity, and malformed
+braces in literal templates; the third rejects non-empty literal strings passed directly to GTK
+visible-control APIs and direct string-list options. It scans every Rust file under `src/` and also
+covers file-filter names. Empty strings used to clear a transient label are intentionally permitted.
+This remains source-level evidence; human translated-copy, plural, and visual review are separate
+gates.
 
 The routing-profile worker regression saves, lists, and deletes a Core `routing_planner_v1` profile
 without persisting provider endpoints, credentials, or translation content. A separate regression

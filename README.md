@@ -72,8 +72,10 @@ The dependency-free `tools/check-localization-keys.py` audit verifies literal ca
 `tools/check-localization-placeholders.py` checks every literal fallback template against the
 canonical English template and placeholder contract, and `tools/check-visible-localization.py`
 rejects non-empty hard-coded GTK labels, titles, tooltips,
-placeholders, dialog actions, and list options. Native and Foundation CI run all three audits before
-building the client; empty label assignments used to clear transient UI state remain allowed.
+placeholders, dialog actions, file-filter names, and list options across every Rust source file
+under `src/`. Native and Foundation CI run all three audits before building the client; empty label
+assignments used to clear transient UI state remain allowed. The audit is source-level evidence and
+does not replace human translated-copy, plural, or visual review.
 
 ## Build and run
 

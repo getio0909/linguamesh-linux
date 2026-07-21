@@ -9,14 +9,14 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE_FILES = (ROOT / "src/main.rs", ROOT / "src/model.rs")
+SOURCE_FILES = tuple(sorted((ROOT / "src").rglob("*.rs")))
 
 # 这些调用的非空字符串参数会直接出现在 GTK 控件或文件对话框中。
 VISIBLE_CALL_PATTERN = re.compile(
     r"(?:"
     r"gtk::(?:Button|CheckButton)::with_(?:label|mnemonic)"
     r"|gtk::Label::new\(\s*Some"
-    r"|\.set_(?:label|title|tooltip_text|placeholder_text)"
+    r"|\.set_(?:label|name|title|tooltip_text|placeholder_text)"
     r"|\.accept_label"
     r"|\.cancel_label"
     r")\s*\(\s*(?:Some\(\s*)?&?\s*\"([^\"\\]*(?:\\.[^\"\\]*)*)\""
