@@ -696,6 +696,9 @@ asserts Simplified Chinese translations while preserving safe dynamic diagnostic
 The automated Linux slice now covers the main GTK/AT-SPI semantic tree, keyboard focus, headless
 Orca integration, portal and Flatpak smoke paths, catalog key/placeholder invariants, the
 `cargo-deny` advisory/license/source policy, and the implemented storage transaction boundary.
+The storage regressions cover both parent-directory and final-database-component replacement races
+through descriptor-pinned `openat2`/`O_NOFOLLOW` opens; broader same-UID filesystem/VFS variants and
+power loss remain outside the tested boundary.
 Remaining evidence is deliberately explicit: human screen-reader listening and translated-copy/
 RTL/visual review; physical compositor, GPU-backed Wayland, and broader X11/desktop coverage;
 prompted interactive Secret Service approval; broader filesystem/VFS and power-loss races; signed

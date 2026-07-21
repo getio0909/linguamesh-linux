@@ -2433,9 +2433,10 @@ in the GitHub Actions evidence above, but those native checks remain unavailable
   physical desktop-shell notification rendering, AT-SPI/Orca, provider-form Tab-chain and broader physical-keyboard coverage,
   physical-compositor/GPU Wayland coverage, broader X11/desktop coverage, Flatpak portal/notification
   delivery, and release artifacts.
-- Directory-descriptor or `openat2` hardening against a concurrent same-UID path replacement during
-  Linux host preflight; static components are checked before mutation and Core remains the final
-  no-follow open gate.
+- Broader same-UID filesystem race variants beyond the verified parent-directory and final-database
+  component replacements; the tested Linux preflight uses directory descriptors and `openat2`, while
+  Core remains the final `O_NOFOLLOW` open gate. Power loss and alternate SQLite VFS behavior also
+  remain outside the claim.
 
 ## 2026-07-18 — History inspection, export, and per-entry deletion
 
