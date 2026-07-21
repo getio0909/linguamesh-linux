@@ -41,6 +41,13 @@ for this path on hosts without the pinned GTK/Xvfb runtime. The Native workflow 
 test name with `--exact --ignored --test-threads=1` so the serialized fixture cannot be skipped by
 the general test step.
 
+The serialized GTK fixture `gtk_offline_connection_failure_preserves_confirmed_session` then
+connects a confirmed provider, deliberately releases a loopback port, and submits a second
+connection attempt to that unavailable endpoint. It verifies the network `Alert`, cleared
+credential field, preserved active provider/model, and untouched source buffer while the UI returns
+to Ready. Native CI invokes it explicitly with the same DBus/Xvfb serialization; this is the
+display-backed Scenario 17 evidence when the local host has no GTK display runtime.
+
 The GTK regression `provider_presets_map_to_stable_native_and_compatible_defaults` validates the
 six-position Linux preset order against the bundled Core provider catalog. Adapter types must match
 the catalog, and manual-model visibility is derived from its `model_listing` field. The application

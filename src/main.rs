@@ -8099,6 +8099,7 @@ mod tests {
     use linguamesh_testkit::FakeProviderServer;
     use std::cell::RefCell;
     use std::fs;
+    use std::net::TcpListener;
     use std::os::unix::fs::PermissionsExt;
     use std::rc::Rc;
     use std::sync::mpsc;
@@ -9616,6 +9617,107 @@ mod tests {
             gtk::AccessibleRole::Alert
         ));
         assert!(state.borrow().active_provider().is_none());
+
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
+    }
+
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_offline_connection_failure_preserves_confirmed_session() {
+        const EXPECTED_SECRET: &str = "GTK_EXPECTED_OFFLINE_SECRET";
+        const OFFLINE_SECRET: &str = "GTK_OFFLINE_SECRET_CANARY";
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.GtkOfflineConnectionTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK test application");
+
+        let external = ExternalFakeProvider::start(EXPECTED_SECRET);
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn());
+        let (window, bindings, theme, locale) = create_window(&application);
+        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
+        connect_action_handlers(&bindings, &state, &worker);
+        start_event_pump(&bindings, &state, &worker);
+        let context = glib::MainContext::default();
+        window.present();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().worker_ready()
+                && bindings.provider_endpoint.text() != DEFAULT_PROVIDER_ENDPOINT
+        });
+
+        bindings
+            .provider_name
+            .set_text("Confirmed offline provider");
+        bindings.provider_endpoint.set_text(&external.endpoint);
+        bindings.provider_credential.set_text(EXPECTED_SECRET);
+        bindings.connect.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Ready
+                && state.borrow().active_provider().is_some()
+                && !state.borrow().models().is_empty()
+        });
+        bindings.model.set_selected(1);
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().selected_model() == Some("fake-translator")
+        });
+        let confirmed_provider = state
+            .borrow()
+            .active_provider()
+            .cloned()
+            .expect("confirmed provider");
+        let confirmed_provider_id = confirmed_provider.id().clone();
+        let confirmed_models = state.borrow().models().to_vec();
+        bindings.source.set_text("保留离线源文本");
+
+        let listener = TcpListener::bind(("127.0.0.1", 0)).expect("offline fixture listener");
+        let unavailable_endpoint = format!(
+            "http://{}/v1/",
+            listener.local_addr().expect("offline fixture address")
+        );
+        drop(listener);
+        bindings
+            .provider_name
+            .set_text("Unavailable offline provider");
+        bindings.provider_endpoint.set_text(&unavailable_endpoint);
+        bindings.provider_credential.set_text(OFFLINE_SECRET);
+        bindings.connect.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Ready && bindings.error.is_visible()
+        });
+
+        let source_text = bindings.source.text(
+            &bindings.source.start_iter(),
+            &bindings.source.end_iter(),
+            true,
+        );
+        assert_eq!(source_text.as_str(), "保留离线源文本");
+        assert_eq!(state.borrow().active_provider(), Some(&confirmed_provider));
+        assert_eq!(state.borrow().provider_id(), Some(&confirmed_provider_id));
+        assert_eq!(state.borrow().models(), confirmed_models.as_slice());
+        assert_eq!(state.borrow().selected_model(), Some("fake-translator"));
+        assert_eq!(
+            state.borrow().onboarding_stage(),
+            super::OnboardingStage::Ready
+        );
+        let error_text = bindings.error.label().to_string();
+        assert!(error_text.contains("网络"));
+        assert!(!error_text.contains(OFFLINE_SECRET));
+        assert!(gtk::test_accessible_has_role(
+            &bindings.error,
+            gtk::AccessibleRole::Alert
+        ));
 
         let _ = worker.try_send(WorkerCommand::Shutdown);
         window.close();
