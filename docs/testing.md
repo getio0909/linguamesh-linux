@@ -33,6 +33,12 @@ actionable authentication message before GTK renders the error label. The focuse
 checks Simplified Chinese copy and confirms backend status numbers are not shown to users; worker
 fixtures separately verify wrong credentials remain out of diagnostics and persistence.
 
+The serialized GTK fixture `gtk_authentication_failure_shows_localized_redacted_error` extends this
+boundary through the real Connect button, Core worker rejection event, Simplified Chinese locale,
+and `Alert` presentation. It is marked ignored in the ordinary Rust suite because GTK initialization
+is thread-bound; Native CI runs the dedicated display-backed fixture and is the authoritative result
+for this path on hosts without the pinned GTK/Xvfb runtime.
+
 The GTK regression `provider_presets_map_to_stable_native_and_compatible_defaults` validates the
 six-position Linux preset order against the bundled Core provider catalog. Adapter types must match
 the catalog, and manual-model visibility is derived from its `model_listing` field. The application

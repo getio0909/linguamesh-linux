@@ -1,5 +1,25 @@
 # Implementation Status
 
+## 2026-07-21 — Linux GTK authentication-failure presentation
+
+Assumption: the Linux client must prove the complete wrong-credential path from the GTK Connect
+button through the worker's provider rejection event, while keeping the credential and backend
+status detail out of the visible alert.
+
+- Linux code adds the ignored serialized fixture `gtk_authentication_failure_shows_localized_redacted_error`.
+  It starts the deterministic bearer-token provider, enters a wrong session credential through the
+  real GTK form, waits for the worker's 401/403 rejection, switches the form to Simplified Chinese,
+  and asserts that the visible `Alert` contains the catalog-backed actionable copy without the
+  wrong credential or `401`/`403` status numbers. The credential entry is empty immediately after
+  Connect and no active provider is committed after failure.
+- Local `cargo fmt --all -- --check`, all-target/all-feature `cargo check`, no-default tests
+  (`83 passed; 1 ignored`), and demo-provider tests (`156 passed; 3 ignored`) passed. The GTK
+  fixture remains CI-authoritative because this host lacks the matching display-backed runtime.
+
+This advances Linux evidence for mandatory Scenario 8 at the UI/worker boundary. Human
+translated-copy/visual/Orca review, other clients, live-provider interoperability, signing,
+rollback, and stable release remain open.
+
 ## 2026-07-21 — Linux actionable authentication-error localization
 
 Assumption: HTTP 401/403 responses are authentication failures; the client should replace backend

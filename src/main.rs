@@ -9562,6 +9562,70 @@ mod tests {
         let _ = fs::remove_dir_all(&database_directory);
     }
 
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_authentication_failure_shows_localized_redacted_error() {
+        const EXPECTED_SECRET: &str = "GTK_EXPECTED_AUTH_SECRET";
+        const WRONG_SECRET: &str = "GTK_WRONG_AUTH_SECRET_CANARY";
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.GtkAuthenticationFailureTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK test application");
+
+        let external = ExternalFakeProvider::start(EXPECTED_SECRET);
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn());
+        let (window, bindings, theme, locale) = create_window(&application);
+        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
+        connect_action_handlers(&bindings, &state, &worker);
+        start_event_pump(&bindings, &state, &worker);
+        let context = glib::MainContext::default();
+        window.present();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().worker_ready()
+                && bindings.provider_endpoint.text() != DEFAULT_PROVIDER_ENDPOINT
+        });
+
+        bindings.locale.set_selected(1);
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            state.borrow().locale() == UiLocale::SimplifiedChinese
+        });
+        bindings.provider_name.set_text("认证失败提供商");
+        bindings.provider_endpoint.set_text(&external.endpoint);
+        bindings.provider_credential.set_text(WRONG_SECRET);
+        bindings.connect.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        assert_eq!(state.borrow().status(), AppStatus::Connecting);
+
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Failed && bindings.error.is_visible()
+        });
+        let error_text = bindings.error.label().to_string();
+        assert!(error_text.contains("身份验证"));
+        assert!(error_text.contains("请检查"));
+        assert!(error_text.contains("凭据"));
+        assert!(!error_text.contains(WRONG_SECRET));
+        assert!(!error_text.contains("401"));
+        assert!(!error_text.contains("403"));
+        assert!(gtk::test_accessible_has_role(
+            &bindings.error,
+            gtk::AccessibleRole::Alert
+        ));
+        assert!(state.borrow().active_provider().is_none());
+
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
+    }
+
     #[allow(clippy::too_many_lines)]
     #[test]
     fn gtk_buttons_explicitly_connect_select_and_translate_with_session_credential() {
