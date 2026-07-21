@@ -10186,4 +10186,43 @@ mod tests {
         window.close();
         let _ = fs::remove_dir_all(restored_database_directory);
     }
+
+    // 验证 Linux 客户端沿用桌面高对比度和减少动画设置，不覆盖用户的系统偏好。
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_accessibility_preferences_follow_desktop_settings() {
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.AccessibilityPreferencesTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK accessibility test application");
+
+        let (window, bindings, theme, locale) = create_window(&application);
+        let settings = gtk::Settings::default().expect("GTK settings");
+        let previous_theme = settings.gtk_theme_name().map(|value| value.to_string());
+        let previous_animations = settings.is_gtk_enable_animations();
+        settings.set_gtk_theme_name(Some("HighContrast"));
+        settings.set_gtk_enable_animations(false);
+
+        let display = gtk::prelude::RootExt::display(&window);
+        let manager = adw::StyleManager::for_display(&display);
+        assert!(
+            manager.is_high_contrast(),
+            "libadwaita did not detect the desktop high-contrast theme"
+        );
+        assert!(
+            !adw::is_animations_enabled(window.upcast_ref::<gtk::Widget>()),
+            "libadwaita did not follow the desktop reduced-motion setting"
+        );
+
+        settings.set_gtk_theme_name(previous_theme.as_deref());
+        settings.set_gtk_enable_animations(previous_animations);
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+    }
 }

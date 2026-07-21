@@ -549,8 +549,7 @@ Open, Translate, Retry, fallback-consent, and Stop controls with their expected 
 exported text-editor roles. The GTK unit test also verifies that document
 progress uses the native progress-bar role, exposes a bounded completed/total fraction, and hides
 the progress control when no document job is selected. This proves AT-SPI semantic export only; it does
-not prove Orca speech, physical-compositor behavior, RTL/high-contrast presentation, or GPU
-rendering. Native CI runs the same fixture once with English defaults and once with
+not prove Orca speech, physical-compositor behavior, RTL presentation, or GPU rendering. Native CI runs the same fixture once with English defaults and once with
 `LINGUAMESH_TEST_LOCALE=zh-CN`; the second run checks the catalog-backed Simplified Chinese names
 for Open, Translate, Retry, fallback consent, and Stop without weakening the role assertions. The
 diagnostics panel uses the catalog-backed `diagnostics.summary` template for its
@@ -563,6 +562,13 @@ AT-SPI and confirms its focusable state; the fixture then requires Orca's debug 
 Linux application tree and a `SPEECH GENERATOR` record. This proves headless Orca integration and speech-generation
 dispatch only. It does not replace a human listening review, physical desktop review, or a claim
 about speech quality across locales.
+
+`tools/run-gtk-accessibility-preferences-test.sh` runs the serialized GTK component test in a
+private Xvfb and DBus session. It applies a temporary `HighContrast` GTK theme and disables
+`gtk-enable-animations`, then asserts that libadwaita detects high contrast and reduced motion.
+The test restores both process-local settings before exit; it does not modify the developer's
+desktop preferences. This verifies the Linux client's system-supported theme and motion behavior;
+manual visual review remains required for supported releases.
 
 The GitHub Actions native workflow pins Core revision
 `19229184a21a6725326a3d30dea9bc72e5ac999f`, installs the headers plus D-Bus, Xvfb, test-only

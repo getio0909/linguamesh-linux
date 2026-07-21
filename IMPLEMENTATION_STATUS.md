@@ -1,5 +1,24 @@
 # Implementation Status
 
+## 2026-07-21 — Linux system accessibility preference fixture
+
+Assumption: Linux should inherit desktop accessibility preferences through the pinned
+GTK/libadwaita runtime; the application must not replace those settings with a private animation
+or contrast policy.
+
+- Added the serialized `gtk_accessibility_preferences_follow_desktop_settings` component test.
+  It applies a process-local `HighContrast` theme and disables `gtk-enable-animations`, then
+  asserts libadwaita detects high contrast and reduced motion before restoring both settings.
+- Added `tools/run-gtk-accessibility-preferences-test.sh` and a Native CI step. The fixture uses a
+  private Xvfb/DBus session and never writes the developer's desktop configuration.
+- Local `cargo fmt --all -- --check`, `cargo check --all-targets --all-features --locked --offline`,
+  strict Clippy, no-default tests (`81 passed; 1 ignored`), shell syntax, and `git diff --check`
+  passed. The full GTK fixture was not run locally because `xvfb-run` is not installed; CI remains
+  the required display-backed validation.
+
+This is automated Linux accessibility evidence, not a replacement for manual high-contrast,
+reduced-motion, screen-reader, RTL, and compositor review before a supported release.
+
 ## 2026-07-21 — Linux dependency and provenance gate
 
 Assumption: Linux must enforce the same dependency advisory, license, and source policy as Core
