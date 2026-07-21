@@ -10135,9 +10135,12 @@ mod tests {
             if !resume_diagnostic_logged && resume_wait_started.elapsed() >= Duration::from_secs(5)
             {
                 let status_completed = restored_state.borrow().status() == AppStatus::Completed;
-                let error_present = restored_state.borrow().error_text().is_some();
+                let error_category = restored_state
+                    .borrow()
+                    .error_text()
+                    .and_then(|error| error.split(':').next().map(str::to_owned));
                 eprintln!(
-                    "GTK document restart: resume snapshot status_completed={status_completed}, job_state={:?}, progress={:?}, error_present={error_present}",
+                    "GTK document restart: resume snapshot status_completed={status_completed}, job_state={:?}, progress={:?}, error_category={error_category:?}",
                     restored_bindings.document_job_state.get(),
                     restored_bindings.document_progress.get(),
                 );
