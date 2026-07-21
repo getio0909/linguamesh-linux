@@ -10342,8 +10342,12 @@ mod tests {
             let identities =
                 validate_database_sidecars(&parent_fd, file_name).expect("sidecar snapshot");
 
+            let replacement = database
+                .directory
+                .join(format!("sidecar-replacement-{suffix}"));
+            fs::write(&replacement, b"REPLACED_SIDECAR").expect("replacement sidecar");
             fs::remove_file(&sidecar).expect("remove sidecar");
-            fs::write(&sidecar, b"REPLACED_SIDECAR").expect("replace sidecar");
+            fs::rename(&replacement, &sidecar).expect("replace sidecar");
 
             let error = ensure_database_sidecars_unchanged(&parent_fd, file_name, identities)
                 .expect_err("replacement must fail closed");
