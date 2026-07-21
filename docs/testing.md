@@ -28,6 +28,11 @@ the session Bearer credential. The worker verifies one model-list request, one t
 request, ignores `response.created`, streams `response.output_text.delta`, and completes on
 `response.completed` with deterministic `你好，Responses！` output.
 
+Authentication failures from provider HTTP 401/403 responses are mapped to the catalog-backed
+actionable authentication message before GTK renders the error label. The focused model regression
+checks Simplified Chinese copy and confirms backend status numbers are not shown to users; worker
+fixtures separately verify wrong credentials remain out of diagnostics and persistence.
+
 The GTK regression `provider_presets_map_to_stable_native_and_compatible_defaults` validates the
 six-position Linux preset order against the bundled Core provider catalog. Adapter types must match
 the catalog, and manual-model visibility is derived from its `model_listing` field. The application

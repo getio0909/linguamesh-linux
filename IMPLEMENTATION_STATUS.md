@@ -1,5 +1,25 @@
 # Implementation Status
 
+## 2026-07-21 — Linux actionable authentication-error localization
+
+Assumption: HTTP 401/403 responses are authentication failures; the client should replace backend
+status detail with a localized retry instruction while retaining the typed error category and never
+rendering a credential value.
+
+- Linux `src/model.rs` maps provider HTTP 401/403 failures to the catalog-backed
+  `error.authentication` message before GTK renders `AppState::localized_error_text`. The mapping
+  covers both Unauthorized and Forbidden status text and removes those backend status numbers from
+  the user-facing copy.
+- The regression `http_authentication_failures_use_localized_actionable_copy` verifies Simplified
+  Chinese output `身份验证: 请检查提供商凭据，然后重试。` for both statuses and confirms 401/403
+  details are absent. Existing worker authenticated-session tests continue to verify wrong
+  credentials are rejected without leaking the canary.
+- Local formatting and the focused demo-provider test passed. This is a Linux client error-copy
+  improvement; the remote provider remains a deterministic loopback fixture.
+
+This advances Linux evidence for mandatory Scenario 8. Human translated-copy/visual/Orca review,
+other clients, live-provider interoperability, signing, rollback, and stable release remain open.
+
 ## 2026-07-21 — Linux WAL process-crash recovery pin
 
 Assumption: the Linux profile database should request SQLite `synchronous=FULL` for every

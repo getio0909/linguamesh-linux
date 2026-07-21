@@ -2123,6 +2123,16 @@ fn additional_state_error_message(message: &str) -> Option<(&'static str, &'stat
 }
 
 fn localized_error_message(locale: UiLocale, message: &str) -> String {
+    if message.starts_with("Provider request failed with HTTP status 401")
+        || message.starts_with("Provider request failed with HTTP status 403")
+    {
+        return localization::text(
+            locale,
+            "error.authentication",
+            "Check the provider credential and try again.",
+        );
+    }
+
     if let Some((key, fallback)) = state_error_message(message) {
         return localization::text(locale, key, fallback);
     }
@@ -3078,6 +3088,23 @@ mod tests {
             state.error_text().as_deref(),
             Some("Authentication: Check the configured credential.")
         );
+    }
+
+    #[test]
+    fn http_authentication_failures_use_localized_actionable_copy() {
+        for message in [
+            "Provider request failed with HTTP status 401 Unauthorized.",
+            "Provider request failed with HTTP status 403 Forbidden.",
+        ] {
+            let mut state = AppState::default();
+            state.provider_failed(TranslationError::new(ErrorKind::Authentication, message));
+            let localized = state
+                .localized_error_text(UiLocale::SimplifiedChinese)
+                .expect("localized authentication error");
+            assert_eq!(localized, "身份验证: 请检查提供商凭据，然后重试。");
+            assert!(!localized.contains("401"));
+            assert!(!localized.contains("403"));
+        }
     }
 
     #[test]
