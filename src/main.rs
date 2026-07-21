@@ -9655,6 +9655,10 @@ mod tests {
                 && bindings.provider_endpoint.text() != DEFAULT_PROVIDER_ENDPOINT
         });
 
+        bindings.locale.set_selected(1);
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            state.borrow().locale() == UiLocale::SimplifiedChinese
+        });
         bindings
             .provider_name
             .set_text("Confirmed offline provider");
