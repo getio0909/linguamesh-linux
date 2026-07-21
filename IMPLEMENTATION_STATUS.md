@@ -1,18 +1,26 @@
 # Implementation Status
 
-## 2026-07-21 — Linux alternate-directory replacement race regression
+## 2026-07-21 — Linux alternate-directory replacement race hardening
 
-Assumption: same-UID replacement of a validated private parent with another private directory
-must fail closed just like symbolic-link and regular-file replacement, even when permissions and
-file type remain superficially valid.
+Assumption: replacing a validated private database parent with a distinct private directory must
+fail closed even when the replacement keeps the same owner, permissions, and directory type.
 
-- Linux adds `replaced_parent_with_alternate_directory_is_rejected_between_preflight_and_descriptor_open`.
-  The regression validates a private parent, swaps it for a distinct private directory, and
-  requires `openat2(RESOLVE_NO_SYMLINKS)` plus device/inode comparison to reject the replacement.
-  The original directory is restored and the alternate directory is removed after the assertion.
-- This is a narrow storage hardening checkpoint: the production host now retains the preflight
-  parent device/inode and rejects a mismatch after descriptor acquisition. Broader SQLite VFS
-  behavior and abrupt power-loss recovery remain outside the evidence boundary.
+- Linux code `14bb30e814d6d4ffcbf55c5a409d3729db2af967` retains the preflight parent device/inode,
+  compares both values after `openat2(RESOLVE_NO_SYMLINKS)`, and adds
+  `replaced_parent_with_alternate_directory_is_rejected_between_preflight_and_descriptor_open`.
+  Existing symlink/regular-file parent and symlink/hard-link final-component regressions remain.
+- Local `cargo fmt --all -- --check`, all-target/all-feature locked offline check, strict GUI
+  Clippy, demo-provider tests (`151 passed; 3 ignored`), targeted storage tests (3/2/1 passed),
+  localization key/placeholder/visible audits, l10n synchronization, Flatpak metadata, and diff
+  checks passed.
+- The first code-head Flatpak push/PR runs `29833169613`/`29833171987` failed only because the
+  manifest still referenced `3b2b69c`; corrected pin `2dc3e49db9489eeaa2f9f3ec8fd70eb639bfb118`
+  passed push Native/Flatpak/Foundation `29833316179`/`29833316220`/`29833316231` and PR
+  `29833318520`/`29833318770`/`29833318526`.
+
+This is unreleased Linux storage hardening evidence only. Broader same-UID filesystem/VFS variants,
+abrupt power-loss recovery, other clients, signed artifacts, rollback authorization, and stable
+release approval remain outside the claim.
 
 ## 2026-07-21 — Linux provider mnemonic focus fixture
 
