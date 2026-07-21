@@ -1,5 +1,23 @@
 # Implementation Status
 
+## 2026-07-21 — Linux AT-SPI action-name coverage
+
+Assumption: the smallest useful automated accessibility follow-up is to extend the existing live
+AT-SPI tree fixture for controls that are always present in the main window; this does not claim
+human screen-reader listening, translated-copy review, high-contrast rendering, or physical-desktop
+coverage.
+
+- `tools/gtk-atspi-inspect.py` now requires the production `Open text file`, `Translate`, `Retry
+  translation`, `Allow approved fallback`, and `Stop translation` controls to export non-empty names
+  with their expected AT-SPI roles, while retaining the two text-editor role checks.
+- `docs/testing.md` records the expanded control set. The fixture remains CI-authoritative on hosts
+  that provide Xvfb, AT-SPI, and `python3-pyatspi`; this host does not provide those runtime packages.
+- Local validation for this documentation/script-only slice: `python3 -m py_compile tools/gtk-atspi-inspect.py`,
+  `bash -n tools/run-gtk-atspi-test.sh`, and `git diff --check`.
+
+This remains unreleased Linux-first evidence. Broader filesystem/VFS races, manual visual and Orca
+review, other clients, signing, distributable artifacts, and stable-release authorization remain open.
+
 ## 2026-07-21 — Linux preflight parent-replacement regression
 
 Assumption: Linux profile storage must reject a parent-directory replacement that occurs after

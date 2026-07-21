@@ -71,7 +71,13 @@ def main() -> int:
         print("AT-SPI fixture could not enumerate the accessibility desktop.", file=sys.stderr)
         return 1
 
-    expected = {"Stop translation": {"ROLE_PUSH_BUTTON"}}
+    expected = {
+        "Open text file": {"ROLE_PUSH_BUTTON"},
+        "Allow approved fallback": {"ROLE_CHECK_BOX"},
+        "Translate": {"ROLE_PUSH_BUTTON"},
+        "Retry translation": {"ROLE_PUSH_BUTTON"},
+        "Stop translation": {"ROLE_PUSH_BUTTON"},
+    }
     by_name: dict[str, list[object]] = {}
     for node in nodes:
         try:
