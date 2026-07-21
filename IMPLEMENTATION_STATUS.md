@@ -11,13 +11,16 @@ pathname preflight but before the descriptor is opened.
   descriptor-pinned migration test still proves a replacement after a successful open remains on
   the original inode.
 - Local targeted regression, no-default tests (`81 passed; 1 ignored`), demo-provider tests
-  (`146 passed; 3 ignored`), strict Clippy, formatting, and diff checks passed. Native, Flatpak,
-  and Foundation remote gates for this documentation/code head are required before the checkpoint
-  is considered verified.
+  (`146 passed; 3 ignored`), strict Clippy, formatting, and diff checks passed. Push Native,
+  Flatpak, and Foundation runs `29798394839`/`29798394838`/`29798394846` and PR runs
+  `29798396546`/`29798396642`/`29798396614` passed all jobs, including the GTK, portal, Orca,
+  packaging, checksum, rollback-evidence, and sandbox fixtures.
 - The Flatpak source manifest is pinned to the exact code head
   `b463e5b94ed6b46ef24aee89ff9887d9dd5c038c`; the metadata validator rejects the prior pin when
   `src/worker.rs` changes, so no stale-build exception is used.
 
+The Flatpak source pin remains `b463e5b94ed6b46ef24aee89ff9887d9dd5c038c`, an ancestor with no
+build-input changes for the docs-only head `7355824`; the metadata validator passed this lineage.
 This closes the deterministic preflight replacement boundary only; broader filesystem/VFS races,
 other clients, human review, signing, rollback authorization, and stable release remain open.
 
