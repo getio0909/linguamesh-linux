@@ -6,7 +6,8 @@ Assumption: the Linux client must prove the complete wrong-credential path from 
 button through the worker's provider rejection event, while keeping the credential and backend
 status detail out of the visible alert.
 
-- Linux code adds the ignored serialized fixture `gtk_authentication_failure_shows_localized_redacted_error`.
+- Linux code revision `bd34874c70f7b27f1a209cfbe5e6abdfbfbc30d9` adds the ignored serialized fixture
+  `gtk_authentication_failure_shows_localized_redacted_error`.
   It starts the deterministic bearer-token provider, enters a wrong session credential through the
   real GTK form, waits for the worker's 401/403 rejection, switches the form to Simplified Chinese,
   and asserts that the visible `Alert` contains the catalog-backed actionable copy without the
