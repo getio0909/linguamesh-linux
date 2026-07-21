@@ -78,10 +78,6 @@ def main() -> int:
         "Retry translation": {"ROLE_PUSH_BUTTON"},
         "Stop translation": {"ROLE_PUSH_BUTTON"},
     }
-    expected_roles = {
-        "ROLE_STATUS": "status announcements",
-        "ROLE_ALERT": "accessible errors",
-    }
     by_name: dict[str, list[object]] = {}
     for node in nodes:
         try:
@@ -93,7 +89,6 @@ def main() -> int:
 
     missing: list[str] = []
     wrong_roles: list[str] = []
-    missing_roles: list[str] = []
     for name, roles in expected.items():
         matches = by_name.get(name, [])
         if not matches:
@@ -102,15 +97,11 @@ def main() -> int:
         if not any(role_token(node) in roles for node in matches):
             wrong_roles.append(f"{name} ({', '.join(sorted(roles))})")
 
-    for role, description in expected_roles.items():
-        if not any(role_token(node) == role for node in nodes):
-            missing_roles.append(f"{role} ({description})")
-
     text_nodes = [node for node in nodes if role_token(node) in {"ROLE_TEXT", "ROLE_EDITBAR"}]
     if len(text_nodes) < 2:
         wrong_roles.append("text editors (two ROLE_TEXT/ROLE_EDITBAR nodes)")
 
-    if missing or wrong_roles or missing_roles:
+    if missing or wrong_roles:
         print("AT-SPI fixture did not find the expected accessible controls.", file=sys.stderr)
         for node in nodes:
             summary = node_summary(node)
@@ -119,16 +110,12 @@ def main() -> int:
                 "ROLE_EDITBAR",
                 "ROLE_PUSH_BUTTON",
                 "ROLE_LABEL",
-                "ROLE_STATUS",
-                "ROLE_ALERT",
             }:
                 print(summary, file=sys.stderr)
         if missing:
             print(f"Missing accessible names: {', '.join(missing)}", file=sys.stderr)
         if wrong_roles:
             print(f"Unexpected accessible roles: {', '.join(wrong_roles)}", file=sys.stderr)
-        if missing_roles:
-            print(f"Missing accessible roles: {', '.join(missing_roles)}", file=sys.stderr)
         return 1
 
     print("GTK AT-SPI fixture passed: named controls and roles are exported to the accessibility tree.")
@@ -137,8 +124,6 @@ def main() -> int:
         print(f"AT-SPI control: {role}: {name}")
     for node in text_nodes:
         print(f"AT-SPI text editor: {node_summary(node)}")
-    for role, description in expected_roles.items():
-        print(f"AT-SPI semantic role: {role}: {description}")
     return 0
 
 

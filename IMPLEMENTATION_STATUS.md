@@ -1,20 +1,20 @@
 # Implementation Status
 
-## 2026-07-21 — Linux AT-SPI status and error roles
+## 2026-07-21 — Linux AT-SPI status-role fixture boundary
 
-Assumption: the live accessibility tree must expose semantic status and error regions in addition
-to named action controls; this automated check does not replace human Orca listening or visual
-review.
+Assumption: a live AT-SPI role assertion must match the roles actually exported by the pinned GTK
+runtime; GTK unit-level semantic roles remain the authoritative check when the bridge normalizes
+empty regions.
 
-- `tools/gtk-atspi-inspect.py` now requires `ROLE_STATUS` for status announcements and
-  `ROLE_ALERT` for accessible errors, and prints those semantic-role assertions in English
-  diagnostics while retaining the existing named-control and text-editor checks.
-- `docs/testing.md` records the expanded live AT-SPI role coverage. The fixture remains
-  CI-authoritative on hosts with Xvfb, AT-SPI, and `python3-pyatspi`; this host does not provide
-  those runtime packages.
-- Local Python compilation, shell syntax, localization audits, and diff checks are required before
-  the remote GTK/AT-SPI gate; human Orca listening, translated-copy/RTL review, and physical
-  desktop rendering remain open.
+- An attempted live-tree extension required `ROLE_STATUS` and `ROLE_ALERT`, but push Native
+  `29803564933` and PR Native `29803567256` both failed with the GTK/AT-SPI runtime exporting the
+  empty status/error regions as `ROLE_LABEL`. The failure was retained as evidence rather than
+  weakening the assertion to a false semantic pass.
+- The incompatible live-tree requirement is reverted; `tools/gtk-atspi-inspect.py` again checks
+  the named controls and text-editor roles, while the existing GTK unit test remains authoritative
+  for `AccessibleRole::Status` and `AccessibleRole::Alert`.
+- The Linux branch remains unreleased. Human Orca listening, translated-copy/RTL review, physical
+  desktop rendering, and a future runtime-compatible status/error fixture remain open.
 
 ## 2026-07-21 — Linux final database-component race regression
 
