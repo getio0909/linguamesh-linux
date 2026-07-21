@@ -17,10 +17,10 @@ and Resume completes only the remaining segments without duplicating output.
   (`83 passed; 1 ignored`), demo-provider tests (`156 passed; 3 ignored`), localization key,
   placeholder, visible-string, l10n synchronization, Flatpak metadata, and diff checks passed.
   Display-backed execution remains CI-authoritative on this host.
-- Code-head push Native/Flatpak/Foundation gates `29873822240`/`29873822363`/`29873822338` and PR
-  gates `29873825162`/`29873825141`/`29873825142` all passed; Native explicitly reports the exact
-  interrupted document-job fixture successful. Status-head gates will be recorded after this
-  documentation checkpoint completes.
+- Evidence documentation head `6710c641b8aa4ae39135b948d93452445bbdc245` passed push
+  Native/Flatpak/Foundation gates `29874337974`/`29874337743`/`29874337869` and PR gates
+  `29874339972`/`29874339969`/`29874339977`; Native explicitly reports the exact interrupted
+  document-job fixture successful.
 
 This advances unreleased Linux evidence for mandatory Scenario 12. Physical power-loss recovery,
 live-provider interoperability, human visual/copy/Orca review, other clients, signing, rollback,
