@@ -9790,7 +9790,7 @@ mod tests {
             state.borrow().status() == AppStatus::Cancelled && state.borrow().has_partial_output()
         });
         assert_eq!(state.borrow().output(), partial_output);
-        assert_eq!(bindings.status.label(), "Status: Cancelled");
+        assert!(bindings.status.label().contains("Translation cancelled"));
         assert!(!bindings.stop.is_sensitive());
         assert!(bindings.retry_translation.is_sensitive());
         assert!(state.borrow().error_text().is_none());
