@@ -1,5 +1,24 @@
 # Implementation Status
 
+## 2026-07-21 — Linux durability pin: SQLite FULL WAL synchronization
+
+Assumption: the Linux profile database should request SQLite `synchronous=FULL` for every
+file-backed connection so committed WAL transactions receive the strongest default durability
+available from the bundled Unix VFS; this does not claim to emulate physical power loss or every
+alternate SQLite VFS.
+
+- Core `cfecf17802f022b3dc49cff2917de5a77382aefa` changes the shared storage connection pragma from
+  `synchronous=NORMAL` to `synchronous=FULL` and updates the migration/architecture contract and
+  pragma regression to require SQLite mode `2`. Core local formatting, workspace check, strict
+  Clippy, and full workspace tests passed; Core CI/Fuzz/Native SDK `29852245672`/`29852245746`/
+  `29852246017` passed.
+- Linux Native and Flatpak now consume that exact Core revision; the runtime code is unchanged and
+  the existing Linux storage/WAL tests remain the behavioral boundary. Local Linux validation and
+  the six Linux gates are required before this pin is considered verified.
+
+This is unreleased Linux durability hardening evidence. Physical power-loss simulation, alternate
+SQLite VFS behavior, signing, rollback authorization, other clients, and stable release remain open.
+
 ## 2026-07-21 — Linux normalized usage metadata
 
 Assumption: Linux exposes token usage as bounded, non-sensitive metadata; provider-reported,
