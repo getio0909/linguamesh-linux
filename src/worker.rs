@@ -26,6 +26,7 @@ use rustix::fs::{
 use rustix::io::Errno;
 use std::collections::HashMap;
 use std::error::Error;
+use std::ffi::OsString;
 use std::fmt;
 use std::fs::{self, DirBuilder};
 use std::os::fd::AsRawFd;
@@ -4393,6 +4394,11 @@ fn open_profile_storage(
 ) -> Result<(Storage, Vec<ProviderProfile>, Option<ProviderProfileId>), TranslationError> {
     let prepared = prepare_database_file(path)?;
     let storage = Storage::open_from_trusted_descriptor(prepared.storage_path())?;
+    ensure_database_sidecars_unchanged(
+        &prepared.parent_fd,
+        &prepared.file_name,
+        prepared.sidecars,
+    )?;
     let profiles = storage.provider_profiles()?;
     let active_profile_id = storage
         .active_provider_profile()?
@@ -4403,6 +4409,9 @@ fn open_profile_storage(
 struct PreparedDatabase {
     storage_path: PathBuf,
     _file_fd: rustix::fd::OwnedFd,
+    parent_fd: rustix::fd::OwnedFd,
+    file_name: OsString,
+    sidecars: DatabaseSidecarIdentities,
 }
 
 impl PreparedDatabase {
@@ -4420,20 +4429,29 @@ fn prepare_database_file(path: &Path) -> Result<PreparedDatabase, TranslationErr
             "The profile database file name is invalid.",
         )
     })?;
-    validate_database_sidecars(&parent_fd, file_name)?;
+    let sidecars = validate_database_sidecars(&parent_fd, file_name)?;
     let file_fd = open_database_file(&parent_fd, file_name, parent.database_identity)?;
     let mut storage_path = PathBuf::from("/proc/self/fd");
     storage_path.push(file_fd.as_raw_fd().to_string());
     Ok(PreparedDatabase {
         storage_path,
         _file_fd: file_fd,
+        parent_fd,
+        file_name: file_name.to_os_string(),
+        sidecars,
     })
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 struct FileIdentity {
     device: u64,
     inode: u64,
+}
+
+#[derive(Clone, Copy)]
+struct DatabaseSidecarIdentities {
+    wal: Option<FileIdentity>,
+    shm: Option<FileIdentity>,
 }
 
 struct ValidatedDatabasePath {
@@ -4607,37 +4625,66 @@ fn open_database_file(
 fn validate_database_sidecars(
     parent_fd: &rustix::fd::OwnedFd,
     file_name: &std::ffi::OsStr,
-) -> Result<(), TranslationError> {
-    for suffix in ["-wal", "-shm"] {
-        let mut sidecar_name = file_name.to_os_string();
-        sidecar_name.push(suffix);
-        let sidecar_fd = match openat(
-            parent_fd,
-            &sidecar_name,
-            RustixOFlags::PATH | RustixOFlags::NOFOLLOW | RustixOFlags::CLOEXEC,
-            RustixMode::empty(),
-        ) {
-            Ok(file) => file,
-            Err(error) if error == Errno::NOENT => continue,
-            Err(_) => {
-                return Err(TranslationError::new(
-                    ErrorKind::Persistence,
-                    "The profile database sidecar could not be inspected.",
-                ));
-            }
-        };
-        let metadata = fstat(&sidecar_fd).map_err(|_| {
-            TranslationError::new(
-                ErrorKind::Persistence,
-                "The profile database sidecar could not be inspected.",
-            )
-        })?;
-        if !RustixFileType::from_raw_mode(metadata.st_mode).is_file() || metadata.st_nlink != 1 {
+) -> Result<DatabaseSidecarIdentities, TranslationError> {
+    Ok(DatabaseSidecarIdentities {
+        wal: inspect_database_sidecar(parent_fd, file_name, "-wal")?,
+        shm: inspect_database_sidecar(parent_fd, file_name, "-shm")?,
+    })
+}
+
+fn inspect_database_sidecar(
+    parent_fd: &rustix::fd::OwnedFd,
+    file_name: &std::ffi::OsStr,
+    suffix: &str,
+) -> Result<Option<FileIdentity>, TranslationError> {
+    let mut sidecar_name = file_name.to_os_string();
+    sidecar_name.push(suffix);
+    let sidecar_fd = match openat(
+        parent_fd,
+        &sidecar_name,
+        RustixOFlags::PATH | RustixOFlags::NOFOLLOW | RustixOFlags::CLOEXEC,
+        RustixMode::empty(),
+    ) {
+        Ok(file) => file,
+        Err(error) if error == Errno::NOENT => return Ok(None),
+        Err(_) => {
             return Err(TranslationError::new(
                 ErrorKind::Persistence,
-                "The profile database sidecar is not a private regular file.",
+                "The profile database sidecar could not be inspected.",
             ));
         }
+    };
+    let metadata = fstat(&sidecar_fd).map_err(|_| {
+        TranslationError::new(
+            ErrorKind::Persistence,
+            "The profile database sidecar could not be inspected.",
+        )
+    })?;
+    if !RustixFileType::from_raw_mode(metadata.st_mode).is_file() || metadata.st_nlink != 1 {
+        return Err(TranslationError::new(
+            ErrorKind::Persistence,
+            "The profile database sidecar is not a private regular file.",
+        ));
+    }
+    Ok(Some(FileIdentity {
+        device: metadata.st_dev,
+        inode: metadata.st_ino,
+    }))
+}
+
+fn ensure_database_sidecars_unchanged(
+    parent_fd: &rustix::fd::OwnedFd,
+    file_name: &std::ffi::OsStr,
+    expected: DatabaseSidecarIdentities,
+) -> Result<(), TranslationError> {
+    let current = validate_database_sidecars(parent_fd, file_name)?;
+    if expected.wal.is_some() && expected.wal != current.wal
+        || expected.shm.is_some() && expected.shm != current.shm
+    {
+        return Err(TranslationError::new(
+            ErrorKind::Persistence,
+            "The profile database sidecar was replaced during open.",
+        ));
     }
     Ok(())
 }
@@ -5749,9 +5796,10 @@ fn cancel_active(active_cancellation: &Mutex<Option<ActiveCancellation>>) {
 mod tests {
     use super::{
         COMMAND_CAPACITY, CoreWorker, PersistenceIntent, QueuedCommand, RoutingCircuitBreaker,
-        WorkerCommand, WorkerEvent, alternative_pdf_source_name, open_database_file,
-        pin_database_parent, prepare_database_file, profile_without_secret, routing_backoff_delay,
-        validate_core_contract, validate_database_path,
+        WorkerCommand, WorkerEvent, alternative_pdf_source_name,
+        ensure_database_sidecars_unchanged, open_database_file, pin_database_parent,
+        prepare_database_file, profile_without_secret, routing_backoff_delay,
+        validate_core_contract, validate_database_path, validate_database_sidecars,
     };
     use crate::model::{ProviderProfile, ProviderProfileId};
     use linguamesh_document::{DocumentFormat, DocumentJob, DocumentJobState};
@@ -10273,6 +10321,37 @@ mod tests {
                 Ok(WorkerEvent::DemoProviderReady { .. })
             ));
             shutdown(&worker);
+        }
+    }
+
+    #[test]
+    fn replaced_database_sidecar_is_rejected_after_snapshot() {
+        for suffix in ["-wal", "-shm"] {
+            let database = TestDatabase::new();
+            fs::create_dir(&database.directory).expect("database directory");
+            fs::set_permissions(&database.directory, fs::Permissions::from_mode(0o700))
+                .expect("database directory permissions");
+            let storage = Storage::open(database.path()).expect("initial storage");
+            drop(storage);
+
+            let sidecar = PathBuf::from(format!("{}{}", database.path().display(), suffix));
+            fs::write(&sidecar, b"PRIVATE_SIDECAR").expect("sidecar");
+            let parent = validate_database_path(database.path()).expect("validated database");
+            let parent_fd = pin_database_parent(&parent).expect("pinned database parent");
+            let file_name = database.path().file_name().expect("database file name");
+            let identities =
+                validate_database_sidecars(&parent_fd, file_name).expect("sidecar snapshot");
+
+            fs::remove_file(&sidecar).expect("remove sidecar");
+            fs::write(&sidecar, b"REPLACED_SIDECAR").expect("replace sidecar");
+
+            let error = ensure_database_sidecars_unchanged(&parent_fd, file_name, identities)
+                .expect_err("replacement must fail closed");
+            assert_eq!(error.kind, ErrorKind::Persistence);
+            assert_eq!(
+                error.message,
+                "The profile database sidecar was replaced during open."
+            );
         }
     }
 
