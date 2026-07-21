@@ -9,9 +9,13 @@ registered POSIX descriptor, applies the same bounded parser, and consumes the l
   sanitizer gate and adds `lm_engine_file_lease_consume_posix_document`. The function duplicates
   the registered descriptor, reads at most `MAX_DOCUMENT_BYTES + 1`, validates the shared document
   contract, and consumes the lease only after successful parsing.
-- Core local workspace tests, strict Clippy, and Native SDK C/C++ smoke passed. Core remote CI,
-  Fuzz and sanitizers, and Native SDK workflows are running for this exact commit; their run IDs
-  will be recorded here after completion.
+- Core local workspace tests, strict Clippy, and Native SDK C/C++ smoke passed. Exact Core CI,
+  Fuzz and sanitizers, and Native SDK runs `29795469293`, `29795469253`, and `29795469275` passed
+  across their Linux, Android, Windows, and Apple jobs.
+- Linux head `126699a1eb93fbecafcbb73f79d83c680652ce00` now appears exactly in the Flatpak source
+  manifest, so the package gate and central release manifest consume the same reviewed revision.
+  Flatpak metadata validation and formatting checks passed locally; the corresponding Native,
+  Flatpak, and Foundation PR gates are `29795527184`, `29795527194`, and `29795527187`.
 - Linux's direct Rust GTK path remains the production portal-read path and continues to enforce the
   same bounded lease lifetime locally. The new native API is a Linux-first compatibility slice and
   does not claim Android ParcelFileDescriptor or Windows handle transfer.

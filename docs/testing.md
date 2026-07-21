@@ -547,7 +547,7 @@ dispatch only. It does not replace a human listening review, physical desktop re
 about speech quality across locales.
 
 The GitHub Actions native workflow pins Core revision
-`2c6f9596f33e9ede3af65262e27c9ce8f8ff38b9`, installs the headers plus D-Bus, Xvfb, test-only
+`19229184a21a6725326a3d30dea9bc72e5ac999f`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
 namespace test through the unprivileged path.
