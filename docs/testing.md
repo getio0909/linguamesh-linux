@@ -285,10 +285,11 @@ and replaces the visible parent after `openat2(RESOLVE_NO_SYMLINKS)` while verif
 descriptor-pinned Core migration remains in the original directory. It preserves every
 restart row/default across session switches, failed persistent changes, and public connection
 cancellation, and keeps session mode usable after storage initialization fails. A dedicated
-preflight-race regression replaces the validated parent with a symlink between path validation and
-descriptor opening and a second regression replaces the final database path with a symlink after
-preflight; both require rejection before an unsafe descriptor is accepted. It also verifies that
-a completed standard translation is recorded in bounded history, an Incognito completion is
+preflight-race regressions replace the validated parent with a symlink or regular file between path
+validation and descriptor opening, while companion final-component regressions replace the database
+path with a symlink or hard link after preflight; all require rejection before an unsafe descriptor
+is accepted. It also verifies that a completed standard translation is recorded in bounded history,
+an Incognito completion is
 skipped, and the startup count/clear command path uses the same database. A Linux-side
 Scenario 5 regression authenticates and saves distinct providers A and B with independent models,
 then uses one Connect action per remembered switch and proves each next translation reaches only
@@ -696,9 +697,10 @@ asserts Simplified Chinese translations while preserving safe dynamic diagnostic
 The automated Linux slice now covers the main GTK/AT-SPI semantic tree, keyboard focus, headless
 Orca integration, portal and Flatpak smoke paths, catalog key/placeholder invariants, the
 `cargo-deny` advisory/license/source policy, and the implemented storage transaction boundary.
-The storage regressions cover both parent-directory and final-database-component replacement races
-through descriptor-pinned `openat2`/`O_NOFOLLOW` opens; broader same-UID filesystem/VFS variants and
-power loss remain outside the tested boundary.
+The storage regressions cover parent-directory replacement with a symlink or regular file and
+final-database-component replacement with a symlink or hard link through descriptor-pinned
+`openat2`/`O_NOFOLLOW` opens; broader same-UID filesystem/VFS variants and power loss remain outside
+the tested boundary.
 Remaining evidence is deliberately explicit: human screen-reader listening and translated-copy/
 RTL/visual review; physical compositor, GPU-backed Wayland, and broader X11/desktop coverage;
 prompted interactive Secret Service approval; broader filesystem/VFS and power-loss races; signed

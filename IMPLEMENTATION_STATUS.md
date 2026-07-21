@@ -1,5 +1,23 @@
 # Implementation Status
 
+## 2026-07-21 — Linux post-preflight regular-file and hard-link race regressions
+
+Assumption: the Linux storage boundary must reject same-UID replacement of a validated parent or
+database leaf even when the replacement is not a symbolic link.
+
+- Added `replaced_parent_with_regular_file_is_rejected_between_preflight_and_descriptor_open`,
+  which replaces the validated parent directory with a regular file before descriptor pinning and
+  requires fail-closed rejection.
+- Added `replaced_database_file_with_hard_link_is_rejected_between_preflight_and_descriptor_open`,
+  which replaces the validated database leaf with a hard link before descriptor opening and
+  requires rejection without modifying the linked target.
+- Local `cargo fmt --all -- --check`, targeted regressions, demo-provider tests (`149 passed; 3
+  ignored`), no-default tests (`81 passed; 1 ignored`), strict Clippy, and `git diff --check`
+  passed. Remote Native/Flatpak/Foundation gates are pending for this head.
+
+This expands automated Linux storage-race evidence only; broader filesystem/VFS variants, power
+loss, human review, other clients, signing, and stable release remain open.
+
 ## 2026-07-21 — Linux Core incompatibility rejection matrix
 
 Assumption: Linux must refuse an unreviewed Core before provider work when any compatibility
