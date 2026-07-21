@@ -555,7 +555,7 @@ headless Weston. `tools/run-wayland-test.sh` creates a private `0700` runtime di
 `DISPLAY`, sets `GDK_BACKEND=wayland`, waits at most ten seconds for a dedicated socket, and uses
 exit traps to stop Weston and remove the directory. Tests are serialized because GTK owns
 process-global state. The same test asserts the baseline accessibility roles, editor properties,
-visible-label relations and mnemonics, focusability, explicit Stop name, hidden-empty-error
+visible-label relations and mnemonics (including the fallback-provider dropdown), focusability, explicit Stop name, hidden-empty-error
 behavior, and Busy-state reset. The test also switches the runtime locale to Simplified Chinese and
 verifies the catalog-backed Translate and Stop labels, then switches to Arabic and verifies RTL
 direction without replacing the source editor buffer before restoring English. GTK's helpers prove
