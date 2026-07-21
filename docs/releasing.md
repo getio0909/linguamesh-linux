@@ -46,7 +46,7 @@ while persistent
 secret references use the Linux GIO Secret Service adapter and fail closed when the desktop keyring
 is unavailable or requires an interactive prompt. The native workflow
 pins reviewed Core functional revision
-`e7ca21df183b15e10e157f175526a1b7ac0b3ad0`, whose Core delta adds the document decoder fuzz
+`1e0ae8d3fcf8bd5fead244ebf78cb3ea4a0ec300`, whose Core delta adds bounded document lease
 smoke and AddressSanitizer gate in addition to the protocol decoder fuzz gate and bounded FileLease lifecycle
 and engine-scoped ABI lease controls (lifecycle only; document-command resource consumption and
 OS-handle transfer remain open), and whose storage delta adds
@@ -67,7 +67,7 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `e7ca21df183b15e10e157f175526a1b7ac0b3ad0` and l10n
+The current Linux gate consumes Core `1e0ae8d3fcf8bd5fead244ebf78cb3ea4a0ec300` and l10n
 `026c35b8dbb1c13c22d77809cc5fe72e6af6f5a3` (422 catalog messages). Request-level glossary rules, bounded CSV,
 interchange are implemented in the Linux slice; persistent glossary libraries and TBX import
 remain outside the release claim.

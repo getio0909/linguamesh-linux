@@ -5,7 +5,7 @@
 Assumption: Linux's compatibility pin must include the Core document-decoder fuzz and sanitizer
 workflow before this repository records the next cross-repository validation checkpoint.
 
-- Pinned Core `e7ca21df183b15e10e157f175526a1b7ac0b3ad0`, whose separate fuzz workspace dispatches
+- Pinned Core `1e0ae8d3fcf8bd5fead244ebf78cb3ea4a0ec300`, whose separate fuzz workspace dispatches
   every supported document decoder through the existing 4 MiB document bound in addition to the
   bounded 1 MiB protocol decoder gate.
 - Core's remote Fuzz and sanitizers run `29791113663` passed on the fixed nightly toolchain with
@@ -22,8 +22,12 @@ workflow before this repository records the next cross-repository validation che
   all-target check, and diff checks. The local all-feature GTK invocation was not runnable because
   this workstation lacks `xvfb-run` and exposes incomplete GTK linker symbols; the remote Native
   gate is authoritative for that environment-dependent coverage.
-- Linux runtime APIs are unchanged. Document-command resource consumption, OS-handle transfer,
-  visual/GPU review, signing, rollback, and stable release remain open.
+- Core's C ABI now exposes `lm_engine_file_lease_consume_document`: hosts submit a bounded UTF-8
+  source name and document snapshot under an engine-scoped lease, and Core consumes that lease once
+  the shared document parser accepts the snapshot. Linux's direct Rust GTK path remains the
+  production portal-read path and continues to enforce the same bounded lease lifetime locally.
+- ABI OS-handle duplication/transfer, visual/GPU review, signing, rollback, and stable release
+  remain open.
 
 Local Linux validation and the PR's Native/Flatpak/Foundation gates are required before this pin is
 considered verified. The PR remains Draft/Open and this is unreleased Linux-first evidence.
