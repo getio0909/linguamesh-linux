@@ -28,6 +28,9 @@ workflow before this repository records the next cross-repository validation che
 Local Linux validation and the PR's Native/Flatpak/Foundation gates are required before this pin is
 considered verified. The PR remains Draft/Open and this is unreleased Linux-first evidence.
 
+The next ordinary push is retained as the PR-visible evidence refresh for this documentation-only
+pin update; no runtime behavior or release status changes in that refresh.
+
 ## 2026-07-20 — Core ABI FileLease lifecycle controls pinned
 
 Assumption: Linux must consume the exact Core revision that defines the native ABI lease lifecycle,
