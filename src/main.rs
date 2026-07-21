@@ -9994,6 +9994,8 @@ mod tests {
             .expect("restrict document restart directory");
         let database_path = database_directory.join("state.sqlite3");
         let external = ExternalFakeProvider::start(EXPECTED_SECRET);
+        let profile_id = ProviderProfileId::parse("gtk-document-restart-provider")
+            .expect("document restart provider profile ID");
         let context = glib::MainContext::default();
         let state = Rc::new(RefCell::new(AppState::default()));
         let worker = Rc::new(CoreWorker::spawn_with_database(&database_path));
@@ -10011,6 +10013,7 @@ mod tests {
             .set_text("GTK document restart provider");
         bindings.provider_endpoint.set_text(&external.endpoint);
         bindings.provider_credential.set_text(EXPECTED_SECRET);
+        bindings.draft_profile_id.replace(Some(profile_id.clone()));
         bindings.connect.emit_clicked();
         assert!(bindings.provider_credential.text().is_empty());
         spin_main_context_until(&context, Duration::from_secs(5), || {
@@ -10114,6 +10117,7 @@ mod tests {
         restored_bindings
             .provider_credential
             .set_text(EXPECTED_SECRET);
+        restored_bindings.draft_profile_id.replace(Some(profile_id));
         restored_bindings.connect.emit_clicked();
         assert!(restored_bindings.provider_credential.text().is_empty());
         eprintln!("GTK document restart: waiting for restored provider connection");
