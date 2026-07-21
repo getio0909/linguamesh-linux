@@ -367,6 +367,10 @@ startup count/clear command path uses the same database. The focused
 `incognito_translation_bypasses_existing_memory_and_persists_nothing` regression first stores a
 standard result, then requires an Incognito repeat to reach the provider again while history and
 translation-memory counts remain unchanged. A Linux-side
+`gtk_incognito_translation_bypasses_memory_and_persistence` fixture also drives the production GTK
+Incognito toggle, authenticated connection, model selection, and Translate action. It verifies the
+standard request creates one history and one translation-memory entry, the identical Incognito
+request reaches the loopback provider again, and both persisted counts remain at one.
 Scenario 5 regression authenticates and saves distinct providers A and B with independent models,
 then uses one Connect action per remembered switch and proves each next translation reaches only
 the newly confirmed provider. It rejects B with A's credential without changing the active B/model

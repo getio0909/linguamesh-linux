@@ -8104,7 +8104,8 @@ mod tests {
     use std::net::TcpListener;
     use std::os::unix::fs::PermissionsExt;
     use std::rc::Rc;
-    use std::sync::mpsc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::{Arc, mpsc};
     use std::thread::JoinHandle;
     use std::time::{Duration, Instant};
     use tokio::runtime::Builder;
@@ -9344,6 +9345,7 @@ mod tests {
 
     struct ExternalFakeProvider {
         endpoint: String,
+        chat_requests: Arc<AtomicUsize>,
         shutdown: Option<oneshot::Sender<()>>,
         thread: Option<JoinHandle<()>>,
     }
@@ -9364,18 +9366,20 @@ mod tests {
                     )
                     .await
                     .expect("external provider");
+                    let chat_requests = server.chat_request_counter();
                     ready_sender
-                        .send(server.base_url())
+                        .send((server.base_url(), chat_requests))
                         .expect("provider endpoint");
                     let _ = shutdown_receiver.await;
                     server.shutdown().await;
                 });
             });
-            let endpoint = ready_receiver
+            let (endpoint, chat_requests) = ready_receiver
                 .recv_timeout(Duration::from_secs(5))
                 .expect("provider startup");
             Self {
                 endpoint,
+                chat_requests,
                 shutdown: Some(shutdown),
                 thread: Some(thread),
             }
@@ -9968,6 +9972,96 @@ mod tests {
         drop(state);
         drop(worker);
         provider_thread.join().expect("glossary provider shutdown");
+    }
+
+    #[allow(clippy::too_many_lines)]
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_incognito_translation_bypasses_memory_and_persistence() {
+        const EXPECTED_SECRET: &str = "GTK_EXPECTED_INCOGNITO_SECRET";
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.GtkIncognitoTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK incognito application");
+
+        let database_directory = std::env::temp_dir().join(format!(
+            "linguamesh-linux-incognito-ui-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock after Unix epoch")
+                .as_nanos()
+        ));
+        fs::create_dir(&database_directory).expect("create incognito UI database directory");
+        fs::set_permissions(&database_directory, fs::Permissions::from_mode(0o700))
+            .expect("protect incognito UI database directory");
+        let database_path = database_directory.join("state.sqlite3");
+        let external = ExternalFakeProvider::start(EXPECTED_SECRET);
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn_with_database(&database_path));
+        let (window, bindings, theme, locale) = create_window(&application);
+        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
+        connect_action_handlers(&bindings, &state, &worker);
+        start_event_pump(&bindings, &state, &worker);
+        let context = glib::MainContext::default();
+        window.present();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().worker_ready()
+                && bindings.provider_endpoint.text() != DEFAULT_PROVIDER_ENDPOINT
+        });
+
+        bindings.provider_name.set_text("GTK incognito provider");
+        bindings.provider_endpoint.set_text(&external.endpoint);
+        bindings.provider_credential.set_text(EXPECTED_SECRET);
+        bindings.connect.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Ready
+                && state.borrow().active_provider().is_some()
+                && !state.borrow().models().is_empty()
+        });
+        bindings.model.set_selected(1);
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().selected_model() == Some("fake-translator")
+        });
+
+        bindings.source.set_text("GTK incognito memory probe");
+        bindings.translate.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Completed
+                && state.borrow().translation_history_count() == 1
+                && state.borrow().translation_memory_count() == 1
+        });
+        let first_chat_requests = external.chat_requests.load(Ordering::SeqCst);
+        assert!(first_chat_requests >= 1);
+
+        bindings.incognito.set_active(true);
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            state.borrow().is_incognito()
+        });
+        bindings.source.set_text("GTK incognito memory probe");
+        bindings.translate.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Completed
+                && external.chat_requests.load(Ordering::SeqCst) > first_chat_requests
+        });
+        assert!(state.borrow().is_incognito());
+        assert_eq!(state.borrow().translation_history_count(), 1);
+        assert_eq!(state.borrow().translation_memory_count(), 1);
+        assert!(bindings.incognito.is_active());
+
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
+        let _ = fs::remove_dir_all(&database_directory);
     }
 
     #[allow(clippy::too_many_lines)]
