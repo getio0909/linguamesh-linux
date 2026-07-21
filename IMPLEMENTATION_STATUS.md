@@ -16,9 +16,11 @@ status detail out of the visible alert.
 - Local `cargo fmt --all -- --check`, all-target/all-feature `cargo check`, no-default tests
   (`83 passed; 1 ignored`), and demo-provider tests (`156 passed; 3 ignored`) passed. The GTK
   fixture remains CI-authoritative because this host lacks the matching display-backed runtime.
-- Push Native/Flatpak/Foundation gates `29857952721`/`29857954041`/`29857955602` passed for the
-  exact packaging head `983093d62ad69c418dc2d6fd03fa46a7abf31539`; Native executed the complete
-  serialized GTK, Wayland, AT-SPI, Orca, Secret Service, portal, and release-evidence matrix.
+- Linux packaging/docs/status head `6fe43e46dc775382e585727cbdbd9f669d1e3fa6` passed push
+  Native/Flatpak/Foundation gates `29859140143`/`29859138719`/`29859138628` and PR gates
+  `29859143187`/`29859143402`/`29859142690`. Native explicitly executed the serialized
+  authentication-failure GTK fixture before the remaining GTK, Wayland, AT-SPI, Orca, Secret
+  Service, portal, and release-evidence matrix.
 
 This advances Linux evidence for mandatory Scenario 8 at the UI/worker boundary. Human
 translated-copy/visual/Orca review, other clients, live-provider interoperability, signing,
