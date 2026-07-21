@@ -1,5 +1,21 @@
 # Implementation Status
 
+## 2026-07-21 — Linux AT-SPI status and error roles
+
+Assumption: the live accessibility tree must expose semantic status and error regions in addition
+to named action controls; this automated check does not replace human Orca listening or visual
+review.
+
+- `tools/gtk-atspi-inspect.py` now requires `ROLE_STATUS` for status announcements and
+  `ROLE_ALERT` for accessible errors, and prints those semantic-role assertions in English
+  diagnostics while retaining the existing named-control and text-editor checks.
+- `docs/testing.md` records the expanded live AT-SPI role coverage. The fixture remains
+  CI-authoritative on hosts with Xvfb, AT-SPI, and `python3-pyatspi`; this host does not provide
+  those runtime packages.
+- Local Python compilation, shell syntax, localization audits, and diff checks are required before
+  the remote GTK/AT-SPI gate; human Orca listening, translated-copy/RTL review, and physical
+  desktop rendering remain open.
+
 ## 2026-07-21 — Linux final database-component race regression
 
 Assumption: the profile database must reject a final-path replacement that occurs after pathname
