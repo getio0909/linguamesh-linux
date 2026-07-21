@@ -9988,6 +9988,8 @@ mod tests {
         ));
         let _ = fs::remove_dir_all(&database_directory);
         fs::create_dir_all(&database_directory).expect("create document restart directory");
+        fs::set_permissions(&database_directory, fs::Permissions::from_mode(0o700))
+            .expect("restrict document restart directory");
         let database_path = database_directory.join("state.sqlite3");
         let external = ExternalFakeProvider::start(EXPECTED_SECRET);
         let context = glib::MainContext::default();
