@@ -1,17 +1,22 @@
 # Implementation Status
 
-## 2026-07-21 — Core protocol decoder fuzz gate pinned
+## 2026-07-21 — Core document decoder fuzz gate pinned
 
-Assumption: Linux's compatibility pin must include the Core decoder fuzz and sanitizer workflow
-before this repository records the next cross-repository validation checkpoint.
+Assumption: Linux's compatibility pin must include the Core document-decoder fuzz and sanitizer
+workflow before this repository records the next cross-repository validation checkpoint.
 
-- Pinned Core `8b12a650e52e200255204c1926c0efa4e6540857`, whose separate fuzz workspace dispatches
-  all supported protocol command/event payload decoders through a bounded 1 MiB input gate.
-- Core's remote Fuzz and sanitizers run `29789910142` passed on the fixed nightly toolchain with
-  2,000 bounded runs and cargo-fuzz AddressSanitizer instrumentation. Core CI `29789910147` and
-  Native SDK `29789910099` are the accompanying cross-platform gates.
+- Pinned Core `e7ca21df183b15e10e157f175526a1b7ac0b3ad0`, whose separate fuzz workspace dispatches
+  every supported document decoder through the existing 4 MiB document bound in addition to the
+  bounded 1 MiB protocol decoder gate.
+- Core's remote Fuzz and sanitizers run `29791113663` passed on the fixed nightly toolchain with
+  protocol and document targets, each bounded to 2,000 runs and cargo-fuzz AddressSanitizer
+  instrumentation. Core CI `29791113656` and Native SDK `29791113659` are the accompanying
+  cross-platform gates.
 - Linux runtime APIs are unchanged. Document-command resource consumption, OS-handle transfer,
   visual/GPU review, signing, rollback, and stable release remain open.
+
+Local Linux validation and the PR's Native/Flatpak/Foundation gates are required before this pin is
+considered verified. The PR remains Draft/Open and this is unreleased Linux-first evidence.
 
 ## 2026-07-20 — Core ABI FileLease lifecycle controls pinned
 

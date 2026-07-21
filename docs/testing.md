@@ -157,8 +157,8 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`8b12a650e52e200255204c1926c0efa4e6540857`. This revision carries the protocol decoder fuzz
-smoke and AddressSanitizer gate, the bounded FileLease lifecycle,
+`e7ca21df183b15e10e157f175526a1b7ac0b3ad0`. This revision carries the document decoder fuzz
+smoke and AddressSanitizer gate, the protocol decoder fuzz gate, and the bounded FileLease lifecycle,
 including Linux's portal-read lease checks, and the explicit request-level
 Incognito privacy policy and changes file-backed Core storage to add SQLite's `SQLITE_OPEN_NOFOLLOW`
 flag, adds protected-span restoration and request-level glossary
@@ -168,9 +168,9 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 8b12a650e52e200255204c1926c0efa4e6540857^{commit}
+git -C ../linguamesh-core cat-file -e e7ca21df183b15e10e157f175526a1b7ac0b3ad0^{commit}
 git -C ../linguamesh-core diff --quiet \
-  8b12a650e52e200255204c1926c0efa4e6540857..HEAD -- \
+  e7ca21df183b15e10e157f175526a1b7ac0b3ad0..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -546,7 +546,7 @@ dispatch only. It does not replace a human listening review, physical desktop re
 about speech quality across locales.
 
 The GitHub Actions native workflow pins Core revision
-`8b12a650e52e200255204c1926c0efa4e6540857`, installs the headers plus D-Bus, Xvfb, test-only
+`e7ca21df183b15e10e157f175526a1b7ac0b3ad0`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
 namespace test through the unprivileged path.
