@@ -1,39 +1,25 @@
 # Implementation Status
 
-## 2026-07-21 — Core document decoder fuzz gate pinned
+## 2026-07-21 — Core POSIX document-descriptor consumption pinned
 
-Assumption: Linux's compatibility pin must include the Core document-decoder fuzz and sanitizer
-workflow before this repository records the next cross-repository validation checkpoint.
+Assumption: Linux's portal-backed document path should have a native ABI handoff that duplicates a
+registered POSIX descriptor, applies the same bounded parser, and consumes the lease exactly once.
 
-- Pinned Core `1e0ae8d3fcf8bd5fead244ebf78cb3ea4a0ec300`, whose separate fuzz workspace dispatches
-  every supported document decoder through the existing 4 MiB document bound in addition to the
-  bounded 1 MiB protocol decoder gate.
-- Core's remote Fuzz and sanitizers run `29791113663` passed on the fixed nightly toolchain with
-  protocol and document targets, each bounded to 2,000 runs and cargo-fuzz AddressSanitizer
-  instrumentation. Core CI `29791113656` and Native SDK `29791113659` are the accompanying
-  cross-platform gates.
-- Linux commit `86f67a186eb8b2d3c0a98d7486bf64e48db3bdeb` passed Native Linux run `29791487882`
-  (job `88514064652`), Flatpak Linux run `29791487873` (job `88514064687`), and Repository
-  Foundation run `29791487927` (job `88514064925`). The Native run covered all GTK, portal,
-  Secret Service, accessibility, OCR, Wayland, release-build, performance, checksum, and SBOM
-  steps; the Flatpak run built and sandbox-smoked the bundle.
-- Local no-default tests passed (`81 passed; 1 ignored`) and demo-provider tests passed
-  (`145 passed; 3 ignored`), alongside formatting, strict Clippy, localization, Flatpak metadata,
-  all-target check, and diff checks. The local all-feature GTK invocation was not runnable because
-  this workstation lacks `xvfb-run` and exposes incomplete GTK linker symbols; the remote Native
-  gate is authoritative for that environment-dependent coverage.
-- Core's C ABI now exposes `lm_engine_file_lease_consume_document`: hosts submit a bounded UTF-8
-  source name and document snapshot under an engine-scoped lease, and Core consumes that lease once
-  the shared document parser accepts the snapshot. Linux's direct Rust GTK path remains the
-  production portal-read path and continues to enforce the same bounded lease lifetime locally.
-- ABI OS-handle duplication/transfer, visual/GPU review, signing, rollback, and stable release
-  remain open.
+- Pinned Core `2c6f9596f33e9ede3af65262e27c9ce8f8ff38b9`, which keeps the document-decoder fuzz and
+  sanitizer gate and adds `lm_engine_file_lease_consume_posix_document`. The function duplicates
+  the registered descriptor, reads at most `MAX_DOCUMENT_BYTES + 1`, validates the shared document
+  contract, and consumes the lease only after successful parsing.
+- Core local workspace tests, strict Clippy, and Native SDK C/C++ smoke passed. Core remote CI,
+  Fuzz and sanitizers, and Native SDK workflows are running for this exact commit; their run IDs
+  will be recorded here after completion.
+- Linux's direct Rust GTK path remains the production portal-read path and continues to enforce the
+  same bounded lease lifetime locally. The new native API is a Linux-first compatibility slice and
+  does not claim Android ParcelFileDescriptor or Windows handle transfer.
+- ABI Android/Windows handle transfer, visual/GPU review, Orca speech and end-user prompt review,
+  signing, rollback, and stable release remain open.
 
 Local Linux validation and the PR's Native/Flatpak/Foundation gates are required before this pin is
 considered verified. The PR remains Draft/Open and this is unreleased Linux-first evidence.
-
-The next ordinary push is retained as the PR-visible evidence refresh for this documentation-only
-pin update; no runtime behavior or release status changes in that refresh.
 
 ## 2026-07-20 — Core ABI FileLease lifecycle controls pinned
 
