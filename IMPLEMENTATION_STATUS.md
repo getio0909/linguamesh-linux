@@ -9,7 +9,7 @@ locally estimated, and unknown sources remain visibly distinct, and no pricing i
   `UsageRecord` completion field and advertises `usage_records_v1`. The current engine and Linux
   worker emit conservative local estimates; provider-reported parsing remains a future adapter
   boundary. The stable C ABI/protobuf projection is intentionally unchanged.
-- Linux code revision `571b3a646b14ead51945e4d0b8a36db976086a5e` stores usage in `AppState`, clears
+- Linux code revision `5d59646adeed72750964fa628eb0a3088911ac24` stores usage in `AppState`, clears
   it for each new request, preserves it through the worker remap and translation-memory path, and
   shows a localized source-marked line below completed output. Unknown records show no fabricated
   count and no source or translated text is sent to diagnostics.
