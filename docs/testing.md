@@ -592,10 +592,12 @@ about speech quality across locales.
 
 `tools/run-gtk-accessibility-preferences-test.sh` runs the serialized GTK component test in a
 private Xvfb and DBus session. It applies a temporary `HighContrast` GTK theme and disables
-`gtk-enable-animations`, then asserts that libadwaita detects high contrast and reduced motion.
-The test restores both process-local settings before exit; it does not modify the developer's
-desktop preferences. This verifies the Linux client's system-supported theme and motion behavior;
-manual visual review remains required for supported releases.
+`gtk-enable-animations`, and sets the process-local GTK font to `Sans 24`. It then asserts that
+libadwaita detects high contrast and reduced motion and that the title's Pango context receives the
+larger font size. The fixture restores the theme, animation, and font settings before exit; it does
+not modify the developer's desktop preferences. This verifies the Linux client's system-supported
+contrast, motion, and text-scaling behavior; manual visual review remains required for supported
+releases.
 
 The GitHub Actions native workflow pins Core revision
 `4badabe735499a50265a1260a838df3254622c15`, installs the headers plus D-Bus, Xvfb, test-only
