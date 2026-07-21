@@ -10036,7 +10036,9 @@ mod tests {
             bindings.document_job_id.borrow().as_deref() == Some(job_id.as_str())
                 && bindings.document_job_state.get() == Some(DocumentJobState::Pending)
         });
+        bindings.document_job_guard.set(true);
         bindings.source.set_text("one\ntwo");
+        bindings.document_job_guard.set(false);
         bindings.translate.emit_clicked();
         eprintln!("GTK document restart: waiting for first segment");
         spin_main_context_until(&context, Duration::from_secs(10), || {
