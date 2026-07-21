@@ -362,9 +362,11 @@ parent descriptor; `hard_linked_database_sidecars_are_rejected_without_modifying
 hard-linked aliases for both sidecars before Core opens the database, while
 `replaced_database_sidecar_is_rejected_after_snapshot` verifies that a changed existing sidecar
 identity is rejected after Core open. It also verifies that a completed standard translation is recorded in bounded
-history,
-an Incognito completion is
-skipped, and the startup count/clear command path uses the same database. A Linux-side
+history, an Incognito completion bypasses both translation-memory lookup and persistence, and the
+startup count/clear command path uses the same database. The focused
+`incognito_translation_bypasses_existing_memory_and_persists_nothing` regression first stores a
+standard result, then requires an Incognito repeat to reach the provider again while history and
+translation-memory counts remain unchanged. A Linux-side
 Scenario 5 regression authenticates and saves distinct providers A and B with independent models,
 then uses one Connect action per remembered switch and proves each next translation reaches only
 the newly confirmed provider. It rejects B with A's credential without changing the active B/model

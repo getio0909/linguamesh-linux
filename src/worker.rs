@@ -4121,7 +4121,9 @@ async fn run_worker(
                         profile.base_endpoint()
                     ));
                 }
-                if let Some(storage) = storage.as_mut() {
+                if !request.is_incognito()
+                    && let Some(storage) = storage.as_mut()
+                {
                     match storage.lookup_translation_memory(&request) {
                         Ok(Some(entry)) => {
                             if !request.is_incognito()
@@ -6671,6 +6673,61 @@ mod tests {
             storage.translation_history_count().expect("history count"),
             1
         );
+    }
+
+    #[test]
+    fn incognito_translation_bypasses_existing_memory_and_persists_nothing() {
+        let database = TestDatabase::new();
+        let external =
+            ExternalFakeProvider::start(FakeMode::Authenticated("INCOGNITO_MEMORY_SECRET"));
+        let (worker, _, _) = started_worker_with_database(database.path());
+        connect(
+            &worker,
+            profile(
+                "incognito-memory",
+                &external.endpoint,
+                Some(SecretRef::new(SecretRefNamespace::Session)),
+                None,
+            ),
+            Some(SecretValue::new("INCOGNITO_MEMORY_SECRET")),
+            PersistenceIntent::SessionOnly,
+        )
+        .expect("connection");
+        select(&worker, "incognito-memory", "fake-translator");
+
+        let (standard_output, standard_terminal) = translate_request(
+            &worker,
+            TranslationRequest::new("Private cache probe", "zh-CN", "fake-translator"),
+        );
+        assert_eq!(standard_output, "你好，LinguaMesh！");
+        assert!(matches!(
+            standard_terminal,
+            TranslationEvent::Completed { .. }
+        ));
+        let first_chat_requests = external.chat_requests.load(Ordering::SeqCst);
+
+        let (incognito_output, incognito_terminal) = translate_request(
+            &worker,
+            TranslationRequest::new("Private cache probe", "zh-CN", "fake-translator")
+                .with_privacy_mode(TranslationPrivacyMode::Incognito),
+        );
+        assert_eq!(incognito_output, "你好，LinguaMesh！");
+        assert!(matches!(
+            incognito_terminal,
+            TranslationEvent::Completed { .. }
+        ));
+        assert_eq!(
+            external.chat_requests.load(Ordering::SeqCst),
+            first_chat_requests + 1
+        );
+        shutdown(&worker);
+
+        let storage = Storage::open(database.path()).expect("incognito storage");
+        assert_eq!(
+            storage.translation_history_count().expect("history count"),
+            1
+        );
+        assert_eq!(storage.translation_memory_count().expect("memory count"), 1);
     }
 
     #[test]

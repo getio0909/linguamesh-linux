@@ -1,5 +1,24 @@
 # Implementation Status
 
+## 2026-07-21 — Linux Incognito translation-memory isolation
+
+Assumption: Incognito requests must bypass local translation-memory lookup as well as history and
+memory writes, so an existing cached result cannot satisfy a private request or change its privacy
+boundary.
+
+- The worker now skips the translation-memory lookup branch whenever the request is Incognito;
+  standard requests retain the existing cache behavior.
+- Regression `incognito_translation_bypasses_existing_memory_and_persists_nothing` first stores a
+  standard result, then sends the same source in Incognito mode through an authenticated loopback
+  provider. It requires a second provider request and verifies that the database still contains
+  exactly one history row and one memory row.
+- Local focused validation passed:
+  `cargo fmt --all -- --check` and
+  `cargo test --features demo-provider --locked worker::tests::incognito_translation_bypasses_existing_memory_and_persists_nothing -- --exact`.
+
+This advances unreleased Linux evidence for mandatory Scenario 14. Full-suite and remote CI gates
+remain pending; no stable-release claim is made.
+
 ## 2026-07-21 — Linux GTK interrupted document-job restart/resume lifecycle
 
 Assumption: Linux Scenario 12 is evidenced at the production GTK boundary when a persisted
