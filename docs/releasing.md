@@ -40,6 +40,9 @@ and does not satisfy the complete candidate-management release gate.
 The serialized GTK lifecycle regression now proves edit-mode ID locking plus candidate deselection,
 save, worker list, and editor reload persistence. This remains prerelease test evidence until the
 required visual, translated-copy, and end-user Orca review is recorded.
+It also uses and deletes the selected record, applies the typed deletion event, verifies selection
+cleanup, and confirms the worker list refreshes empty; the Native and Flatpak gates remain the
+release evidence for this display-backed path.
 The external-provider path includes deterministic Ollama-compatible OpenAI `/v1/`, native
 `/api/`, and Gemini `/v1beta/` loopback fixtures plus a passed opt-in third-party daemon regression
 using Docker `ollama/ollama:0.11.10` and `qwen2.5-0.5b-instruct:latest`. The GTK form exposes the

@@ -134,7 +134,9 @@ storage upsert without exposing secrets. New profiles use Core-compatible 1–12
 edit mode locks the existing ID so references remain stable, and new profiles reject duplicate IDs
 before reaching the upsert path.
 The serialized GTK lifecycle fixture also deselects a saved candidate, persists the edited record,
-reloads it through the worker, and confirms the reduced chain and locked ID remain intact.
+reloads it through the worker, and confirms the reduced chain and locked ID remain intact. It then
+uses and deletes that record through the production dialog, applies `RoutingProfileDeleted`, clears
+the selected profile ID, and verifies the worker's refreshed profile list is empty.
 
 The same dialog imports and exports a bounded JSON exchange format. Core serializes only validated
 profile fields (candidate capabilities and privacy constraints); endpoint, credential, user-content,
