@@ -9,8 +9,8 @@ dependency convergence.
 - `deny.toml` reuses the reviewed Core policy and adds the Apache LLVM exception required by the
   GTK dependency graph. Native CI runs the pinned `cargo-deny-action` for advisories, bans,
   licenses, and sources; Foundation checks the policy file is present.
-- Local `cargo deny --manifest-path Cargo.toml --all-features check --config=deny.toml` passed. It
-  reports duplicate `getrandom`, `hashbrown`, and `windows-sys`
+- Local `cargo deny --manifest-path Cargo.toml --all-features check` passed using the repository
+  `deny.toml`. It reports duplicate `getrandom`, `hashbrown`, and `windows-sys`
   versions as warnings; advisories, licenses, and sources passed.
 - Remote push and pull-request gates are pending for this checkpoint and will be recorded here
   after all Native, Flatpak, and Foundation jobs complete.

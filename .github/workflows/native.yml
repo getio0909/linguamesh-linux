@@ -112,7 +112,6 @@ jobs:
           command: check
           manifest-path: linguamesh-linux/Cargo.toml
           arguments: --all-features
-          command-arguments: --config=linguamesh-linux/deny.toml
       - name: Run all tests
         working-directory: linguamesh-linux
         env:

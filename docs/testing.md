@@ -234,7 +234,7 @@ Toolkit-independent validation requires no GTK development headers:
 cargo fmt --all --check
 cargo check --all-targets --features demo-provider --locked
 cargo clippy --all-targets --features demo-provider --locked -- -D warnings
-cargo deny --manifest-path Cargo.toml --all-features check --config=deny.toml
+cargo deny --manifest-path Cargo.toml --all-features check
 cargo test --no-default-features --locked
 cargo test --features demo-provider --locked
 cargo build --features demo-provider --locked
