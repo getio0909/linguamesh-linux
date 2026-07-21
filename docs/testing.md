@@ -103,8 +103,8 @@ python3 -B tools/check-localization-placeholders.py
 python3 -B tools/check-visible-localization.py
 ```
 
-The first command checks catalog key coverage; the second checks canonical English fallback text,
-placeholder identity, and malformed braces in literal templates; the third rejects non-empty literal
+The first command checks catalog key coverage for localization calls, diagnostics, and error-message
+mappings; the second checks canonical English fallback text, placeholder identity, and malformed braces in literal templates; the third rejects non-empty literal
 strings passed directly to GTK visible-control APIs and direct string-list options. Empty strings
 used to clear a transient label are intentionally permitted.
 

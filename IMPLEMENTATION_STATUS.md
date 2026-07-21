@@ -1,5 +1,24 @@
 # Implementation Status
 
+## 2026-07-21 — Linux error-mapping localization coverage
+
+Assumption: every user-visible error category and catalog-backed error mapping must be checked
+against the canonical catalog, including mappings that are later passed through a localized helper
+instead of appearing directly in a localization call.
+
+- `tools/check-localization-keys.py` now extracts `error.*` keys declared in the Linux error
+  category/state mapping and verifies them against the pinned canonical catalog, in addition to
+  direct localization calls and diagnostics keys.
+- `docs/testing.md` documents the expanded coverage. This is a source-level catalog invariant; it
+  does not claim human translation review or prove that provider-generated dynamic detail is
+  translatable.
+- Local validation: key audit passed with the expanded set, placeholder audit passed, visible-string
+  audit passed, no-default tests (`81 passed; 1 ignored`), and demo-provider tests (`146 passed;
+  3 ignored`).
+
+This remains unreleased Linux-first evidence. Human translated-copy/RTL review, other clients,
+signing, distributable artifacts, and stable release remain open.
+
 ## 2026-07-21 — Linux AT-SPI action-name coverage
 
 Assumption: the smallest useful automated accessibility follow-up is to extend the existing live

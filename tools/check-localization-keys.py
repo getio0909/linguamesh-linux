@@ -16,6 +16,9 @@ CALL_PATTERN = re.compile(
 )
 KEY_PATTERN = re.compile(r'"([a-z][a-z0-9_.-]+)"')
 
+# 检查错误消息映射中直接声明的目录 key，避免错误路径绕过本地化目录。
+ERROR_KEY_PATTERN = re.compile(r'"(error\.[a-z][a-z0-9_.-]+)"\s*,')
+
 # 补充检查通过映射表传入本地化辅助函数的诊断 key。
 DIAGNOSTICS_KEYS = {
     "diagnostics.onboarding",
@@ -88,7 +91,9 @@ def main() -> int:
     for relative in (Path("src/main.rs"), Path("src/model.rs")):
         source_path = root / relative
         try:
-            used.update(referenced_keys(source_path.read_text(encoding="utf-8")))
+            source = source_path.read_text(encoding="utf-8")
+            used.update(referenced_keys(source))
+            used.update(ERROR_KEY_PATTERN.findall(source))
         except OSError as error:
             print(f"Localization key audit could not read {source_path}: {error}", file=sys.stderr)
             return 2
