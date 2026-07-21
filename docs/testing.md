@@ -34,6 +34,12 @@ the catalog, and manual-model visibility is derived from its `model_listing` fie
 performs the same compatibility check before creating the window and fails closed with an English
 diagnostic if the pinned catalog drifts.
 
+The worker regression `reviewed_core_contract_is_required_exactly` mutates each compatibility
+dimension independently—Core semantic version, ABI major, protocol version, provider-catalog
+version, and required feature set—and requires every mismatch to return `ProtocolIncompatible`.
+This is a fail-closed Scenario 16 contract check; it does not claim compatibility with an
+unreviewed Core release.
+
 The Linux worker regression `gemini_provider_discovers_and_streams_without_secret` now exercises
 that fixture through the real `ProviderManager` and worker path: it discovers
 `gemini-2.0-flash`, deliberately selects it, and completes `你好，Gemini！` without a credential.

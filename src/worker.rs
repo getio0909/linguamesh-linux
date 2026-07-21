@@ -5673,16 +5673,16 @@ fn cancel_active(active_cancellation: &Mutex<Option<ActiveCancellation>>) {
 #[cfg(test)]
 mod tests {
     use super::{
-        COMMAND_CAPACITY, CoreWorker, PersistenceIntent, QueuedCommand, REQUIRED_CORE_FEATURES,
-        RoutingCircuitBreaker, WorkerCommand, WorkerEvent, alternative_pdf_source_name,
-        open_database_file, pin_database_parent, prepare_database_file, profile_without_secret,
-        routing_backoff_delay, validate_core_contract, validate_database_path,
+        COMMAND_CAPACITY, CoreWorker, PersistenceIntent, QueuedCommand, RoutingCircuitBreaker,
+        WorkerCommand, WorkerEvent, alternative_pdf_source_name, open_database_file,
+        pin_database_parent, prepare_database_file, profile_without_secret, routing_backoff_delay,
+        validate_core_contract, validate_database_path,
     };
     use crate::model::{ProviderProfile, ProviderProfileId};
     use linguamesh_document::{DocumentFormat, DocumentJob, DocumentJobState};
     use linguamesh_domain::{
-        CoreCompatibility, ErrorKind, RetryPolicy, RoutingCandidate, RoutingConstraints,
-        RoutingMode, RoutingPreference, RoutingProfile, SecretRef, SecretRefNamespace, SecretValue,
+        ErrorKind, RetryPolicy, RoutingCandidate, RoutingConstraints, RoutingMode,
+        RoutingPreference, RoutingProfile, SecretRef, SecretRefNamespace, SecretValue,
         TranslationError, TranslationEvent, TranslationPreset, TranslationPrivacyMode,
         TranslationQualityMode, TranslationRequest, serialize_routing_profile,
     };
@@ -8628,23 +8628,29 @@ mod tests {
     fn reviewed_core_contract_is_required_exactly() {
         let actual = core_compatibility().expect("compatibility");
         validate_core_contract(&actual).expect("reviewed contract");
-        let mut incompatible = actual;
+        let mut incompatible = actual.clone();
         incompatible.abi_major += 1;
         let error = validate_core_contract(&incompatible).expect_err("ABI rejection");
         assert_eq!(error.kind, ErrorKind::ProtocolIncompatible);
 
-        let missing_feature = CoreCompatibility {
-            core_version: "0.1.0-alpha.2".to_owned(),
-            abi_major: 1,
-            protocol_version: 1,
-            provider_catalog_version: "0.1.0".to_owned(),
-            enabled_features: REQUIRED_CORE_FEATURES
-                .iter()
-                .skip(1)
-                .map(|feature| (*feature).to_owned())
-                .collect(),
-        };
-        let error = validate_core_contract(&missing_feature).expect_err("feature rejection");
+        incompatible = actual.clone();
+        incompatible.core_version = "0.2.0".to_owned();
+        let error = validate_core_contract(&incompatible).expect_err("Core version rejection");
+        assert_eq!(error.kind, ErrorKind::ProtocolIncompatible);
+
+        incompatible = actual.clone();
+        incompatible.protocol_version += 1;
+        let error = validate_core_contract(&incompatible).expect_err("protocol rejection");
+        assert_eq!(error.kind, ErrorKind::ProtocolIncompatible);
+
+        incompatible = actual.clone();
+        incompatible.provider_catalog_version = "0.2.0".to_owned();
+        let error = validate_core_contract(&incompatible).expect_err("catalog rejection");
+        assert_eq!(error.kind, ErrorKind::ProtocolIncompatible);
+
+        incompatible = actual;
+        incompatible.enabled_features.remove(0);
+        let error = validate_core_contract(&incompatible).expect_err("feature rejection");
         assert_eq!(error.kind, ErrorKind::ProtocolIncompatible);
     }
 

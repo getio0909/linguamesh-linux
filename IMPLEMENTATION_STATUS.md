@@ -1,5 +1,21 @@
 # Implementation Status
 
+## 2026-07-21 — Linux Core incompatibility rejection matrix
+
+Assumption: Linux must refuse an unreviewed Core before provider work when any compatibility
+dimension changes, not only when the ABI major changes.
+
+- Expanded `reviewed_core_contract_is_required_exactly` to exercise Core semantic version, ABI
+  major, protocol version, provider-catalog version, and required-feature mismatches independently.
+  Every mismatch returns the typed `ProtocolIncompatible` error.
+- Local `cargo fmt --all -- --check`, all-target/all-feature check, strict Clippy, no-default tests
+  (`81 passed; 1 ignored`), demo-provider tests (`147 passed; 3 ignored`), localization audits,
+  Flatpak metadata, synchronization, and diff checks passed. Remote gates are pending for this
+  source/test head.
+
+This strengthens Linux Scenario 16 fail-closed evidence only; it does not authorize an unreviewed
+Core, cross-client compatibility, or a stable release.
+
 ## 2026-07-21 — Core SQLite WAL replay compatibility
 
 Assumption: Linux's bounded writer-disconnect recovery should be verified through the shared Core

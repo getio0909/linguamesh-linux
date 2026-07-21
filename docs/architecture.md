@@ -343,7 +343,10 @@ not block it. UI state changes cross bounded, cancellable channels and preserve 
 The client calls the public Rust application layer directly while preserving the same observable
 event behavior as FFI clients. It must not fork provider, routing, translation, document,
 persistence, or error-domain logic. This checkpoint implements the exact compatibility gate above;
-release-manifest integration and broader product compatibility remain required before release.
+release-manifest integration and broader product compatibility remain required before release. The
+regression `reviewed_core_contract_is_required_exactly` covers every gate dimension and requires
+Core-version, ABI, protocol, provider-catalog, and required-feature mismatches to fail closed before
+provider work begins.
 
 The client owns native lifecycle, accessibility, appearance, keyboard behavior, file dialogs,
 portals, drag-and-drop, clipboard, notifications, XDG paths, desktop metadata, display-server
