@@ -1,5 +1,31 @@
 # Implementation Status
 
+## 2026-07-21 — Linux GTK interrupted document-job restart/resume lifecycle
+
+Assumption: Linux Scenario 12 is evidenced at the production GTK boundary when a persisted
+multi-segment document pauses after committed progress, a second worker restores the same database,
+and Resume completes only the remaining segments without duplicating output.
+
+- Runtime code `ca67c8b6b50cd79700c6be505bd7a950c73ed870` adds the serialized ignored fixture
+  `gtk_interrupted_document_job_restores_and_resumes`. It creates a real two-segment TXT job,
+  drives GTK Translate/Pause, confirms one completed segment and an unchanged source buffer, shuts
+  down the first worker, starts a second GTK worker on the same private database, reconnects the
+  same non-secret provider identity with a fresh session credential, and uses the real Resume action
+  to complete the remaining segment. The Flatpak source pin is synchronized at
+  `dabe8254a0cda36d56b7b4aad10240e81131d3dc`.
+- Local `cargo fmt --all -- --check`, all-target/all-feature check, strict Clippy, no-default tests
+  (`83 passed; 1 ignored`), demo-provider tests (`156 passed; 3 ignored`), localization key,
+  placeholder, visible-string, l10n synchronization, Flatpak metadata, and diff checks passed.
+  Display-backed execution remains CI-authoritative on this host.
+- Code-head push Native/Flatpak/Foundation gates `29873822240`/`29873822363`/`29873822338` and PR
+  gates `29873825162`/`29873825141`/`29873825142` all passed; Native explicitly reports the exact
+  interrupted document-job fixture successful. Status-head gates will be recorded after this
+  documentation checkpoint completes.
+
+This advances unreleased Linux evidence for mandatory Scenario 12. Physical power-loss recovery,
+live-provider interoperability, human visual/copy/Orca review, other clients, signing, rollback,
+and stable-release approval remain open.
+
 ## 2026-07-21 — Linux GTK glossary and protected-span lifecycle
 
 Assumption: Linux Scenario 9 is evidenced at the production GTK boundary when a request-level
