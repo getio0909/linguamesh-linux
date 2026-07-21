@@ -10129,7 +10129,20 @@ mod tests {
         assert!(restored_bindings.resume_document.is_sensitive());
         restored_bindings.resume_document.emit_clicked();
         eprintln!("GTK document restart: waiting for resumed completion");
+        let resume_wait_started = Instant::now();
+        let mut resume_diagnostic_logged = false;
         spin_main_context_until(&context, Duration::from_secs(15), || {
+            if !resume_diagnostic_logged && resume_wait_started.elapsed() >= Duration::from_secs(5)
+            {
+                let status_completed = restored_state.borrow().status() == AppStatus::Completed;
+                let error_present = restored_state.borrow().error_text().is_some();
+                eprintln!(
+                    "GTK document restart: resume snapshot status_completed={status_completed}, job_state={:?}, progress={:?}, error_present={error_present}",
+                    restored_bindings.document_job_state.get(),
+                    restored_bindings.document_progress.get(),
+                );
+                resume_diagnostic_logged = true;
+            }
             restored_bindings.document_job_state.get() == Some(DocumentJobState::Completed)
                 && restored_bindings.document_progress.get() == Some((2, 2))
                 && restored_state.borrow().status() == AppStatus::Completed
