@@ -20,6 +20,9 @@ cancels a streamed request after a confirmed delta, preserves that partial outpu
 - Final push Native/Flatpak/Foundation gates `29866519789`/`29866519798`/`29866519885` and PR
   gates `29866523643`/`29866523637`/`29866523644` all passed. Native explicitly ran the exact GTK
   cancellation fixture successfully before the remaining accessibility and release matrix.
+- The final status-only push/PR Native, Flatpak, and Foundation gates
+  `29867053795`/`29867053954`/`29867053823` and `29867057379`/`29867057259`/`29867057497` also
+  passed; these reruns cover the evidence head without changing runtime behavior.
 
 This advances unreleased Linux evidence for mandatory Scenario 6. Physical provider transport
 cancellation, human visual/copy/Orca review, other clients, signed artifacts, rollback
