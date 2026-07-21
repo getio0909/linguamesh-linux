@@ -370,4 +370,10 @@ must follow XDG locations, restrictive permissions, portal leases, and cleanup r
 required; the headless Wayland gate and practical X11/Xvfb gate cover the current real-widget slice,
 while physical compositor and broader desktop coverage remain incomplete.
 
+Before Core opens the pinned profile descriptor, Linux inspects any existing SQLite `-wal` and
+`-shm` sidecars through the pinned parent descriptor and rejects symbolic links, non-regular files,
+and hard-linked aliases. This prevents a pre-existing sidecar from redirecting journal writes to a
+second inode; replacement races after this inspection and non-default SQLite VFS behavior remain
+outside the current claim.
+
 Changes affecting shared contracts, the security model, display support, GTK/libadwaita policy, or distribution packaging require central compatibility review. GTK and other LGPL dependencies require documented license compliance before distribution.

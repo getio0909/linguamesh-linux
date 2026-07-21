@@ -23,6 +23,7 @@ use rustix::fs::{
     CWD, FileType as RustixFileType, Mode as RustixMode, OFlags as RustixOFlags, ResolveFlags,
     fchmod, fstat, openat, openat2,
 };
+use rustix::io::Errno;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
@@ -4419,6 +4420,7 @@ fn prepare_database_file(path: &Path) -> Result<PreparedDatabase, TranslationErr
             "The profile database file name is invalid.",
         )
     })?;
+    validate_database_sidecars(&parent_fd, file_name)?;
     let file_fd = open_database_file(&parent_fd, file_name, parent.database_identity)?;
     let mut storage_path = PathBuf::from("/proc/self/fd");
     storage_path.push(file_fd.as_raw_fd().to_string());
@@ -4600,6 +4602,44 @@ fn open_database_file(
         )
     })?;
     Ok(file_fd)
+}
+
+fn validate_database_sidecars(
+    parent_fd: &rustix::fd::OwnedFd,
+    file_name: &std::ffi::OsStr,
+) -> Result<(), TranslationError> {
+    for suffix in ["-wal", "-shm"] {
+        let mut sidecar_name = file_name.to_os_string();
+        sidecar_name.push(suffix);
+        let sidecar_fd = match openat(
+            parent_fd,
+            &sidecar_name,
+            RustixOFlags::PATH | RustixOFlags::NOFOLLOW | RustixOFlags::CLOEXEC,
+            RustixMode::empty(),
+        ) {
+            Ok(file) => file,
+            Err(error) if error == Errno::NOENT => continue,
+            Err(_) => {
+                return Err(TranslationError::new(
+                    ErrorKind::Persistence,
+                    "The profile database sidecar could not be inspected.",
+                ));
+            }
+        };
+        let metadata = fstat(&sidecar_fd).map_err(|_| {
+            TranslationError::new(
+                ErrorKind::Persistence,
+                "The profile database sidecar could not be inspected.",
+            )
+        })?;
+        if !RustixFileType::from_raw_mode(metadata.st_mode).is_file() || metadata.st_nlink != 1 {
+            return Err(TranslationError::new(
+                ErrorKind::Persistence,
+                "The profile database sidecar is not a private regular file.",
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn ensure_no_symbolic_path_components(path: &Path) -> Result<(), TranslationError> {
@@ -10199,6 +10239,41 @@ mod tests {
             Ok(WorkerEvent::DemoProviderReady { .. })
         ));
         shutdown(&worker);
+    }
+
+    #[test]
+    fn hard_linked_database_sidecars_are_rejected_without_modifying_targets() {
+        for suffix in ["-wal", "-shm"] {
+            let database = TestDatabase::new();
+            fs::create_dir(&database.directory).expect("database directory");
+            fs::set_permissions(&database.directory, fs::Permissions::from_mode(0o700))
+                .expect("database directory permissions");
+            let storage = Storage::open(database.path()).expect("initial storage");
+            drop(storage);
+
+            let target = database.directory.join(format!("sidecar-target-{suffix}"));
+            let original = b"SIDE_CAR_TARGET";
+            fs::write(&target, original).expect("sidecar target");
+            let sidecar = PathBuf::from(format!("{}{}", database.path().display(), suffix));
+            fs::hard_link(&target, &sidecar).expect("sidecar hard link");
+
+            let worker = CoreWorker::spawn_with_database(database.path());
+            let storage_event = worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("storage event");
+            assert!(matches!(
+                storage_event,
+                WorkerEvent::ProfileStorageUnavailable(error)
+                    if error.kind == ErrorKind::Persistence
+            ));
+            assert_eq!(fs::read(&target).expect("sidecar target"), original);
+            assert!(matches!(
+                worker.events.recv_timeout(Duration::from_secs(5)),
+                Ok(WorkerEvent::DemoProviderReady { .. })
+            ));
+            shutdown(&worker);
+        }
     }
 
     #[test]
