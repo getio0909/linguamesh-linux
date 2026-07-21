@@ -502,6 +502,17 @@ fn main() -> glib::ExitCode {
     application.run()
 }
 
+// 仅为隔离的辅助功能测试读取初始界面语言，普通启动始终使用英文默认值。
+fn test_locale_override() -> UiLocale {
+    let Ok(value) = std::env::var("LINGUAMESH_TEST_LOCALE") else {
+        return UiLocale::English;
+    };
+    UiLocale::ALL
+        .into_iter()
+        .find(|locale| locale.language_tag().eq_ignore_ascii_case(&value))
+        .unwrap_or(UiLocale::English)
+}
+
 fn build_ui(application: &adw::Application, file_dialog_fixture: bool, file_drop_fixture: bool) {
     if let Some(window) = application.active_window() {
         window.present();
@@ -511,12 +522,25 @@ fn build_ui(application: &adw::Application, file_dialog_fixture: bool, file_drop
         eprintln!("Provider catalog validation failed: {error}");
         return;
     }
+    let initial_locale = test_locale_override();
     let state = Rc::new(RefCell::new(AppState::default()));
+    if std::env::var_os("LINGUAMESH_TEST_LOCALE").is_some() {
+        state.borrow_mut().set_locale(initial_locale);
+    }
     let database_path = glib::user_data_dir()
         .join("dev.linguamesh.LinguaMesh")
         .join("linguamesh.sqlite3");
     let worker = Rc::new(CoreWorker::spawn_with_database(database_path));
     let (window, bindings, theme, locale) = create_window(application);
+    if std::env::var_os("LINGUAMESH_TEST_LOCALE").is_some()
+        && let Some(index) = UiLocale::ALL
+            .iter()
+            .position(|locale| *locale == initial_locale)
+        && let Ok(index) = u32::try_from(index)
+    {
+        // 在连接选择回调前同步测试下拉框，避免触发一次额外的状态变更。
+        bindings.locale.set_selected(index);
+    }
     connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
     connect_action_handlers(&bindings, &state, &worker);
     start_event_pump(&bindings, &state, &worker);

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 import time
 from collections.abc import Iterator
@@ -71,13 +72,27 @@ def main() -> int:
         print("AT-SPI fixture could not enumerate the accessibility desktop.", file=sys.stderr)
         return 1
 
-    expected = {
-        "Open text file": {"ROLE_PUSH_BUTTON"},
-        "Allow approved fallback": {"ROLE_CHECK_BOX"},
-        "Translate": {"ROLE_PUSH_BUTTON"},
-        "Retry translation": {"ROLE_PUSH_BUTTON"},
-        "Stop translation": {"ROLE_PUSH_BUTTON"},
+    locale = os.environ.get("LINGUAMESH_TEST_LOCALE", "en")
+    expected_by_locale = {
+        "en": {
+            "Open text file": {"ROLE_PUSH_BUTTON"},
+            "Allow approved fallback": {"ROLE_CHECK_BOX"},
+            "Translate": {"ROLE_PUSH_BUTTON"},
+            "Retry translation": {"ROLE_PUSH_BUTTON"},
+            "Stop translation": {"ROLE_PUSH_BUTTON"},
+        },
+        "zh-CN": {
+            "打开文本文件": {"ROLE_PUSH_BUTTON"},
+            "允许使用已批准的回退": {"ROLE_CHECK_BOX"},
+            "翻译": {"ROLE_PUSH_BUTTON"},
+            "Retry translation": {"ROLE_PUSH_BUTTON"},
+            "停止翻译": {"ROLE_PUSH_BUTTON"},
+        },
     }
+    expected = expected_by_locale.get(locale)
+    if expected is None:
+        print(f"AT-SPI fixture does not define expected names for locale: {locale}.", file=sys.stderr)
+        return 2
     by_name: dict[str, list[object]] = {}
     for node in nodes:
         try:

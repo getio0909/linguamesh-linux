@@ -1,5 +1,24 @@
 # Implementation Status
 
+## 2026-07-21 — Linux localized live AT-SPI fixture
+
+Assumption: the live accessibility tree should prove catalog-backed names in at least one
+non-English locale while retaining the English baseline and the existing role checks.
+
+- The test-only `LINGUAMESH_TEST_LOCALE` override initializes the GTK fixture in a selected BCP 47
+  locale without changing ordinary startup defaults. The AT-SPI inspector now has explicit English
+  and Simplified Chinese expectations for Open, Translate, Retry, fallback consent, and Stop.
+- Native CI runs the existing English fixture and a second `zh-CN` fixture. Both continue to
+  require two text-editor roles and the expected control roles; unknown fixture locales fail closed.
+- Local formatting, strict Clippy, no-default tests (`81 passed; 1 ignored`), demo-provider tests
+  (`147 passed; 3 ignored`), Python compilation, shell syntax, localization audits, Flatpak metadata,
+  and diff checks passed. Remote Native, Flatpak, and Foundation gates are required before this
+  checkpoint is treated as verified.
+
+This remains unreleased Linux-first accessibility evidence. Human Orca listening, translated-copy/
+RTL review, physical desktop rendering, other clients, signing, distributable artifacts, and stable
+release remain open.
+
 ## 2026-07-21 — Linux AT-SPI status-role fixture boundary
 
 Assumption: a live AT-SPI role assertion must match the roles actually exported by the pinned GTK
