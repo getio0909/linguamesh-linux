@@ -13,8 +13,12 @@ alternate SQLite VFS.
   Clippy, and full workspace tests passed; Core CI/Fuzz/Native SDK `29852245672`/`29852245746`/
   `29852246017` passed.
 - Linux Native and Flatpak now consume that exact Core revision; the runtime code is unchanged and
-  the existing Linux storage/WAL tests remain the behavioral boundary. Local Linux validation and
-  the six Linux gates are required before this pin is considered verified.
+  the existing Linux storage/WAL tests remain the behavioral boundary. Local Linux formatting,
+  all-target/all-feature check, strict Clippy, no-default tests (`82 passed; 1 ignored`),
+  demo-provider tests (`155 passed; 3 ignored`), localization audits, synchronization, and
+  Flatpak metadata validation passed. Push Native/Flatpak/Foundation gates
+  `29852793704`/`29852793833`/`29852793818` and PR gates
+  `29852797251`/`29852797581`/`29852797258` all passed.
 
 This is unreleased Linux durability hardening evidence. Physical power-loss simulation, alternate
 SQLite VFS behavior, signing, rollback authorization, other clients, and stable release remain open.

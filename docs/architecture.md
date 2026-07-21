@@ -299,7 +299,7 @@ directory. The Linux worker creates a private `0700` parent directory or accepts
 restrictive parent with no group or other access. It requires a regular, single-link `0600`
 database file, rejecting relative paths, symbolic links, hard links, and non-private directories.
 Core is responsible for the schema,
-migrations, transactions, and SQLite open flags. On Linux's default Unix VFS, Core's
+migrations, transactions, SQLite `synchronous=FULL` durability, and SQLite open flags. On Linux's default Unix VFS, Core's
 `SQLITE_OPEN_NOFOLLOW` open rejects any symbolic-link component in the resolved path; such a path
 produces a typed storage failure and leaves explicit session-only connections available. This
 behavior is a Linux security prerequisite for the integration and is not claimed for other VFS

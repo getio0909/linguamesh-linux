@@ -23,7 +23,8 @@ immediately, and never persists the credential value. A saved-profile dropdown a
 checkbox can create, update, activate, switch, and remove multiple rows containing provider names,
 endpoints, model preferences, and persistent Secret Service references in the XDG user data SQLite database. The
 private application directory is `0700` and the database is `0600`. Removing the connected row
-leaves its already validated runtime session active but no longer persistent. Core's no-follow
+leaves its already validated runtime session active but no longer persistent. Core's `synchronous=FULL`
+WAL durability and no-follow
 SQLite open behavior on Linux's default Unix VFS remains required. Startup prefills the last
 persistently activated row but never auto-connects, so a credential must be entered again when
 required. A derived Provider setup card guides configuration, explicit connection, and deliberate
