@@ -157,7 +157,7 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`19229184a21a6725326a3d30dea9bc72e5ac999f`. This revision carries bounded document lease
+`4badabe735499a50265a1260a838df3254622c15`. This revision carries bounded document lease
 consumption smoke, POSIX-descriptor document consumption, and the AddressSanitizer gate, plus the
 protocol decoder fuzz gate and bounded FileLease lifecycle,
 including Linux's portal-read lease checks, and the explicit request-level
@@ -169,12 +169,17 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 19229184a21a6725326a3d30dea9bc72e5ac999f^{commit}
+git -C ../linguamesh-core cat-file -e 4badabe735499a50265a1260a838df3254622c15^{commit}
 git -C ../linguamesh-core diff --quiet \
-  19229184a21a6725326a3d30dea9bc72e5ac999f..HEAD -- \
+  4badabe735499a50265a1260a838df3254622c15..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
+
+The same Core revision also includes a bounded SQLite WAL replay regression: a committed
+provider profile remains recoverable when a reader holds a snapshot while the writer disconnects,
+and the next `Storage::open` replays the WAL sidecar. This covers the tested writer-disconnect
+sequence only; power loss and other SQLite VFS failures remain outside the claim.
 
 The same Core pin also negotiates `bounded_text_document_v1`, `routing_planner_v1`,
 `translation_quality_modes_v1`, and `translation_presets_v1`: Linux imports only bounded UTF-8 TXT,
@@ -454,7 +459,7 @@ python3 tools/create-native-evidence.py \
   --cargo-lock Cargo.lock \
   --output-dir native-evidence \
   --linux-revision "$(git rev-parse HEAD)" \
-  --core-revision "19229184a21a6725326a3d30dea9bc72e5ac999f" \
+  --core-revision "4badabe735499a50265a1260a838df3254622c15" \
   --localization-revision "737d890e60fd34f15fd8708698448ef9ab96299f"
 (cd native-evidence && sha256sum -c SHA256SUMS)
 ```
@@ -571,7 +576,7 @@ desktop preferences. This verifies the Linux client's system-supported theme and
 manual visual review remains required for supported releases.
 
 The GitHub Actions native workflow pins Core revision
-`19229184a21a6725326a3d30dea9bc72e5ac999f`, installs the headers plus D-Bus, Xvfb, test-only
+`4badabe735499a50265a1260a838df3254622c15`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
 namespace test through the unprivileged path.

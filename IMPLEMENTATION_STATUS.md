@@ -1,5 +1,19 @@
 # Implementation Status
 
+## 2026-07-21 — Core SQLite WAL replay compatibility
+
+Assumption: Linux's bounded writer-disconnect recovery should be verified through the shared Core
+storage contract without expanding the release claim to arbitrary power-loss or VFS failures.
+
+- Linux now pins Core `4badabe735499a50265a1260a838df3254622c15`, which adds a regression proving
+  that a committed provider profile is restored after a reader snapshot holds the SQLite WAL open,
+  the writer disconnects, and the next `Storage::open` replays the sidecar.
+- The Native workflow and Flatpak source both consume this exact Core revision. Local Linux
+  validation and remote push/pull-request gates remain pending for this pin update.
+
+This is bounded Linux-first persistence evidence only; abrupt power loss, alternate SQLite VFS
+behavior, and cross-client persistence remain open.
+
 ## 2026-07-21 — Linux system accessibility preference fixture
 
 Assumption: Linux should inherit desktop accessibility preferences through the pinned

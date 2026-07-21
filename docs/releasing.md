@@ -48,14 +48,16 @@ while persistent
 secret references use the Linux GIO Secret Service adapter and fail closed when the desktop keyring
 is unavailable or requires an interactive prompt. The native workflow
 pins reviewed Core functional revision
-`19229184a21a6725326a3d30dea9bc72e5ac999f`, whose Core delta adds bounded document lease
+`4badabe735499a50265a1260a838df3254622c15`, whose Core delta adds bounded document lease
 smoke and AddressSanitizer gate in addition to the protocol decoder fuzz gate and bounded FileLease lifecycle
 and engine-scoped ABI lease controls plus Unix POSIX-descriptor document consumption; Android and
 Windows handle transfer remain open. Its storage delta adds
 `SQLITE_OPEN_NOFOLLOW`, adds the trusted `/proc/self/fd/<fd>` descriptor path for hosts that pin a
 private inode, rejects suspicious OOXML compression ratios and unsupported macro/signature
 parts before XML inspection, and whose
-text path adds protected-span, request-level glossary, and bounded long-text restoration, and the
+text path adds protected-span, request-level glossary, and bounded long-text restoration. Its storage
+tests also cover replaying a committed provider profile from a WAL sidecar after a reader snapshot
+and writer disconnect. The
 bounded SRT/WebVTT/CSV/JSON/HTML document contract, rather than checking
 out a floating branch. Functional revision
 `7d7eba9960b657f0460fb0daaaaebaaa609f39b1` passed Native Linux run `29604269568` (job
@@ -69,7 +71,7 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `19229184a21a6725326a3d30dea9bc72e5ac999f` and l10n
+The current Linux gate consumes Core `4badabe735499a50265a1260a838df3254622c15` and l10n
 `026c35b8dbb1c13c22d77809cc5fe72e6af6f5a3` (422 catalog messages). Request-level glossary rules, bounded CSV,
 interchange are implemented in the Linux slice; persistent glossary libraries and TBX import
 remain outside the release claim.
