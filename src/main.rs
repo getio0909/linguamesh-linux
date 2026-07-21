@@ -9924,6 +9924,7 @@ mod tests {
         connect_action_handlers(&bindings, &state, &worker);
         start_event_pump(&bindings, &state, &worker);
         window.present();
+        eprintln!("GTK document restart: waiting for first worker readiness");
         spin_main_context_until(&context, Duration::from_secs(5), || {
             state.borrow().worker_ready()
         });
@@ -9933,6 +9934,7 @@ mod tests {
         bindings.provider_credential.set_text(EXPECTED_SECRET);
         bindings.connect.emit_clicked();
         assert!(bindings.provider_credential.text().is_empty());
+        eprintln!("GTK document restart: waiting for first provider connection");
         spin_main_context_until(&context, Duration::from_secs(5), || {
             state.borrow().status() == AppStatus::Ready
                 && state.borrow().active_provider().is_some()
@@ -10017,6 +10019,7 @@ mod tests {
                 && !state.borrow().models().is_empty()
         });
         bindings.model.set_selected(2);
+        eprintln!("GTK document restart: waiting for first model selection");
         spin_main_context_until(&context, Duration::from_secs(5), || {
             state.borrow().selected_model() == Some("fake-slow-translator")
         });
@@ -10028,12 +10031,14 @@ mod tests {
                 job: DocumentJob::from_text("notes.txt", DocumentFormat::Txt, "one\ntwo"),
             })
             .expect("create GTK document job");
+        eprintln!("GTK document restart: waiting for pending document job");
         spin_main_context_until(&context, Duration::from_secs(5), || {
             bindings.document_job_id.borrow().as_deref() == Some(job_id.as_str())
                 && bindings.document_job_state.get() == Some(DocumentJobState::Pending)
         });
         bindings.source.set_text("one\ntwo");
         bindings.translate.emit_clicked();
+        eprintln!("GTK document restart: waiting for first segment");
         spin_main_context_until(&context, Duration::from_secs(10), || {
             state.borrow().status() == AppStatus::Translating
                 && bindings.document_job_state.get() == Some(DocumentJobState::Running)
@@ -10044,6 +10049,7 @@ mod tests {
         });
         assert!(bindings.pause_document.is_sensitive());
         bindings.pause_document.emit_clicked();
+        eprintln!("GTK document restart: waiting for paused state");
         spin_main_context_until(&context, Duration::from_secs(10), || {
             bindings.document_job_state.get() == Some(DocumentJobState::Paused)
         });
@@ -10058,6 +10064,7 @@ mod tests {
         worker
             .try_send(WorkerCommand::Shutdown)
             .expect("shutdown first GTK document worker");
+        eprintln!("GTK document restart: waiting for first worker shutdown");
         spin_main_context_until(&context, Duration::from_secs(5), || {
             state.borrow().worker_unavailable()
         });
@@ -10082,6 +10089,7 @@ mod tests {
         connect_action_handlers(&restored_bindings, &restored_state, &restored_worker);
         start_event_pump(&restored_bindings, &restored_state, &restored_worker);
         restored_window.present();
+        eprintln!("GTK document restart: waiting for restored paused job");
         spin_main_context_until(&context, Duration::from_secs(5), || {
             restored_state.borrow().worker_ready()
                 && restored_bindings.document_job_id.borrow().as_deref() == Some(job_id.as_str())
@@ -10106,16 +10114,19 @@ mod tests {
             .set_text(EXPECTED_SECRET);
         restored_bindings.connect.emit_clicked();
         assert!(restored_bindings.provider_credential.text().is_empty());
+        eprintln!("GTK document restart: waiting for restored provider connection");
         spin_main_context_until(&context, Duration::from_secs(5), || {
             restored_state.borrow().status() == AppStatus::Ready
                 && restored_state.borrow().active_provider().is_some()
         });
         restored_bindings.model.set_selected(2);
+        eprintln!("GTK document restart: waiting for restored model selection");
         spin_main_context_until(&context, Duration::from_secs(5), || {
             restored_state.borrow().selected_model() == Some("fake-slow-translator")
         });
         assert!(restored_bindings.resume_document.is_sensitive());
         restored_bindings.resume_document.emit_clicked();
+        eprintln!("GTK document restart: waiting for resumed completion");
         spin_main_context_until(&context, Duration::from_secs(15), || {
             restored_bindings.document_job_state.get() == Some(DocumentJobState::Completed)
                 && restored_bindings.document_progress.get() == Some((2, 2))
