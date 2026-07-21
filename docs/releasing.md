@@ -54,7 +54,7 @@ while persistent
 secret references use the Linux GIO Secret Service adapter and fail closed when the desktop keyring
 is unavailable or requires an interactive prompt. The native workflow
 pins reviewed Core functional revision
-`cb644ef5d23d20b5e0af4d381bd5b4216d526b12`, whose Core delta adds bounded document lease
+`117a72ea80f40258a0abf582ffe1fae93c155786`, whose Core delta adds bounded document lease
 smoke and AddressSanitizer gate in addition to the protocol decoder fuzz gate and bounded FileLease lifecycle
 and engine-scoped ABI lease controls plus Unix POSIX-descriptor document consumption; Android and
 Windows handle transfer remain open. Its storage delta adds
@@ -77,10 +77,10 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `cb644ef5d23d20b5e0af4d381bd5b4216d526b12` and l10n
+The current Linux gate consumes Core `117a72ea80f40258a0abf582ffe1fae93c155786` and l10n
 `b817ba911c2ffafb35b7a29755681ab39e950368` (431 catalog messages). Normalized usage labels
 distinguish provider-reported, locally estimated, and unknown counts without pricing assumptions;
-provider wire parsing and stable ABI projection remain open. Request-level glossary rules, bounded CSV,
+provider billing equivalence and stable ABI projection remain open. Request-level glossary rules, bounded CSV,
 interchange are implemented in the Linux slice; persistent glossary libraries and TBX import
 remain outside the release claim.
 

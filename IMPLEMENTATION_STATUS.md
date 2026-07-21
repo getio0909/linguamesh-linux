@@ -5,10 +5,11 @@
 Assumption: Linux exposes token usage as bounded, non-sensitive metadata; provider-reported,
 locally estimated, and unknown sources remain visibly distinct, and no pricing is inferred.
 
-- Core functional revision `cb644ef5d23d20b5e0af4d381bd5b4216d526b12` adds the backward-compatible
-  `UsageRecord` completion field and advertises `usage_records_v1`. The current engine and Linux
-  worker emit conservative local estimates; provider-reported parsing remains a future adapter
-  boundary. The stable C ABI/protobuf projection is intentionally unchanged.
+- Core functional revision `117a72ea80f40258a0abf582ffe1fae93c155786` adds the backward-compatible
+  `UsageRecord` completion field, provider-stream usage events, and wire normalization for OpenAI
+  Chat/Responses, Anthropic, Gemini, and Ollama while advertising `usage_records_v1`. The engine
+  merges partial provider records and falls back to conservative local estimates when metadata is
+  absent. The stable C ABI/protobuf projection is intentionally unchanged.
 - Linux code revision `5d59646adeed72750964fa628eb0a3088911ac24` stores usage in `AppState`, clears
   it for each new request, preserves it through the worker remap and translation-memory path, and
   shows a localized source-marked line below completed output. Unknown records show no fabricated
@@ -19,9 +20,8 @@ locally estimated, and unknown sources remain visibly distinct, and no pricing i
   (`82 passed; 1 ignored`), demo-provider tests (`155 passed; 3 ignored`), localization key and
   placeholder audits, Flatpak metadata validation, demo build, and `git diff --check` passed.
 
-This is unreleased Linux/Rust-host evidence. Provider wire-level usage parsing, pricing estimates,
-GTK visual/RTL/Orca review, other clients, signed artifacts, and stable-release approval remain
-open.
+This is unreleased Linux/Rust-host evidence. Provider billing equivalence, pricing estimates, GTK
+visual/RTL/Orca review, other clients, signed artifacts, and stable-release approval remain open.
 
 ## 2026-07-21 — Linux GTK routing profile deletion cleanup lifecycle
 
