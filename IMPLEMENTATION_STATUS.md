@@ -1,5 +1,30 @@
 # Implementation Status
 
+## 2026-07-21 — Linux GTK translation cancellation lifecycle
+
+Assumption: Linux Scenario 6 is satisfied at the GTK boundary when the production Stop action
+cancels a streamed request after a confirmed delta, preserves that partial output, reaches the
+`Cancelled` state without retrying, and leaves Retry available for an explicit user action.
+
+- Linux runtime code `2730a24bc67f9c424b3cce845ced895d9f2710b2` adds the serialized ignored fixture
+  `gtk_cancel_translation_preserves_partial_output`. It connects the deterministic bearer-token
+  loopback provider through the production form, selects `fake-slow-translator`, starts a streamed
+  translation, clicks the real Stop button after the first `你好` delta, and asserts the partial
+  output remains unchanged after cancellation, the status is `Cancelled`, Stop is disabled, Retry
+  is enabled, and no error is rendered. Packaging source pin `2730a24bc67f9c424b3cce845ced895d9f2710b2`
+  is synchronized in final head `9322e3d6360611cbf57c9f9b4a23db3af1889c54`.
+- Local `cargo fmt --all -- --check`, all-target/all-feature check, strict Clippy, no-default
+  tests (`83 passed; 1 ignored`), Flatpak metadata validation, and diff checks passed. The host's
+  installed GTK symbols are older than the Rust bindings, so display-backed execution remains
+  CI-authoritative.
+- Final push Native/Flatpak/Foundation gates `29866519789`/`29866519798`/`29866519885` and PR
+  gates `29866523643`/`29866523637`/`29866523644` all passed. Native explicitly ran the exact GTK
+  cancellation fixture successfully before the remaining accessibility and release matrix.
+
+This advances unreleased Linux evidence for mandatory Scenario 6. Physical provider transport
+cancellation, human visual/copy/Orca review, other clients, signed artifacts, rollback
+authorization, and stable release remain open.
+
 ## 2026-07-21 — Linux GTK provider connection-test lifecycle
 
 Assumption: the explicit GTK **Test connection** action must validate a provider without committing
