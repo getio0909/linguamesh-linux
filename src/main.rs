@@ -8096,6 +8096,7 @@ mod tests {
         RoutingConstraints, RoutingMode, RoutingPreference, TranslationPreset,
         TranslationQualityMode, UsageRecord,
     };
+    use linguamesh_storage::Storage;
     use linguamesh_testkit::FakeProviderServer;
     use std::cell::RefCell;
     use std::fmt::Write as FmtWrite;
@@ -10038,8 +10039,21 @@ mod tests {
         spin_main_context_until(&context, Duration::from_secs(5), || {
             state.borrow().status() == AppStatus::Completed
                 && state.borrow().translation_history_count() == 1
-                && state.borrow().translation_memory_count() == 1
         });
+        let storage = Storage::open(&database_path).expect("open incognito UI storage");
+        assert_eq!(
+            storage
+                .translation_history_count()
+                .expect("history count after standard translation"),
+            1
+        );
+        assert_eq!(
+            storage
+                .translation_memory_count()
+                .expect("memory count after standard translation"),
+            1
+        );
+        drop(storage);
         let first_chat_requests = external.chat_requests.load(Ordering::SeqCst);
         assert!(first_chat_requests >= 1);
 
@@ -10056,9 +10070,21 @@ mod tests {
                 && external.chat_requests.load(Ordering::SeqCst) > first_chat_requests
         });
         assert!(state.borrow().is_incognito());
-        assert_eq!(state.borrow().translation_history_count(), 1);
-        assert_eq!(state.borrow().translation_memory_count(), 1);
         assert!(bindings.incognito.is_active());
+        let storage = Storage::open(&database_path).expect("reopen incognito UI storage");
+        assert_eq!(
+            storage
+                .translation_history_count()
+                .expect("history count after incognito translation"),
+            1
+        );
+        assert_eq!(
+            storage
+                .translation_memory_count()
+                .expect("memory count after incognito translation"),
+            1
+        );
+        drop(storage);
 
         let _ = worker.try_send(WorkerCommand::Shutdown);
         window.close();
