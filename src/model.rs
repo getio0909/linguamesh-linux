@@ -1,7 +1,7 @@
 use crate::localization;
 use linguamesh_domain::{
     ErrorKind, Glossary, ModelDescriptor, TranslationError, TranslationEvent, TranslationPreset,
-    TranslationPrivacyMode, TranslationQualityMode, TranslationRequest,
+    TranslationPrivacyMode, TranslationQualityMode, TranslationRequest, UsageRecord,
 };
 pub use linguamesh_domain::{ProviderProfile, ProviderProfileId, RoutingMode};
 use linguamesh_protocol::{ABI_VERSION_MAJOR, PROTOCOL_VERSION};
@@ -475,6 +475,7 @@ pub struct AppState {
     translation_memory_enabled: bool,
     output: String,
     partial_output: bool,
+    usage: Option<UsageRecord>,
     status: AppStatus,
     error: Option<TranslationError>,
     theme: ThemePreference,
@@ -512,6 +513,7 @@ impl Default for AppState {
             translation_memory_enabled: true,
             output: String::new(),
             partial_output: false,
+            usage: None,
             status: AppStatus::Disconnected,
             error: None,
             theme: ThemePreference::System,
@@ -706,6 +708,12 @@ impl AppState {
     #[must_use]
     pub fn output(&self) -> &str {
         &self.output
+    }
+
+    /// 返回最近一次完成事件携带的归一化 usage。
+    #[must_use]
+    pub fn usage(&self) -> Option<&UsageRecord> {
+        self.usage.as_ref()
     }
 
     /// 指示输出是否为未完成结果。
@@ -1325,6 +1333,7 @@ impl AppState {
         request = request.with_preset(self.translation_preset.clone());
         self.output.clear();
         self.partial_output = false;
+        self.usage = None;
         self.status = AppStatus::Translating;
         self.error = None;
         self.last_sequence = None;
@@ -1353,6 +1362,7 @@ impl AppState {
         }
         self.output.clear();
         self.partial_output = false;
+        self.usage = None;
         self.status = AppStatus::Translating;
         self.error = None;
         self.last_sequence = None;
@@ -1435,7 +1445,8 @@ impl AppState {
                 self.output.push_str(&text);
                 self.partial_output = true;
             }
-            TranslationEvent::Completed { .. } => {
+            TranslationEvent::Completed { usage, .. } => {
+                self.usage = usage;
                 self.status = AppStatus::Completed;
                 self.partial_output = false;
             }
@@ -2209,7 +2220,7 @@ mod tests {
     use linguamesh_domain::{
         ErrorKind, Glossary, GlossaryEntry, ModelDescriptor, ModelSource, SecretRef,
         SecretRefNamespace, TranslationError, TranslationEvent, TranslationPrivacyMode,
-        TranslationQualityMode,
+        TranslationQualityMode, UsageRecord, UsageSource,
     };
 
     fn profile(
@@ -2996,10 +3007,17 @@ mod tests {
             .expect("delta");
         assert!(state.has_partial_output());
         state
-            .apply_translation_event(TranslationEvent::Completed { sequence: 2 })
+            .apply_translation_event(TranslationEvent::Completed {
+                sequence: 2,
+                usage: Some(UsageRecord::locally_estimated("Hello", "你好")),
+            })
             .expect("completed");
         assert_eq!(state.output(), "你好");
         assert_eq!(state.status(), AppStatus::Completed);
+        assert_eq!(
+            state.usage().map(|usage| usage.source),
+            Some(UsageSource::LocallyEstimated)
+        );
         assert!(!state.has_partial_output());
     }
 
@@ -3089,7 +3107,10 @@ mod tests {
         let mut state = connected_state();
         state.begin_translation().expect("request");
         assert_eq!(
-            state.apply_translation_event(TranslationEvent::Completed { sequence: 1 }),
+            state.apply_translation_event(TranslationEvent::Completed {
+                sequence: 1,
+                usage: None,
+            }),
             Err(StateError::UnexpectedFirstEvent)
         );
     }
@@ -4010,7 +4031,10 @@ mod tests {
             Some("local-fake-provider")
         );
         state
-            .apply_translation_event(TranslationEvent::Completed { sequence: 1 })
+            .apply_translation_event(TranslationEvent::Completed {
+                sequence: 1,
+                usage: None,
+            })
             .expect("completed");
         assert_eq!(state.status(), AppStatus::Completed);
     }

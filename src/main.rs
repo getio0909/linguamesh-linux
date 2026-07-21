@@ -9,7 +9,7 @@ use linguamesh_domain::{
     MAX_ROUTING_IDENTIFIER_BYTES, MAX_ROUTING_PROFILE_JSON_BYTES, OperationId, ProviderProfileId,
     RoutingCandidate, RoutingConstraints, RoutingMode, RoutingPreference, RoutingProfile,
     SecretRef, SecretRefNamespace, SecretValue, TranslationError, TranslationEvent,
-    TranslationPreset, TranslationPrivacyMode, TranslationQualityMode,
+    TranslationPreset, TranslationPrivacyMode, TranslationQualityMode, UsageRecord, UsageSource,
 };
 use linguamesh_linux::file_import;
 use linguamesh_linux::localization;
@@ -2425,6 +2425,49 @@ fn text_metrics_label(locale: UiLocale, text: &str) -> String {
     )
 }
 
+// 根据核心归一化记录生成不含文本和定价假设的 usage 提示。
+fn usage_label(locale: UiLocale, usage: Option<&UsageRecord>) -> Option<String> {
+    let usage = usage?;
+    let source = match usage.source {
+        UsageSource::ProviderReported => localization::text(
+            locale,
+            "usage.source.provider_reported",
+            "provider reported",
+        ),
+        UsageSource::LocallyEstimated => localization::text(
+            locale,
+            "usage.source.locally_estimated",
+            "locally estimated",
+        ),
+        UsageSource::Unknown => localization::text(locale, "usage.source.unknown", "unknown"),
+    };
+    Some(match usage.total_tokens {
+        Some(total_tokens) => localized_template(
+            locale,
+            "status.usage",
+            "Usage: {total_tokens} tokens ({source})",
+            &[
+                ("{total_tokens}", &total_tokens.to_string()),
+                ("{source}", &source),
+            ],
+        ),
+        None => localized_template(
+            locale,
+            "status.usage_unknown",
+            "Usage: unavailable ({source})",
+            &[("{source}", &source)],
+        ),
+    })
+}
+
+// 将文本指标和已完成请求的 usage 信息组合到译文面板。
+fn output_metrics_label(locale: UiLocale, text: &str, usage: Option<&UsageRecord>) -> String {
+    let metrics = text_metrics_label(locale, text);
+    usage_label(locale, usage)
+        .map(|usage| format!("{metrics}\n{usage}"))
+        .unwrap_or(metrics)
+}
+
 // 读取 GTK 文本缓冲区内容，供计数提示使用而不影响翻译状态。
 fn text_buffer_contents(buffer: &gtk::TextBuffer) -> String {
     let (start, end) = buffer.bounds();
@@ -2432,14 +2475,15 @@ fn text_buffer_contents(buffer: &gtk::TextBuffer) -> String {
 }
 
 // 同步源文本和译文的计数提示，并随界面语言刷新其模板。
-fn refresh_text_metrics(bindings: &UiBindings, locale: UiLocale) {
+fn refresh_text_metrics(bindings: &UiBindings, locale: UiLocale, usage: Option<&UsageRecord>) {
     bindings.source_metrics.set_label(&text_metrics_label(
         locale,
         &text_buffer_contents(&bindings.source),
     ));
-    bindings.output_metrics.set_label(&text_metrics_label(
+    bindings.output_metrics.set_label(&output_metrics_label(
         locale,
         &text_buffer_contents(&bindings.output),
+        usage,
     ));
 }
 
@@ -7609,7 +7653,7 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             gtk::TextDirection::Ltr
         });
     bindings.output.set_text(state.output());
-    refresh_text_metrics(bindings, state.locale());
+    refresh_text_metrics(bindings, state.locale(), state.usage());
     let document_state = bindings.document_job_state.get();
     let status_label = if bindings.ocr_pending.get() {
         localization::text(state.locale(), "status.ocr_running", "Running OCR")
@@ -8032,14 +8076,15 @@ mod tests {
         create_window, custom_provider_profile, destination_matches_source, document_format_label,
         endpoint_matches_preset_default, fallback_confirmation_needed, generate_custom_provider_id,
         localized_document_job_state, localized_document_warnings, localized_provider_default_name,
-        localized_template, normalized_candidate_ids_for_mode, preset_requires_manual_model,
-        provider_preset_config, provider_preset_index, quality_mode_for_selection,
-        quality_mode_selection, refresh_ui, routing_constraints_from_controls,
-        routing_constraints_from_text_values, routing_identifier_list_from_text,
-        routing_optional_limit_from_text, routing_preference_for_selection,
-        routing_preference_selection, routing_profile_id_conflicts, show_fallback_approval_dialog,
-        show_new_profile_in_form, show_routing_profiles_dialog, start_event_pump,
-        text_metrics_label, translation_preset_for_selection, translation_preset_selection,
+        localized_template, normalized_candidate_ids_for_mode, output_metrics_label,
+        preset_requires_manual_model, provider_preset_config, provider_preset_index,
+        quality_mode_for_selection, quality_mode_selection, refresh_ui,
+        routing_constraints_from_controls, routing_constraints_from_text_values,
+        routing_identifier_list_from_text, routing_optional_limit_from_text,
+        routing_preference_for_selection, routing_preference_selection,
+        routing_profile_id_conflicts, show_fallback_approval_dialog, show_new_profile_in_form,
+        show_routing_profiles_dialog, start_event_pump, text_metrics_label,
+        translation_preset_for_selection, translation_preset_selection, usage_label,
         valid_routing_profile_id, validate_provider_preset_catalog,
     };
     use adw::prelude::*;
@@ -8049,7 +8094,7 @@ mod tests {
     };
     use linguamesh_domain::{
         RoutingConstraints, RoutingMode, RoutingPreference, TranslationPreset,
-        TranslationQualityMode,
+        TranslationQualityMode, UsageRecord,
     };
     use linguamesh_testkit::FakeProviderServer;
     use std::cell::RefCell;
@@ -8864,6 +8909,20 @@ mod tests {
         assert_eq!(
             text_metrics_label(UiLocale::English, "中a"),
             "Characters: 2 · Estimated tokens: 1"
+        );
+    }
+
+    #[test]
+    fn usage_label_preserves_source_and_unknown_boundary() {
+        let estimated = UsageRecord::locally_estimated("abcd", "你好");
+        assert_eq!(
+            usage_label(UiLocale::English, Some(&estimated)).as_deref(),
+            Some("Usage: 2 tokens (locally estimated)")
+        );
+        let unknown = UsageRecord::unknown();
+        assert_eq!(
+            output_metrics_label(UiLocale::English, "abcd", Some(&unknown)),
+            "Characters: 4 · Estimated tokens: 1\nUsage: unavailable (unknown)"
         );
     }
 

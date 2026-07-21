@@ -49,7 +49,7 @@ const REVIEWED_CORE_VERSION: &str = "0.1.0-alpha.2";
 const REVIEWED_ABI_MAJOR: u32 = 1;
 const REVIEWED_PROTOCOL_VERSION: u32 = 1;
 const REVIEWED_PROVIDER_CATALOG_VERSION: &str = "0.1.0";
-const REQUIRED_CORE_FEATURES: [&str; 15] = [
+const REQUIRED_CORE_FEATURES: [&str; 16] = [
     "cancellation_v1",
     "azure_openai_chat_v1",
     "openai_responses_v1",
@@ -65,6 +65,7 @@ const REQUIRED_CORE_FEATURES: [&str; 15] = [
     "translation_presets_v1",
     "streaming_text_v1",
     "text_translation_v1",
+    "usage_records_v1",
 ];
 
 /// 描述连接配置是否应跨进程重启保留。
@@ -4170,6 +4171,12 @@ async fn run_worker(
                                 || events
                                     .send(WorkerEvent::Translation(TranslationEvent::Completed {
                                         sequence: 2,
+                                        usage: Some(
+                                            linguamesh_domain::UsageRecord::locally_estimated(
+                                                &request.source_text,
+                                                &entry.translated_text,
+                                            ),
+                                        ),
                                     }))
                                     .is_err()
                             {
@@ -5195,7 +5202,9 @@ fn remap_translation_event(event: TranslationEvent, sequence: u64) -> Translatio
     match event {
         TranslationEvent::Started { .. } => TranslationEvent::Started { sequence },
         TranslationEvent::TextDelta { text, .. } => TranslationEvent::TextDelta { sequence, text },
-        TranslationEvent::Completed { .. } => TranslationEvent::Completed { sequence },
+        TranslationEvent::Completed { usage, .. } => {
+            TranslationEvent::Completed { sequence, usage }
+        }
         TranslationEvent::Cancelled { .. } => TranslationEvent::Cancelled { sequence },
         TranslationEvent::Failed { error, .. } => TranslationEvent::Failed { sequence, error },
     }

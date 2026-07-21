@@ -2191,3 +2191,30 @@ msgstr "Technical"
 msgctxt "tooltip.translation_preset"
 msgid "Apply a bounded domain, tone, formality, and audience preference to the next request"
 msgstr "Apply a bounded domain, tone, formality, and audience preference to the next request"
+
+#. Reports normalized token usage and identifies whether it was provider-reported or locally estimated.
+#, python-brace-format
+msgctxt "status.usage"
+msgid "Usage: {total_tokens} tokens ({source})"
+msgstr "Usage: {total_tokens} tokens ({source})"
+
+#. Reports that normalized token usage is unavailable and identifies the reason category.
+#, python-brace-format
+msgctxt "status.usage_unknown"
+msgid "Usage: unavailable ({source})"
+msgstr "Usage: unavailable ({source})"
+
+#. Source label for usage counts reported by the provider.
+msgctxt "usage.source.provider_reported"
+msgid "provider reported"
+msgstr "provider reported"
+
+#. Source label for usage counts estimated from local text lengths.
+msgctxt "usage.source.locally_estimated"
+msgid "locally estimated"
+msgstr "locally estimated"
+
+#. Source label for usage metadata that cannot be attributed to a provider or local estimate.
+msgctxt "usage.source.unknown"
+msgid "unknown"
+msgstr "unknown"

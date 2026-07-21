@@ -2581,3 +2581,33 @@ msgstr "技術"
 msgctxt "tooltip.translation_preset"
 msgid "Apply a bounded domain, tone, formality, and audience preference to the next request"
 msgstr "為下一次請求套用限定的領域、語氣、正式程度與受眾偏好"
+
+#. Reports normalized token usage and identifies whether it was provider-reported or locally estimated.
+#, fuzzy, python-brace-format
+msgctxt "status.usage"
+msgid "Usage: {total_tokens} tokens ({source})"
+msgstr "用量：{total_tokens} 個令牌（{source}）"
+
+#. Reports that normalized token usage is unavailable and identifies the reason category.
+#, fuzzy, python-brace-format
+msgctxt "status.usage_unknown"
+msgid "Usage: unavailable ({source})"
+msgstr "用量：無法使用（{source}）"
+
+#. Source label for usage counts reported by the provider.
+#, fuzzy
+msgctxt "usage.source.provider_reported"
+msgid "provider reported"
+msgstr "提供商回報"
+
+#. Source label for usage counts estimated from local text lengths.
+#, fuzzy
+msgctxt "usage.source.locally_estimated"
+msgid "locally estimated"
+msgstr "本機估算"
+
+#. Source label for usage metadata that cannot be attributed to a provider or local estimate.
+#, fuzzy
+msgctxt "usage.source.unknown"
+msgid "unknown"
+msgstr "未知"
