@@ -29,6 +29,12 @@ an artifact.
 - The verifier builds the SDK twice in release mode, compares the complete archive checksum,
   validates the external and per-file SHA-256 manifests, checks pkg-config metadata, and compiles
   the packaged static library with the C header smoke consumer.
+- Native push run `29808320946` (job `88563526947`) passed the verifier at the pinned Core
+  revision and reported archive SHA-256
+  `3b42d10a347a32e45abb63f3ddb4bf052f90da26f940d2436256f66baae0c9f5`; the matching PR Native
+  run `29808324340` also passed. Push Flatpak/Foundation runs `29808320963`/`29808320962` and
+  PR Flatpak/Foundation runs `29808324366`/`29808324395` passed all packaging and foundation
+  checks for this head.
 - This gate proves reproducible compatibility inputs for Linux; it does not publish, sign, or
   promote the generated archive.
 
