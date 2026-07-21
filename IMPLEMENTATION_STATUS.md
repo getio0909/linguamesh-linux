@@ -19,7 +19,7 @@ boundary.
 - Local formatting, all-target/all-feature check, strict Clippy, no-default tests (`83 passed; 1
   ignored`), demo-provider tests (`157 passed; 3 ignored`), localization key/placeholder/visible
   audits, l10n synchronization, Flatpak metadata, and diff checks passed.
-- Flatpak source pin is synchronized at `948e8b9b17f60f5ed37ef13521b3c36e74ef62cc`.
+- Flatpak source pin is synchronized at `de1123d902ecfcb5b94ad62bedcb6712aa2d4be3`.
 
 This advances unreleased Linux evidence for mandatory Scenario 14. Remote CI gates for this new GTK
 fixture remain pending; no stable-release claim is made.
