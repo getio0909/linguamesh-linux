@@ -12,6 +12,16 @@ workflow before this repository records the next cross-repository validation che
   protocol and document targets, each bounded to 2,000 runs and cargo-fuzz AddressSanitizer
   instrumentation. Core CI `29791113656` and Native SDK `29791113659` are the accompanying
   cross-platform gates.
+- Linux commit `86f67a186eb8b2d3c0a98d7486bf64e48db3bdeb` passed Native Linux run `29791487882`
+  (job `88514064652`), Flatpak Linux run `29791487873` (job `88514064687`), and Repository
+  Foundation run `29791487927` (job `88514064925`). The Native run covered all GTK, portal,
+  Secret Service, accessibility, OCR, Wayland, release-build, performance, checksum, and SBOM
+  steps; the Flatpak run built and sandbox-smoked the bundle.
+- Local no-default tests passed (`81 passed; 1 ignored`) and demo-provider tests passed
+  (`145 passed; 3 ignored`), alongside formatting, strict Clippy, localization, Flatpak metadata,
+  all-target check, and diff checks. The local all-feature GTK invocation was not runnable because
+  this workstation lacks `xvfb-run` and exposes incomplete GTK linker symbols; the remote Native
+  gate is authoritative for that environment-dependent coverage.
 - Linux runtime APIs are unchanged. Document-command resource consumption, OS-handle transfer,
   visual/GPU review, signing, rollback, and stable release remain open.
 
