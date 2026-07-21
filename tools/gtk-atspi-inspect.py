@@ -95,6 +95,20 @@ def main() -> int:
             "Retry translation": {"ROLE_PUSH_BUTTON"},
             "إيقاف الترجمة": {"ROLE_PUSH_BUTTON"},
         },
+        "en-XA": {
+            "［Øþëñ ŧëẋŧ ƒïŀë~~~~］": {"ROLE_PUSH_BUTTON"},
+            "［Åŀŀøŵ åþþŕøṽëð ƒåŀŀƀåçķ~~~~~~~］": {"ROLE_CHECK_BOX"},
+            "［Ŧŕåñšŀåŧë~~~］": {"ROLE_PUSH_BUTTON"},
+            "［Ŕëŧŕÿ ŧŕåñšŀåŧïøñ~~~~~］": {"ROLE_PUSH_BUTTON"},
+            "［Šŧøþ ŧŕåñšŀåŧïøñ~~~~~］": {"ROLE_PUSH_BUTTON"},
+        },
+        "ar-XB": {
+            "⁧⟦Open text file⟧⁩": {"ROLE_PUSH_BUTTON"},
+            "⁧⟦Allow approved fallback⟧⁩": {"ROLE_CHECK_BOX"},
+            "⁧⟦Translate⟧⁩": {"ROLE_PUSH_BUTTON"},
+            "⁧⟦Retry translation⟧⁩": {"ROLE_PUSH_BUTTON"},
+            "⁧⟦Stop translation⟧⁩": {"ROLE_PUSH_BUTTON"},
+        },
     }
     expected = expected_by_locale.get(locale)
     if expected is None:

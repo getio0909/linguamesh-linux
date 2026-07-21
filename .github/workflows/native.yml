@@ -189,6 +189,16 @@ jobs:
         env:
           LINGUAMESH_TEST_LOCALE: ar
         run: bash tools/run-gtk-atspi-test.sh
+      - name: Run accented pseudo-locale GTK AT-SPI fixture
+        working-directory: linguamesh-linux
+        env:
+          LINGUAMESH_TEST_LOCALE: en-XA
+        run: bash tools/run-gtk-atspi-test.sh
+      - name: Run RTL pseudo-locale GTK AT-SPI fixture
+        working-directory: linguamesh-linux
+        env:
+          LINGUAMESH_TEST_LOCALE: ar-XB
+        run: bash tools/run-gtk-atspi-test.sh
       - name: Run GTK accessibility preference fixture
         working-directory: linguamesh-linux
         run: bash tools/run-gtk-accessibility-preferences-test.sh
