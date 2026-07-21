@@ -11,14 +11,14 @@ alternate SQLite VFS.
   `synchronous=NORMAL` to `synchronous=FULL`, adds the Unix process-crash WAL regression, and
   updates the migration/architecture contract and pragma regression to require SQLite mode `2`.
   Core local formatting, workspace check, strict Clippy, and full workspace tests passed; Core CI,
-  Fuzz/sanitizers, and Native SDK gates are recorded after the remote runs complete.
+  Fuzz/sanitizers, and Native SDK runs `29854340447`/`29854339357`/`29854340140` passed.
 - Linux Native and Flatpak now consume that exact Core revision; the runtime code is unchanged and
   the existing Linux storage/WAL tests remain the behavioral boundary. Local Linux formatting,
   all-target/all-feature check, strict Clippy, no-default tests (`82 passed; 1 ignored`),
   demo-provider tests (`155 passed; 3 ignored`), localization audits, synchronization, and
   Flatpak metadata validation passed. Push Native/Flatpak/Foundation gates
-  `29852793704`/`29852793833`/`29852793818` and PR gates
-  `29852797251`/`29852797581`/`29852797258` all passed.
+  `29854770351`/`29854770380`/`29854770404` and PR gates
+  `29854773408`/`29854773406`/`29854773414` all passed.
 
 This is unreleased Linux durability hardening evidence. The process-crash regression does not claim
 physical power-loss simulation, alternate SQLite VFS behavior, signing, rollback authorization,
