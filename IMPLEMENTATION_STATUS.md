@@ -7,18 +7,22 @@ memory writes, so an existing cached result cannot satisfy a private request or 
 boundary.
 
 - The worker now skips the translation-memory lookup branch whenever the request is Incognito;
-  standard requests retain the existing cache behavior.
+  standard requests retain the existing cache behavior. The serialized GTK fixture
+  `gtk_incognito_translation_bypasses_memory_and_persistence` drives the production toggle,
+  authenticated connection, model selection, and Translate action. It proves a standard request
+  creates one history and one translation-memory entry, the identical Incognito request reaches the
+  loopback provider again, and both persisted counts remain at one.
 - Regression `incognito_translation_bypasses_existing_memory_and_persists_nothing` first stores a
   standard result, then sends the same source in Incognito mode through an authenticated loopback
   provider. It requires a second provider request and verifies that the database still contains
   exactly one history row and one memory row.
-- Local focused validation passed:
-  `cargo fmt --all -- --check` and
-  `cargo test --features demo-provider --locked worker::tests::incognito_translation_bypasses_existing_memory_and_persists_nothing -- --exact`.
-- Flatpak source pin is synchronized at `0762c35f9ba6c9ddbbceecab28534f5e814f1805`.
+- Local formatting, all-target/all-feature check, strict Clippy, no-default tests (`83 passed; 1
+  ignored`), demo-provider tests (`157 passed; 3 ignored`), localization key/placeholder/visible
+  audits, l10n synchronization, Flatpak metadata, and diff checks passed.
+- Flatpak source pin is synchronized at `a231f83c0c2e2479820c3a4d1a54e5a67c7dfbb4`.
 
-This advances unreleased Linux evidence for mandatory Scenario 14. Full-suite and remote CI gates
-remain pending; no stable-release claim is made.
+This advances unreleased Linux evidence for mandatory Scenario 14. Remote CI gates for this new GTK
+fixture remain pending; no stable-release claim is made.
 
 ## 2026-07-21 — Linux GTK interrupted document-job restart/resume lifecycle
 
