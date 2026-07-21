@@ -11,6 +11,11 @@ allowing empty label resets used to clear transient state.
   call sites and no non-empty hard-coded GTK strings.
 - This is stronger repeatable source evidence, not a claim that translated copy, plural forms, or
   visual locale review has been completed; non-English catalogs remain machine-generated drafts.
+- Local validation passed the three localization audits, l10n synchronization, Flatpak metadata,
+  formatting, locked offline checks, strict Clippy, and 81/149 library tests (with the existing
+  environment-dependent ignores). Code head `56a081272ed3fb6b42dcd3111616a620763f51c8` passed
+  push Native/Flatpak/Foundation runs `29823219039`/`29823218980`/`29823219144` and pull-request
+  runs `29823221964`/`29823221885`/`29823221874`.
 
 ## 2026-07-21 — Linux Arabic headless Orca fixture
 
