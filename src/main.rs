@@ -6674,7 +6674,7 @@ fn apply_worker_event(
             bindings.connection_test_notice.set(false);
             bindings.connection_test_model_count.set(None);
             bindings.connection_test_profile_id.replace(None);
-            state.borrow_mut().record_client_error(error.message);
+            state.borrow_mut().record_operation_failure(error);
         }
         WorkerEvent::ModelSelected {
             profile_id,
