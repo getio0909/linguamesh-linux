@@ -10032,6 +10032,7 @@ mod tests {
             bindings.document_job_id.borrow().as_deref() == Some(job_id.as_str())
                 && bindings.document_job_state.get() == Some(DocumentJobState::Pending)
         });
+        bindings.source.set_text("one\ntwo");
         bindings.translate.emit_clicked();
         spin_main_context_until(&context, Duration::from_secs(10), || {
             state.borrow().status() == AppStatus::Translating
