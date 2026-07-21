@@ -13,7 +13,10 @@ preflight but before the descriptor is opened, not only a replaced parent direct
   filesystem/VFS and power-loss behavior explicitly outside the current claim.
 - Local targeted and full demo-provider tests passed (`147 passed; 3 ignored`), the no-default suite
   passed (`81 passed; 1 ignored`), strict Clippy, localization audits, formatting, and diff checks
-  passed; the remote Native/Flatpak/Foundation gates remain required for this code checkpoint.
+  passed. Code head `93fd6f2b7d258c2c9902386ee1edb7a94c45fd9b` and packaging/docs head
+  `2ce550da4c195ad6e93d0fb7a6924b1aafa6b008` passed push Native/Flatpak/Foundation
+  `29802227111`/`29802227034`/`29802227032` and PR Native/Flatpak/Foundation
+  `29802228939`/`29802228801`/`29802228807`.
 
 ## 2026-07-21 — Linux validation boundary refresh
 
