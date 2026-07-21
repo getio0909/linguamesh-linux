@@ -11,9 +11,12 @@ dimension changes, not only when the ABI major changes.
 - Local `cargo fmt --all -- --check`, all-target/all-feature check, strict Clippy, no-default tests
   (`81 passed; 1 ignored`), demo-provider tests (`147 passed; 3 ignored`), localization audits,
   Flatpak metadata, synchronization, and diff checks passed. The first push/PR Flatpak checks
-  correctly failed because the manifest still pointed at ancestor `12e810b`; the source pin is
-  corrected to this exact test head before the replacement gate. Remote gates are pending for this
-  source/test head.
+  correctly failed because the manifest still pointed at ancestor `12e810b`; the source pin was
+  corrected to this exact test head before the replacement gate.
+- Final push Native/Flatpak/Foundation runs `29814933452`/`29814933509`/`29814933444` and
+  pull-request Native/Flatpak/Foundation runs `29814936270`/`29814936251`/`29814936212` passed all
+  jobs, including the compatibility matrix, Core SDK smoke, GTK, accessibility, and Flatpak
+  checks.
 
 This strengthens Linux Scenario 16 fail-closed evidence only; it does not authorize an unreviewed
 Core, cross-client compatibility, or a stable release.
