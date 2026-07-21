@@ -1,5 +1,19 @@
 # Implementation Status
 
+## 2026-07-21 — Linux alternate-directory replacement race regression
+
+Assumption: same-UID replacement of a validated private parent with another private directory
+must fail closed just like symbolic-link and regular-file replacement, even when permissions and
+file type remain superficially valid.
+
+- Linux adds `replaced_parent_with_alternate_directory_is_rejected_between_preflight_and_descriptor_open`.
+  The regression validates a private parent, swaps it for a distinct private directory, and
+  requires `openat2(RESOLVE_NO_SYMLINKS)` plus device/inode comparison to reject the replacement.
+  The original directory is restored and the alternate directory is removed after the assertion.
+- This is a narrow storage hardening checkpoint: the production host now retains the preflight
+  parent device/inode and rejects a mismatch after descriptor acquisition. Broader SQLite VFS
+  behavior and abrupt power-loss recovery remain outside the evidence boundary.
+
 ## 2026-07-21 — Linux provider mnemonic focus fixture
 
 Assumption: Linux keyboard accessibility must verify both the provider form's explicit Tab order

@@ -717,8 +717,9 @@ Orca integration, portal and Flatpak smoke paths, catalog key/placeholder invari
 `cargo-deny` advisory/license/source policy, and the implemented storage transaction boundary.
 The storage regressions cover parent-directory replacement with a symlink or regular file and
 final-database-component replacement with a symlink or hard link through descriptor-pinned
-`openat2`/`O_NOFOLLOW` opens; broader same-UID filesystem/VFS variants and power loss remain outside
-the tested boundary.
+`openat2`/`O_NOFOLLOW` opens; the preflight suite also replaces the validated parent with a distinct
+private directory and rejects the device/inode change. Broader same-UID filesystem/VFS variants and
+power loss remain outside the tested boundary.
 Remaining evidence is deliberately explicit: human screen-reader listening and translated-copy/
 RTL/visual review; physical compositor, GPU-backed Wayland, and broader X11/desktop coverage;
 prompted interactive Secret Service approval; broader filesystem/VFS and power-loss races; signed

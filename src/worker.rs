@@ -4412,7 +4412,7 @@ impl PreparedDatabase {
 
 fn prepare_database_file(path: &Path) -> Result<PreparedDatabase, TranslationError> {
     let parent = validate_database_path(path)?;
-    let parent_fd = pin_database_parent(parent)?;
+    let parent_fd = pin_database_parent(&parent)?;
     let file_name = path.file_name().ok_or_else(|| {
         TranslationError::new(
             ErrorKind::Persistence,
@@ -4428,7 +4428,13 @@ fn prepare_database_file(path: &Path) -> Result<PreparedDatabase, TranslationErr
     })
 }
 
-fn validate_database_path(path: &Path) -> Result<&Path, TranslationError> {
+struct ValidatedDatabasePath {
+    parent: PathBuf,
+    device: u64,
+    inode: u64,
+}
+
+fn validate_database_path(path: &Path) -> Result<ValidatedDatabasePath, TranslationError> {
     if !path.is_absolute() {
         return Err(TranslationError::new(
             ErrorKind::Persistence,
@@ -4483,13 +4489,19 @@ fn validate_database_path(path: &Path) -> Result<&Path, TranslationError> {
             ));
         }
     }
-    Ok(parent)
+    Ok(ValidatedDatabasePath {
+        parent: parent.to_path_buf(),
+        device: parent_metadata.dev(),
+        inode: parent_metadata.ino(),
+    })
 }
 
-fn pin_database_parent(path: &Path) -> Result<rustix::fd::OwnedFd, TranslationError> {
+fn pin_database_parent(
+    validated: &ValidatedDatabasePath,
+) -> Result<rustix::fd::OwnedFd, TranslationError> {
     let parent_fd = openat2(
         CWD,
-        path,
+        &validated.parent,
         RustixOFlags::PATH | RustixOFlags::DIRECTORY | RustixOFlags::CLOEXEC,
         RustixMode::empty(),
         ResolveFlags::NO_SYMLINKS,
@@ -4506,7 +4518,7 @@ fn pin_database_parent(path: &Path) -> Result<rustix::fd::OwnedFd, TranslationEr
             "The profile database directory could not be inspected.",
         )
     })?;
-    let current_parent = fs::symlink_metadata(path).map_err(|_| {
+    let current_parent = fs::symlink_metadata(&validated.parent).map_err(|_| {
         TranslationError::new(
             ErrorKind::Persistence,
             "The profile database directory could not be inspected.",
@@ -4518,6 +4530,10 @@ fn pin_database_parent(path: &Path) -> Result<rustix::fd::OwnedFd, TranslationEr
         || current_parent.file_type().is_symlink()
         || current_parent.dev() != opened_parent.st_dev
         || current_parent.ino() != opened_parent.st_ino
+        || current_parent.dev() != validated.device
+        || current_parent.ino() != validated.inode
+        || opened_parent.st_dev != validated.device
+        || opened_parent.st_ino != validated.inode
     {
         return Err(TranslationError::new(
             ErrorKind::Persistence,
@@ -10196,7 +10212,7 @@ mod tests {
         fs::rename(&database.directory, &moved).expect("move validated directory");
         symlink(&alternate, &database.directory).expect("replace validated path");
 
-        assert!(pin_database_parent(parent).is_err());
+        assert!(pin_database_parent(&parent).is_err());
 
         fs::remove_file(&database.directory).expect("remove replacement symlink");
         fs::rename(&moved, &database.directory).expect("restore validated directory");
@@ -10223,10 +10239,48 @@ mod tests {
         fs::write(&database.directory, b"replacement-not-a-directory")
             .expect("replace validated path with a regular file");
 
-        assert!(pin_database_parent(parent).is_err());
+        assert!(pin_database_parent(&parent).is_err());
 
         fs::remove_file(&database.directory).expect("remove replacement file");
         fs::rename(&moved, &database.directory).expect("restore validated directory");
+    }
+
+    #[test]
+    fn replaced_parent_with_alternate_directory_is_rejected_between_preflight_and_descriptor_open()
+    {
+        let database = TestDatabase::new();
+        fs::create_dir(&database.directory).expect("database directory");
+        fs::set_permissions(&database.directory, fs::Permissions::from_mode(0o700))
+            .expect("database directory permissions");
+        let alternate = database.directory.with_file_name(format!(
+            "{}-alternate",
+            database
+                .directory
+                .file_name()
+                .expect("database directory name")
+                .to_string_lossy()
+        ));
+        fs::create_dir(&alternate).expect("alternate directory");
+        fs::set_permissions(&alternate, fs::Permissions::from_mode(0o700))
+            .expect("alternate directory permissions");
+
+        let parent = validate_database_path(database.path()).expect("validated database parent");
+        let moved = database.directory.with_file_name(format!(
+            "{}-moved",
+            database
+                .directory
+                .file_name()
+                .expect("database directory name")
+                .to_string_lossy()
+        ));
+        fs::rename(&database.directory, &moved).expect("move validated directory");
+        fs::rename(&alternate, &database.directory).expect("replace with alternate directory");
+
+        assert!(pin_database_parent(&parent).is_err());
+
+        fs::rename(&database.directory, &alternate).expect("restore alternate directory");
+        fs::rename(&moved, &database.directory).expect("restore validated directory");
+        fs::remove_dir_all(alternate).expect("remove alternate directory");
     }
 
     #[test]
@@ -10240,7 +10294,7 @@ mod tests {
 
         let parent = validate_database_path(database.path()).expect("validated database parent");
         symlink(&target, database.path()).expect("replace validated database path");
-        let parent_fd = pin_database_parent(parent).expect("pinned database parent");
+        let parent_fd = pin_database_parent(&parent).expect("pinned database parent");
         let file_name = database.path().file_name().expect("database file name");
 
         assert!(open_database_file(&parent_fd, file_name).is_err());
@@ -10261,7 +10315,7 @@ mod tests {
 
         let parent = validate_database_path(database.path()).expect("validated database parent");
         fs::hard_link(&target, database.path()).expect("replace validated path with hard link");
-        let parent_fd = pin_database_parent(parent).expect("pinned database parent");
+        let parent_fd = pin_database_parent(&parent).expect("pinned database parent");
         let file_name = database.path().file_name().expect("database file name");
 
         assert!(open_database_file(&parent_fd, file_name).is_err());
