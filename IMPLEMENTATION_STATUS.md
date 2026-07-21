@@ -13,7 +13,10 @@ database leaf even when the replacement is not a symbolic link.
   requires rejection without modifying the linked target.
 - Local `cargo fmt --all -- --check`, targeted regressions, demo-provider tests (`149 passed; 3
   ignored`), no-default tests (`81 passed; 1 ignored`), strict Clippy, and `git diff --check`
-  passed. Remote Native/Flatpak/Foundation gates are pending for this head.
+  passed. The first push/PR Flatpak gates correctly failed because the manifest still pointed at
+  ancestor `f53c44d`; after repinning to `751ac1e`, final push Native/Flatpak/Foundation runs
+  `29817292493`/`29817292344`/`29817292390` and pull-request Native/Flatpak/Foundation runs
+  `29817295183`/`29817295210`/`29817295244` all passed.
 
 This expands automated Linux storage-race evidence only; broader filesystem/VFS variants, power
 loss, human review, other clients, signing, and stable release remain open.
