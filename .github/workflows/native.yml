@@ -195,6 +195,11 @@ jobs:
       - name: Run Orca AT-SPI fixture
         working-directory: linguamesh-linux
         run: bash tools/run-orca-atspi-test.sh
+      - name: Run Arabic Orca AT-SPI fixture
+        working-directory: linguamesh-linux
+        env:
+          LINGUAMESH_TEST_LOCALE: ar
+        run: bash tools/run-orca-atspi-test.sh
       - name: Run optional OCR fixture
         working-directory: linguamesh-linux
         run: bash tools/run-ocr-test.sh

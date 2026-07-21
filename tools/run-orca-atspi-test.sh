@@ -111,8 +111,8 @@ XDG_CACHE_HOME="$workspace/cache" \
     xdotool windowfocus --sync "$app_window" >/dev/null 2>&1 || true
     inspection_output=$(python3 tools/orca-atspi-inspect.py)
     printf '%s\n' "$inspection_output"
-    grep -Fq "Stop translation" <<<"$inspection_output" || {
-      printf "%s\n" "Orca AT-SPI fixture did not confirm the named Stop translation control." >&2
+    grep -Fq "Orca AT-SPI fixture focused expected Stop control" <<<"$inspection_output" || {
+      printf "%s\n" "Orca AT-SPI fixture did not confirm the expected Stop control." >&2
       exit 1
     }
     xdotool windowactivate --sync "$app_window" >/dev/null 2>&1 || true

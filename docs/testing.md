@@ -573,11 +573,12 @@ Core ABI/protocol header, localizes fixed labels and state values through the Li
 keys, and keeps source content, endpoints, identifiers, and secret references redacted.
 
 `tools/run-orca-atspi-test.sh` adds the installed Orca process to a separate Xvfb/private-D-Bus
-session. `tools/orca-atspi-inspect.py` finds the production `Stop translation` push button through
-AT-SPI and confirms its focusable state; the fixture then requires Orca's debug stream to contain the
-Linux application tree and a `SPEECH GENERATOR` record. This proves headless Orca integration and speech-generation
-dispatch only. It does not replace a human listening review, physical desktop review, or a claim
-about speech quality across locales.
+session. `tools/orca-atspi-inspect.py` finds the production Stop push button through AT-SPI and
+confirms its focusable state; the fixture then requires Orca's debug stream to contain the Linux
+application tree and a `SPEECH GENERATOR` record. Native CI runs the default English fixture and a
+second `LINGUAMESH_TEST_LOCALE=ar` fixture that resolves the Arabic Stop name. This proves headless
+Orca integration and speech-generation dispatch only. It does not replace a human listening review,
+physical desktop review, or a claim about speech quality across locales.
 
 `tools/run-gtk-accessibility-preferences-test.sh` runs the serialized GTK component test in a
 private Xvfb and DBus session. It applies a temporary `HighContrast` GTK theme and disables

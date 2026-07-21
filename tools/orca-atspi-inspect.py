@@ -3,12 +3,18 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 import time
 from collections.abc import Iterator
 
 import pyatspi
+
+EXPECTED_STOP_NAMES = {
+    "en": "Stop translation",
+    "ar": "إيقاف الترجمة",
+}
 
 
 def descendants(node: object) -> Iterator[object]:
@@ -108,13 +114,13 @@ def focus_by_keyboard(node: object) -> bool:
     return False
 
 
-def find_stop_control(deadline: float) -> object | None:
-    """等待应用注册并找到名为 Stop translation 的按钮。"""
+def find_stop_control(deadline: float, expected_name: str) -> object | None:
+    """等待应用注册并找到当前语言的停止按钮。"""
     while time.monotonic() < deadline:
         try:
             desktop = pyatspi.Registry.getDesktop(0)
             for node in descendants(desktop):
-                if str(getattr(node, "name", "")) != "Stop translation":
+                if str(getattr(node, "name", "")) != expected_name:
                     continue
                 if "button" in role_name(node).lower():
                     return node
@@ -126,10 +132,15 @@ def find_stop_control(deadline: float) -> object | None:
 
 def main() -> int:
     """通过 AT-SPI 聚焦生产控件，触发 Orca 的可访问对象处理路径。"""
-    node = find_stop_control(time.monotonic() + 20.0)
+    locale = os.environ.get("LINGUAMESH_TEST_LOCALE", "en")
+    expected_name = EXPECTED_STOP_NAMES.get(locale)
+    if expected_name is None:
+        print(f"Orca AT-SPI fixture does not define a Stop control for locale: {locale}.", file=sys.stderr)
+        return 2
+    node = find_stop_control(time.monotonic() + 20.0, expected_name)
     if node is None:
         print(
-            "Orca AT-SPI fixture could not find the named Stop translation button.",
+            "Orca AT-SPI fixture could not find the expected Stop translation button.",
             file=sys.stderr,
         )
         return 1
@@ -150,7 +161,7 @@ def main() -> int:
         )
         return 1
     print(
-        f"Orca AT-SPI fixture focused accessible control: {role_name(node)}: Stop translation."
+        f"Orca AT-SPI fixture focused expected Stop control for locale: {locale}."
     )
     return 0
 
