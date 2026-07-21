@@ -37,7 +37,9 @@ The serialized GTK fixture `gtk_authentication_failure_shows_localized_redacted_
 boundary through the real Connect button, Core worker rejection event, Simplified Chinese locale,
 and `Alert` presentation. It is marked ignored in the ordinary Rust suite because GTK initialization
 is thread-bound; Native CI runs the dedicated display-backed fixture and is the authoritative result
-for this path on hosts without the pinned GTK/Xvfb runtime.
+for this path on hosts without the pinned GTK/Xvfb runtime. The Native workflow invokes this exact
+test name with `--exact --ignored --test-threads=1` so the serialized fixture cannot be skipped by
+the general test step.
 
 The GTK regression `provider_presets_map_to_stable_native_and_compatible_defaults` validates the
 six-position Linux preset order against the bundled Core provider catalog. Adapter types must match
