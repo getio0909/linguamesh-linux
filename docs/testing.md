@@ -657,12 +657,14 @@ The current Linux runtime/storage-error localization slice adds catalog-backed s
 compatibility-read, and profile-database path/permission errors. Its portable regression test
 asserts Simplified Chinese translations while preserving safe dynamic diagnostic detail.
 
-## Unimplemented validation
+## Remaining validation before a supported release
 
-Broader GTK component/UI automation, AT-SPI/Orca, and broader physical-keyboard coverage,
-physical-compositor and GPU-backed Wayland coverage, a broader X11/desktop matrix, prompted
-interactive Secret Service flows, broader XDG and portal tests, Flatpak
-smoke tests, runtime localization behavior beyond the
-currently catalog-backed UI and stable error paths, workspace-widget, active-provider, status summary/partial-output, text-file import, provider-profile, source/target language, onboarding stage/detail, and theme-option labels, runtime database
-faults beyond the implemented Linux `ENOSPC` transaction boundary, dependency/license automation,
-and release builds remain required before a supported release.
+The automated Linux slice now covers the main GTK/AT-SPI semantic tree, keyboard focus, headless
+Orca integration, portal and Flatpak smoke paths, catalog key/placeholder invariants, and the
+implemented storage transaction boundary. Remaining evidence is deliberately explicit: human
+screen-reader listening and translated-copy/RTL/visual review; physical compositor, GPU-backed
+Wayland, and broader X11/desktop coverage; prompted interactive Secret Service approval; broader
+filesystem/VFS and power-loss races; dependency, license, and advisory automation beyond the
+current checks; signed distributable artifacts and stable-release authorization; and the other
+native clients. These gaps keep the Linux branch prerelease even though the listed automated gates
+are green.

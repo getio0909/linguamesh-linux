@@ -1,5 +1,19 @@
 # Implementation Status
 
+## 2026-07-21 — Linux validation boundary refresh
+
+Assumption: the testing guide must distinguish completed automated evidence from the manual,
+platform, and release work that still prevents a supported Linux release.
+
+- `docs/testing.md` now records the automated GTK/AT-SPI, headless Orca, portal, Flatpak,
+  localization-invariant, and storage-boundary coverage already exercised by this branch.
+- The remaining list is limited to human screen-reader and translated-copy/RTL review, physical
+  compositor/GPU and broader X11 coverage, prompted Secret Service approval, broader filesystem
+  races, dependency/license/advisory automation, signed artifacts, stable-release authorization,
+  and the other native clients.
+- This documentation-only correction does not expand the release claim: the Linux branch remains
+  prerelease until those residual checks and the project-wide compatibility work are complete.
+
 ## 2026-07-21 — Linux fallback-consent accessible name
 
 Assumption: the explicit fallback-consent checkbox should expose its localized accessible name on
