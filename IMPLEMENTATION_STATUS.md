@@ -11,7 +11,8 @@ English fallbacks where the pinned Arabic catalog remains untranslated.
   names; all expected controls remain push-button or checkbox roles and two text-editor roles.
 - Native CI adds a private Xvfb/AT-SPI run with `LINGUAMESH_TEST_LOCALE=ar`. Local Python compile,
   shell syntax, and diff checks passed; the display-backed fixture is remote-only on this host and
-  remote gates are pending for this head.
+  push Native/Flatpak/Foundation runs `29819765571`/`29819765594`/`29819765609` and the matching
+  pull-request runs `29819762498`/`29819762505`/`29819762534` all passed, including the Arabic fixture.
 
 This strengthens automated Linux Scenario 13 accessibility evidence only; human Orca speech,
 translated-copy/RTL, visual/compositor, other clients, signing, and stable-release review remain
