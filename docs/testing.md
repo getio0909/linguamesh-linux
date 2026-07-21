@@ -56,6 +56,14 @@ authentication error without the canary or HTTP status details. Native CI invoke
 under the same DBus/Xvfb serialization; the fixture is prerelease Scenario 8/Provider Hub evidence
 and does not claim live-provider or human visual/Orca review.
 
+The serialized GTK fixture `gtk_cancel_translation_preserves_partial_output` selects the slow
+loopback model, starts a real streamed translation, clicks the production **Stop translation**
+button after the first delta, and verifies that the partial output remains visible while the
+operation reaches exactly the `Cancelled` UI state. The fixture also confirms that Stop becomes
+disabled, Retry becomes available, and no later provider delta changes the cancelled output.
+Native CI runs this exact test under the same DBus/Xvfb serialization; it is Linux evidence for
+Scenario 6 and does not claim physical transport cancellation for every provider.
+
 The GTK regression `provider_presets_map_to_stable_native_and_compatible_defaults` validates the
 six-position Linux preset order against the bundled Core provider catalog. Adapter types must match
 the catalog, and manual-model visibility is derived from its `model_listing` field. The application

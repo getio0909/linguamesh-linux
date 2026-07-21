@@ -9734,6 +9734,85 @@ mod tests {
 
     #[ignore = "run in dedicated serialized GTK fixture"]
     #[test]
+    fn gtk_cancel_translation_preserves_partial_output() {
+        const EXPECTED_SECRET: &str = "GTK_EXPECTED_CANCEL_SECRET";
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.GtkCancellationTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK test application");
+
+        let external = ExternalFakeProvider::start(EXPECTED_SECRET);
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn());
+        let (window, bindings, theme, locale) = create_window(&application);
+        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
+        connect_action_handlers(&bindings, &state, &worker);
+        start_event_pump(&bindings, &state, &worker);
+        let context = glib::MainContext::default();
+        window.present();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().worker_ready()
+                && bindings.provider_endpoint.text() != DEFAULT_PROVIDER_ENDPOINT
+        });
+
+        bindings.provider_name.set_text("GTK cancellation provider");
+        bindings.provider_endpoint.set_text(&external.endpoint);
+        bindings.provider_credential.set_text(EXPECTED_SECRET);
+        bindings.connect.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Ready
+                && state.borrow().active_provider().is_some()
+                && !state.borrow().models().is_empty()
+        });
+
+        bindings.model.set_selected(2);
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().selected_model() == Some("fake-slow-translator")
+        });
+        bindings
+            .source
+            .set_text("Cancel after the first streamed delta.");
+        bindings.translate.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Translating
+                && !state.borrow().output().is_empty()
+                && bindings.stop.is_sensitive()
+        });
+        let partial_output = state.borrow().output().to_owned();
+        assert_eq!(partial_output, "你好");
+        bindings.stop.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Cancelled && state.borrow().has_partial_output()
+        });
+        assert_eq!(state.borrow().output(), partial_output);
+        assert_eq!(bindings.status.label(), "Status: Cancelled");
+        assert!(!bindings.stop.is_sensitive());
+        assert!(bindings.retry_translation.is_sensitive());
+        assert!(state.borrow().error_text().is_none());
+
+        std::thread::sleep(Duration::from_millis(350));
+        while context.pending() {
+            context.iteration(false);
+        }
+        assert_eq!(state.borrow().status(), AppStatus::Cancelled);
+        assert_eq!(state.borrow().output(), partial_output);
+
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
+    }
+
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
     fn gtk_connection_test_reports_models_and_redacts_credential() {
         const EXPECTED_SECRET: &str = "GTK_EXPECTED_CONNECTION_TEST_SECRET";
         const WRONG_SECRET: &str = "GTK_WRONG_CONNECTION_TEST_SECRET_CANARY";
