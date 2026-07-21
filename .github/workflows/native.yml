@@ -105,6 +105,14 @@ jobs:
       - name: Run strict Clippy
         working-directory: linguamesh-linux
         run: cargo clippy --all-targets --all-features --locked -- -D warnings
+      - name: Run dependency advisory and license checks
+        # 固定 cargo-deny-action v2.1.1。
+        uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25
+        with:
+          command: check advisories bans licenses sources
+          manifest-path: linguamesh-linux/Cargo.toml
+          arguments: --all-features
+          command-arguments: --config linguamesh-linux/deny.toml
       - name: Run all tests
         working-directory: linguamesh-linux
         env:

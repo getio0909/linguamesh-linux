@@ -234,11 +234,16 @@ Toolkit-independent validation requires no GTK development headers:
 cargo fmt --all --check
 cargo check --all-targets --features demo-provider --locked
 cargo clippy --all-targets --features demo-provider --locked -- -D warnings
+cargo deny --manifest-path Cargo.toml --all-features check advisories bans licenses sources --config deny.toml
 cargo test --no-default-features --locked
 cargo test --features demo-provider --locked
 cargo build --features demo-provider --locked
 DOCS_RS=1 cargo check --all-targets --all-features --locked
 ```
+
+The `cargo-deny` policy is also enforced by the Native workflow. Advisory, license, and source
+violations fail the gate; duplicate dependency versions are warnings while the GTK/Adwaita graph
+is converged incrementally.
 
 The current no-default suite reports `81 passed; 1 ignored`. It covers the text-import decoder, request-level glossary,
 and explicit Incognito privacy policy in addition to the disconnected initial state, atomic
@@ -642,7 +647,7 @@ native and Flatpak evidence for this revision is recorded after the push.
 
 ```sh
 set -euo pipefail
-required_files="README.md LICENSE AGENTS.md REPOSITORY_ROLE.md GLOBAL_GOAL.md SECURITY.md CONTRIBUTING.md CODE_OF_CONDUCT.md THIRD_PARTY_NOTICES.md IMPLEMENTATION_STATUS.md Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml src/lib.rs src/model.rs src/worker.rs src/main.rs docs/architecture.md docs/testing.md docs/releasing.md tools/sync-l10n.sh tools/run-wayland-test.sh tools/run-storage-fault-test.sh l10n/compatibility.json l10n/manifest.json .gitignore .github/workflows/foundation.yml .github/workflows/native.yml"
+required_files="README.md LICENSE AGENTS.md REPOSITORY_ROLE.md GLOBAL_GOAL.md SECURITY.md CONTRIBUTING.md CODE_OF_CONDUCT.md THIRD_PARTY_NOTICES.md IMPLEMENTATION_STATUS.md Cargo.toml Cargo.lock deny.toml rust-toolchain.toml rustfmt.toml src/lib.rs src/model.rs src/worker.rs src/main.rs docs/architecture.md docs/testing.md docs/releasing.md tools/sync-l10n.sh tools/run-wayland-test.sh tools/run-storage-fault-test.sh l10n/compatibility.json l10n/manifest.json .gitignore .github/workflows/foundation.yml .github/workflows/native.yml"
 for file in $required_files; do
   test -s "$file" || {
     printf 'Missing required file: %s\n' "$file"
@@ -665,11 +670,10 @@ asserts Simplified Chinese translations while preserving safe dynamic diagnostic
 ## Remaining validation before a supported release
 
 The automated Linux slice now covers the main GTK/AT-SPI semantic tree, keyboard focus, headless
-Orca integration, portal and Flatpak smoke paths, catalog key/placeholder invariants, and the
-implemented storage transaction boundary. Remaining evidence is deliberately explicit: human
-screen-reader listening and translated-copy/RTL/visual review; physical compositor, GPU-backed
-Wayland, and broader X11/desktop coverage; prompted interactive Secret Service approval; broader
-filesystem/VFS and power-loss races; dependency, license, and advisory automation beyond the
-current checks; signed distributable artifacts and stable-release authorization; and the other
-native clients. These gaps keep the Linux branch prerelease even though the listed automated gates
-are green.
+Orca integration, portal and Flatpak smoke paths, catalog key/placeholder invariants, the
+`cargo-deny` advisory/license/source policy, and the implemented storage transaction boundary.
+Remaining evidence is deliberately explicit: human screen-reader listening and translated-copy/
+RTL/visual review; physical compositor, GPU-backed Wayland, and broader X11/desktop coverage;
+prompted interactive Secret Service approval; broader filesystem/VFS and power-loss races; signed
+distributable artifacts and stable-release authorization; and the other native clients. These gaps
+keep the Linux branch prerelease even though the listed automated gates are green.
