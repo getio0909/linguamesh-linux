@@ -79,13 +79,15 @@ XDG_CACHE_HOME="$workspace/cache" \
     sleep 0.5
     target/debug/linguamesh-linux >/tmp/linguamesh-atspi-app.log 2>&1 &
     app_pid=$!
+    app_window=""
     for _ in {1..200}; do
-      if xdotool search --onlyvisible --name "^LinguaMesh$" >/dev/null 2>&1; then
+      app_window=$(xdotool search --onlyvisible --pid "$app_pid" 2>/dev/null | head -n 1 || true)
+      if [[ -n "$app_window" ]]; then
         break
       fi
       sleep 0.1
     done
-    if ! xdotool search --onlyvisible --name "^LinguaMesh$" >/dev/null 2>&1; then
+    if [[ -z "$app_window" ]]; then
       cat /tmp/linguamesh-atspi-app.log >&2 || true
       printf "%s\n" "GTK AT-SPI fixture could not find the application window." >&2
       exit 1
