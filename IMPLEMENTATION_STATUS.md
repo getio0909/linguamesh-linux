@@ -16,6 +16,22 @@ direction capability, not qualified translation evidence.
 - This is automated pseudo-localization evidence only; human translated-copy, plural, visual,
   compositor, and screen-reader review remain separate release gates.
 
+## 2026-07-21 — Linux pseudo-localized GTK/AT-SPI fixtures
+
+Assumption: pseudo-locales must exercise the same live accessibility tree as the official locale
+fixtures, while process-based window discovery keeps the test independent of expanded window titles.
+
+- `tools/gtk-atspi-inspect.py` now asserts the expanded `en-XA` control names and bidi-isolated
+  `ar-XB` control names, including button/checkbox roles and the five text-editor labels. Native CI
+  runs both fixtures with `LINGUAMESH_TEST_LOCALE=en-XA` and `LINGUAMESH_TEST_LOCALE=ar-XB`.
+- The first fixture commit `0c6151a` failed only because the shell harness searched for the literal
+  `LinguaMesh` title; corrective head `304e683bf9f3b6aa5fca2625ead671e7cc0f92fa` locates the visible
+  application window by process and passes the local syntax checks.
+- Corrected push Native/Flatpak/Foundation runs `29825878061`/`29825878027`/`29825878160` and
+  pull-request Native/Flatpak/Foundation runs `29825880504`/`29825880581`/`29825880584` passed,
+  including both pseudo-locale AT-SPI outputs. The first PR Flatpak retry was transiently blocked by
+  a Flathub network fetch and passed on rerun; this remains automation evidence, not human review.
+
 ## 2026-07-21 — Linux visible GTK localization audit scope
 
 Assumption: the source audit must cover every Rust UI module, including file-filter names, while
