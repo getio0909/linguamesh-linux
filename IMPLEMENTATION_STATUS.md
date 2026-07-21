@@ -19,10 +19,15 @@ boundary.
 - Local formatting, all-target/all-feature check, strict Clippy, no-default tests (`83 passed; 1
   ignored`), demo-provider tests (`157 passed; 3 ignored`), localization key/placeholder/visible
   audits, l10n synchronization, Flatpak metadata, and diff checks passed.
-- Flatpak source pin is synchronized at `47bbe58bf16ecac11976828575c5964f511198fb`.
+- Linux runtime code head is `47bbe58bf16ecac11976828575c5964f511198fb`; final packaging/status head
+  is `1e2f63fd33da08028618706c7ce004645866d861`, with the Flatpak source pin synchronized to the
+  runtime code head. Push Native/Flatpak/Foundation runs `29878096890`/`29878096881`/`29878096973`
+  and PR runs `29878099306`/`29878099203`/`29878099227` passed; Native explicitly ran the GTK
+  Incognito fixture.
 
-This advances unreleased Linux evidence for mandatory Scenario 14. Remote CI gates for this new GTK
-fixture remain pending; no stable-release claim is made.
+This advances unreleased Linux evidence for mandatory Scenario 14. Human privacy review, other
+clients, signed artifacts, rollback authorization, and stable-release approval remain open; no
+stable-release claim is made.
 
 ## 2026-07-21 — Linux GTK interrupted document-job restart/resume lifecycle
 
