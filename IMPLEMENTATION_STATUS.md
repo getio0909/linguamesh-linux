@@ -1,5 +1,30 @@
 # Implementation Status
 
+## 2026-07-21 — Linux SQLite WAL/SHM sidecar hard-link guard
+
+Assumption: a pre-existing SQLite journal or shared-memory sidecar must not alias a second inode
+before Core opens the pinned profile database, while replacement races after inspection remain an
+explicit unverified boundary.
+
+- Linux code `2077efb3349505b1125c8f0c686fd707ba439628` inspects existing `-wal` and `-shm`
+  entries through the pinned parent descriptor with `O_PATH|O_NOFOLLOW`, rejecting symlinks,
+  non-regular files, and hard-linked aliases before Core opens the database. The regression
+  `hard_linked_database_sidecars_are_rejected_without_modifying_targets` covers both sidecars and
+  confirms the external target remains unchanged. An isolated pre-fix SQLite probe demonstrated
+  that an existing sidecar hard link could otherwise be modified.
+- Packaging head `a220b18cfadffdcc39d40b9739cc510c66d45880` repins the Flatpak source manifest to
+  the exact code head. The first code-head Flatpak push/PR runs `29837248939`/`29837255929`
+  failed only on the stale source pin; corrected push Native/Flatpak/Foundation runs
+  `29837460916`/`29837461045`/`29837460822` and PR runs `29837463776`/`29837464358`/
+  `29837464171` all passed.
+- Local formatting, locked all-target/all-feature check, strict GUI Clippy, demo-provider tests
+  (`154 passed; 3 ignored`), no-default tests (`82 passed; 1 ignored`), the focused sidecar
+  regression, localization audits, l10n synchronization, Flatpak metadata, and diff checks passed.
+
+This is unreleased Linux storage hardening evidence only. Sidecar replacement after inspection,
+broader same-UID filesystem/VFS variants, abrupt power-loss recovery, other clients, signed
+artifacts, rollback authorization, and stable-release approval remain outside the claim.
+
 ## 2026-07-21 — Linux final database-leaf identity and creation race hardening
 
 Assumption: the final profile-database leaf must remain the exact preflight inode, and a missing
