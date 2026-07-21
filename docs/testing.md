@@ -295,8 +295,10 @@ restart row/default across session switches, failed persistent changes, and publ
 cancellation, and keeps session mode usable after storage initialization fails. A dedicated
 preflight-race regressions replace the validated parent with a symlink or regular file between path
 validation and descriptor opening, while companion final-component regressions replace the database
-path with a symlink or hard link after preflight; all require rejection before an unsafe descriptor
-is accepted. It also verifies that a completed standard translation is recorded in bounded history,
+path with a symlink, distinct regular file, or hard link after preflight; a file created after a
+missing-file preflight is also rejected by the exclusive open. All require rejection before an unsafe
+descriptor is accepted. It also verifies that a completed standard translation is recorded in bounded
+history,
 an Incognito completion is
 skipped, and the startup count/clear command path uses the same database. A Linux-side
 Scenario 5 regression authenticates and saves distinct providers A and B with independent models,
@@ -716,10 +718,11 @@ The automated Linux slice now covers the main GTK/AT-SPI semantic tree, keyboard
 Orca integration, portal and Flatpak smoke paths, catalog key/placeholder invariants, the
 `cargo-deny` advisory/license/source policy, and the implemented storage transaction boundary.
 The storage regressions cover parent-directory replacement with a symlink or regular file and
-final-database-component replacement with a symlink or hard link through descriptor-pinned
-`openat2`/`O_NOFOLLOW` opens; the preflight suite also replaces the validated parent with a distinct
-private directory and rejects the device/inode change. Broader same-UID filesystem/VFS variants and
-power loss remain outside the tested boundary.
+final-database-component replacement with a symlink, distinct regular file, or hard link through
+descriptor-pinned `openat2`/`O_NOFOLLOW` opens; a missing final leaf is created only through an
+exclusive open. The preflight suite also replaces the validated parent with a distinct private
+directory and rejects the device/inode change. Broader same-UID filesystem/VFS variants and power
+loss remain outside the tested boundary.
 Remaining evidence is deliberately explicit: human screen-reader listening and translated-copy/
 RTL/visual review; physical compositor, GPU-backed Wayland, and broader X11/desktop coverage;
 prompted interactive Secret Service approval; broader filesystem/VFS and power-loss races; signed

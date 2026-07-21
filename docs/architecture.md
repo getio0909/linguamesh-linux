@@ -302,8 +302,9 @@ parent with Linux `openat2(RESOLVE_NO_SYMLINKS)`, opens the final component with
 `/proc/self/fd/<fd>` path. Core's ordinary path open remains the no-follow SQLite gate; the
 descriptor-backed API rejects paths outside that exact form. This prevents a concurrent parent
 path replacement from redirecting the migration/open operation; the regression suite also rejects
-regular-file or alternate-directory parent replacement and hard-linked final leaves. Broader
-filesystem and VFS guarantees remain platform-specific.
+regular-file or alternate-directory parent replacement, distinct regular-file final leaves, and
+hard-linked final leaves. A missing final leaf is created only with an exclusive open, so a file
+created after preflight is rejected. Broader filesystem and VFS guarantees remain platform-specific.
 
 Neither credential values nor session references are persisted. A runtime session reference is
 stripped before the profile reaches SQLite. When the user chooses Remember with a credential, the

@@ -4419,7 +4419,7 @@ fn prepare_database_file(path: &Path) -> Result<PreparedDatabase, TranslationErr
             "The profile database file name is invalid.",
         )
     })?;
-    let file_fd = open_database_file(&parent_fd, file_name)?;
+    let file_fd = open_database_file(&parent_fd, file_name, parent.database_identity)?;
     let mut storage_path = PathBuf::from("/proc/self/fd");
     storage_path.push(file_fd.as_raw_fd().to_string());
     Ok(PreparedDatabase {
@@ -4428,10 +4428,16 @@ fn prepare_database_file(path: &Path) -> Result<PreparedDatabase, TranslationErr
     })
 }
 
-struct ValidatedDatabasePath {
-    parent: PathBuf,
+#[derive(Clone, Copy)]
+struct FileIdentity {
     device: u64,
     inode: u64,
+}
+
+struct ValidatedDatabasePath {
+    parent: PathBuf,
+    parent_identity: FileIdentity,
+    database_identity: Option<FileIdentity>,
 }
 
 fn validate_database_path(path: &Path) -> Result<ValidatedDatabasePath, TranslationError> {
@@ -4473,26 +4479,32 @@ fn validate_database_path(path: &Path) -> Result<ValidatedDatabasePath, Translat
     }
     ensure_no_symbolic_path_components(parent)?;
     ensure_no_symbolic_path_components(path)?;
-    match fs::symlink_metadata(path) {
+    let database_identity = match fs::symlink_metadata(path) {
         Ok(metadata) if !metadata.is_file() || metadata.nlink() != 1 => {
             return Err(TranslationError::new(
                 ErrorKind::Persistence,
                 "The profile database must be a private regular file.",
             ));
         }
-        Ok(_) => {}
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Ok(metadata) => Some(FileIdentity {
+            device: metadata.dev(),
+            inode: metadata.ino(),
+        }),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
         Err(_) => {
             return Err(TranslationError::new(
                 ErrorKind::Persistence,
                 "The profile database path could not be inspected.",
             ));
         }
-    }
+    };
     Ok(ValidatedDatabasePath {
         parent: parent.to_path_buf(),
-        device: parent_metadata.dev(),
-        inode: parent_metadata.ino(),
+        parent_identity: FileIdentity {
+            device: parent_metadata.dev(),
+            inode: parent_metadata.ino(),
+        },
+        database_identity,
     })
 }
 
@@ -4530,10 +4542,10 @@ fn pin_database_parent(
         || current_parent.file_type().is_symlink()
         || current_parent.dev() != opened_parent.st_dev
         || current_parent.ino() != opened_parent.st_ino
-        || current_parent.dev() != validated.device
-        || current_parent.ino() != validated.inode
-        || opened_parent.st_dev != validated.device
-        || opened_parent.st_ino != validated.inode
+        || current_parent.dev() != validated.parent_identity.device
+        || current_parent.ino() != validated.parent_identity.inode
+        || opened_parent.st_dev != validated.parent_identity.device
+        || opened_parent.st_ino != validated.parent_identity.inode
     {
         return Err(TranslationError::new(
             ErrorKind::Persistence,
@@ -4546,14 +4558,16 @@ fn pin_database_parent(
 fn open_database_file(
     parent_fd: &rustix::fd::OwnedFd,
     file_name: &std::ffi::OsStr,
+    expected_identity: Option<FileIdentity>,
 ) -> Result<rustix::fd::OwnedFd, TranslationError> {
+    let mut flags = RustixOFlags::WRONLY | RustixOFlags::NOFOLLOW | RustixOFlags::CLOEXEC;
+    if expected_identity.is_none() {
+        flags |= RustixOFlags::CREATE | RustixOFlags::EXCL;
+    }
     let file_fd = openat(
         parent_fd,
         file_name,
-        RustixOFlags::CREATE
-            | RustixOFlags::WRONLY
-            | RustixOFlags::NOFOLLOW
-            | RustixOFlags::CLOEXEC,
+        flags,
         RustixMode::from_raw_mode(0o600),
     )
     .map_err(|_| {
@@ -4568,10 +4582,15 @@ fn open_database_file(
             "The profile database file could not be inspected.",
         )
     })?;
-    if !RustixFileType::from_raw_mode(opened_file.st_mode).is_file() || opened_file.st_nlink != 1 {
+    if !RustixFileType::from_raw_mode(opened_file.st_mode).is_file()
+        || opened_file.st_nlink != 1
+        || expected_identity.is_some_and(|identity| {
+            opened_file.st_dev != identity.device || opened_file.st_ino != identity.inode
+        })
+    {
         return Err(TranslationError::new(
             ErrorKind::Persistence,
-            "The profile database must be a private regular file.",
+            "The profile database was replaced during validation.",
         ));
     }
     fchmod(&file_fd, RustixMode::from_raw_mode(0o600)).map_err(|_| {
@@ -10297,10 +10316,57 @@ mod tests {
         let parent_fd = pin_database_parent(&parent).expect("pinned database parent");
         let file_name = database.path().file_name().expect("database file name");
 
-        assert!(open_database_file(&parent_fd, file_name).is_err());
+        assert!(open_database_file(&parent_fd, file_name, parent.database_identity).is_err());
         assert_eq!(
             fs::read(&target).expect("database target"),
             b"NOT_A_DATABASE"
+        );
+    }
+
+    #[test]
+    fn replaced_database_file_with_distinct_regular_file_is_rejected_between_preflight_and_descriptor_open()
+     {
+        let database = TestDatabase::new();
+        fs::create_dir(&database.directory).expect("database directory");
+        fs::set_permissions(&database.directory, fs::Permissions::from_mode(0o700))
+            .expect("database directory permissions");
+        fs::write(database.path(), b"original-database").expect("database file");
+
+        let parent = validate_database_path(database.path()).expect("validated database parent");
+        let moved = database.directory.join("moved.sqlite3");
+        fs::rename(database.path(), &moved).expect("move validated database file");
+        fs::write(database.path(), b"replacement-database")
+            .expect("replace validated database with regular file");
+        let parent_fd = pin_database_parent(&parent).expect("pinned database parent");
+        let file_name = database.path().file_name().expect("database file name");
+
+        assert!(open_database_file(&parent_fd, file_name, parent.database_identity).is_err());
+        assert_eq!(
+            fs::read(database.path()).expect("replacement database"),
+            b"replacement-database"
+        );
+        fs::remove_file(database.path()).expect("remove replacement database");
+        fs::rename(moved, database.path()).expect("restore validated database");
+    }
+
+    #[test]
+    fn created_database_file_is_rejected_between_preflight_and_exclusive_open() {
+        let database = TestDatabase::new();
+        fs::create_dir(&database.directory).expect("database directory");
+        fs::set_permissions(&database.directory, fs::Permissions::from_mode(0o700))
+            .expect("database directory permissions");
+
+        let parent = validate_database_path(database.path()).expect("validated database parent");
+        assert!(parent.database_identity.is_none());
+        fs::write(database.path(), b"attacker-created-database")
+            .expect("create database file after preflight");
+        let parent_fd = pin_database_parent(&parent).expect("pinned database parent");
+        let file_name = database.path().file_name().expect("database file name");
+
+        assert!(open_database_file(&parent_fd, file_name, parent.database_identity).is_err());
+        assert_eq!(
+            fs::read(database.path()).expect("attacker-created database"),
+            b"attacker-created-database"
         );
     }
 
@@ -10318,7 +10384,7 @@ mod tests {
         let parent_fd = pin_database_parent(&parent).expect("pinned database parent");
         let file_name = database.path().file_name().expect("database file name");
 
-        assert!(open_database_file(&parent_fd, file_name).is_err());
+        assert!(open_database_file(&parent_fd, file_name, parent.database_identity).is_err());
         assert_eq!(
             fs::read(&target).expect("database target"),
             b"NOT_A_DATABASE"
