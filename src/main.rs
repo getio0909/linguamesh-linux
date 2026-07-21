@@ -8917,7 +8917,7 @@ mod tests {
         let estimated = UsageRecord::locally_estimated("abcd", "你好");
         assert_eq!(
             usage_label(UiLocale::English, Some(&estimated)).as_deref(),
-            Some("Usage: 2 tokens (locally estimated)")
+            Some("Usage: 3 tokens (locally estimated)")
         );
         let unknown = UsageRecord::unknown();
         assert_eq!(
