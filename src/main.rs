@@ -830,6 +830,11 @@ fn create_window(
         "option.fallback.none",
         "No fallback",
     )]);
+    // 将回退提供商标签与下拉框建立助记符和可访问关系。
+    fallback_profile_label.set_mnemonic_widget(Some(&fallback_profile));
+    fallback_profile.update_relation(&[gtk::accessible::Relation::LabelledBy(&[
+        fallback_profile_label.upcast_ref(),
+    ])]);
     fallback_profile.set_focusable(true);
     fallback_profile.set_sensitive(false);
     fallback_profile.set_hexpand(true);
@@ -9427,6 +9432,14 @@ mod tests {
             gtk::AccessibleProperty::Label
         ));
         assert!(bindings.fallback_profile.is_focusable());
+        assert!(gtk::test_accessible_has_relation(
+            &bindings.fallback_profile,
+            gtk::AccessibleRelation::LabelledBy
+        ));
+        assert_eq!(
+            bindings.fallback_profile_label.mnemonic_widget(),
+            Some(bindings.fallback_profile.clone().upcast::<gtk::Widget>())
+        );
         assert!(bindings.source_view.is_focusable());
         assert!(bindings.output_view.is_focusable());
         assert!(gtk::test_accessible_has_role(
