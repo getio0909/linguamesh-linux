@@ -15,6 +15,9 @@ locale changes.
   3 ignored`), formatting, strict Clippy, localization key/placeholder/visible audits, and diff
   checks are required before remote gates; the live GTK/AT-SPI fixture remains CI-authoritative on
   this host.
+- The first `6c1d89f` push/PR Flatpak runs (`29800606848`/`29800608418`) failed only because the
+  manifest still pinned the earlier `b463e5b` ancestor while `src/main.rs` changed. The manifest is
+  now repinned to this exact code head before the replacement gate.
 
 This remains unreleased Linux-first accessibility evidence. Human Orca listening, translated-copy/
 RTL review, physical desktop rendering, other clients, signing, distributable artifacts, and stable
