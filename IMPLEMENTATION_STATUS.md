@@ -1,5 +1,33 @@
 # Implementation Status
 
+## 2026-07-21 — Linux GTK provider connection-test lifecycle
+
+Assumption: the explicit GTK **Test connection** action must validate a provider without committing
+an active session, clear the entered credential immediately, and preserve the typed authentication
+category for localized redacted errors.
+
+- Linux runtime revision `2d5f625067fb84af260b664e5e2d9c027095e6d8` adds the serialized ignored
+  fixture `gtk_connection_test_reports_models_and_redacts_credential`. Through the production GTK
+  button it authenticates a bearer-token loopback provider, reports a bounded discovered-model
+  count in the localized status note, clears the credential field, then retries with a wrong canary
+  and asserts catalog-backed authentication copy without the canary or HTTP 401/403 details.
+- The `ConnectionTestRejected` reducer now keeps the full `TranslationError` instead of collapsing
+  it to an internal client string, so authentication failures retain their category and redaction
+  mapping. Flatpak source pin `2d5f625067fb84af260b664e5e2d9c027095e6d8` is synchronized at the
+  evidence head.
+- Local formatting, all-target/all-feature check, strict Clippy, no-default tests (`83 passed;
+  1 ignored`), demo-provider tests (`156 passed; 3 ignored`), localization audits, l10n sync,
+  Flatpak metadata, and diff checks passed. The host cannot link the GTK test binary against its
+  older installed GTK symbols; display-backed execution is CI-authoritative.
+- Final push Native/Flatpak/Foundation gates `29864126692`/`29864126477`/`29864126449` and PR
+  gates `29864129440`/`29864129517`/`29864129120` all passed. Native explicitly reports the new
+  provider connection-test fixture successful before the remaining accessibility and release
+  matrix.
+
+This advances unreleased Linux Provider Hub and Scenario 8 evidence. Live-provider interoperability,
+human visual/copy/Orca review, other clients, signed artifacts, rollback authorization, and stable
+release remain open.
+
 ## 2026-07-21 — Linux GTK offline session preservation
 
 Assumption: Linux Scenario 17 must prove that an unavailable provider does not replace a previously
