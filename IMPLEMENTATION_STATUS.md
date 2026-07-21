@@ -1,5 +1,29 @@
 # Implementation Status
 
+## 2026-07-21 — Linux GTK routing candidate edit persistence lifecycle
+
+Assumption: the existing GTK routing-profile editor is the smallest complete Linux slice for
+proving candidate deselection and stable-ID editing without expanding the shared Core protocol or
+other clients.
+
+- Linux test code `dda682d0690be77e93d551fcd31d9318f9c741bd` extends the serialized GTK fixture
+  `gtk_routing_profile_candidate_controls_have_accessible_lifecycle`: edit mode locks the profile
+  ID, deselects Candidate B, saves the same profile, waits for `RoutingProfileSaved`, lists the
+  record through the worker, and reopens the editor to verify only Candidate A remains selected.
+  The fixture uses a unique private temporary database directory and shuts the worker down before
+  cleanup; the ignored GTK test remains Native CI evidence because this host lacks the full GTK/Xvfb
+  runtime boundary.
+- Flatpak source pin `70e6074242f58385207884ac8966d4be89a2fa9f` records the exact packaging input.
+  Corrected push Native/Flatpak/Foundation runs `29842604602`/`29842604156`/`29842607411` and PR
+  runs `29842605446`/`29842605764`/`29842605418` all passed.
+- Local formatting, locked all-target/all-feature check, strict GUI Clippy, demo-provider tests
+  (`155 passed; 3 ignored`), no-default tests (`82 passed; 1 ignored`), localization audits,
+  l10n synchronization, Flatpak metadata, and diff checks passed.
+
+This is unreleased Linux candidate-management automation evidence only. Human visual, translated-
+copy, and end-user Orca review; broader candidate-management release criteria; other clients;
+signed artifacts; rollback authorization; and stable-release approval remain open.
+
 ## 2026-07-21 — Linux SQLite sidecar identity recheck after Core open
 
 Assumption: checking SQLite `-wal` and `-shm` sidecar identities only before Core opens leaves a

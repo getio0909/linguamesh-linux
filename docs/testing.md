@@ -158,6 +158,9 @@ selections and invalid drag IDs are rejected before persistence. Each saved prof
 ID; saving updates the same profile record rather than creating a duplicate.
 New profiles validate IDs against Core's 1–128 byte ASCII identifier rule; edit mode locks the
 existing ID to protect saved references, and a new profile cannot reuse an existing ID.
+The same GTK lifecycle regression now enters edit mode, proves the ID field is locked, deselects a
+candidate, saves the existing record, lists it through the worker, and reopens the editor to verify
+the reduced chain survives the persistence round trip.
 Core exchange tests round-trip a bounded profile, reject malformed/oversized JSON and unknown
 fields, and assert that no endpoint or credential-shaped field can be exported. Worker tests cover
 UTF-8 import, duplicate-ID rejection, persistence errors, and export of the validated profile.

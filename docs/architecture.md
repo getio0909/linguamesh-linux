@@ -133,6 +133,8 @@ candidate order, and stable ID back into the same editor; saving replaces that I
 storage upsert without exposing secrets. New profiles use Core-compatible 1–128 byte ASCII IDs;
 edit mode locks the existing ID so references remain stable, and new profiles reject duplicate IDs
 before reaching the upsert path.
+The serialized GTK lifecycle fixture also deselects a saved candidate, persists the edited record,
+reloads it through the worker, and confirms the reduced chain and locked ID remain intact.
 
 The same dialog imports and exports a bounded JSON exchange format. Core serializes only validated
 profile fields (candidate capabilities and privacy constraints); endpoint, credential, user-content,
