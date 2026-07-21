@@ -8686,7 +8686,7 @@ mod tests {
             &bindings,
             &state,
             &worker.command_handle(),
-            vec![listed_profile],
+            vec![listed_profile.clone()],
         );
         spin_main_context_until(&context, Duration::from_secs(1), || {
             application
@@ -8753,6 +8753,96 @@ mod tests {
             bindings.selected_routing_profile_id.borrow().as_deref(),
             Some("linux-candidates")
         );
+
+        show_routing_profiles_dialog(
+            &bindings,
+            &state,
+            &worker.command_handle(),
+            vec![listed_profile],
+        );
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Routing profiles"))
+        });
+        let delete_dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| candidate.title().as_deref() == Some("Routing profiles"))
+            .expect("routing profile delete dialog");
+        let delete_button = descendant_widgets(delete_dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .find(|button| {
+                button
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.trim_start_matches('_') == "Delete")
+            })
+            .cloned()
+            .expect("delete routing profile button");
+        assert!(delete_button.is_focusable());
+        delete_button.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            !application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Routing profiles"))
+        });
+        let delete_deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            assert!(
+                Instant::now() < delete_deadline,
+                "routing profile delete timed out"
+            );
+            match worker.try_recv() {
+                Ok(WorkerEvent::RoutingProfileDeleted { profile_id }) => {
+                    assert_eq!(profile_id, "linux-candidates");
+                    apply_worker_event(
+                        &bindings,
+                        &state,
+                        worker.as_ref(),
+                        WorkerEvent::RoutingProfileDeleted { profile_id },
+                    );
+                    break;
+                }
+                Ok(WorkerEvent::RoutingProfileActionRejected(error)) => {
+                    panic!("routing profile delete rejected: {error}")
+                }
+                Ok(_) => {}
+                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    panic!("routing UI worker event channel disconnected after delete")
+                }
+            }
+        }
+        assert!(bindings.selected_routing_profile_id.borrow().is_none());
+        let empty_deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            assert!(
+                Instant::now() < empty_deadline,
+                "routing profile empty-list reload timed out"
+            );
+            match worker.try_recv() {
+                Ok(WorkerEvent::RoutingProfilesListed { profiles }) => {
+                    assert!(profiles.is_empty());
+                    break;
+                }
+                Ok(WorkerEvent::RoutingProfileActionRejected(error)) => {
+                    panic!("routing profile empty-list reload rejected: {error}")
+                }
+                Ok(_) => {}
+                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    panic!("routing UI worker event channel disconnected after delete reload")
+                }
+            }
+        }
 
         let _ = worker.try_send(WorkerCommand::Shutdown);
         window.close();
