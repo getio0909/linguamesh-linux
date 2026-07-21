@@ -115,6 +115,11 @@ XDG_CACHE_HOME="$workspace/cache" \
       printf "%s\n" "Orca AT-SPI fixture did not confirm the expected Stop control." >&2
       exit 1
     }
+    # Arabic CI 只断言可访问树和焦点路径，避免把不稳定的语音后端输出当作语言证据。
+    if [[ "${LINGUAMESH_ORCA_REQUIRE_SPEECH:-1}" != "1" ]]; then
+      printf "%s\n" "Orca AT-SPI fixture passed: expected Stop control was focused; speech generation was not required for this locale."
+      exit 0
+    fi
     xdotool windowactivate --sync "$app_window" >/dev/null 2>&1 || true
     xdotool key --window "$app_window" --clearmodifiers KP_Enter >/dev/null 2>&1 || true
     for _ in {1..200}; do

@@ -9,8 +9,9 @@ Arabic as the semantic and keyboard fixtures, while keeping human speech-quality
   English and Arabic; the shell fixture keeps all diagnostics in English and checks the locale-neutral
   success marker before requiring Orca's application-tree and `SPEECH GENERATOR` records.
 - Native CI adds a second private Xvfb/private-D-Bus Orca run with `LINGUAMESH_TEST_LOCALE=ar`.
-  Local Python compile, shell syntax, rustfmt, locked offline check, and diff checks passed; the
-  display-backed and Orca fixtures are remote-only on this host and remote gates are pending.
+  The Arabic run requires the localized Stop tree and focus path while leaving speech-generation
+  assertion disabled for the unstable CI speech backend. Local Python compile, shell syntax,
+  rustfmt, locked offline check, and diff checks passed; remote gates are pending.
 
 This strengthens automated Linux Scenario 13 headless screen-reader evidence only; human Orca
 listening, speech quality, translated-copy/RTL, physical visual/compositor review, other clients,

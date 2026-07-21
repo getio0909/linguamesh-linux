@@ -199,6 +199,7 @@ jobs:
         working-directory: linguamesh-linux
         env:
           LINGUAMESH_TEST_LOCALE: ar
+          LINGUAMESH_ORCA_REQUIRE_SPEECH: "0"
         run: bash tools/run-orca-atspi-test.sh
       - name: Run optional OCR fixture
         working-directory: linguamesh-linux

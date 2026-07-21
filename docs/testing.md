@@ -577,8 +577,10 @@ session. `tools/orca-atspi-inspect.py` finds the production Stop push button thr
 confirms its focusable state; the fixture then requires Orca's debug stream to contain the Linux
 application tree and a `SPEECH GENERATOR` record. Native CI runs the default English fixture and a
 second `LINGUAMESH_TEST_LOCALE=ar` fixture that resolves the Arabic Stop name. This proves headless
-Orca integration and speech-generation dispatch only. It does not replace a human listening review,
-physical desktop review, or a claim about speech quality across locales.
+Orca integration and speech-generation dispatch for English; the Arabic run proves the localized
+AT-SPI tree and focus path only because the CI speech backend does not provide stable locale-specific
+speech output. Neither run replaces a human listening review, physical desktop review, or a claim
+about speech quality across locales.
 
 `tools/run-gtk-accessibility-preferences-test.sh` runs the serialized GTK component test in a
 private Xvfb and DBus session. It applies a temporary `HighContrast` GTK theme and disables
