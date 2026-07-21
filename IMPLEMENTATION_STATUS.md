@@ -11,7 +11,11 @@ Arabic as the semantic and keyboard fixtures, while keeping human speech-quality
 - Native CI adds a second private Xvfb/private-D-Bus Orca run with `LINGUAMESH_TEST_LOCALE=ar`.
   The Arabic run requires the localized Stop tree and focus path while leaving speech-generation
   assertion disabled for the unstable CI speech backend. Local Python compile, shell syntax,
-  rustfmt, locked offline check, and diff checks passed; remote gates are pending.
+  rustfmt, locked offline check, and diff checks passed. The initial `7c9b7e4` attempt correctly
+  failed because Arabic Orca did not emit a stable speech-generator record; corrected head
+  `490657b0751527e5c7fae3ab89993b90bb97f575` passed push Native/Flatpak/Foundation
+  `29821349008`/`29821349052`/`29821349030` and pull-request
+  `29821346477`/`29821346416`/`29821346504`.
 
 This strengthens automated Linux Scenario 13 headless screen-reader evidence only; human Orca
 listening, speech quality, translated-copy/RTL, physical visual/compositor review, other clients,
