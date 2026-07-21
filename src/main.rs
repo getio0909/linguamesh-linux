@@ -10213,8 +10213,10 @@ mod tests {
         let settings = gtk::Settings::default().expect("GTK settings");
         let previous_theme = settings.gtk_theme_name().map(|value| value.to_string());
         let previous_animations = settings.is_gtk_enable_animations();
+        let previous_font = settings.gtk_font_name().map(|value| value.to_string());
         settings.set_gtk_theme_name(Some("HighContrast"));
         settings.set_gtk_enable_animations(false);
+        settings.set_gtk_font_name(Some("Sans 24"));
 
         let display = gtk::prelude::RootExt::display(&window);
         let manager = adw::StyleManager::for_display(&display);
@@ -10226,9 +10228,20 @@ mod tests {
             !adw::is_animations_enabled(window.upcast_ref::<gtk::Widget>()),
             "libadwaita did not follow the desktop reduced-motion setting"
         );
+        let title_context = bindings.onboarding_title.pango_context();
+        title_context.changed();
+        let title_font = title_context
+            .font_description()
+            .expect("Pango title font description");
+        assert!(
+            title_font.size() >= 24 * gtk::pango::SCALE,
+            "GTK text scaling did not reach the title Pango context: {}",
+            title_font.size()
+        );
 
         settings.set_gtk_theme_name(previous_theme.as_deref());
         settings.set_gtk_enable_animations(previous_animations);
+        settings.set_gtk_font_name(previous_font.as_deref());
         window.close();
         drop(bindings);
         drop(theme);
