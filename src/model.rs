@@ -240,11 +240,15 @@ pub enum UiLocale {
     Arabic,
     /// 使用印地语目录。
     Hindi,
+    /// 使用带扩展字符的伪英文目录进行布局测试。
+    PseudoAccentedEnglish,
+    /// 使用带 RTL 标记的伪阿拉伯语目录进行布局测试。
+    PseudoRtlArabic,
 }
 
 impl UiLocale {
     /// 返回原生界面下拉框使用的稳定顺序。
-    pub const ALL: [Self; 12] = [
+    pub const ALL: [Self; 14] = [
         Self::English,
         Self::SimplifiedChinese,
         Self::TraditionalChinese,
@@ -257,6 +261,8 @@ impl UiLocale {
         Self::Russian,
         Self::Arabic,
         Self::Hindi,
+        Self::PseudoAccentedEnglish,
+        Self::PseudoRtlArabic,
     ];
 
     /// 返回界面中显示的名称。
@@ -275,6 +281,8 @@ impl UiLocale {
             Self::Russian => "Russian",
             Self::Arabic => "Arabic",
             Self::Hindi => "Hindi",
+            Self::PseudoAccentedEnglish => "Pseudo English (Accented)",
+            Self::PseudoRtlArabic => "Pseudo Arabic (RTL)",
         }
     }
 
@@ -294,6 +302,8 @@ impl UiLocale {
             Self::Russian => "ru",
             Self::Arabic => "ar",
             Self::Hindi => "hi",
+            Self::PseudoAccentedEnglish => "en-XA",
+            Self::PseudoRtlArabic => "ar-XB",
         }
     }
 
@@ -310,7 +320,7 @@ impl UiLocale {
     /// 返回是否需要从右向左的文字方向。
     #[must_use]
     pub const fn is_rtl(self) -> bool {
-        matches!(self, Self::Arabic)
+        matches!(self, Self::Arabic | Self::PseudoRtlArabic)
     }
 }
 
@@ -1800,6 +1810,8 @@ fn localized_locale(locale: UiLocale, selected: UiLocale) -> String {
         UiLocale::Russian => ("locale.name.ru", "Russian"),
         UiLocale::Arabic => ("locale.name.ar", "Arabic"),
         UiLocale::Hindi => ("locale.name.hi", "Hindi"),
+        UiLocale::PseudoAccentedEnglish => ("locale.name.en_xa", "Pseudo English (Accented)"),
+        UiLocale::PseudoRtlArabic => ("locale.name.ar_xb", "Pseudo Arabic (RTL)"),
     };
     localization::text(locale, key, fallback)
 }

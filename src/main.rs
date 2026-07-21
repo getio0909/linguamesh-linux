@@ -2156,6 +2156,8 @@ fn localized_locale_name(locale: UiLocale, displayed_locale: UiLocale) -> String
         UiLocale::Russian => ("locale.name.ru", "Russian"),
         UiLocale::Arabic => ("locale.name.ar", "Arabic"),
         UiLocale::Hindi => ("locale.name.hi", "Hindi"),
+        UiLocale::PseudoAccentedEnglish => ("locale.name.en_xa", "Pseudo English (Accented)"),
+        UiLocale::PseudoRtlArabic => ("locale.name.ar_xb", "Pseudo Arabic (RTL)"),
     };
     localization::text(locale, key, fallback)
 }

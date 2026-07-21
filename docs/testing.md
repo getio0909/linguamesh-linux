@@ -117,6 +117,11 @@ covers file-filter names. Empty strings used to clear a transient label are inte
 This remains source-level evidence; human translated-copy, plural, and visual review are separate
 gates.
 
+The runtime locale suite also loads the generated `en-XA` accented and `ar-XB` RTL pseudo-locales.
+They are layout and direction test data rather than qualified translations; the headless GTK
+fixtures select them with `LINGUAMESH_TEST_LOCALE=en-XA` or `LINGUAMESH_TEST_LOCALE=ar-XB` and verify
+placeholder-preserving expansion or RTL metadata.
+
 The routing-profile worker regression saves, lists, and deletes a Core `routing_planner_v1` profile
 without persisting provider endpoints, credentials, or translation content. A separate regression
 selects a saved candidate, reconnects it through the host secret broker, and completes an ordinary

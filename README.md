@@ -226,13 +226,18 @@ functional revision above; an arbitrary default branch is not compatibility evid
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
 `7e8c987737444d4e0f8f2642b108eee4c7801f58` and validated with `msgfmt`; the 425-message bundle
 adds Linux routing-profile persistence/editor, profile-ID validation and duplicate protection, ordinary-text selection labels, routing preference/privacy/document constraints, provider/model allowlists and denylists, quality/request-size limits, translation quality-mode and translation-preset labels, and source/output character plus approximate-token metrics. The locale selector
-exposes all twelve official BCP 47 packs and switches runtime action, workspace-widget,
+exposes all twelve official BCP 47 packs plus the generated `en-XA` accented and `ar-XB` RTL
+pseudo-locales. It switches runtime action, workspace-widget,
 active-provider, status summary/partial-output, text-file import/export, provider-profile controls, source/target language options, onboarding stage/detail guidance, fixed provider/file/worker and reducer-state/category error messages, construction-stage provider/default-control copy, and diagnostics labels/state values without replacing active source text;
-Arabic also switches the GTK workspace root to right-to-left direction. Document-job actions,
+Arabic and `ar-XB` also switch the GTK workspace root to right-to-left direction. Document-job actions,
 dialogue, empty/paused/progress statuses, and queue tooltips are now catalog-backed across the
-same twelve packs; document-job row metadata and lifecycle states, exported-output open and failure actions are localized as well. Stable Linux worker startup,
+same official and pseudo packs; document-job row metadata and lifecycle states, exported-output open and failure actions are localized as well. Stable Linux worker startup,
 Core compatibility, and profile-storage error sentences now use the same catalog; arbitrary backend
 diagnostic detail remains an explicit English fallback.
+
+Pseudo-locales are layout and direction test data, not qualified translations. Headless fixtures can
+select them with `LINGUAMESH_TEST_LOCALE=en-XA` or `LINGUAMESH_TEST_LOCALE=ar-XB`; generated strings
+preserve placeholders and add expansion or bidi-isolation markers.
 
 The text workspace accepts bounded semicolon-separated glossary rules such as
 `LinguaMesh => 凌瓦网; Acme Product => Acme Product`. Rules are request-scoped and remain in memory;

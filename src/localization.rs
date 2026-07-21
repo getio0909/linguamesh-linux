@@ -220,7 +220,7 @@ fn parse_po_string(value: &str) -> Option<String> {
 }
 
 fn catalog(locale: UiLocale) -> &'static Catalog {
-    static CATALOGS: OnceLock<[Catalog; 12]> = OnceLock::new();
+    static CATALOGS: OnceLock<[Catalog; 14]> = OnceLock::new();
     let catalogs = CATALOGS.get_or_init(|| {
         [
             Catalog::from_mo(include_bytes!(concat!(
@@ -271,6 +271,14 @@ fn catalog(locale: UiLocale) -> &'static Catalog {
                 env!("CARGO_MANIFEST_DIR"),
                 "/l10n/linux/hi/LC_MESSAGES/linguamesh.mo"
             ))),
+            Catalog::from_mo(include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/l10n/linux/en-XA/LC_MESSAGES/linguamesh.mo"
+            ))),
+            Catalog::from_mo(include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/l10n/linux/ar-XB/LC_MESSAGES/linguamesh.mo"
+            ))),
         ]
     });
     &catalogs[UiLocale::ALL
@@ -287,7 +295,7 @@ pub fn text(locale: UiLocale, key: &str, fallback: &str) -> String {
 // 根据 Linux 目录的 gettext 规则计算稳定的复数槽位。
 fn plural_index(locale: UiLocale, count: u64) -> usize {
     match locale {
-        UiLocale::Arabic => {
+        UiLocale::Arabic | UiLocale::PseudoRtlArabic => {
             if count == 0 {
                 0
             } else if count == 1 {
@@ -320,7 +328,8 @@ fn plural_index(locale: UiLocale, count: u64) -> usize {
         | UiLocale::Spanish
         | UiLocale::German
         | UiLocale::BrazilianPortuguese
-        | UiLocale::Hindi => usize::from(count != 1),
+        | UiLocale::Hindi
+        | UiLocale::PseudoAccentedEnglish => usize::from(count != 1),
     }
 }
 
@@ -432,7 +441,7 @@ mod tests {
     }
 
     #[test]
-    fn resolves_every_official_linux_catalog() {
+    fn resolves_every_linux_catalog_including_pseudo_locales() {
         for locale in UiLocale::ALL {
             assert!(!text(locale, "app.title", "").is_empty());
             assert!(!text(locale, "action.translate", "").is_empty());
@@ -514,6 +523,28 @@ mod tests {
         assert_eq!(
             text(UiLocale::English, "missing.key", "Fallback"),
             "Fallback"
+        );
+    }
+
+    #[test]
+    fn pseudo_catalogs_preserve_expansion_and_rtl_metadata() {
+        let accented = text(
+            UiLocale::PseudoAccentedEnglish,
+            "action.translate",
+            "Translate",
+        );
+        assert!(accented.contains('［'));
+        assert!(accented.len() > "Translate".len());
+        assert!(UiLocale::PseudoRtlArabic.is_rtl());
+        assert_eq!(
+            text_plural(
+                UiLocale::PseudoRtlArabic,
+                "document.file_count",
+                "{count} file",
+                "{count} files",
+                2,
+            ),
+            "\u{2067}⟦{count} files⟧\u{2069}"
         );
     }
 }

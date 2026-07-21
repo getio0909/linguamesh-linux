@@ -1,5 +1,21 @@
 # Implementation Status
 
+## 2026-07-21 — Linux runtime pseudo-localization
+
+Assumption: the existing generated `en-XA` and `ar-XB` Linux PO/MO packs are the authoritative
+pseudo-localization inputs; exposing them in the GTK locale selector is a test-only layout and
+direction capability, not qualified translation evidence.
+
+- `UiLocale::ALL` now includes the generated accented English (`en-XA`) and RTL Arabic (`ar-XB`)
+  catalogs after the twelve official packs. Runtime catalog lookup, locale names, plural rules,
+  and RTL direction metadata cover both pseudo-locales without changing the existing official
+  locale order or persisted language tags.
+- The localization unit suite verifies expanded accented output, bidi-isolated RTL output, and
+  Arabic plural-slot selection. Headless fixtures may select either pack with
+  `LINGUAMESH_TEST_LOCALE=en-XA` or `LINGUAMESH_TEST_LOCALE=ar-XB`.
+- This is automated pseudo-localization evidence only; human translated-copy, plural, visual,
+  compositor, and screen-reader review remain separate release gates.
+
 ## 2026-07-21 — Linux visible GTK localization audit scope
 
 Assumption: the source audit must cover every Rust UI module, including file-filter names, while
