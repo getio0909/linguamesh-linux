@@ -240,7 +240,7 @@ cargo build --features demo-provider --locked
 DOCS_RS=1 cargo check --all-targets --all-features --locked
 ```
 
-The no-default suite contains 54 tests. It covers the text-import decoder, request-level glossary,
+The current no-default suite reports `81 passed; 1 ignored`. It covers the text-import decoder, request-level glossary,
 and explicit Incognito privacy policy in addition to the disconnected initial state, atomic
 sorted restoration of multiple profiles without activation, duplicate/missing/default/session-ref
 snapshot rejection, form-only selection, exact pending deletion, connected-row removal that keeps
@@ -253,8 +253,9 @@ Ready identity, pending-model confirmation that cannot claim Ready, worker-unava
 storage-unavailable fallback, runtime persistence degradation that retains the confirmed session,
 and diagnostics that omit content, endpoints, IDs, model IDs, and secret references.
 
-The ordinary `demo-provider` run passes 104 tests and reports two intentionally ignored environment
-test. Its worker tests validate the exact Core
+The current `demo-provider` run reports `147 passed; 3 ignored` (the ignored cases require an
+external OCR fixture, a third-party Ollama daemon, or a private storage-fault mount). Its worker
+tests validate the exact Core
 compatibility contract including `long_text_chunking_v1`, prove that fake-service readiness does not auto-connect, require explicit
 Connect and model selection, exercise real loopback HTTP/SSE streaming, consume an authenticated
 session secret through the bounded typed host-secret broker, and fail closed for unavailable
