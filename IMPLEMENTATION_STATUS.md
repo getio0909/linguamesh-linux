@@ -8,12 +8,17 @@ human screen-reader listening, translated-copy review, high-contrast rendering, 
 coverage.
 
 - `tools/gtk-atspi-inspect.py` now requires the production `Open text file`, `Translate`, `Retry
-  translation`, `Allow approved fallback`, and `Stop translation` controls to export non-empty names
-  with their expected AT-SPI roles, while retaining the two text-editor role checks.
+  translation`, and `Stop translation` controls to export non-empty names with their expected
+  AT-SPI roles. The `Allow approved fallback` label/control is also required; GTK exports its
+  accessible name on the associated label node, so the live tree accepts the label role while the
+  GTK relation/role unit checks remain authoritative for the checkbox itself.
 - `docs/testing.md` records the expanded control set. The fixture remains CI-authoritative on hosts
   that provide Xvfb, AT-SPI, and `python3-pyatspi`; this host does not provide those runtime packages.
 - Local validation for this documentation/script-only slice: `python3 -m py_compile tools/gtk-atspi-inspect.py`,
   `bash -n tools/run-gtk-atspi-test.sh`, and `git diff --check`.
+- The first remote run for commit `9bda65b` failed in the AT-SPI fixture because the checkbox name
+  was assumed to be on the checkbox node; the failure log showed the expected label export. This
+  correction is intentionally kept as a regression record and requires a fresh gate run.
 
 This remains unreleased Linux-first evidence. Broader filesystem/VFS races, manual visual and Orca
 review, other clients, signing, distributable artifacts, and stable-release authorization remain open.
