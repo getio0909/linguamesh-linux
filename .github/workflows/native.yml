@@ -170,6 +170,12 @@ jobs:
       - name: Run GTK keyboard focus fixture
         working-directory: linguamesh-linux
         run: bash tools/run-gtk-keyboard-focus-test.sh
+      - name: Run GTK keyboard focus fixture in Arabic RTL
+        working-directory: linguamesh-linux
+        env:
+          LINGUAMESH_KEYBOARD_FOCUS_LOCALE: ar
+          LINGUAMESH_KEYBOARD_FOCUS_EXPECT_RTL: "1"
+        run: bash tools/run-gtk-keyboard-focus-test.sh
       - name: Run GTK AT-SPI fixture
         working-directory: linguamesh-linux
         run: bash tools/run-gtk-atspi-test.sh

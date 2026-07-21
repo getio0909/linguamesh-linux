@@ -1,5 +1,21 @@
 # Implementation Status
 
+## 2026-07-21 — Linux Arabic RTL keyboard-focus fixture
+
+Assumption: Scenario 13 requires keyboard traversal to remain usable after the production GTK
+workspace switches to Arabic RTL, not only a unit-level direction flag.
+
+- The keyboard-focus probe now accepts an isolated locale override and records `__rtl__` only when
+  the production workspace reports `gtk::TextDirection::Rtl`.
+- Native CI keeps the English fixture and adds a second real-binary Xvfb/xfwm4 run with
+  `LINGUAMESH_TEST_LOCALE=ar`; both runs inject Tab/Shift+Tab and require the onboarding and
+  workspace focus IDs. No ordinary startup default or user configuration is changed.
+- Local rustfmt, all-target/all-feature locked offline check, shell syntax, and diff checks passed.
+  The display-backed fixture is CI-only on this host; remote gates are pending for this head.
+
+This strengthens automated Linux Scenario 13 keyboard evidence only; manual translated-copy/RTL,
+screen-reader, visual/compositor, other clients, signing, and stable-release review remain open.
+
 ## 2026-07-21 — Linux post-preflight regular-file and hard-link race regressions
 
 Assumption: the Linux storage boundary must reject same-UID replacement of a validated parent or

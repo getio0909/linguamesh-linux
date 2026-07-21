@@ -553,8 +553,10 @@ verifies the catalog-backed Translate and Stop labels, then switches to Arabic a
 direction without replacing the source editor buffer before restoring English. GTK's helpers prove
 semantic presence and reset behavior. The dedicated `tools/run-gtk-keyboard-focus-test.sh` also runs
 the real binary under Xvfb and `xfwm4`, injects Tab/Shift+Tab events, and asserts focus events for
-the tested onboarding and workspace controls. The application-window Capture-phase handler keeps
-the provider fields in an explicit Tab/Shift+Tab order while preserving modified shortcuts.
+the tested onboarding and workspace controls. Native CI repeats this real-binary fixture with
+`LINGUAMESH_KEYBOARD_FOCUS_LOCALE=ar` and requires the production workspace to report RTL before
+asserting the same focus traversal. The application-window Capture-phase handler keeps the provider
+fields in an explicit Tab/Shift+Tab order while preserving modified shortcuts.
 `tools/run-gtk-atspi-test.sh` starts
 the AT-SPI bus, reads the live accessibility tree with `python3-pyatspi`, and verifies the named
 Open, Translate, Retry, fallback-consent, and Stop controls with their expected roles, plus two

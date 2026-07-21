@@ -1288,8 +1288,10 @@ fn install_keyboard_focus_probe(
     let ready_logged = Rc::new(Cell::new(false));
     let ready_log = Rc::clone(&log);
     let focus_window = window.clone();
+    let focus_workspace = bindings.workspace.clone();
     let focus_start_path = std::env::var_os("LINGUAMESH_KEYBOARD_FOCUS_START");
     let focus_coordinates_path = std::env::var_os("LINGUAMESH_KEYBOARD_FOCUS_COORDINATES");
+    let expect_rtl = std::env::var_os("LINGUAMESH_KEYBOARD_FOCUS_EXPECT_RTL").is_some();
     let focus_request_logged = Cell::new(false);
     let focus_attempt_logged = Cell::new(false);
     let mut focus_deadline = None;
@@ -1305,6 +1307,11 @@ fn install_keyboard_focus_probe(
                     widget.is_visible(),
                     widget.is_mapped()
                 );
+            }
+            // RTL 键盘夹具必须确认生产工作区方向已切换，避免只验证控件焦点而遗漏布局状态。
+            if expect_rtl && focus_workspace.direction() == gtk::TextDirection::Rtl {
+                let _ = writeln!(log, "__rtl__");
+                let _ = log.flush();
             }
             let _ = writeln!(log, "__ready__");
             let _ = log.flush();
