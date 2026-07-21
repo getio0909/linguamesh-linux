@@ -8,8 +8,13 @@ storage contract without expanding the release claim to arbitrary power-loss or 
 - Linux now pins Core `4badabe735499a50265a1260a838df3254622c15`, which adds a regression proving
   that a committed provider profile is restored after a reader snapshot holds the SQLite WAL open,
   the writer disconnects, and the next `Storage::open` replays the sidecar.
-- The Native workflow and Flatpak source both consume this exact Core revision. Local Linux
-  validation and remote push/pull-request gates remain pending for this pin update.
+- The Native workflow and Flatpak source both consume this exact Core revision. Local validation
+  passed: Core package smoke SHA-256 `9857c972ce16ae3d0243fecfe76755f301abe94ca3a3c10f880f62a2836914f`,
+  Linux no-default/demo-provider suites (`81 passed; 1 ignored` / `147 passed; 3 ignored`),
+  strict Clippy, localization audits, Flatpak metadata, and diff checks.
+- Push Native/Flatpak/Foundation runs `29812780773`/`29812780784`/`29812780805` and pull-request
+  Native/Flatpak/Foundation runs `29812783783`/`29812783760`/`29812783759` passed all jobs,
+  including the Core SDK package smoke and GTK accessibility/persistence fixtures.
 
 This is bounded Linux-first persistence evidence only; abrupt power loss, alternate SQLite VFS
 behavior, and cross-client persistence remain open.
