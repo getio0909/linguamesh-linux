@@ -267,7 +267,9 @@ symbolic ancestor, final database symlink, and hard-linked database without foll
 and replaces the visible parent after `openat2(RESOLVE_NO_SYMLINKS)` while verifying the
 descriptor-pinned Core migration remains in the original directory. It preserves every
 restart row/default across session switches, failed persistent changes, and public connection
-cancellation, and keeps session mode usable after storage initialization fails. It also verifies
+cancellation, and keeps session mode usable after storage initialization fails. A dedicated
+preflight-race regression replaces the validated parent with a symlink between path validation and
+descriptor opening and requires rejection before any database file is created. It also verifies
 that a completed standard translation is recorded in bounded history, an Incognito completion is
 skipped, and the startup count/clear command path uses the same database. A Linux-side
 Scenario 5 regression authenticates and saves distinct providers A and B with independent models,

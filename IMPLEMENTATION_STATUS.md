@@ -1,5 +1,23 @@
 # Implementation Status
 
+## 2026-07-21 — Linux preflight parent-replacement regression
+
+Assumption: Linux profile storage must reject a parent-directory replacement that occurs after
+pathname preflight but before the descriptor is opened.
+
+- Added `replaced_parent_is_rejected_between_preflight_and_descriptor_open`, which validates the
+  production database path, replaces its parent with a symlink to an alternate private directory,
+  and requires `openat2(RESOLVE_NO_SYMLINKS)` to fail before creating a database file. The existing
+  descriptor-pinned migration test still proves a replacement after a successful open remains on
+  the original inode.
+- Local targeted regression, no-default tests (`81 passed; 1 ignored`), demo-provider tests
+  (`146 passed; 3 ignored`), strict Clippy, formatting, and diff checks passed. Native, Flatpak,
+  and Foundation remote gates for this documentation/code head are required before the checkpoint
+  is considered verified.
+
+This closes the deterministic preflight replacement boundary only; broader filesystem/VFS races,
+other clients, human review, signing, rollback authorization, and stable release remain open.
+
 ## 2026-07-21 — Core POSIX document-descriptor consumption pinned
 
 Assumption: Linux's portal-backed document path should have a native ABI handoff that duplicates a
