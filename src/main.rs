@@ -10009,9 +10009,9 @@ mod tests {
         start_event_pump(&bindings, &state, &worker);
         let context = glib::MainContext::default();
         window.present();
+        // 等待数据库 worker 就绪后再驱动真实 GTK 连接流程。
         spin_main_context_until(&context, Duration::from_secs(5), || {
             state.borrow().worker_ready()
-                && bindings.provider_endpoint.text() != DEFAULT_PROVIDER_ENDPOINT
         });
 
         bindings.provider_name.set_text("GTK incognito provider");
