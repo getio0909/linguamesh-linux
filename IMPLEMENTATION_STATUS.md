@@ -14,6 +14,9 @@ pathname preflight but before the descriptor is opened.
   (`146 passed; 3 ignored`), strict Clippy, formatting, and diff checks passed. Native, Flatpak,
   and Foundation remote gates for this documentation/code head are required before the checkpoint
   is considered verified.
+- The Flatpak source manifest is pinned to the exact code head
+  `b463e5b94ed6b46ef24aee89ff9887d9dd5c038c`; the metadata validator rejects the prior pin when
+  `src/worker.rs` changes, so no stale-build exception is used.
 
 This closes the deterministic preflight replacement boundary only; broader filesystem/VFS races,
 other clients, human review, signing, rollback authorization, and stable release remain open.
