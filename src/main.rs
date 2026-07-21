@@ -10009,6 +10009,7 @@ mod tests {
         start_event_pump(&bindings, &state, &worker);
         let context = glib::MainContext::default();
         window.present();
+        eprintln!("GTK incognito: waiting for worker readiness");
         // 等待数据库 worker 就绪后再驱动真实 GTK 连接流程。
         spin_main_context_until(&context, Duration::from_secs(5), || {
             state.borrow().worker_ready()
@@ -10019,18 +10020,21 @@ mod tests {
         bindings.provider_credential.set_text(EXPECTED_SECRET);
         bindings.connect.emit_clicked();
         assert!(bindings.provider_credential.text().is_empty());
+        eprintln!("GTK incognito: waiting for provider connection");
         spin_main_context_until(&context, Duration::from_secs(5), || {
             state.borrow().status() == AppStatus::Ready
                 && state.borrow().active_provider().is_some()
                 && !state.borrow().models().is_empty()
         });
         bindings.model.set_selected(1);
+        eprintln!("GTK incognito: waiting for model selection");
         spin_main_context_until(&context, Duration::from_secs(5), || {
             state.borrow().selected_model() == Some("fake-translator")
         });
 
         bindings.source.set_text("GTK incognito memory probe");
         bindings.translate.emit_clicked();
+        eprintln!("GTK incognito: waiting for standard completion");
         spin_main_context_until(&context, Duration::from_secs(5), || {
             state.borrow().status() == AppStatus::Completed
                 && state.borrow().translation_history_count() == 1
@@ -10040,11 +10044,13 @@ mod tests {
         assert!(first_chat_requests >= 1);
 
         bindings.incognito.set_active(true);
+        eprintln!("GTK incognito: waiting for privacy toggle");
         spin_main_context_until(&context, Duration::from_secs(1), || {
             state.borrow().is_incognito()
         });
         bindings.source.set_text("GTK incognito memory probe");
         bindings.translate.emit_clicked();
+        eprintln!("GTK incognito: waiting for private completion");
         spin_main_context_until(&context, Duration::from_secs(5), || {
             state.borrow().status() == AppStatus::Completed
                 && external.chat_requests.load(Ordering::SeqCst) > first_chat_requests
