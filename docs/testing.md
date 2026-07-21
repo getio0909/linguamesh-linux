@@ -48,6 +48,14 @@ credential field, preserved active provider/model, and untouched source buffer w
 to Ready. Native CI invokes it explicitly with the same DBus/Xvfb serialization; this is the
 display-backed Scenario 17 evidence when the local host has no GTK display runtime.
 
+The serialized GTK fixture `gtk_connection_test_reports_models_and_redacts_credential` exercises
+the production **Test connection** button without committing a provider session. A successful
+bearer-token probe reports a bounded discovered-model count through the localized status note and
+clears the credential field; a second probe with a wrong canary renders the catalog-backed
+authentication error without the canary or HTTP status details. Native CI invokes this exact test
+under the same DBus/Xvfb serialization; the fixture is prerelease Scenario 8/Provider Hub evidence
+and does not claim live-provider or human visual/Orca review.
+
 The GTK regression `provider_presets_map_to_stable_native_and_compatible_defaults` validates the
 six-position Linux preset order against the bundled Core provider catalog. Adapter types must match
 the catalog, and manual-model visibility is derived from its `model_listing` field. The application

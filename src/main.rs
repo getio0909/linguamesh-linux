@@ -9732,6 +9732,82 @@ mod tests {
         drop(worker);
     }
 
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_connection_test_reports_models_and_redacts_credential() {
+        const EXPECTED_SECRET: &str = "GTK_EXPECTED_CONNECTION_TEST_SECRET";
+        const WRONG_SECRET: &str = "GTK_WRONG_CONNECTION_TEST_SECRET_CANARY";
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.GtkConnectionTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK test application");
+
+        let external = ExternalFakeProvider::start(EXPECTED_SECRET);
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn());
+        let (window, bindings, theme, locale) = create_window(&application);
+        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
+        connect_action_handlers(&bindings, &state, &worker);
+        start_event_pump(&bindings, &state, &worker);
+        let context = glib::MainContext::default();
+        window.present();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().worker_ready()
+                && bindings.provider_endpoint.text() != DEFAULT_PROVIDER_ENDPOINT
+        });
+
+        bindings.locale.set_selected(1);
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            state.borrow().locale() == UiLocale::SimplifiedChinese
+        });
+        bindings.provider_name.set_text("连接测试提供商");
+        bindings.provider_endpoint.set_text(&external.endpoint);
+        bindings.provider_credential.set_text(EXPECTED_SECRET);
+        bindings.test_connection.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            bindings.connection_test_notice.get()
+        });
+        let model_count = bindings
+            .connection_test_model_count
+            .get()
+            .expect("connection test model count");
+        assert!(model_count >= 1);
+        assert!(
+            bindings
+                .connection_test_profile_id
+                .borrow()
+                .as_deref()
+                .is_some_and(|profile_id| !profile_id.is_empty())
+        );
+        assert!(bindings.locale_note.label().contains("连接测试"));
+        assert!(!bindings.locale_note.label().contains(EXPECTED_SECRET));
+
+        bindings.provider_credential.set_text(WRONG_SECRET);
+        bindings.test_connection.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            !bindings.connection_test_notice.get() && bindings.error.is_visible()
+        });
+        let error_text = bindings.error.label().to_string();
+        assert!(error_text.contains("身份验证"));
+        assert!(!error_text.contains(WRONG_SECRET));
+        assert!(!error_text.contains("401"));
+        assert!(!error_text.contains("403"));
+
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
+    }
+
     #[allow(clippy::too_many_lines)]
     #[test]
     fn gtk_buttons_explicitly_connect_select_and_translate_with_session_credential() {
