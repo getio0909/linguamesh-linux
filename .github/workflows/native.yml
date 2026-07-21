@@ -193,6 +193,9 @@ jobs:
           --binary native-evidence/linguamesh-linux
           --cargo-lock Cargo.lock
           --output-dir native-evidence
+          --linux-revision "$(git rev-parse HEAD)"
+          --core-revision "$CORE_REVISION"
+          --localization-revision "737d890e60fd34f15fd8708698448ef9ab96299f"
           && git archive --format=tar.gz
           --prefix="linguamesh-linux-${GITHUB_SHA}/" "$GITHUB_SHA"
           > native-evidence/linguamesh-linux-source.tar.gz

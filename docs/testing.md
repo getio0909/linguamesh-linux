@@ -443,7 +443,10 @@ cp target/release/linguamesh-linux native-evidence/linguamesh-linux
 python3 tools/create-native-evidence.py \
   --binary native-evidence/linguamesh-linux \
   --cargo-lock Cargo.lock \
-  --output-dir native-evidence
+  --output-dir native-evidence \
+  --linux-revision "$(git rev-parse HEAD)" \
+  --core-revision "19229184a21a6725326a3d30dea9bc72e5ac999f" \
+  --localization-revision "737d890e60fd34f15fd8708698448ef9ab96299f"
 (cd native-evidence && sha256sum -c SHA256SUMS)
 ```
 
@@ -451,6 +454,8 @@ The workflow also adds `linguamesh-linux-source.tar.gz` to the same artifact and
 to `SHA256SUMS`. This is a repository-only source snapshot; it still requires the pinned Core and
 localization repositories for a build. The binary, source archive, `SHA256SUMS`, `SBOM.spdx.json`,
 and `BUILD-INFO.txt` are unsigned prerelease evidence only, not a stable or distributable release.
+The generated `ROLLBACK.md` records the exact source pins and future signed-release rollback
+sequence without inventing a previous stable revision.
 
 The Native workflow also runs `tools/run-performance-baseline.sh` for representative DOCX
 reconstruction, XLSX reconstruction, and saved-profile routing dispatch tests. It records the

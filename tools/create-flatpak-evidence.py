@@ -28,6 +28,33 @@ def package_id(name: str, version: str, index: int) -> str:
     return f"SPDXRef-Package-{index}-{safe_name}-{safe_version}"
 
 
+def validate_revision(value: str, label: str) -> str:
+    """验证 Flatpak 来源固定为完整的小写 SHA。"""
+    if not re.fullmatch(r"[0-9a-f]{40}", value):
+        raise SystemExit(f"{label} must be a lowercase 40-character commit SHA.")
+    return value
+
+
+def write_rollback_record(output_dir: pathlib.Path, linux_revision: str, core_revision: str) -> None:
+    """写出不冒充稳定发布的回滚操作记录。"""
+    content = f"""# Linux Flatpak CI evidence rollback record
+
+Artifact status: unsigned Flatpak prerelease evidence; not a stable release.
+Linux revision: {linux_revision}
+Core revision: {core_revision}
+
+If a future signed release built from this revision is promoted, roll back by:
+
+1. Stop distributing the current release and retain its checksum, signature, and incident record.
+2. Restore the previous release-manifest component and its previously verified Flatpak bundle.
+3. Verify the restored bundle checksum and signature before distribution resumes.
+4. Re-run the compatibility, security, and packaging gates, then record the rollback decision.
+
+This CI evidence contains no previous stable revision, signing key, or release authorization.
+"""
+    (output_dir / "ROLLBACK.md").write_text(content, encoding="utf-8")
+
+
 def main() -> int:
     """写出 Flatpak bundle 的 SHA-256 与 SPDX 2.3 文档。"""
     args = parse_args()
@@ -43,6 +70,22 @@ def main() -> int:
     app_id = manifest.get("app-id")
     if not isinstance(app_id, str) or not app_id:
         raise SystemExit("Flatpak evidence manifest has no app-id.")
+    source_module = next(
+        module for module in manifest.get("modules", []) if module.get("name") == "linguamesh"
+    )
+    git_sources = [
+        source
+        for source in source_module.get("sources", [])
+        if isinstance(source, dict) and source.get("type") == "git"
+    ]
+    linux_revision = validate_revision(
+        next(source["commit"] for source in git_sources if source.get("dest") == "linguamesh-linux"),
+        "Linux revision",
+    )
+    core_revision = validate_revision(
+        next(source["commit"] for source in git_sources if source.get("dest") == "linguamesh-core"),
+        "Core revision",
+    )
     packages = [
         {
             "SPDXID": "SPDXRef-Package-LinguaMesh-Linux",
@@ -91,6 +134,7 @@ def main() -> int:
         json.dumps(document, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+    write_rollback_record(output_dir, linux_revision, core_revision)
     print(f"Flatpak evidence created: {output_dir} ({len(packages)} SPDX packages).")
     return 0
 
