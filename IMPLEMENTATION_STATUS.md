@@ -5,7 +5,7 @@
 Assumption: Linux's portal-backed document path should have a native ABI handoff that duplicates a
 registered POSIX descriptor, applies the same bounded parser, and consumes the lease exactly once.
 
-- Pinned Core `2c6f9596f33e9ede3af65262e27c9ce8f8ff38b9`, which keeps the document-decoder fuzz and
+- Pinned Core `19229184a21a6725326a3d30dea9bc72e5ac999f`, which keeps the document-decoder fuzz and
   sanitizer gate and adds `lm_engine_file_lease_consume_posix_document`. The function duplicates
   the registered descriptor, reads at most `MAX_DOCUMENT_BYTES + 1`, validates the shared document
   contract, and consumes the lease only after successful parsing.

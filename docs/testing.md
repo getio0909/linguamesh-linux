@@ -157,7 +157,7 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`2c6f9596f33e9ede3af65262e27c9ce8f8ff38b9`. This revision carries bounded document lease
+`19229184a21a6725326a3d30dea9bc72e5ac999f`. This revision carries bounded document lease
 consumption smoke, POSIX-descriptor document consumption, and the AddressSanitizer gate, plus the
 protocol decoder fuzz gate and bounded FileLease lifecycle,
 including Linux's portal-read lease checks, and the explicit request-level
@@ -169,9 +169,9 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 2c6f9596f33e9ede3af65262e27c9ce8f8ff38b9^{commit}
+git -C ../linguamesh-core cat-file -e 19229184a21a6725326a3d30dea9bc72e5ac999f^{commit}
 git -C ../linguamesh-core diff --quiet \
-  2c6f9596f33e9ede3af65262e27c9ce8f8ff38b9..HEAD -- \
+  19229184a21a6725326a3d30dea9bc72e5ac999f..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
