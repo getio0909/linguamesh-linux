@@ -12,8 +12,11 @@ non-English locale while retaining the English baseline and the existing role ch
   require two text-editor roles and the expected control roles; unknown fixture locales fail closed.
 - Local formatting, strict Clippy, no-default tests (`81 passed; 1 ignored`), demo-provider tests
   (`147 passed; 3 ignored`), Python compilation, shell syntax, localization audits, Flatpak metadata,
-  and diff checks passed. Remote Native, Flatpak, and Foundation gates are required before this
-  checkpoint is treated as verified.
+  and diff checks passed. Final head `346b9499261da31d092c04703918195ba2678b14` repins the
+  Flatpak build input to the reviewed locale-test head after the stale-pin validator failure on the
+  preceding commit. Push Native/Flatpak/Foundation `29804861125`/`29804861156`/`29804861132` and
+  PR Native/Flatpak/Foundation `29804863422`/`29804863440`/`29804863421` passed all jobs; the
+  Native log records the five expected Simplified Chinese names and their roles.
 
 This remains unreleased Linux-first accessibility evidence. Human Orca listening, translated-copy/
 RTL review, physical desktop rendering, other clients, signing, distributable artifacts, and stable
