@@ -11,7 +11,11 @@ workspace switches to Arabic RTL, not only a unit-level direction flag.
   `LINGUAMESH_TEST_LOCALE=ar`; both runs inject Tab/Shift+Tab and require the onboarding and
   workspace focus IDs. No ordinary startup default or user configuration is changed.
 - Local rustfmt, all-target/all-feature locked offline check, shell syntax, and diff checks passed.
-  The display-backed fixture is CI-only on this host; remote gates are pending for this head.
+  The display-backed fixture is CI-only on this host. The first push/PR Flatpak gates for the
+  preceding code head failed because its manifest still referenced `59b57c0`; final head
+  `fedc1a9` repins the manifest and passed push Native/Flatpak/Foundation
+  `29818596872`/`29818597026`/`29818596824` plus PR Native/Flatpak/Foundation
+  `29818599326`/`29818599257`/`29818599479`.
 
 This strengthens automated Linux Scenario 13 keyboard evidence only; manual translated-copy/RTL,
 screen-reader, visual/compositor, other clients, signing, and stable-release review remain open.
