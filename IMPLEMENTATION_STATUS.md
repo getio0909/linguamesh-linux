@@ -12,8 +12,9 @@ dependency convergence.
 - Local `cargo deny --manifest-path Cargo.toml --all-features check` passed using the repository
   `deny.toml`. It reports duplicate `getrandom`, `hashbrown`, and `windows-sys`
   versions as warnings; advisories, licenses, and sources passed.
-- Remote push and pull-request gates are pending for this checkpoint and will be recorded here
-  after all Native, Flatpak, and Foundation jobs complete.
+- Remote push gates passed: Native `29806301170`, Flatpak `29806301077`, Foundation `29806301086`.
+  Pull-request gates passed: Native `29806303917`, Flatpak `29806303924`, Foundation `29806303896`.
+  The Native logs show the dependency audit step completed successfully before the GTK fixtures.
 
 This adds a Linux prerelease gate only; it does not authorize signed artifacts or a stable release.
 
