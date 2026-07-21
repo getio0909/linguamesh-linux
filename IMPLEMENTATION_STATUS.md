@@ -18,6 +18,11 @@ locale changes.
 - The first `6c1d89f` push/PR Flatpak runs (`29800606848`/`29800608418`) failed only because the
   manifest still pinned the earlier `b463e5b` ancestor while `src/main.rs` changed. The manifest is
   now repinned to this exact code head before the replacement gate.
+- Packaging head `e0eb47119cd63a3c9521af13e833b9051cacf43e` carries that exact Flatpak pin. Push
+  Native/Flatpak/Foundation runs `29800752697`/`29800752699`/`29800752707` passed; the first PR
+  Native run failed at the existing keyboard-focus fixture (`29800755130`), then rerun job
+  `88541746697` passed. Final PR Flatpak/Foundation runs `29800755122`/`29800755121` and the
+  rerun Native result all passed.
 
 This remains unreleased Linux-first accessibility evidence. Human Orca listening, translated-copy/
 RTL review, physical desktop rendering, other clients, signing, distributable artifacts, and stable
