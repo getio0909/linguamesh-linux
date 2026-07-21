@@ -8090,7 +8090,7 @@ mod tests {
     use adw::prelude::*;
     use gtk::glib;
     use linguamesh_document::{
-        DocumentFormat, DocumentJobState, DocumentWarning, DocumentWarningKind,
+        DocumentFormat, DocumentJob, DocumentJobState, DocumentWarning, DocumentWarningKind,
     };
     use linguamesh_domain::{
         RoutingConstraints, RoutingMode, RoutingPreference, TranslationPreset,
@@ -9966,6 +9966,182 @@ mod tests {
         drop(state);
         drop(worker);
         provider_thread.join().expect("glossary provider shutdown");
+    }
+
+    #[allow(clippy::too_many_lines)]
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_interrupted_document_job_restores_and_resumes() {
+        const EXPECTED_SECRET: &str = "GTK_EXPECTED_DOCUMENT_RESTART_SECRET";
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.GtkDocumentRestartTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK document restart application");
+
+        let database_directory = std::env::temp_dir().join(format!(
+            "linguamesh-linux-gtk-document-restart-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&database_directory);
+        fs::create_dir_all(&database_directory).expect("create document restart directory");
+        let database_path = database_directory.join("state.sqlite3");
+        let external = ExternalFakeProvider::start(EXPECTED_SECRET);
+        let context = glib::MainContext::default();
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn_with_database(&database_path));
+        let (window, bindings, theme, locale) = create_window(&application);
+        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
+        connect_action_handlers(&bindings, &state, &worker);
+        start_event_pump(&bindings, &state, &worker);
+        window.present();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().worker_ready()
+        });
+
+        bindings
+            .provider_name
+            .set_text("GTK document restart provider");
+        bindings.provider_endpoint.set_text(&external.endpoint);
+        bindings.provider_credential.set_text(EXPECTED_SECRET);
+        bindings.connect.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Ready
+                && state.borrow().active_provider().is_some()
+                && !state.borrow().models().is_empty()
+        });
+        bindings.model.set_selected(2);
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().selected_model() == Some("fake-slow-translator")
+        });
+
+        let job_id = "gtk-document-restart-1".to_owned();
+        worker
+            .try_send(WorkerCommand::CreateDocumentJob {
+                job_id: job_id.clone(),
+                job: DocumentJob::from_text("notes.txt", DocumentFormat::Txt, "one\ntwo"),
+            })
+            .expect("create GTK document job");
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            bindings.document_job_id.borrow().as_deref() == Some(job_id.as_str())
+                && bindings.document_job_state.get() == Some(DocumentJobState::Pending)
+        });
+        bindings.translate.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(10), || {
+            state.borrow().status() == AppStatus::Translating
+                && bindings.document_job_state.get() == Some(DocumentJobState::Running)
+                && bindings
+                    .document_progress
+                    .get()
+                    .is_some_and(|(completed, total)| completed == 1 && total == 2)
+        });
+        assert!(bindings.pause_document.is_sensitive());
+        bindings.pause_document.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(10), || {
+            bindings.document_job_state.get() == Some(DocumentJobState::Paused)
+        });
+        assert_eq!(bindings.document_progress.get(), Some((1, 2)));
+        let source_text = bindings.source.text(
+            &bindings.source.start_iter(),
+            &bindings.source.end_iter(),
+            true,
+        );
+        assert_eq!(source_text.as_str(), "one\ntwo");
+
+        worker
+            .try_send(WorkerCommand::Shutdown)
+            .expect("shutdown first GTK document worker");
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().worker_unavailable()
+        });
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
+
+        let restored_state = Rc::new(RefCell::new(AppState::default()));
+        let restored_worker = Rc::new(CoreWorker::spawn_with_database(&database_path));
+        let (restored_window, restored_bindings, restored_theme, restored_locale) =
+            create_window(&application);
+        connect_selection_handlers(
+            &restored_bindings,
+            &restored_theme,
+            &restored_locale,
+            &restored_state,
+            &restored_worker,
+        );
+        connect_action_handlers(&restored_bindings, &restored_state, &restored_worker);
+        start_event_pump(&restored_bindings, &restored_state, &restored_worker);
+        restored_window.present();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            restored_state.borrow().worker_ready()
+                && restored_bindings.document_job_id.borrow().as_deref() == Some(job_id.as_str())
+                && restored_bindings.document_job_state.get() == Some(DocumentJobState::Paused)
+        });
+        assert_eq!(restored_bindings.document_progress.get(), Some((1, 2)));
+        let restored_source = restored_bindings.source.text(
+            &restored_bindings.source.start_iter(),
+            &restored_bindings.source.end_iter(),
+            true,
+        );
+        assert_eq!(restored_source.as_str(), "one\ntwo");
+
+        restored_bindings
+            .provider_name
+            .set_text("GTK document restart provider");
+        restored_bindings
+            .provider_endpoint
+            .set_text(&external.endpoint);
+        restored_bindings
+            .provider_credential
+            .set_text(EXPECTED_SECRET);
+        restored_bindings.connect.emit_clicked();
+        assert!(restored_bindings.provider_credential.text().is_empty());
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            restored_state.borrow().status() == AppStatus::Ready
+                && restored_state.borrow().active_provider().is_some()
+        });
+        restored_bindings.model.set_selected(2);
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            restored_state.borrow().selected_model() == Some("fake-slow-translator")
+        });
+        assert!(restored_bindings.resume_document.is_sensitive());
+        restored_bindings.resume_document.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(15), || {
+            restored_bindings.document_job_state.get() == Some(DocumentJobState::Completed)
+                && restored_bindings.document_progress.get() == Some((2, 2))
+                && restored_state.borrow().status() == AppStatus::Completed
+        });
+        assert_eq!(
+            restored_state.borrow().output(),
+            "你好，LinguaMesh！\n你好，LinguaMesh！"
+        );
+        assert_eq!(
+            restored_bindings.source.text(
+                &restored_bindings.source.start_iter(),
+                &restored_bindings.source.end_iter(),
+                true,
+            ),
+            "one\ntwo"
+        );
+
+        restored_worker
+            .try_send(WorkerCommand::Shutdown)
+            .expect("shutdown restored GTK document worker");
+        restored_window.close();
+        drop(restored_bindings);
+        drop(restored_theme);
+        drop(restored_locale);
+        drop(restored_state);
+        drop(restored_worker);
+        drop(external);
+        let _ = fs::remove_dir_all(database_directory);
     }
 
     #[ignore = "run in dedicated serialized GTK fixture"]

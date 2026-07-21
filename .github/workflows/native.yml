@@ -172,6 +172,14 @@ jobs:
           env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
           tests::gtk_glossary_and_protected_terms_preserve_translation
           -- --exact --ignored --test-threads=1
+      - name: Run GTK interrupted document-job restart fixture
+        working-directory: linguamesh-linux
+        run: >-
+          dbus-run-session -- xvfb-run --auto-servernum
+          --server-args="-screen 0 1280x800x24"
+          env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
+          tests::gtk_interrupted_document_job_restores_and_resumes
+          -- --exact --ignored --test-threads=1
       - name: Run routing candidate GTK lifecycle fixture
         working-directory: linguamesh-linux
         run: >-

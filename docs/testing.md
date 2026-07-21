@@ -71,6 +71,14 @@ across streamed deltas; the production reducer restores `凌瓦网` in the compl
 runs the exact fixture under DBus/Xvfb, providing Linux Scenario 9 glossary/protected-span evidence
 without persisting glossary content or claiming provider-specific behavior beyond the contract.
 
+The serialized GTK fixture `gtk_interrupted_document_job_restores_and_resumes` creates a persisted
+two-segment text job, drives the production Translate and Pause controls after the first segment is
+committed, shuts down the worker, and starts a second GTK worker against the same database. The
+restored paused snapshot retains one completed segment and the untouched source buffer; after a
+fresh session-only provider connection, the production Resume control completes the remaining
+segment without duplicating the first. Native CI runs the exact fixture under DBus/Xvfb, providing
+Linux Scenario 12 restart/resume evidence without claiming physical power-loss recovery.
+
 The GTK regression `provider_presets_map_to_stable_native_and_compatible_defaults` validates the
 six-position Linux preset order against the bundled Core provider catalog. Adapter types must match
 the catalog, and manual-model visibility is derived from its `model_listing` field. The application
