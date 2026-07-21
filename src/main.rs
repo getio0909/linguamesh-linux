@@ -8054,6 +8054,7 @@ mod tests {
     use linguamesh_testkit::FakeProviderServer;
     use std::cell::RefCell;
     use std::fs;
+    use std::os::unix::fs::PermissionsExt;
     use std::rc::Rc;
     use std::sync::mpsc;
     use std::thread::JoinHandle;
@@ -8310,7 +8311,37 @@ mod tests {
             .expect("register GTK test application");
 
         let state = Rc::new(RefCell::new(AppState::default()));
-        let worker = Rc::new(CoreWorker::spawn());
+        let database_directory = std::env::temp_dir().join(format!(
+            "linguamesh-linux-routing-ui-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock after Unix epoch")
+                .as_nanos()
+        ));
+        fs::create_dir(&database_directory).expect("create routing UI database directory");
+        fs::set_permissions(&database_directory, fs::Permissions::from_mode(0o700))
+            .expect("protect routing UI database directory");
+        let database_path = database_directory.join("state.sqlite3");
+        let worker = Rc::new(CoreWorker::spawn_with_database(&database_path));
+        let startup_deadline = Instant::now() + Duration::from_secs(5);
+        let mut worker_ready = false;
+        while Instant::now() < startup_deadline {
+            match worker.try_recv() {
+                Ok(WorkerEvent::DemoProviderReady { .. }) => {
+                    worker_ready = true;
+                    break;
+                }
+                Ok(_) => {}
+                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    panic!("routing UI worker event channel disconnected")
+                }
+            }
+        }
+        assert!(worker_ready, "routing UI worker did not become ready");
         let (window, bindings, theme, locale) = create_window(&application);
         let profile_a = custom_provider_profile(
             ProviderProfileId::parse("profile-a").expect("candidate A ID"),
@@ -8551,6 +8582,154 @@ mod tests {
                 .is_some_and(gtk::prelude::CheckButtonExt::is_active)
         );
 
+        let edit_button = descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .find(|button| {
+                button
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.trim_start_matches('_') == "Edit")
+            })
+            .cloned()
+            .expect("edit routing profile button");
+        edit_button.emit_clicked();
+        assert!(!profile_id.is_editable());
+        let save_button = descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .find(|button| {
+                button
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.trim_start_matches('_') == "Save routing profile")
+            })
+            .cloned()
+            .expect("save routing profile button");
+        let candidate_b = descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::CheckButton>())
+            .find(|check| {
+                check
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label == "Candidate B · model-b")
+            })
+            .cloned()
+            .expect("candidate B checkbox after edit");
+        candidate_b.set_active(false);
+        save_button.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            !application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Routing profiles"))
+        });
+        let save_deadline = Instant::now() + Duration::from_secs(5);
+        let saved_profile = loop {
+            assert!(
+                Instant::now() < save_deadline,
+                "routing profile save timed out"
+            );
+            match worker.try_recv() {
+                Ok(WorkerEvent::RoutingProfileSaved(record)) => break record,
+                Ok(WorkerEvent::RoutingProfileActionRejected(error)) => {
+                    panic!("routing profile save rejected: {error}")
+                }
+                Ok(_) => {}
+                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    panic!("routing UI worker event channel disconnected after save")
+                }
+            }
+        };
+        assert_eq!(saved_profile.id, "linux-candidates");
+        assert_eq!(saved_profile.profile.mode, RoutingMode::Ordered);
+        assert_eq!(saved_profile.profile.candidates.len(), 1);
+        assert_eq!(saved_profile.profile.candidates[0].provider_id, "profile-a");
+        worker
+            .try_send(WorkerCommand::ListRoutingProfiles)
+            .expect("list saved routing profile");
+        let listed_deadline = Instant::now() + Duration::from_secs(5);
+        let listed_profile = loop {
+            assert!(
+                Instant::now() < listed_deadline,
+                "routing profile reload timed out"
+            );
+            match worker.try_recv() {
+                Ok(WorkerEvent::RoutingProfilesListed { profiles }) => {
+                    break profiles
+                        .into_iter()
+                        .find(|record| record.id == "linux-candidates")
+                        .expect("saved routing profile after reload");
+                }
+                Ok(WorkerEvent::RoutingProfileActionRejected(error)) => {
+                    panic!("routing profile reload rejected: {error}")
+                }
+                Ok(_) => {}
+                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    panic!("routing UI worker event channel disconnected during reload")
+                }
+            }
+        };
+        assert_eq!(listed_profile.profile.candidates.len(), 1);
+        assert_eq!(
+            listed_profile.profile.candidates[0].provider_id,
+            "profile-a"
+        );
+        show_routing_profiles_dialog(
+            &bindings,
+            &state,
+            &worker.command_handle(),
+            vec![listed_profile],
+        );
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Routing profiles"))
+        });
+        let reloaded_dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| candidate.title().as_deref() == Some("Routing profiles"))
+            .expect("reloaded routing profile dialog");
+        let reload_edit = descendant_widgets(reloaded_dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .find(|button| {
+                button
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.trim_start_matches('_') == "Edit")
+            })
+            .cloned()
+            .expect("reloaded edit routing profile button");
+        reload_edit.emit_clicked();
+        let reloaded_candidates = descendant_widgets(reloaded_dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::CheckButton>())
+            .filter(|check| {
+                check
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.starts_with("Candidate "))
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        assert!(reloaded_candidates.iter().any(|check| {
+            check.label().as_deref() == Some("Candidate A · model-a") && check.is_active()
+        }));
+        assert!(reloaded_candidates.iter().any(|check| {
+            check.label().as_deref() == Some("Candidate B · model-b") && !check.is_active()
+        }));
+        reloaded_dialog.close();
+
         let use_button = descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
             .iter()
             .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
@@ -8582,6 +8761,8 @@ mod tests {
         drop(locale);
         drop(state);
         drop(worker);
+        std::thread::sleep(Duration::from_millis(100));
+        fs::remove_dir_all(&database_directory).expect("remove routing UI database directory");
     }
 
     #[test]
