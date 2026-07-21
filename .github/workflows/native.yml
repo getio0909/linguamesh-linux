@@ -86,6 +86,9 @@ jobs:
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
         with:
           workspaces: linguamesh-linux -> target
+      - name: Run pinned Core Linux SDK package smoke
+        working-directory: linguamesh-core
+        run: bash tools/verify-linux-sdk-package.sh
       - name: Validate canonical localization resources
         working-directory: linguamesh-linux
         run: |

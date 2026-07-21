@@ -18,6 +18,20 @@ dependency convergence.
 
 This adds a Linux prerelease gate only; it does not authorize signed artifacts or a stable release.
 
+## 2026-07-21 — Linux Native CI pinned Core SDK package smoke
+
+Assumption: the Linux client gate should verify the exact Core revision it consumes before running
+client tests, while package output remains CI evidence until the central release process authorizes
+an artifact.
+
+- Native CI now runs `bash tools/verify-linux-sdk-package.sh` from the checked-out Core tree at
+  `CORE_REVISION=19229184a21a6725326a3d30dea9bc72e5ac999f`.
+- The verifier builds the SDK twice in release mode, compares the complete archive checksum,
+  validates the external and per-file SHA-256 manifests, checks pkg-config metadata, and compiles
+  the packaged static library with the C header smoke consumer.
+- This gate proves reproducible compatibility inputs for Linux; it does not publish, sign, or
+  promote the generated archive.
+
 ## 2026-07-21 — Linux localized live AT-SPI fixture
 
 Assumption: the live accessibility tree should prove catalog-backed names in at least one

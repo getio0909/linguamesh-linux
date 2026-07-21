@@ -570,6 +570,13 @@ mount-namespace tools, and Weston support, and runs the real storage write-fault
 display gates before the all-feature build. The storage write-fault change passes its exact local
 namespace test through the unprivileged path.
 
+Before the Linux client tests, Native CI runs `bash tools/verify-linux-sdk-package.sh` from the
+checked-out Core tree at that exact revision. The verifier builds the Linux SDK twice in release
+mode, compares the complete archive SHA-256, checks every packaged file, validates the pkg-config
+metadata, and compiles a static C consumer against the packaged FFI library. The result is
+reproducible coordination evidence for the pinned Core contract; it is not a signed or published
+release artifact.
+
 The GTK AT-SPI fixture bounds cleanup of its private application, window manager, and accessibility
 launcher processes; a fixture that prints successful accessibility assertions but cannot reap its
 processes is recorded as a failed gate rather than accepted as evidence.
