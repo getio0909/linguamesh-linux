@@ -63,13 +63,15 @@ The Linux checkpoint has a reproducible external pass using Docker image
 were removed after validation. This evidence is prerelease-only and does not cover GPU execution.
 
 The Linux checkout consumes the canonical gettext bundle from immutable l10n revision
-`737d890e60fd34f15fd8708698448ef9ab96299f`. The bundle contains 426 messages, and
+`b817ba911c2ffafb35b7a29755681ab39e950368`. The bundle contains 431 messages, and
 `bash tools/sync-l10n.sh --check` verifies every PO/MO catalog and the generated manifest before
 the native build. History/memory row metadata, document-job IDs, active-provider mode summaries,
 unavailable provider/model labels, and routing-profile actions/mode labels are asserted through
 catalog keys rather than concatenated English UI fragments; non-English packs remain
 machine-generated drafts pending human review. The editor metrics regression checks character
-counts and an explicitly approximate token estimate without exposing text in diagnostics. Routing
+counts and an explicitly approximate token estimate without exposing text in diagnostics. Completed
+translation output also shows a localized usage line whose source is provider-reported, locally
+estimated, or unknown; missing counts remain unavailable rather than fabricated. Routing
 profile tests also verify preference-index round trips and preservation of hidden Core constraints
 when visible privacy/capability controls are edited. Constraint parser tests cover comma-separated
 provider/model lists, positive numeric limits, and rejection of unsafe or empty values.
@@ -178,7 +180,7 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`4badabe735499a50265a1260a838df3254622c15`. This revision carries bounded document lease
+`cb644ef5d23d20b5e0af4d381bd5b4216d526b12`. This revision carries bounded document lease
 consumption smoke, POSIX-descriptor document consumption, and the AddressSanitizer gate, plus the
 protocol decoder fuzz gate and bounded FileLease lifecycle,
 including Linux's portal-read lease checks, and the explicit request-level
@@ -190,9 +192,9 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 4badabe735499a50265a1260a838df3254622c15^{commit}
+git -C ../linguamesh-core cat-file -e cb644ef5d23d20b5e0af4d381bd5b4216d526b12^{commit}
 git -C ../linguamesh-core diff --quiet \
-  4badabe735499a50265a1260a838df3254622c15..HEAD -- \
+  cb644ef5d23d20b5e0af4d381bd5b4216d526b12..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -487,8 +489,8 @@ python3 tools/create-native-evidence.py \
   --cargo-lock Cargo.lock \
   --output-dir native-evidence \
   --linux-revision "$(git rev-parse HEAD)" \
-  --core-revision "4badabe735499a50265a1260a838df3254622c15" \
-  --localization-revision "737d890e60fd34f15fd8708698448ef9ab96299f"
+  --core-revision "cb644ef5d23d20b5e0af4d381bd5b4216d526b12" \
+  --localization-revision "b817ba911c2ffafb35b7a29755681ab39e950368"
 (cd native-evidence && sha256sum -c SHA256SUMS)
 ```
 

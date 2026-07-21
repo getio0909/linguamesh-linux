@@ -1,5 +1,28 @@
 # Implementation Status
 
+## 2026-07-21 — Linux normalized usage metadata
+
+Assumption: Linux exposes token usage as bounded, non-sensitive metadata; provider-reported,
+locally estimated, and unknown sources remain visibly distinct, and no pricing is inferred.
+
+- Core functional revision `cb644ef5d23d20b5e0af4d381bd5b4216d526b12` adds the backward-compatible
+  `UsageRecord` completion field and advertises `usage_records_v1`. The current engine and Linux
+  worker emit conservative local estimates; provider-reported parsing remains a future adapter
+  boundary. The stable C ABI/protobuf projection is intentionally unchanged.
+- Linux code revision `571b3a646b14ead51945e4d0b8a36db976086a5e` stores usage in `AppState`, clears
+  it for each new request, preserves it through the worker remap and translation-memory path, and
+  shows a localized source-marked line below completed output. Unknown records show no fabricated
+  count and no source or translated text is sent to diagnostics.
+- Localization revision `b817ba911c2ffafb35b7a29755681ab39e950368` adds the five Linux usage labels;
+  `bash tools/sync-l10n.sh --check` passes.
+- Local `cargo fmt --all`, all-target/all-feature check and strict Clippy, no-default tests
+  (`82 passed; 1 ignored`), demo-provider tests (`155 passed; 3 ignored`), localization key and
+  placeholder audits, Flatpak metadata validation, demo build, and `git diff --check` passed.
+
+This is unreleased Linux/Rust-host evidence. Provider wire-level usage parsing, pricing estimates,
+GTK visual/RTL/Orca review, other clients, signed artifacts, and stable-release approval remain
+open.
+
 ## 2026-07-21 — Linux GTK routing profile deletion cleanup lifecycle
 
 Assumption: deleting the currently selected routing profile must clear the GTK selection and

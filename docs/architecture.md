@@ -26,7 +26,7 @@ confirmation, or rollback.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `4badabe735499a50265a1260a838df3254622c15`; compared with the prior
+functional revision is `cb644ef5d23d20b5e0af4d381bd5b4216d526b12`; compared with the prior
 alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW`, adds streamed
 protected-span and request-level glossary restoration, and rejects suspicious OOXML compression
 ratios and unsupported macro/signature parts before XML inspection. Core now advertises the bounded
@@ -52,6 +52,7 @@ is exact Core `0.1.0-alpha.2`, ABI 1, protocol 1, provider catalog `0.1.0`, and 
 - `translation_presets_v1`
 - `streaming_text_v1`
 - `text_translation_v1`
+- `usage_records_v1`
 
 The worker loads every stored profile and the last activated ID before the development fake service
 starts on loopback and emits `DemoProviderReady`, which only supplies an endpoint when no restored
@@ -87,6 +88,11 @@ document requests;
 compatibility negotiation requires `translation_presets_v1`. Presets are bounded request metadata,
 not executable instructions or credentials, and document jobs persist and reuse the selected preset
 through schema 18 after pause, retry, or restart.
+
+Completed ordinary text requests may carry Core's optional `UsageRecord`. Linux stores the record
+only in the in-memory reducer and renders a localized output line with a provider-reported,
+locally estimated, or unknown source label. The current engine path emits a bounded local estimate;
+provider wire parsing, pricing, and stable C ABI/protobuf projection remain outside this slice.
 
 The Linux GTK form consumes the bundled Core provider catalog for adapter compatibility and model
 listing policy before creating a window; a stale mapping fails closed. Its localized labels and
