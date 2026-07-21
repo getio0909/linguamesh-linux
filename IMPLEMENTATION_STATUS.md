@@ -6,7 +6,7 @@ Assumption: HTTP 401/403 responses are authentication failures; the client shoul
 status detail with a localized retry instruction while retaining the typed error category and never
 rendering a credential value.
 
-- Linux `src/model.rs` maps provider HTTP 401/403 failures to the catalog-backed
+- Linux code head `c66f6df42fd03c67b3991c5b7fb4229dccadce97` maps provider HTTP 401/403 failures to the catalog-backed
   `error.authentication` message before GTK renders `AppState::localized_error_text`. The mapping
   covers both Unauthorized and Forbidden status text and removes those backend status numbers from
   the user-facing copy.
