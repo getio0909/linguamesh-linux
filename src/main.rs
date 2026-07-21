@@ -1159,6 +1159,10 @@ fn install_keyboard_focus_probe(
             bindings.saved_profile.clone().upcast::<gtk::Widget>(),
         ),
         (
+            "provider_preset",
+            bindings.provider_preset.clone().upcast::<gtk::Widget>(),
+        ),
+        (
             "provider_name",
             bindings.provider_name.clone().upcast::<gtk::Widget>(),
         ),

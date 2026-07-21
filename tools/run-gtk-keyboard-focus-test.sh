@@ -127,6 +127,7 @@ XDG_CACHE_HOME="$workspace/cache" \
       provider_name
       provider_endpoint
       provider_credential
+      provider_preset
       remember_profile
       connect
       source_editor
@@ -141,6 +142,6 @@ XDG_CACHE_HOME="$workspace/cache" \
         exit 1
       fi
     done
-    printf "%s\n" "GTK keyboard focus fixture passed: Tab traversal reached the tested onboarding and workspace controls."
+    printf "%s\n" "GTK keyboard focus fixture passed: the provider mnemonic and Tab traversal reached the tested onboarding and workspace controls."
     cat "$LINGUAMESH_KEYBOARD_FOCUS_LOG"
   '
