@@ -13,8 +13,10 @@ or contrast policy.
   private Xvfb/DBus session and never writes the developer's desktop configuration.
 - Local `cargo fmt --all -- --check`, `cargo check --all-targets --all-features --locked --offline`,
   strict Clippy, no-default tests (`81 passed; 1 ignored`), shell syntax, and `git diff --check`
-  passed. The full GTK fixture was not run locally because `xvfb-run` is not installed; CI remains
-  the required display-backed validation.
+  passed. The full GTK fixture was not run locally because `xvfb-run` is not installed.
+- Remote push Native/Flatpak/Foundation runs `29810992461`/`29810992536`/`29810992539` and
+  pull-request Native/Flatpak/Foundation runs `29810995307`/`29810995345`/`29810995322` all
+  passed. The Native logs include the new high-contrast and reduced-motion fixture.
 
 This is automated Linux accessibility evidence, not a replacement for manual high-contrast,
 reduced-motion, screen-reader, RTL, and compositor review before a supported release.
