@@ -262,6 +262,9 @@ candidate chain. Adjacent up/down controls and row drag-and-drop reorder them fo
 labels for screen readers and keyboard users. Existing saved profiles can be loaded with **Edit**;
 the editor restores their mode, fallback consent, candidate checks, and order, then replaces the
 same non-secret profile ID on **Save routing profile**.
+The Linux keyboard fixture also activates the Provider preset through its visible `Alt+P` mnemonic
+before checking the explicit Tab/Shift+Tab order; Arabic uses the catalog's English fallback for
+that mnemonic while still exercising RTL traversal.
 New profiles use a bounded ID field (1–128 ASCII letters, numbers, `.`, `_`, or `-`); editing locks
 the existing ID so references remain stable, while distinct IDs allow multiple saved routing profiles.
 Attempting to create a new profile with an existing ID is rejected instead of silently replacing it.

@@ -1,5 +1,26 @@
 # Implementation Status
 
+## 2026-07-21 — Linux provider mnemonic focus fixture
+
+Assumption: Linux keyboard accessibility must verify both the provider form's explicit Tab order
+and a visible-label mnemonic activation on the real GTK binary, including the Arabic fixture whose
+catalog keeps this label in English fallback.
+
+- Code head `3b2b69c020eb6cc9f18488702916de175cb92700` records the `provider_preset` focus event in
+  the existing X11/xfwm4 keyboard probe; the fixture's `Alt+P` input now requires that mnemonic
+  focus before continuing its Tab/Shift+Tab traversal assertions.
+- Packaging head `1030e88fe5cfdac39681404fa767901915a9b2c4` repins the Flatpak source manifest to the
+  exact code head after the first stale-pin failure.
+- Local formatting, locked all-target/all-feature checks, strict Clippy, shell syntax, and diff
+  checks passed. The real display-backed fixture is CI-only on this host.
+- The first code-head push/PR Flatpak runs `29830652002`/`29830655585` failed only because the
+  manifest still referenced `c25bd31`; Native push/PR runs `29830652010`/`29830655820` passed.
+  Corrected push Native/Flatpak/Foundation runs `29830916108`/`29830916150`/`29830916154` and PR
+  runs `29830918743`/`29830918767`/`29830918756` all passed.
+
+This is automated Linux keyboard evidence only; physical keyboard, visual/RTL, Orca listening,
+other-client, signing, rollback, and stable-release review remain separate gates.
+
 ## 2026-07-21 — Linux fallback-provider label relation
 
 Assumption: every focusable provider-selection control must expose the visible label through both

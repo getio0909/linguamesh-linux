@@ -560,8 +560,9 @@ behavior, and Busy-state reset. The test also switches the runtime locale to Sim
 verifies the catalog-backed Translate and Stop labels, then switches to Arabic and verifies RTL
 direction without replacing the source editor buffer before restoring English. GTK's helpers prove
 semantic presence and reset behavior. The dedicated `tools/run-gtk-keyboard-focus-test.sh` also runs
-the real binary under Xvfb and `xfwm4`, injects Tab/Shift+Tab events, and asserts focus events for
-the tested onboarding and workspace controls. Native CI repeats this real-binary fixture with
+the real binary under Xvfb and `xfwm4`, activates the Provider preset through its `Alt+P` mnemonic,
+then injects Tab/Shift+Tab events and asserts focus events for the tested onboarding and workspace
+controls. Native CI repeats this real-binary fixture with
 `LINGUAMESH_KEYBOARD_FOCUS_LOCALE=ar` and requires the production workspace to report RTL before
 asserting the same focus traversal. The application-window Capture-phase handler keeps the provider
 fields in an explicit Tab/Shift+Tab order while preserving modified shortcuts.
