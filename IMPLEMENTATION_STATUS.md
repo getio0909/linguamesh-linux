@@ -15,6 +15,7 @@ boundary.
 - Local focused validation passed:
   `cargo fmt --all -- --check` and
   `cargo test --features demo-provider --locked worker::tests::incognito_translation_bypasses_existing_memory_and_persists_nothing -- --exact`.
+- Flatpak source pin is synchronized at `0762c35f9ba6c9ddbbceecab28534f5e814f1805`.
 
 This advances unreleased Linux evidence for mandatory Scenario 14. Full-suite and remote CI gates
 remain pending; no stable-release claim is made.
