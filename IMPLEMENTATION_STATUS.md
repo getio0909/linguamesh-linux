@@ -1,17 +1,17 @@
 # Implementation Status
 
-## 2026-07-21 — Linux durability pin: SQLite FULL WAL synchronization
+## 2026-07-21 — Linux WAL process-crash recovery pin
 
 Assumption: the Linux profile database should request SQLite `synchronous=FULL` for every
 file-backed connection so committed WAL transactions receive the strongest default durability
 available from the bundled Unix VFS; this does not claim to emulate physical power loss or every
 alternate SQLite VFS.
 
-- Core `cfecf17802f022b3dc49cff2917de5a77382aefa` changes the shared storage connection pragma from
-  `synchronous=NORMAL` to `synchronous=FULL` and updates the migration/architecture contract and
-  pragma regression to require SQLite mode `2`. Core local formatting, workspace check, strict
-  Clippy, and full workspace tests passed; Core CI/Fuzz/Native SDK `29852245672`/`29852245746`/
-  `29852246017` passed.
+- Core `8837e59395742b5385af5037aa36a2596af3b025` changes the shared storage connection pragma from
+  `synchronous=NORMAL` to `synchronous=FULL`, adds the Unix process-crash WAL regression, and
+  updates the migration/architecture contract and pragma regression to require SQLite mode `2`.
+  Core local formatting, workspace check, strict Clippy, and full workspace tests passed; Core CI,
+  Fuzz/sanitizers, and Native SDK gates are recorded after the remote runs complete.
 - Linux Native and Flatpak now consume that exact Core revision; the runtime code is unchanged and
   the existing Linux storage/WAL tests remain the behavioral boundary. Local Linux formatting,
   all-target/all-feature check, strict Clippy, no-default tests (`82 passed; 1 ignored`),
@@ -20,8 +20,9 @@ alternate SQLite VFS.
   `29852793704`/`29852793833`/`29852793818` and PR gates
   `29852797251`/`29852797581`/`29852797258` all passed.
 
-This is unreleased Linux durability hardening evidence. Physical power-loss simulation, alternate
-SQLite VFS behavior, signing, rollback authorization, other clients, and stable release remain open.
+This is unreleased Linux durability hardening evidence. The process-crash regression does not claim
+physical power-loss simulation, alternate SQLite VFS behavior, signing, rollback authorization,
+other clients, and stable release remain open.
 
 ## 2026-07-21 — Linux normalized usage metadata
 
