@@ -538,8 +538,8 @@ the tested onboarding and workspace controls. The application-window Capture-pha
 the provider fields in an explicit Tab/Shift+Tab order while preserving modified shortcuts.
 `tools/run-gtk-atspi-test.sh` starts
 the AT-SPI bus, reads the live accessibility tree with `python3-pyatspi`, and verifies the named
-Open, Translate, Retry, fallback-consent label/control, and Stop controls with their expected roles,
-plus two exported text-editor roles. The GTK unit test also verifies that document
+Open, Translate, Retry, fallback-consent, and Stop controls with their expected roles, plus two
+exported text-editor roles. The GTK unit test also verifies that document
 progress uses the native progress-bar role, exposes a bounded completed/total fraction, and hides
 the progress control when no document job is selected. This proves AT-SPI semantic export only; it does
 not prove Orca speech, physical-compositor behavior, RTL/high-contrast presentation, or GPU

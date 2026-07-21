@@ -1,5 +1,25 @@
 # Implementation Status
 
+## 2026-07-21 — Linux fallback-consent accessible name
+
+Assumption: the explicit fallback-consent checkbox should expose its localized accessible name on
+the checkbox node itself, while retaining the mnemonic label and updating both when the runtime
+locale changes.
+
+- `src/main.rs` now sets `AccessibleProperty::Label` on the production fallback checkbox during
+  construction and refreshes it whenever the interface locale changes; the GTK semantic test
+  asserts the property in addition to focusability.
+- `tools/gtk-atspi-inspect.py` now requires `Allow approved fallback` to resolve to the checkbox
+  role, closing the label-node-only ambiguity observed in the previous fixture run.
+- Local validation: no-default tests (`81 passed; 1 ignored`), demo-provider tests (`146 passed;
+  3 ignored`), formatting, strict Clippy, localization key/placeholder/visible audits, and diff
+  checks are required before remote gates; the live GTK/AT-SPI fixture remains CI-authoritative on
+  this host.
+
+This remains unreleased Linux-first accessibility evidence. Human Orca listening, translated-copy/
+RTL review, physical desktop rendering, other clients, signing, distributable artifacts, and stable
+release remain open.
+
 ## 2026-07-21 — Linux error-mapping localization coverage
 
 Assumption: every user-visible error category and catalog-backed error mapping must be checked

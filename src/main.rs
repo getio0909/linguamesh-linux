@@ -783,6 +783,12 @@ fn create_window(
         "action.enable_fallback",
         "Allow approved fallback",
     ));
+    // 为回退同意复选框导出稳定的本地化可访问名称。
+    fallback_enabled.update_property(&[gtk::accessible::Property::Label(&localization::text(
+        display_locale,
+        "action.enable_fallback",
+        "Allow approved fallback",
+    ))]);
     fallback_enabled.set_focusable(true);
     fallback_enabled.set_tooltip_text(Some(&localization::text(
         display_locale,
@@ -7090,6 +7096,10 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     bindings
         .fallback_enabled
         .set_label(Some(&format!("_{fallback_action}")));
+    // 在运行时切换界面语言时同步更新复选框的可访问名称。
+    bindings
+        .fallback_enabled
+        .update_property(&[gtk::accessible::Property::Label(&fallback_action)]);
     bindings
         .fallback_enabled
         .set_tooltip_text(Some(&fallback_tooltip));
@@ -9379,6 +9389,10 @@ mod tests {
         assert!(bindings.ocr_enabled.is_focusable());
         assert!(bindings.remember_profile.is_focusable());
         assert!(bindings.fallback_enabled.is_focusable());
+        assert!(gtk::test_accessible_has_property(
+            &bindings.fallback_enabled,
+            gtk::AccessibleProperty::Label
+        ));
         assert!(bindings.fallback_profile.is_focusable());
         assert!(bindings.source_view.is_focusable());
         assert!(bindings.output_view.is_focusable());
