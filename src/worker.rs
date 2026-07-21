@@ -5675,8 +5675,8 @@ mod tests {
     use super::{
         COMMAND_CAPACITY, CoreWorker, PersistenceIntent, QueuedCommand, REQUIRED_CORE_FEATURES,
         RoutingCircuitBreaker, WorkerCommand, WorkerEvent, alternative_pdf_source_name,
-        pin_database_parent, prepare_database_file, profile_without_secret, routing_backoff_delay,
-        validate_core_contract, validate_database_path,
+        open_database_file, pin_database_parent, prepare_database_file, profile_without_secret,
+        routing_backoff_delay, validate_core_contract, validate_database_path,
     };
     use crate::model::{ProviderProfile, ProviderProfileId};
     use linguamesh_document::{DocumentFormat, DocumentJob, DocumentJobState};
@@ -10195,6 +10195,27 @@ mod tests {
         fs::remove_file(&database.directory).expect("remove replacement symlink");
         fs::rename(&moved, &database.directory).expect("restore validated directory");
         fs::remove_dir_all(alternate).expect("remove alternate directory");
+    }
+
+    #[test]
+    fn replaced_database_file_is_rejected_between_preflight_and_descriptor_open() {
+        let database = TestDatabase::new();
+        fs::create_dir(&database.directory).expect("database directory");
+        fs::set_permissions(&database.directory, fs::Permissions::from_mode(0o700))
+            .expect("database directory permissions");
+        let target = database.directory.join("target.sqlite3");
+        fs::write(&target, b"NOT_A_DATABASE").expect("database target");
+
+        let parent = validate_database_path(database.path()).expect("validated database parent");
+        symlink(&target, database.path()).expect("replace validated database path");
+        let parent_fd = pin_database_parent(parent).expect("pinned database parent");
+        let file_name = database.path().file_name().expect("database file name");
+
+        assert!(open_database_file(&parent_fd, file_name).is_err());
+        assert_eq!(
+            fs::read(&target).expect("database target"),
+            b"NOT_A_DATABASE"
+        );
     }
 
     #[test]

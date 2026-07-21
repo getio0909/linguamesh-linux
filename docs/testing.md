@@ -269,8 +269,9 @@ descriptor-pinned Core migration remains in the original directory. It preserves
 restart row/default across session switches, failed persistent changes, and public connection
 cancellation, and keeps session mode usable after storage initialization fails. A dedicated
 preflight-race regression replaces the validated parent with a symlink between path validation and
-descriptor opening and requires rejection before any database file is created. It also verifies
-that a completed standard translation is recorded in bounded history, an Incognito completion is
+descriptor opening and a second regression replaces the final database path with a symlink after
+preflight; both require rejection before an unsafe descriptor is accepted. It also verifies that
+a completed standard translation is recorded in bounded history, an Incognito completion is
 skipped, and the startup count/clear command path uses the same database. A Linux-side
 Scenario 5 regression authenticates and saves distinct providers A and B with independent models,
 then uses one Connect action per remembered switch and proves each next translation reaches only

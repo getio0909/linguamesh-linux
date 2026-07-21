@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-21 — Linux final database-component race regression
+
+Assumption: the profile database must reject a final-path replacement that occurs after pathname
+preflight but before the descriptor is opened, not only a replaced parent directory.
+
+- `src/worker.rs` adds `replaced_database_file_is_rejected_between_preflight_and_descriptor_open`,
+  which creates a post-preflight symlink at the final database component, opens the validated
+  parent by descriptor, and requires the production `O_NOFOLLOW` path to reject it without
+  modifying the target.
+- `docs/testing.md` records both parent and final-component race regressions and keeps broader
+  filesystem/VFS and power-loss behavior explicitly outside the current claim.
+- Local targeted and full demo-provider tests passed (`147 passed; 3 ignored`), the no-default suite
+  passed (`81 passed; 1 ignored`), strict Clippy, localization audits, formatting, and diff checks
+  passed; the remote Native/Flatpak/Foundation gates remain required for this code checkpoint.
+
 ## 2026-07-21 — Linux validation boundary refresh
 
 Assumption: the testing guide must distinguish completed automated evidence from the manual,
