@@ -88,6 +88,13 @@ def main() -> int:
             "Retry translation": {"ROLE_PUSH_BUTTON"},
             "停止翻译": {"ROLE_PUSH_BUTTON"},
         },
+        "ar": {
+            "فتح ملف نصي": {"ROLE_PUSH_BUTTON"},
+            "Allow approved fallback": {"ROLE_CHECK_BOX"},
+            "ترجمة": {"ROLE_PUSH_BUTTON"},
+            "Retry translation": {"ROLE_PUSH_BUTTON"},
+            "إيقاف الترجمة": {"ROLE_PUSH_BUTTON"},
+        },
     }
     expected = expected_by_locale.get(locale)
     if expected is None:

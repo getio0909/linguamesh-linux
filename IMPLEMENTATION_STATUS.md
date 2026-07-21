@@ -1,5 +1,22 @@
 # Implementation Status
 
+## 2026-07-21 — Linux Arabic AT-SPI semantic fixture
+
+Assumption: the Arabic accessibility tree must expose localized names and stable roles for the
+same production controls used by the English and Simplified Chinese fixtures, including explicit
+English fallbacks where the pinned Arabic catalog remains untranslated.
+
+- `tools/gtk-atspi-inspect.py` now defines Arabic expectations for Open (`فتح ملف نصي`), Translate
+  (`ترجمة`), and Stop (`إيقاف الترجمة`), while requiring the catalog's English Retry and fallback
+  names; all expected controls remain push-button or checkbox roles and two text-editor roles.
+- Native CI adds a private Xvfb/AT-SPI run with `LINGUAMESH_TEST_LOCALE=ar`. Local Python compile,
+  shell syntax, and diff checks passed; the display-backed fixture is remote-only on this host and
+  remote gates are pending for this head.
+
+This strengthens automated Linux Scenario 13 accessibility evidence only; human Orca speech,
+translated-copy/RTL, visual/compositor, other clients, signing, and stable-release review remain
+open.
+
 ## 2026-07-21 — Linux Arabic RTL keyboard-focus fixture
 
 Assumption: Scenario 13 requires keyboard traversal to remain usable after the production GTK

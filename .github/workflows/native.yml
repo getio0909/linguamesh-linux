@@ -184,6 +184,11 @@ jobs:
         env:
           LINGUAMESH_TEST_LOCALE: zh-CN
         run: bash tools/run-gtk-atspi-test.sh
+      - name: Run Arabic GTK AT-SPI fixture
+        working-directory: linguamesh-linux
+        env:
+          LINGUAMESH_TEST_LOCALE: ar
+        run: bash tools/run-gtk-atspi-test.sh
       - name: Run GTK accessibility preference fixture
         working-directory: linguamesh-linux
         run: bash tools/run-gtk-accessibility-preferences-test.sh

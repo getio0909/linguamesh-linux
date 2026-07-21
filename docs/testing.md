@@ -565,7 +565,9 @@ progress uses the native progress-bar role, exposes a bounded completed/total fr
 the progress control when no document job is selected. This proves AT-SPI semantic export only; it does
 not prove Orca speech, physical-compositor behavior, RTL presentation, or GPU rendering. Native CI runs the same fixture once with English defaults and once with
 `LINGUAMESH_TEST_LOCALE=zh-CN`; the second run checks the catalog-backed Simplified Chinese names
-for Open, Translate, Retry, fallback consent, and Stop without weakening the role assertions. The
+for Open, Translate, Retry, fallback consent, and Stop without weakening the role assertions. Native
+CI also runs `LINGUAMESH_TEST_LOCALE=ar` and checks the Arabic Open/Translate/Stop names plus the
+catalog's English fallback names for Retry and fallback consent. The
 diagnostics panel uses the catalog-backed `diagnostics.summary` template for its
 Core ABI/protocol header, localizes fixed labels and state values through the Linux diagnostics
 keys, and keeps source content, endpoints, identifiers, and secret references redacted.
