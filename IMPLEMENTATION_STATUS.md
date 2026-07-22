@@ -5,9 +5,13 @@
 Assumption: a status-only checkpoint may refresh reproducible local evidence without changing the
 reviewed Linux runtime or release posture.
 
-- The current head `4154aaef160a0578624f581063dbd62a29cadb79` passed `cargo fmt --all -- --check`,
+- The runtime/packaging head `4154aaef160a0578624f581063dbd62a29cadb79` passed `cargo fmt --all -- --check`,
   GUI all-target `cargo check --features gui --offline`, strict all-feature Clippy, and
   `cargo test --features demo-provider --locked --offline` (`158 passed; 3 ignored`).
+- Status head `ad46609159c830579551923228211414450df130` records the same local results. Push
+  Native/Flatpak/Foundation runs `29934332522`/`29934332455`/`29934332613` and PR
+  Native/Flatpak/Foundation runs `29934338922`/`29934338014`/`29934336973` all passed, including
+  the full GTK, portal, accessibility, release, checksum/SBOM, and performance suites.
 - `./tools/sync-l10n.sh --check`, `bash tools/validate-flatpak-metadata.sh`, and `git diff --check`
   passed. The only Flatpak output is the existing advisory desktop-category hint.
 - The ignored tests remain environment-bound OCR, third-party Ollama, and private storage-fault
