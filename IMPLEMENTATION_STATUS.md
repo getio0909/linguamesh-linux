@@ -14,6 +14,8 @@ remain separate follow-up work.
 - Core revision `072d6b92df875153a60a9d1256ab814891fe775b` and l10n revision
   `6aa074e48058bb411d09b2783cd27ba415dc7c55` are pinned in Native and Flatpak inputs. The l10n
   bundle contains 444 messages.
+- Runtime commit `6dc26e67f0bf4fc63300604df1d3d381aeda1532` is the reviewed Linux head; the
+  Flatpak manifest is pinned to this exact commit for reproducible packaging.
 - Local `cargo fmt`, GUI check, strict all-feature Clippy, demo-provider tests (`158 passed; 3
   ignored`), localization audits, Flatpak metadata validation, and `git diff --check` passed.
 - Pending: remote Native/Flatpak/Foundation evidence for this head and the existing human visual,
