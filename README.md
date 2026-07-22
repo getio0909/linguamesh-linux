@@ -180,8 +180,9 @@ committed. A non-writable private-directory regression and corrupt-database regr
 closed while retaining session-only translation; power-loss and broader SQLite VFS behavior remain
 unverified.
 
-The tested external-provider path includes deterministic loopback fixtures for both Ollama-compatible
-OpenAI `/v1/` and native Ollama `/api`: model discovery returns `llama3.2:latest`, the worker requires
+The tested external-provider path includes deterministic loopback fixtures for generic OpenAI-compatible
+servers (including LM Studio-style `/v1/` deployments), Ollama-compatible OpenAI `/v1/`, and native
+Ollama `/api`: model discovery returns `llama3.2:latest`, the worker requires
 deliberate selection, and streaming uses `/v1/chat/completions` or `/api/chat` without a credential.
 The GTK provider form exposes localized OpenAI-compatible, native Ollama, Anthropic Messages,
 Google Gemini, Azure OpenAI, and OpenAI Responses presets. Anthropic uses the HTTPS `/v1/` endpoint and requires a

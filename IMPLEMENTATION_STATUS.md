@@ -1,5 +1,19 @@
 # Implementation Status
 
+## 2026-07-22 — Linux LM Studio-style compatibility fixture
+
+Assumption: LM Studio-style local servers are covered by the required generic OpenAI-compatible
+`/v1/` Chat Completions contract; this fixture does not require a particular desktop server.
+
+- The Linux worker now has `lm_studio_style_openai_compatible_provider_translates_without_secret`,
+  a deterministic loopback regression for `/v1/` model discovery, deliberate model selection,
+  streaming translation, and credential-free local operation.
+- `README.md` and `docs/testing.md` describe the protocol boundary and distinguish fixture evidence
+  from live LM Studio installation or desktop integration evidence.
+- Native CI remains authoritative for the full GUI target; human visual review, Secret Service and
+  portal prompts, physical VFS/power-loss behavior, other clients, signing, rollback, and stable
+  release approval remain open.
+
 ## 2026-07-22 — Linux bundled open-source notices action
 
 Assumption: bundled `THIRD_PARTY_NOTICES.md` is the authoritative legal source for production

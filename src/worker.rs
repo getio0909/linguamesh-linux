@@ -9119,6 +9119,29 @@ mod tests {
     }
 
     #[test]
+    fn lm_studio_style_openai_compatible_provider_translates_without_secret() {
+        let external = ExternalFakeProvider::start(FakeMode::Standard);
+        let (worker, _) = started_worker();
+        let runtime = profile_with_preset(
+            "lmstudio-loopback",
+            "custom-openai-compatible",
+            &external.endpoint,
+            None,
+            None,
+        );
+        let models = connect(&worker, runtime, None, PersistenceIntent::SessionOnly)
+            .expect("LM Studio-style provider connection");
+        assert!(models.iter().any(|model| model.id == "fake-translator"));
+        select_event(&worker, "lmstudio-loopback", "fake-translator")
+            .expect("select LM Studio-style model");
+        let (output, terminal) = translate(&worker, "fake-translator");
+        assert_eq!(output, "你好，LinguaMesh！");
+        assert!(matches!(terminal, TranslationEvent::Completed { .. }));
+        assert_eq!(external.chat_requests.load(Ordering::SeqCst), 1);
+        shutdown(&worker);
+    }
+
+    #[test]
     fn loopback_ollama_compatible_provider_translates_without_secret() {
         let external = ExternalFakeProvider::start(FakeMode::OllamaCompatible);
         let (worker, _) = started_worker();

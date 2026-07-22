@@ -7,6 +7,11 @@ fragmented UTF-8 handling, cancellation, and the translated `你好，Ollama！`
 credential. These tests do not replace interoperability testing against a running third-party
 Ollama daemon.
 
+The `lm_studio_style_openai_compatible_provider_translates_without_secret` fixture exercises the
+same generic `/v1/` Chat Completions contract used by LM Studio-style local servers. It verifies
+model discovery, deliberate selection, streaming translation, and the absence of a credential;
+the fixture is protocol evidence, not a claim that a particular LM Studio build is installed.
+
 The GTK provider regression also selects the Anthropic Messages preset, verifies its HTTPS `/v1/`
 default, and requires a manual Model ID before Connect. The model is validated locally before any
 worker connection or host SecretRef resolution; saved profiles restore the non-secret model ID.
