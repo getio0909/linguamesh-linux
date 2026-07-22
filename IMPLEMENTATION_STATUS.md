@@ -1,5 +1,23 @@
 # Implementation Status
 
+## 2026-07-22 — Linux GTK OOXML macro and signature import boundary
+
+Assumption: the production GTK import boundary must reject unsupported OOXML macro and digital
+signature parts before any document job is created, not only through Core unit coverage.
+
+- Extended the serialized `gtk_malicious_archive_import_fails_closed_before_document_job` fixture
+  to drive DOCX packages containing `word/vbaProject.bin` and `_xmlsignatures/sig1.xml` through the
+  asynchronous GIO loader, alongside traversal and suspicious-compression fixtures. Each case
+  requires a fixed visible import error, no document-job snapshot, an unchanged empty source editor,
+  and no forbidden extracted filename in the private fixture directory.
+- Native CI remains authoritative for the display-backed test on this host; local formatting,
+  locked checks, strict Clippy, and non-GTK suites are required before push. Release status remains
+  `unreleased`.
+
+This strengthens unreleased Linux evidence for mandatory Scenario 15 and Milestone 6. Human macro,
+signature, visual/copy/Orca review, other clients, signed artifacts, rollback authorization, and
+stable release approval remain open.
+
 ## 2026-07-22 — Linux GTK malicious archive import boundary
 
 Assumption: Scenario 15 requires the production asynchronous GTK/GIO import path to reject both

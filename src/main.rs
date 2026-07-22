@@ -9929,6 +9929,16 @@ mod tests {
                 malicious_docx_fixture("word/repetitive.bin", &repetitive_payload, true),
                 "repetitive.bin",
             ),
+            (
+                "macro.docx",
+                malicious_docx_fixture("word/vbaProject.bin", b"unsupported macro", false),
+                "vbaProject.bin",
+            ),
+            (
+                "signed.docx",
+                malicious_docx_fixture("_xmlsignatures/sig1.xml", b"unsupported signature", false),
+                "sig1.xml",
+            ),
         ];
 
         let context = glib::MainContext::default();
