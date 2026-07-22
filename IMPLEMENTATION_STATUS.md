@@ -1,5 +1,24 @@
 # Implementation Status
 
+## 2026-07-22 — Linux CI evidence integrity verification
+
+Assumption: prerelease evidence is useful only when the uploaded checksum and SBOM sidecars are
+validated in the same job that produced them; this does not replace signing or release approval.
+
+- Native and Flatpak workflows now verify every `SHA256SUMS` entry and parse `SBOM.spdx.json` before
+  upload. Native source-archive checksum paths are normalized to the evidence directory so the
+  verification covers both the release binary and repository-only source archive.
+- The first Native attempt (`29902104277`/`29902106668`) exposed the path mismatch; the corrected
+  final head `48ccbca9523fb4c633e3d806c23104c34b5fa623` passed push Native/Flatpak/Foundation
+  `29903015347`/`29903015532`/`29903015352` and PR `29903018444`/`29903018422`/`29903018395`.
+  Flatpak and Foundation also passed on the intermediate correction; only the final six-gate set is
+  authoritative.
+- Local workflow diff, Python evidence-script compilation, shell syntax, and diff checks passed.
+
+This strengthens unreleased Linux Milestone 8 artifact evidence. Sidecars remain unsigned CI
+prerelease evidence; signing, distributable promotion, rollback authorization, and stable release
+approval remain open.
+
 ## 2026-07-22 — Linux document report usage estimate
 
 Assumption: persisted document segments are the only local, non-sensitive source available for a

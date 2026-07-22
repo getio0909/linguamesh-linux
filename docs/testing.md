@@ -621,6 +621,9 @@ The workflow also adds `linguamesh-linux-source.tar.gz` to the same artifact and
 to `SHA256SUMS`. This is a repository-only source snapshot; it still requires the pinned Core and
 localization repositories for a build. The binary, source archive, `SHA256SUMS`, `SBOM.spdx.json`,
 and `BUILD-INFO.txt` are unsigned prerelease evidence only, not a stable or distributable release.
+Before either evidence directory is uploaded, Native and Flatpak CI re-check every listed SHA-256
+entry and parse the SPDX JSON document. This catches a corrupt or incomplete evidence bundle before
+it becomes a retained CI artifact; it does not provide a signature or stable-release authorization.
 The generated `ROLLBACK.md` records the exact source pins and future signed-release rollback
 sequence without inventing a previous stable revision.
 
