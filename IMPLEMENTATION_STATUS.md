@@ -1,5 +1,27 @@
 # Implementation Status
 
+## 2026-07-22 — Linux GTK pending document-job Pause action
+
+Assumption: a pending row in the production document queue must dispatch Pause for that exact
+snapshot, not merely expose a visually identical button or select a different job.
+
+- Runtime commit `8c05797011a04cdc11988cfbe9c35c2d05d2269b` extends
+  `gtk_document_jobs_dialog_selects_between_multiple_jobs` so the pending, paused, and cancelled
+  snapshots each expose their single queue action. The fixture activates `Pause document` for
+  `gtk-queue-first` and proves the pending job remains selected with `Pending` state while the dialog
+  closes after sending the command.
+- Packaging/docs commit `4bc6da51ac6510503e41234bfb3eea5e794fe1e7` pins the Flatpak source to this
+  runtime head. Local formatting, locked all-target/all-feature check, strict Clippy, demo-provider
+  tests (`157 passed; 3 ignored`), localization audits, l10n synchronization, Flatpak metadata,
+  and diff checks passed.
+- Code-head push Native/Flatpak/Foundation runs `29885792891`/`29885792900`/`29885792902` and PR
+  runs `29885795224`/`29885795226`/`29885795242` all passed; Native executed the exact serialized
+  queue fixture and reported `1 passed`.
+
+This advances unreleased Linux document queue evidence for Milestones 3 and 6. Human visual/copy/
+Orca review, physical interruption behavior, other clients, signed artifacts, rollback authorization,
+and stable release approval remain open.
+
 ## 2026-07-22 — Linux GTK cancelled document-job Retry action
 
 Assumption: a cancelled row in the production document queue must dispatch Retry for that exact
