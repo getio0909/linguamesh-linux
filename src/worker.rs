@@ -420,8 +420,10 @@ pub enum WorkerEvent {
     DocumentJobUpdated(DocumentJobSnapshot),
     /// 文档任务已重建为可写入文件的字节。
     DocumentJobExported {
-        /// 原始文档文件名，仅用于生成默认扩展名。
+        /// 原始文档文件名，用于生成默认导出文件名。
         source_name: String,
+        /// 文档任务请求的目标语言标签。
+        target_locale: String,
         /// 已通过 Core 结构校验的输出字节。
         contents: Vec<u8>,
     },
@@ -3541,6 +3543,10 @@ async fn run_worker(
                                 "The document job was not found.",
                             )
                         })?;
+                        let target_locale = snapshot.options.as_ref().map_or_else(
+                            || "und".to_owned(),
+                            |options| options.target_locale.clone(),
+                        );
                         let (source_name, contents) =
                             match snapshot.job.reconstruct_bytes_with_target_locale(
                                 snapshot
@@ -3567,13 +3573,14 @@ async fn run_worker(
                                     ));
                                 }
                             };
-                        Ok((source_name, contents))
+                        Ok((source_name, target_locale, contents))
                     });
                 match result {
-                    Ok((source_name, contents)) => {
+                    Ok((source_name, target_locale, contents)) => {
                         if events
                             .send(WorkerEvent::DocumentJobExported {
                                 source_name,
+                                target_locale,
                                 contents,
                             })
                             .is_err()

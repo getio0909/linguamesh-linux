@@ -30,6 +30,7 @@ use linguamesh_storage::{
 use std::cell::{Cell, RefCell};
 use std::fs;
 use std::io::Write;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::OnceLock;
 use std::sync::mpsc::TryRecvError;
@@ -4000,13 +4001,118 @@ fn destination_matches_source(source_uri: Option<&str>, destination: &gtk::gio::
     false
 }
 
+// 将源文件名和目标语言规范化为安全、可读且稳定的导出文件名。
+fn translation_output_name(source_name: &str, target_locale: &str) -> String {
+    let source_path = Path::new(source_name);
+    let basename = source_path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("translation.txt");
+    let base = source_path
+        .file_stem()
+        .and_then(|name| name.to_str())
+        .unwrap_or(basename);
+    let base = sanitize_output_component(base, "translation");
+    let target = target_locale
+        .chars()
+        .map(|character| {
+            if character.is_ascii_alphanumeric() || character == '-' {
+                character
+            } else {
+                '_'
+            }
+        })
+        .collect::<String>();
+    let target = sanitize_output_component(&target, "und");
+    let extension = source_path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .map_or_else(
+            || "txt".to_owned(),
+            |extension| sanitize_output_component(extension, "txt"),
+        );
+    format!("{base}.{target}.{extension}")
+}
+
+// 移除控制字符和路径分隔符，避免用户可控名称逃逸导出目录。
+fn sanitize_output_component(value: &str, fallback: &str) -> String {
+    let sanitized = value
+        .chars()
+        .map(|character| {
+            if character.is_control() || matches!(character, '/' | '\\') {
+                '_'
+            } else {
+                character
+            }
+        })
+        .collect::<String>();
+    let trimmed = sanitized.trim_matches(|character| character == '.' || character == ' ');
+    if trimmed.is_empty() {
+        fallback.to_owned()
+    } else {
+        trimmed.to_owned()
+    }
+}
+
+// 为已存在的目标文件分配从 -1 开始的确定性后缀，避免覆盖任何现有文件。
+fn collision_safe_output_path(destination: &Path) -> Option<PathBuf> {
+    let path_available = |path: &Path| {
+        matches!(
+            fs::symlink_metadata(path),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound
+        )
+    };
+    if path_available(destination) {
+        return Some(destination.to_owned());
+    }
+    let parent = destination.parent()?;
+    let stem = destination.file_stem()?.to_str()?;
+    let extension = destination
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .filter(|extension| !extension.is_empty());
+    for suffix in 1..=9999 {
+        let filename = extension.map_or_else(
+            || format!("{stem}-{suffix}"),
+            |extension| format!("{stem}-{suffix}.{extension}"),
+        );
+        let candidate = parent.join(filename);
+        if path_available(&candidate) {
+            return Some(candidate);
+        }
+    }
+    None
+}
+
+// 将 GIO 目标转换为不会覆盖已有本地文件的确定性路径。
+fn collision_safe_destination(destination: &gtk::gio::File) -> Option<gtk::gio::File> {
+    destination.path().map_or_else(
+        || Some(destination.clone()),
+        |path| collision_safe_output_path(&path).map(|path| gtk::gio::File::for_path(&path)),
+    )
+}
+
+// 从已导入 URI 提取原始文件名；纯文本编辑器没有源文件时使用稳定回退名。
+fn source_name_for_export(source_uri: Option<&str>) -> String {
+    source_uri
+        .and_then(|uri| gtk::gio::File::for_uri(uri).basename())
+        .map_or_else(
+            || "translation.txt".to_owned(),
+            |name| name.to_string_lossy().into_owned(),
+        )
+}
+
 // 将译文异步写入用户选择的新文件，并拒绝覆盖已导入的源文件。
+#[allow(clippy::too_many_lines)]
 fn begin_translation_export(
     bindings: &UiBindings,
     state: &Rc<RefCell<AppState>>,
     worker: &Rc<CoreWorker>,
 ) {
-    let locale = state.borrow().locale();
+    let (locale, target_locale) = {
+        let state = state.borrow();
+        (state.locale(), state.target_locale().to_owned())
+    };
     if let Some(job_id) = bindings.document_job_id.borrow().clone() {
         if let Err(error) = worker.try_send(WorkerCommand::ExportDocumentJob { job_id }) {
             state.borrow_mut().record_client_error(error.to_string());
@@ -4041,16 +4147,19 @@ fn begin_translation_export(
         .accept_label(&dialog_accept)
         .modal(true)
         .build();
-    dialog.set_initial_name(Some("linguamesh-translation.txt"));
     let export_bindings = bindings.clone();
     let export_state = Rc::clone(state);
     let source_uri = bindings.source_uri.borrow().clone();
+    let default_name = translation_output_name(
+        &source_name_for_export(source_uri.as_deref()),
+        &target_locale,
+    );
+    dialog.set_initial_name(Some(&default_name));
     dialog.save(
         Some(&bindings.window),
         None::<&gtk::gio::Cancellable>,
         move |result| match result {
             Ok(file) => {
-                let destination_uri = file.uri().to_string();
                 if destination_matches_source(source_uri.as_deref(), &file) {
                     show_file_export_error(
                         &export_bindings,
@@ -4062,6 +4171,18 @@ fn begin_translation_export(
                     );
                     return;
                 }
+                let Some(file) = collision_safe_destination(&file) else {
+                    show_file_export_error(
+                        &export_bindings,
+                        &localization::text(
+                            export_state.borrow().locale(),
+                            "error.file_export",
+                            "The translated output could not be saved.",
+                        ),
+                    );
+                    return;
+                };
+                let destination_uri = file.uri().to_string();
                 let contents = glib::Bytes::from_owned(output.into_bytes());
                 let output_uri = destination_uri.clone();
                 let callback_bindings = export_bindings.clone();
@@ -4161,10 +4282,11 @@ fn document_translation_report(snapshot: &DocumentJobSnapshot, core_version: &st
             |glossary| format!("entries:{}", glossary.entries().len()),
         );
     let state = format!("{:?}", snapshot.state);
+    let output_identifier = translation_output_name(&snapshot.job.source_name, target_locale);
     let fields = [
         ("report_version", "1".to_owned()),
         ("source_identifier", snapshot.job.source_name.clone()),
-        ("output_identifier", "<not-exported>".to_owned()),
+        ("output_identifier", output_identifier),
         ("source_locale", source_locale.to_owned()),
         ("target_locale", target_locale.to_owned()),
         ("provider", provider.to_owned()),
@@ -4218,6 +4340,14 @@ fn begin_document_report_export(
             |compatibility| compatibility.core_version,
         ),
     );
+    let target_locale = snapshot
+        .options
+        .as_ref()
+        .map_or("und", |options| options.target_locale.as_str());
+    let report_name = format!(
+        "{}.report.tsv",
+        translation_output_name(&snapshot.job.source_name, target_locale)
+    );
     let dialog = gtk::FileDialog::builder()
         .title(localization::text(
             locale,
@@ -4227,7 +4357,7 @@ fn begin_document_report_export(
         .accept_label(localization::text(locale, "dialog.save", "Save"))
         .modal(true)
         .build();
-    dialog.set_initial_name(Some("linguamesh-translation-report.tsv"));
+    dialog.set_initial_name(Some(&report_name));
     let export_bindings = bindings.clone();
     let export_state = Rc::clone(state);
     let source_uri = bindings.source_uri.borrow().clone();
@@ -4247,6 +4377,17 @@ fn begin_document_report_export(
                     );
                     return;
                 }
+                let Some(file) = collision_safe_destination(&file) else {
+                    show_file_export_error(
+                        &export_bindings,
+                        &localization::text(
+                            export_state.borrow().locale(),
+                            "error.file_export",
+                            "The translated output could not be saved.",
+                        ),
+                    );
+                    return;
+                };
                 let bytes = glib::Bytes::from_owned(report.clone().into_bytes());
                 let callback_bindings = export_bindings.clone();
                 let callback_state = Rc::clone(&export_state);
@@ -4290,13 +4431,11 @@ fn begin_document_binary_export(
     bindings: &UiBindings,
     state: &Rc<RefCell<AppState>>,
     source_name: &str,
+    target_locale: &str,
     contents: Vec<u8>,
 ) {
     let locale = state.borrow().locale();
-    let extension = source_name
-        .rsplit_once('.')
-        .map_or("txt", |(_, extension)| extension);
-    let default_name = format!("linguamesh-translation.{extension}");
+    let default_name = translation_output_name(source_name, target_locale);
     let dialog = gtk::FileDialog::builder()
         .title(localization::text(
             locale,
@@ -4315,7 +4454,6 @@ fn begin_document_binary_export(
         None::<&gtk::gio::Cancellable>,
         move |result| match result {
             Ok(file) => {
-                let destination_uri = file.uri().to_string();
                 if destination_matches_source(source_uri.as_deref(), &file) {
                     show_file_export_error(
                         &export_bindings,
@@ -4327,6 +4465,18 @@ fn begin_document_binary_export(
                     );
                     return;
                 }
+                let Some(file) = collision_safe_destination(&file) else {
+                    show_file_export_error(
+                        &export_bindings,
+                        &localization::text(
+                            export_state.borrow().locale(),
+                            "error.file_export",
+                            "The translated output could not be saved.",
+                        ),
+                    );
+                    return;
+                };
+                let destination_uri = file.uri().to_string();
                 let bytes = glib::Bytes::from_owned(contents);
                 let output_uri = destination_uri.clone();
                 let callback_bindings = export_bindings.clone();
@@ -6779,9 +6929,10 @@ fn apply_worker_event(
         }
         WorkerEvent::DocumentJobExported {
             source_name,
+            target_locale,
             contents,
         } => {
-            begin_document_binary_export(bindings, state, &source_name, contents);
+            begin_document_binary_export(bindings, state, &source_name, &target_locale, contents);
         }
         WorkerEvent::DocumentJobUpdated(snapshot) => {
             bindings.ocr_pending.set(false);
@@ -8292,19 +8443,20 @@ mod tests {
         RESPONSES_ADAPTER_TYPE, RESPONSES_PROVIDER_PRESET_ID, RoutingCandidate,
         RoutingConstraintTextValues, RoutingDecisionSummary, RoutingProfile, RoutingProfileRecord,
         SecretRef, SecretRefNamespace, SecretValue, TranslationError, UiLocale, WorkerCommand,
-        WorkerEvent, apply_worker_event, connect_action_handlers, connect_selection_handlers,
-        create_window, custom_provider_profile, destination_matches_source, document_format_label,
-        document_translation_report, endpoint_matches_preset_default, fallback_confirmation_needed,
-        generate_custom_provider_id, load_source_file, localized_document_job_state,
-        localized_document_warnings, localized_provider_default_name, localized_template,
-        normalized_candidate_ids_for_mode, output_metrics_label, preset_requires_manual_model,
-        provider_preset_config, provider_preset_index, quality_mode_for_selection,
-        quality_mode_selection, refresh_ui, routing_constraints_from_controls,
-        routing_constraints_from_text_values, routing_identifier_list_from_text,
-        routing_optional_limit_from_text, routing_preference_for_selection,
-        routing_preference_selection, routing_profile_id_conflicts, show_document_jobs_dialog,
-        show_fallback_approval_dialog, show_new_profile_in_form, show_routing_profiles_dialog,
-        start_event_pump, text_metrics_label, translation_preset_for_selection,
+        WorkerEvent, apply_worker_event, collision_safe_output_path, connect_action_handlers,
+        connect_selection_handlers, create_window, custom_provider_profile,
+        destination_matches_source, document_format_label, document_translation_report,
+        endpoint_matches_preset_default, fallback_confirmation_needed, generate_custom_provider_id,
+        load_source_file, localized_document_job_state, localized_document_warnings,
+        localized_provider_default_name, localized_template, normalized_candidate_ids_for_mode,
+        output_metrics_label, preset_requires_manual_model, provider_preset_config,
+        provider_preset_index, quality_mode_for_selection, quality_mode_selection, refresh_ui,
+        routing_constraints_from_controls, routing_constraints_from_text_values,
+        routing_identifier_list_from_text, routing_optional_limit_from_text,
+        routing_preference_for_selection, routing_preference_selection,
+        routing_profile_id_conflicts, show_document_jobs_dialog, show_fallback_approval_dialog,
+        show_new_profile_in_form, show_routing_profiles_dialog, start_event_pump,
+        text_metrics_label, translation_output_name, translation_preset_for_selection,
         translation_preset_selection, usage_label, valid_routing_profile_id,
         validate_provider_preset_catalog,
     };
@@ -9295,6 +9447,39 @@ mod tests {
     }
 
     #[test]
+    fn translation_output_name_uses_source_stem_and_target_locale() {
+        assert_eq!(
+            translation_output_name("guide.v1.md", "zh-CN"),
+            "guide.v1.zh-CN.md"
+        );
+        assert_eq!(
+            translation_output_name("nested\\unsafe\tname", "ar_XB"),
+            "nested_unsafe_name.ar_XB.txt"
+        );
+        assert_eq!(translation_output_name(".txt", ""), "translation.und.txt");
+    }
+
+    #[test]
+    fn collision_safe_output_path_adds_stable_suffix_without_overwriting() {
+        let directory =
+            std::env::temp_dir().join(format!("linguamesh-linux-collision-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).expect("directory");
+        let destination = directory.join("guide.zh-CN.md");
+        fs::write(&destination, "existing").expect("destination");
+        fs::write(directory.join("guide.zh-CN-1.md"), "existing").expect("first collision");
+        assert_eq!(
+            collision_safe_output_path(&destination),
+            Some(directory.join("guide.zh-CN-2.md"))
+        );
+        assert_eq!(
+            collision_safe_output_path(&directory.join("new.txt")),
+            Some(directory.join("new.txt"))
+        );
+        let _ = fs::remove_dir_all(directory);
+    }
+
+    #[test]
     fn document_translation_report_is_redacted_and_counts_segments() {
         let mut job = DocumentJob::from_text(
             "guide\tprivate.txt",
@@ -9315,7 +9500,7 @@ mod tests {
         assert!(report.contains("segment_total\t2"));
         assert!(report.contains("completed_count\t1"));
         assert!(report.contains("pending_count\t1"));
-        assert!(report.contains("output_identifier\t<not-exported>"));
+        assert!(report.contains("output_identifier\tguide_private.und.txt"));
         assert!(report.contains("core_version\t0.1.0-alpha.2"));
         assert!(report.contains("retried_count\tunknown"));
         assert!(!report.contains("traduction"));
