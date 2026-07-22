@@ -15,8 +15,18 @@ and limited to non-sensitive build and Core compatibility fields.
 - l10n revision `a65a327a8418332e50d9ab302fca24508e7266ef` contains 441 messages. Local formatting,
   GUI all-target check, strict Clippy, localization key/placeholder/visible audits, l10n sync, and
   the demo-provider suite (`158 passed; 3 ignored`) passed. The full GUI test binary remains
-  linker-limited on this host by missing GTK4/Graphene symbols; the dedicated GTK fixture is pending
-  remote Native CI evidence.
+  linker-limited on this host by missing GTK4/Graphene symbols; CI supplies the executable GUI
+  evidence.
+- Runtime/packaging head `0d7b3927fb98e461317feaefeb4c806676e6acc0` includes the corrected GTK
+  mnemonic-aware Close assertion. The first About push Native run `29937509002` failed only on
+  that assertion; corrected push Native `29938498949`, PR Native `29938501797`, push/PR Flatpak
+  `29938498660`/`29938501835`, and push/PR Foundation `29938498667`/`29938501772` all passed,
+  including About, accessibility, release, checksum/SBOM, performance, Flatpak sandbox, and
+  localization checks. Earlier stale-pin Flatpak run `29937961470` was superseded by the corrected
+  pin in `0d7b392`.
+- Linux PR #1 remains Draft/Open/mergeable with no submitted reviews or unresolved threads.
+  Human visual/copy/Orca review, physical VFS and power-loss evidence, signing, rollback
+  authorization, and stable release acceptance remain open; release status stays `unreleased`.
 
 ## 2026-07-22 — Current-head Linux regression refresh
 
