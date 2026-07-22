@@ -17,6 +17,11 @@ license text in this Linux checkpoint; no runtime network fetch is required to r
 - `cargo fmt --all -- --check`, `cargo check --locked --features gui --bin linguamesh-linux`,
   localization audits (`check-localization-keys|placeholders|visible-localization`),
   `bash tools/sync-l10n.sh --check`, and flatpak metadata validation passed.
+- The first Flatpak runs for code head `909083dee4c436d0f343785a4c95f1cda4207e35`
+  (`29926503929`/`29926504980`) failed because the manifest briefly referenced a non-existent
+  commit. The corrected packaging head `08aa7498cb1ba677cd7aa72f3b9b7495094bb4b0` passed all six
+  current-head gates: push Native/Flatpak/Foundation `29926552567`/`29926553613`/`29926552554`
+  and pull-request Native/Flatpak/Foundation `29926556769`/`29926557149`/`29926556671`.
 
 This adds Linux Scenario 18 legal-notice evidence to the prerelease pipeline. Human visual/copy/
 Orca review, cross-client approval, stable release signing/rollout authorization, rollback,
