@@ -132,6 +132,14 @@ jobs:
           env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
           tests::gtk_fallback_approval_dialog_requires_an_explicit_one_shot_action
           -- --exact --ignored --test-threads=1
+      - name: Run Secret Service session-only recovery GTK fixture
+        working-directory: linguamesh-linux
+        run: >-
+          dbus-run-session -- xvfb-run --auto-servernum
+          --server-args="-screen 0 1280x800x24"
+          env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
+          tests::gtk_secret_storage_fallback_dialog_requires_explicit_session_only_action
+          -- --exact --ignored --test-threads=1
       - name: Run authentication failure GTK lifecycle fixture
         working-directory: linguamesh-linux
         run: >-

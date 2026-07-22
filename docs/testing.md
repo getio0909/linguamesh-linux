@@ -475,8 +475,12 @@ bash tools/run-secret-service-prompt-test.sh
 This proves the adapter's prompt signal handling and fail-closed boundary through a private D-Bus
 fixture; it does not claim that a real user approved or visually reviewed a desktop prompt. End-user
 prompt acceptance and unlock UX remain separate manual validation gates. The GTK connection flow's
-localized session-only recovery dialog is covered by source-level key audits and native CI
-compilation; physical prompt approval and visual review remain manual.
+localized session-only recovery dialog is covered by the serialized
+`gtk_secret_storage_fallback_dialog_requires_explicit_session_only_action` fixture in Native CI:
+the dialog keeps Remember enabled until the user activates the explicit session-only action, then
+clears Remember and returns focus to the credential field; closing the dialog leaves the choice
+unchanged. This is UI lifecycle evidence only; physical prompt approval and visual review remain
+manual.
 
 The localization unit suite parses every official Linux MO catalog, checks action entries are
 available, and verifies unique BCP 47 tags plus Arabic RTL metadata:
