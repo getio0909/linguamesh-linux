@@ -215,6 +215,10 @@ not a signed or published release. Native CI verifies headless delivery to a rea
 daemon; the direct portal chooser backend, application-level chooser/drag fixtures, and visible
 Dunst desktop-shell window check pass, while release artifacts remain a separate gate.
 
+The main action row includes a localized About dialog that reports only the application version and
+the shared Core version, ABI, and protocol dimensions. It is read-only and does not display provider
+endpoints, credentials, model IDs, or translation content.
+
 The two display gates execute the same real GTK binary test. Headless Weston proves that the client
 can initialize and complete that flow with `GDK_BACKEND=wayland` and no X11 fallback; it is not
 evidence for a physical compositor, GPU rendering, assistive technology, or a complete desktop
@@ -225,7 +229,7 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`3724cc9d436ebdbac3b8ebf0df9bce9af1b41b15` and validated with `msgfmt`; the 437-message bundle
+`a65a327a8418332e50d9ab302fca24508e7266ef` and validated with `msgfmt`; the 441-message bundle
 adds Linux routing-profile persistence/editor, profile-ID validation and duplicate protection, ordinary-text selection labels, routing preference/privacy/document constraints, provider/model allowlists and denylists, quality/request-size limits, translation quality-mode and translation-preset labels, and source/output character plus approximate-token metrics. The locale selector
 exposes all twelve official BCP 47 packs plus the generated `en-XA` accented and `ar-XB` RTL
 pseudo-locales. It switches runtime action, workspace-widget,

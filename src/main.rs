@@ -153,6 +153,7 @@ struct UiBindings {
     clear_memory: gtk::Button,
     routing_profiles: gtk::Button,
     open_source_licenses: gtk::Button,
+    about: gtk::Button,
     fallback_enabled: gtk::CheckButton,
     fallback_profile_label: gtk::Label,
     fallback_profile: gtk::DropDown,
@@ -774,6 +775,7 @@ fn create_window(
         clear_memory,
         routing_profiles,
         open_source_licenses,
+        about,
         theme,
         locale,
     ) = create_controls();
@@ -1054,6 +1056,7 @@ fn create_window(
         clear_memory,
         routing_profiles,
         open_source_licenses,
+        about,
         fallback_enabled,
         fallback_profile_label,
         fallback_profile,
@@ -1750,6 +1753,7 @@ fn create_controls() -> (
     gtk::Button,
     gtk::Button,
     gtk::Button,
+    gtk::Button,
     gtk::DropDown,
     gtk::DropDown,
 ) {
@@ -1944,6 +1948,17 @@ fn create_controls() -> (
         "tooltip.open_source_licenses",
         "Review the licenses and third-party notices included with this build",
     )));
+    let about = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.about",
+        "About LinguaMesh",
+    ));
+    about.set_focusable(true);
+    about.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.about",
+        "Show application and shared-core version information",
+    )));
     let theme_options = [
         localization::text(locale, "theme.system", "System"),
         localization::text(locale, "theme.light", "Light"),
@@ -2018,6 +2033,7 @@ fn create_controls() -> (
     controls.append(&clear_memory);
     controls.append(&routing_profiles);
     controls.append(&open_source_licenses);
+    controls.append(&about);
     (
         controls,
         model,
@@ -2037,6 +2053,7 @@ fn create_controls() -> (
         clear_memory,
         routing_profiles,
         open_source_licenses,
+        about,
         theme,
         locale,
     )
@@ -2881,6 +2898,75 @@ fn show_secret_storage_session_fallback(bindings: &UiBindings, state: &Rc<RefCel
     dialog.present();
 }
 
+// 生成只包含版本与协议字段的 About 文本，避免把端点、凭据或翻译内容带入对话框。
+fn about_details(locale: UiLocale) -> String {
+    let compatibility = core_compatibility().ok();
+    let core = compatibility.as_ref().map_or_else(
+        || "unavailable".to_owned(),
+        |value| value.core_version.clone(),
+    );
+    let abi = compatibility.as_ref().map_or_else(
+        || "unavailable".to_owned(),
+        |value| value.abi_major.to_string(),
+    );
+    let protocol = compatibility.as_ref().map_or_else(
+        || "unavailable".to_owned(),
+        |value| value.protocol_version.to_string(),
+    );
+    localized_template(
+        locale,
+        "dialog.about_details",
+        "Version: {version}\nCore: {core}\nABI: {abi}\nProtocol: {protocol}",
+        &[
+            ("{version}", env!("CARGO_PKG_VERSION")),
+            ("{core}", &core),
+            ("{abi}", &abi),
+            ("{protocol}", &protocol),
+        ],
+    )
+}
+
+// 展示应用版本与共享核心兼容性信息，不访问网络或读取秘密。
+fn show_about_dialog(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
+    let locale = state.borrow().locale();
+    let dialog = gtk::Window::builder()
+        .application(&bindings.application)
+        .transient_for(&bindings.window)
+        .modal(true)
+        .title(localization::text(
+            locale,
+            "dialog.about",
+            "About LinguaMesh",
+        ))
+        .default_width(480)
+        .default_height(300)
+        .build();
+    let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    root.set_margin_top(24);
+    root.set_margin_bottom(24);
+    root.set_margin_start(24);
+    root.set_margin_end(24);
+    let title = gtk::Label::new(Some(&localization::text(locale, "app.title", "LinguaMesh")));
+    title.set_xalign(0.0);
+    title.add_css_class("title-2");
+    let details_text = about_details(locale);
+    let details = gtk::Label::new(Some(&details_text));
+    details.set_xalign(0.0);
+    details.set_selectable(true);
+    details.set_focusable(true);
+    details.set_wrap(true);
+    details.update_property(&[gtk::accessible::Property::Label(&details_text)]);
+    root.append(&title);
+    root.append(&details);
+    let close = gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.close", "Close"));
+    close.set_focusable(true);
+    root.append(&close);
+    dialog.set_child(Some(&root));
+    let close_dialog = dialog.clone();
+    close.connect_clicked(move |_| close_dialog.close());
+    dialog.present();
+}
+
 // 展示随 Linux 构建捆绑的许可证与第三方声明，读取过程不访问网络。
 fn show_open_source_licenses_dialog(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
     let locale = state.borrow().locale();
@@ -3129,6 +3215,12 @@ fn connect_action_handlers(
     let licenses_state = Rc::clone(state);
     bindings.open_source_licenses.connect_clicked(move |_| {
         show_open_source_licenses_dialog(&licenses_bindings, &licenses_state);
+    });
+
+    let about_bindings = bindings.clone();
+    let about_state = Rc::clone(state);
+    bindings.about.connect_clicked(move |_| {
+        show_about_dialog(&about_bindings, &about_state);
     });
 
     let import_bindings = bindings.clone();
@@ -7622,6 +7714,12 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
         "tooltip.open_source_licenses",
         "Review the licenses and third-party notices included with this build",
     );
+    let about = localization::text(locale, "action.about", "About LinguaMesh");
+    let about_tooltip = localization::text(
+        locale,
+        "tooltip.about",
+        "Show application and shared-core version information",
+    );
     let fallback_action =
         localization::text(locale, "action.enable_fallback", "Allow approved fallback");
     let fallback_tooltip = localization::text(
@@ -7716,6 +7814,8 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     bindings
         .open_source_licenses
         .set_tooltip_text(Some(&open_source_licenses_tooltip));
+    bindings.about.set_label(&format!("_{about}"));
+    bindings.about.set_tooltip_text(Some(&about_tooltip));
     bindings
         .fallback_enabled
         .set_label(Some(&format!("_{fallback_action}")));
@@ -8615,9 +8715,9 @@ mod tests {
         ProviderProfileId, RESPONSES_ADAPTER_TYPE, RESPONSES_PROVIDER_PRESET_ID, RoutingCandidate,
         RoutingConstraintTextValues, RoutingDecisionSummary, RoutingProfile, RoutingProfileRecord,
         SecretRef, SecretRefNamespace, SecretValue, TranslationError, UiLocale, WorkerCommand,
-        WorkerEvent, apply_worker_event, collision_safe_destination, collision_safe_output_path,
-        connect_action_handlers, connect_selection_handlers, create_window,
-        custom_provider_profile, destination_matches_source, document_format_label,
+        WorkerEvent, about_details, apply_worker_event, collision_safe_destination,
+        collision_safe_output_path, connect_action_handlers, connect_selection_handlers,
+        create_window, custom_provider_profile, destination_matches_source, document_format_label,
         document_translation_report, endpoint_matches_preset_default, export_write_strategy,
         fallback_confirmation_needed, generate_custom_provider_id, load_source_file,
         localized_document_job_state, localized_document_warnings, localized_provider_default_name,
@@ -8627,8 +8727,8 @@ mod tests {
         routing_constraints_from_controls, routing_constraints_from_text_values,
         routing_identifier_list_from_text, routing_optional_limit_from_text,
         routing_preference_for_selection, routing_preference_selection,
-        routing_profile_id_conflicts, show_document_jobs_dialog, show_fallback_approval_dialog,
-        show_new_profile_in_form, show_routing_profiles_dialog,
+        routing_profile_id_conflicts, show_about_dialog, show_document_jobs_dialog,
+        show_fallback_approval_dialog, show_new_profile_in_form, show_routing_profiles_dialog,
         show_secret_storage_session_fallback, start_event_pump, text_metrics_label,
         translation_output_name, translation_preset_for_selection, translation_preset_selection,
         usage_label, valid_routing_profile_id, validate_provider_preset_catalog,
@@ -8689,6 +8789,57 @@ mod tests {
         assert!(notice.contains("LGPL-2.1-or-later"));
         assert!(notice.contains("MIT"));
         assert!(notice.contains("LinguaMesh Core"));
+    }
+
+    #[test]
+    fn about_details_reports_versions_without_private_runtime_data() {
+        let details = about_details(UiLocale::English);
+        assert!(details.contains("Version:"));
+        assert!(details.contains("Core:"));
+        assert!(details.contains("ABI:"));
+        assert!(details.contains("Protocol:"));
+        assert!(!details.contains("http://"));
+        assert!(!details.contains("https://"));
+        assert!(!details.contains("secret"));
+    }
+
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_about_dialog_shows_version_and_core_compatibility() {
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.AboutTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK test application");
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let (window, bindings, _, _) = create_window(&application);
+        window.present();
+        show_about_dialog(&bindings, &state);
+        let dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| candidate.title().as_deref() == Some("About LinguaMesh"))
+            .expect("about dialog");
+        assert!(dialog.is_modal());
+        let widgets = descendant_widgets(dialog.upcast_ref::<gtk::Widget>());
+        let details = widgets
+            .iter()
+            .filter_map(|widget| widget.clone().downcast::<gtk::Label>().ok())
+            .find(|label| label.label().starts_with("Version:"))
+            .expect("version details label");
+        assert_eq!(details.label(), about_details(UiLocale::English));
+        let close = widgets
+            .iter()
+            .filter_map(|widget| widget.clone().downcast::<gtk::Button>().ok())
+            .find(|button| button.label().as_deref() == Some("Close"))
+            .expect("about close button");
+        assert!(close.is_focusable());
+        dialog.close();
+        window.close();
+        application.quit();
     }
 
     #[test]

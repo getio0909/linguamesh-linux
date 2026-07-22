@@ -132,6 +132,14 @@ jobs:
           env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
           tests::gtk_fallback_approval_dialog_requires_an_explicit_one_shot_action
           -- --exact --ignored --test-threads=1
+      - name: Run About dialog GTK lifecycle fixture
+        working-directory: linguamesh-linux
+        run: >-
+          dbus-run-session -- xvfb-run --auto-servernum
+          --server-args="-screen 0 1280x800x24"
+          env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
+          tests::gtk_about_dialog_shows_version_and_core_compatibility
+          -- --exact --ignored --test-threads=1
       - name: Run Secret Service session-only recovery GTK fixture
         working-directory: linguamesh-linux
         run: >-
@@ -314,7 +322,7 @@ jobs:
       - name: Run Linux performance baseline
         working-directory: linguamesh-linux
         env:
-          L10N_REVISION: 3724cc9d436ebdbac3b8ebf0df9bce9af1b41b15
+          L10N_REVISION: a65a327a8418332e50d9ab302fca24508e7266ef
         run: bash tools/run-performance-baseline.sh native-evidence
       - name: Create native checksum and SBOM evidence
         working-directory: linguamesh-linux
@@ -328,7 +336,7 @@ jobs:
           --output-dir native-evidence
           --linux-revision "$(git rev-parse HEAD)"
           --core-revision "$CORE_REVISION"
-          --localization-revision "3724cc9d436ebdbac3b8ebf0df9bce9af1b41b15"
+          --localization-revision "a65a327a8418332e50d9ab302fca24508e7266ef"
           && git archive --format=tar.gz
           --prefix="linguamesh-linux-${GITHUB_SHA}/" "$GITHUB_SHA"
           > native-evidence/linguamesh-linux-source.tar.gz

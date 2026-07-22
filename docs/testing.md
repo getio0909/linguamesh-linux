@@ -160,7 +160,7 @@ The Linux checkpoint has a reproducible external pass using Docker image
 were removed after validation. This evidence is prerelease-only and does not cover GPU execution.
 
 The Linux checkout consumes the canonical gettext bundle from immutable l10n revision
-`3724cc9d436ebdbac3b8ebf0df9bce9af1b41b15`. The bundle contains 437 messages, and
+`a65a327a8418332e50d9ab302fca24508e7266ef`. The bundle contains 441 messages, and
 `bash tools/sync-l10n.sh --check` verifies every PO/MO catalog and the generated manifest before
 the native build. History/memory row metadata, document-job IDs, active-provider mode summaries,
 unavailable provider/model labels, and routing-profile actions/mode labels are asserted through
@@ -178,6 +178,10 @@ networked source. The regression reads the bundled notice text and requires repr
 entries (`GTK 4`, `LGPL-2.1-or-later`, `MIT`, `LinguaMesh Core`). The production action and
 dialog title/tooltip remain catalog-backed; focusability is preserved for the window and close
 controls so the boundary is still navigable under keyboard and accessibility testing.
+
+The About action has a serialized GTK fixture that opens the modal and checks the version/details
+label, focusable Close control, and omission of endpoint and secret markers. The non-GTK regression
+also verifies that the details formatter contains only application/Core compatibility fields.
 
 Every routing decision carries a redacted explanation into the diagnostics panel: the eligible
 candidate keys, rejected candidate keys with stable reason codes, ranking inputs, and configured

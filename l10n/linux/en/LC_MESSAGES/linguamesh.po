@@ -2248,3 +2248,24 @@ msgstr "Open-source licenses"
 msgctxt "tooltip.open_source_licenses"
 msgid "Review the licenses and third-party notices included with this build"
 msgstr "Review the licenses and third-party notices included with this build"
+
+#. Action in the Linux settings controls that opens the application About dialog.
+msgctxt "action.about"
+msgid "About LinguaMesh"
+msgstr "About LinguaMesh"
+
+#. Dialog title for application and shared-core compatibility information.
+msgctxt "dialog.about"
+msgid "About LinguaMesh"
+msgstr "About LinguaMesh"
+
+#. Application and shared-core version details in the About dialog.
+#, python-brace-format
+msgctxt "dialog.about_details"
+msgid "Version: {version}\nCore: {core}\nABI: {abi}\nProtocol: {protocol}"
+msgstr "Version: {version}\nCore: {core}\nABI: {abi}\nProtocol: {protocol}"
+
+#. Tooltip for the Linux About action.
+msgctxt "tooltip.about"
+msgid "Show application and shared-core version information"
+msgstr "Show application and shared-core version information"

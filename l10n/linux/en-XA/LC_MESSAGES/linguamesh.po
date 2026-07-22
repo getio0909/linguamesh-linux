@@ -2649,3 +2649,27 @@ msgstr "［Øþëñ-šøûŕçë ŀïçëñšëš~~~~~~］"
 msgctxt "tooltip.open_source_licenses"
 msgid "Review the licenses and third-party notices included with this build"
 msgstr "［Ŕëṽïëŵ ŧħë ŀïçëñšëš åñð ŧħïŕð-þåŕŧÿ ñøŧïçëš ïñçŀûðëð ŵïŧħ ŧħïš ƀûïŀð~~~~~~~~~~~~~~~~~~~~~~］"
+
+#. Action in the Linux settings controls that opens the application About dialog.
+#, fuzzy
+msgctxt "action.about"
+msgid "About LinguaMesh"
+msgstr "［Åƀøûŧ ĿïñĝûåṀëšħ~~~~~］"
+
+#. Dialog title for application and shared-core compatibility information.
+#, fuzzy
+msgctxt "dialog.about"
+msgid "About LinguaMesh"
+msgstr "［Åƀøûŧ ĿïñĝûåṀëšħ~~~~~］"
+
+#. Application and shared-core version details in the About dialog.
+#, fuzzy, python-brace-format
+msgctxt "dialog.about_details"
+msgid "Version: {version}\nCore: {core}\nABI: {abi}\nProtocol: {protocol}"
+msgstr "［Ṽëŕšïøñ: {version}\nÇøŕë: {core}\nÅƁÏ: {abi}\nÞŕøŧøçøŀ: {protocol}~~~~~~~~~~~~~~~~~~~~~］"
+
+#. Tooltip for the Linux About action.
+#, fuzzy
+msgctxt "tooltip.about"
+msgid "Show application and shared-core version information"
+msgstr "［Šħøŵ åþþŀïçåŧïøñ åñð šħåŕëð-çøŕë ṽëŕšïøñ ïñƒøŕṁåŧïøñ~~~~~~~~~~~~~~~~~］"

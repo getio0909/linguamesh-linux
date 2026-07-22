@@ -348,6 +348,11 @@ privileged access is used to build it, and legal notices remain separate from tr
 The regression suite checks that the notice bundle contains representative names for GTK 4,
 LGPL-2.1-or-later, MIT, and LinguaMesh Core.
 
+The main action row also exposes a localized About action. Its modal read-only view shows only the
+Linux application version and the shared Core version, ABI, and protocol dimensions; when Core
+compatibility is unavailable it shows bounded `unavailable` values and never includes endpoints,
+credentials, model IDs, or translation content.
+
 The application state and worker command/event wrappers intentionally do not derive `Debug`, so
 source text and streamed output are not exposed through routine debug formatting. Diagnostics omit
 the provider endpoint, secret reference, selected model identifier, source text, and output content.

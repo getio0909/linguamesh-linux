@@ -1,5 +1,23 @@
 # Implementation Status
 
+## 2026-07-22 — Linux About compatibility dialog
+
+Assumption: About information is a user-visible Linux surface and must remain localized, read-only,
+and limited to non-sensitive build and Core compatibility fields.
+
+- Added a localized About action and modal GTK dialog. The dialog reports the application version,
+  Core semantic version, ABI major, and protocol version, with bounded `unavailable` values if Core
+  compatibility cannot be read. Endpoints, credentials, model IDs, and translation content are not
+  included.
+- Added a pure formatter regression and a serialized GTK fixture that checks the details label,
+  modal state, focusable Close control, and omission of endpoint/secret markers. Native CI now runs
+  `tests::gtk_about_dialog_shows_version_and_core_compatibility` explicitly.
+- l10n revision `a65a327a8418332e50d9ab302fca24508e7266ef` contains 441 messages. Local formatting,
+  GUI all-target check, strict Clippy, localization key/placeholder/visible audits, l10n sync, and
+  the demo-provider suite (`158 passed; 3 ignored`) passed. The full GUI test binary remains
+  linker-limited on this host by missing GTK4/Graphene symbols; the dedicated GTK fixture is pending
+  remote Native CI evidence.
+
 ## 2026-07-22 — Current-head Linux regression refresh
 
 Assumption: a status-only checkpoint may refresh reproducible local evidence without changing the
