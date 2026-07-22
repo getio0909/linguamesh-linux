@@ -10,9 +10,9 @@ signature parts before any document job is created, not only through Core unit c
   asynchronous GIO loader, alongside traversal and suspicious-compression fixtures. Each case
   requires a fixed visible import error, no document-job snapshot, an unchanged empty source editor,
   and no forbidden extracted filename in the private fixture directory.
-- Native CI remains authoritative for the display-backed test on this host; local formatting,
-  locked checks, strict Clippy, and non-GTK suites are required before push. Release status remains
-  `unreleased`.
+- Flatpak source pin is synchronized to `1e9219d3edf8cbeb4397f0a7872eb8e33ab97b60`; Native CI
+  remains authoritative for the display-backed test on this host. Local formatting, locked checks,
+  strict Clippy, and non-GTK suites are required before push. Release status remains `unreleased`.
 
 This strengthens unreleased Linux evidence for mandatory Scenario 15 and Milestone 6. Human macro,
 signature, visual/copy/Orca review, other clients, signed artifacts, rollback authorization, and
