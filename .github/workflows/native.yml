@@ -339,8 +339,9 @@ jobs:
       - name: Verify native checksum and SBOM evidence
         working-directory: linguamesh-linux
         run: >-
-          sha256sum --check native-evidence/SHA256SUMS
-          && python3 -c "import json; json.load(open('native-evidence/SBOM.spdx.json', encoding='utf-8'))"
+          cd native-evidence
+          && sha256sum --check SHA256SUMS
+          && python3 -c "import json; json.load(open('SBOM.spdx.json', encoding='utf-8'))"
       - name: Upload native checksum and SBOM evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
