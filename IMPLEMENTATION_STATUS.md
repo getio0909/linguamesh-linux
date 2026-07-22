@@ -1,5 +1,25 @@
 # Implementation Status
 
+## 2026-07-22 — Linux provider profile notes checkpoint
+
+Assumption: an optional, single-line, bounded non-secret note is the smallest Linux-first slice of
+the ProviderProfile metadata contract; organization, region, proxy, and custom-header fields
+remain separate follow-up work.
+
+- Added a localized **Profile notes** field to the saved-provider form. Saved profiles restore the
+  note, new profiles clear it, and both explicit **Test connection** and **Connect** pass it through
+  Core without sending it to providers.
+- Core schema 19 persists the note with a 2 KiB bound, rejects credential-shaped values, and keeps
+  the value out of redacted diagnostics. Runtime profile/session transformations preserve it.
+- Core revision `072d6b92df875153a60a9d1256ab814891fe775b` and l10n revision
+  `6aa074e48058bb411d09b2783cd27ba415dc7c55` are pinned in Native and Flatpak inputs. The l10n
+  bundle contains 444 messages.
+- Local `cargo fmt`, GUI check, strict all-feature Clippy, demo-provider tests (`158 passed; 3
+  ignored`), localization audits, Flatpak metadata validation, and `git diff --check` passed.
+- Pending: remote Native/Flatpak/Foundation evidence for this head and the existing human visual,
+  copy, Orca, Secret Service prompt, physical VFS/power-loss, signing, rollback, and stable-release
+  boundaries.
+
 ## 2026-07-22 — Linux About compatibility dialog
 
 Assumption: About information is a user-visible Linux surface and must remain localized, read-only,

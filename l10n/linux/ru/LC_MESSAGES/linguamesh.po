@@ -2675,3 +2675,21 @@ msgstr "Version: {version}\nCore: {core}\nABI: {abi}\nProtocol: {protocol}"
 msgctxt "tooltip.about"
 msgid "Show application and shared-core version information"
 msgstr "Show application and shared-core version information"
+
+#. Label for the user-authored note attached to a saved provider profile.
+#, fuzzy
+msgctxt "label.provider_notes"
+msgid "Profile notes"
+msgstr "Profile notes"
+
+#. Placeholder for the optional non-secret note field in the Linux provider form.
+#, fuzzy
+msgctxt "placeholder.provider_notes"
+msgid "Optional non-secret note for this saved profile"
+msgstr "Optional non-secret note for this saved profile"
+
+#. Tooltip for the optional non-secret note field in the Linux provider form.
+#, fuzzy
+msgctxt "tooltip.provider_notes"
+msgid "Optional non-secret note for this saved profile"
+msgstr "Optional non-secret note for this saved profile"

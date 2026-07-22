@@ -15,6 +15,8 @@ the fixture is protocol evidence, not a claim that a particular LM Studio build 
 The GTK provider regression also selects the Anthropic Messages preset, verifies its HTTPS `/v1/`
 default, and requires a manual Model ID before Connect. The model is validated locally before any
 worker connection or host SecretRef resolution; saved profiles restore the non-secret model ID.
+The profile form also round-trips an optional bounded non-secret note through Core schema 19;
+credential-shaped notes are rejected before persistence, and the note never enters provider input.
 
 The same provider fixture covers the Google Gemini preset through the `/v1beta/` Generate Content
 contract: `models` discovery filters entries that support `generateContent`, and the streaming
@@ -160,7 +162,7 @@ The Linux checkpoint has a reproducible external pass using Docker image
 were removed after validation. This evidence is prerelease-only and does not cover GPU execution.
 
 The Linux checkout consumes the canonical gettext bundle from immutable l10n revision
-`a65a327a8418332e50d9ab302fca24508e7266ef`. The bundle contains 441 messages, and
+`6aa074e48058bb411d09b2783cd27ba415dc7c55`. The bundle contains 444 messages, and
 `bash tools/sync-l10n.sh --check` verifies every PO/MO catalog and the generated manifest before
 the native build. History/memory row metadata, document-job IDs, active-provider mode summaries,
 unavailable provider/model labels, and routing-profile actions/mode labels are asserted through
@@ -287,7 +289,7 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`8837e59395742b5385af5037aa36a2596af3b025`. This revision carries bounded document lease
+`072d6b92df875153a60a9d1256ab814891fe775b`. This revision carries bounded document lease
 consumption smoke, POSIX-descriptor document consumption, and the AddressSanitizer gate, plus the
 protocol decoder fuzz gate and bounded FileLease lifecycle,
 including Linux's portal-read lease checks, and the explicit request-level
@@ -299,9 +301,9 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 8837e59395742b5385af5037aa36a2596af3b025^{commit}
+git -C ../linguamesh-core cat-file -e 072d6b92df875153a60a9d1256ab814891fe775b^{commit}
 git -C ../linguamesh-core diff --quiet \
-  8837e59395742b5385af5037aa36a2596af3b025..HEAD -- \
+  072d6b92df875153a60a9d1256ab814891fe775b..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -627,7 +629,7 @@ python3 tools/create-native-evidence.py \
   --cargo-lock Cargo.lock \
   --output-dir native-evidence \
   --linux-revision "$(git rev-parse HEAD)" \
-  --core-revision "8837e59395742b5385af5037aa36a2596af3b025" \
+  --core-revision "072d6b92df875153a60a9d1256ab814891fe775b" \
   --localization-revision "b817ba911c2ffafb35b7a29755681ab39e950368"
 (cd native-evidence && sha256sum -c SHA256SUMS)
 ```

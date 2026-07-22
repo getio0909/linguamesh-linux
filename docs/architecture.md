@@ -26,7 +26,7 @@ confirmation, or rollback.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `8837e59395742b5385af5037aa36a2596af3b025`; compared with the prior
+functional revision is `072d6b92df875153a60a9d1256ab814891fe775b`; compared with the prior
 alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW`, adds streamed
 protected-span and request-level glossary restoration, and rejects suspicious OOXML compression
 ratios and unsupported macro/signature parts before XML inspection. Core now advertises the bounded
@@ -205,8 +205,9 @@ breaches become fixed localized errors, and the default path remains unchanged w
 
 With `gui`, `src/main.rs` binds this state and worker to GTK 4/libadwaita widgets. GTK objects remain
 on the main context, which processes at most 64 queued events per timer tick without performing
-network work. The shell exposes a saved-profile dropdown, provider name, endpoint, optional session
-credential, explicit Connect, **Remember profile, model, and credential in Secret Service**,
+network work. The shell exposes a saved-profile dropdown, provider name, endpoint, optional
+non-secret profile notes, optional session credential, explicit Connect, **Remember profile, model,
+and credential in Secret Service**,
 **Remove saved profile**,
 model selection, source and target locales, source and streamed output editors, native **Open text
 file** import, single-file drag-and-drop onto the source editor, Translate/Stop,

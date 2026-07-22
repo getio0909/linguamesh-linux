@@ -20,7 +20,7 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `8837e59395742b5385af5037aa36a2596af3b025`, which adds bounded
+reviewed Core functional revision `072d6b92df875153a60a9d1256ab814891fe775b`, which adds bounded
 FileLease lifecycle validation and strict
 routing-profile validation, schema-15 routing-profile persistence, schema-16 document-job
 routing-profile persistence, and schema-17 document quality-mode persistence on top of the existing
@@ -43,8 +43,9 @@ waits, and an in-memory two-failure circuit breaker that cools down for thirty s
 retrying a candidate.
 
 The GTK provider form consumes the pinned Core provider catalog for adapter and model-listing
-compatibility. A catalog drift fails closed before the window is created; localized labels and
-endpoint defaults remain Linux-native UI data.
+compatibility. It also supports an optional bounded, non-secret profile note that is restored with
+saved profiles and never sent as provider input. A catalog drift fails closed before the window is
+created; localized labels and endpoint defaults remain Linux-native UI data.
 
 ## Native stack
 
@@ -229,7 +230,7 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`a65a327a8418332e50d9ab302fca24508e7266ef` and validated with `msgfmt`; the 441-message bundle
+`6aa074e48058bb411d09b2783cd27ba415dc7c55` and validated with `msgfmt`; the 444-message bundle
 adds Linux routing-profile persistence/editor, profile-ID validation and duplicate protection, ordinary-text selection labels, routing preference/privacy/document constraints, provider/model allowlists and denylists, quality/request-size limits, translation quality-mode and translation-preset labels, and source/output character plus approximate-token metrics. The locale selector
 exposes all twelve official BCP 47 packs plus the generated `en-XA` accented and `ar-XB` RTL
 pseudo-locales. It switches runtime action, workspace-widget,
