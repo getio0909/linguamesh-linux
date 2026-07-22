@@ -14,6 +14,8 @@ excluded from diagnostics.
   `94438a6a9ff8148cadad605c4760f88110d78984` are pinned in Native and Flatpak inputs. The l10n
   source revision 48 bundle contains 447 messages. Release remains unreleased pending cross-client
   and human evidence.
+- Linux runtime/packaging commit `527ca92f03a82e3be591fd2379f7169c5a6d7510` contains the GTK
+  binding and updated reproducible Flatpak source pin; remote six-gate evidence is pending.
 
 ## 2026-07-22 — Linux provider profile notes checkpoint
 
