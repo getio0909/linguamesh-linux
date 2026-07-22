@@ -131,6 +131,8 @@ struct UiBindings {
     provider_notes: gtk::Entry,
     provider_organization: gtk::Entry,
     provider_project: gtk::Entry,
+    provider_region: gtk::Entry,
+    provider_account_identifier: gtk::Entry,
     manual_model_row: gtk::Box,
     manual_model: gtk::Entry,
     provider_credential: gtk::PasswordEntry,
@@ -750,6 +752,8 @@ fn create_window(
         provider_notes,
         provider_organization,
         provider_project,
+        provider_region,
+        provider_account_identifier,
         manual_model_row,
         manual_model,
         provider_credential,
@@ -1040,6 +1044,8 @@ fn create_window(
         provider_notes,
         provider_organization,
         provider_project,
+        provider_region,
+        provider_account_identifier,
         manual_model_row,
         manual_model,
         provider_credential,
@@ -1153,6 +1159,11 @@ fn create_window(
                 .clone()
                 .upcast::<gtk::Widget>(),
             bindings.provider_project.clone().upcast::<gtk::Widget>(),
+            bindings.provider_region.clone().upcast::<gtk::Widget>(),
+            bindings
+                .provider_account_identifier
+                .clone()
+                .upcast::<gtk::Widget>(),
             bindings.manual_model.clone().upcast::<gtk::Widget>(),
             bindings.provider_credential.clone().upcast::<gtk::Widget>(),
             bindings.connect.clone().upcast::<gtk::Widget>(),
@@ -1209,6 +1220,17 @@ fn install_keyboard_focus_probe(
         (
             "provider_project",
             bindings.provider_project.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_region",
+            bindings.provider_region.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_account_identifier",
+            bindings
+                .provider_account_identifier
+                .clone()
+                .upcast::<gtk::Widget>(),
         ),
         (
             "manual_model",
@@ -1532,6 +1554,8 @@ fn create_provider_session() -> (
     gtk::Entry,
     gtk::Entry,
     gtk::Entry,
+    gtk::Entry,
+    gtk::Entry,
     gtk::Box,
     gtk::Entry,
     gtk::PasswordEntry,
@@ -1663,6 +1687,30 @@ fn create_provider_session() -> (
         "tooltip.provider_project",
         "Optional project identifier sent to OpenAI-compatible endpoints",
     )));
+    let provider_region = gtk::Entry::new();
+    provider_region.set_hexpand(true);
+    provider_region.set_placeholder_text(Some(&localization::text(
+        locale,
+        "placeholder.provider_region",
+        "Optional provider region or deployment geography",
+    )));
+    provider_region.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_region",
+        "Optional non-secret region identifier used by the provider account",
+    )));
+    let provider_account_identifier = gtk::Entry::new();
+    provider_account_identifier.set_hexpand(true);
+    provider_account_identifier.set_placeholder_text(Some(&localization::text(
+        locale,
+        "placeholder.provider_account_identifier",
+        "Optional non-secret account or tenant identifier",
+    )));
+    provider_account_identifier.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_account_identifier",
+        "Optional account identifier used to distinguish provider tenants",
+    )));
     let manual_model = gtk::Entry::new();
     manual_model.set_hexpand(true);
     manual_model.set_placeholder_text(Some(&localization::text(
@@ -1734,6 +1782,18 @@ fn create_provider_session() -> (
         &localized_mnemonic(locale, "label.provider_project", "Project"),
         provider_project.upcast_ref::<gtk::Widget>(),
     ));
+    fields.append(&labeled_control(
+        &localized_mnemonic(locale, "label.provider_region", "Region"),
+        provider_region.upcast_ref::<gtk::Widget>(),
+    ));
+    fields.append(&labeled_control(
+        &localized_mnemonic(
+            locale,
+            "label.provider_account_identifier",
+            "Account identifier",
+        ),
+        provider_account_identifier.upcast_ref::<gtk::Widget>(),
+    ));
     fields.append(&manual_model_row);
     fields.append(&labeled_control(
         &localized_mnemonic(
@@ -1760,6 +1820,8 @@ fn create_provider_session() -> (
         provider_notes,
         provider_organization,
         provider_project,
+        provider_region,
+        provider_account_identifier,
         manual_model_row,
         manual_model,
         provider_credential,
@@ -2463,6 +2525,12 @@ fn show_saved_profile_in_form(bindings: &UiBindings, profile: &ProviderProfile) 
         .provider_project
         .set_text(profile.project().unwrap_or_default());
     bindings
+        .provider_region
+        .set_text(profile.region().unwrap_or_default());
+    bindings
+        .provider_account_identifier
+        .set_text(profile.account_identifier().unwrap_or_default());
+    bindings
         .manual_model
         .set_text(profile.selected_model().unwrap_or_default());
     bindings
@@ -2492,6 +2560,8 @@ fn show_new_profile_in_form(
     bindings.provider_notes.set_text("");
     bindings.provider_organization.set_text("");
     bindings.provider_project.set_text("");
+    bindings.provider_region.set_text("");
+    bindings.provider_account_identifier.set_text("");
     bindings.manual_model.set_text("");
     bindings.manual_model_row.set_visible(false);
     bindings.provider_credential.set_text("");
@@ -2510,6 +2580,8 @@ fn custom_provider_profile(
     user_notes: Option<String>,
     organization: Option<String>,
     project: Option<String>,
+    region: Option<String>,
+    account_identifier: Option<String>,
     selected_model: Option<String>,
 ) -> Result<ProviderProfile, TranslationError> {
     ProviderProfile::new(
@@ -2523,6 +2595,8 @@ fn custom_provider_profile(
     .and_then(|profile| profile.with_user_notes(user_notes))
     .and_then(|profile| profile.with_organization(organization))
     .and_then(|profile| profile.with_project(project))
+    .and_then(|profile| profile.with_region(region))
+    .and_then(|profile| profile.with_account_identifier(account_identifier))
     .and_then(|profile| profile.with_selected_model(selected_model))
     .map_err(|error| {
         TranslationError::new(
@@ -3407,6 +3481,14 @@ fn connect_action_handlers(
         let organization = (!organization_text.is_empty()).then_some(organization_text);
         let project_text = test_bindings.provider_project.text().trim().to_owned();
         let project = (!project_text.is_empty()).then_some(project_text);
+        let region_text = test_bindings.provider_region.text().trim().to_owned();
+        let region = (!region_text.is_empty()).then_some(region_text);
+        let account_text = test_bindings
+            .provider_account_identifier
+            .text()
+            .trim()
+            .to_owned();
+        let account_identifier = (!account_text.is_empty()).then_some(account_text);
         let credential_text = test_bindings.provider_credential.text();
         let has_credential = !credential_text.is_empty();
         let session_secret = has_credential.then(|| SecretValue::new(credential_text.as_str()));
@@ -3490,6 +3572,8 @@ fn connect_action_handlers(
             user_notes,
             organization,
             project,
+            region,
+            account_identifier,
             selected_model,
         ) {
             Ok(profile) => profile,
@@ -3527,6 +3611,14 @@ fn connect_action_handlers(
         let organization = (!organization_text.is_empty()).then_some(organization_text);
         let project_text = connect_bindings.provider_project.text().trim().to_owned();
         let project = (!project_text.is_empty()).then_some(project_text);
+        let region_text = connect_bindings.provider_region.text().trim().to_owned();
+        let region = (!region_text.is_empty()).then_some(region_text);
+        let account_text = connect_bindings
+            .provider_account_identifier
+            .text()
+            .trim()
+            .to_owned();
+        let account_identifier = (!account_text.is_empty()).then_some(account_text);
         let remember_profile = connect_bindings.remember_profile.is_active();
         let credential_text = connect_bindings.provider_credential.text();
         let has_credential = !credential_text.is_empty();
@@ -3638,6 +3730,8 @@ fn connect_action_handlers(
             user_notes,
             organization,
             project,
+            region,
+            account_identifier,
             selected_model,
         )
         .map(|profile| profile.with_enabled(enabled))
@@ -8181,6 +8275,64 @@ fn refresh_localized_widgets(bindings: &UiBindings, locale: UiLocale) {
             "Optional organization identifier sent to OpenAI-compatible endpoints",
         )));
     set_labeled_control_label(
+        bindings.provider_project.upcast_ref(),
+        &localized_mnemonic(locale, "label.provider_project", "Project"),
+    );
+    bindings
+        .provider_project
+        .set_placeholder_text(Some(&localization::text(
+            locale,
+            "placeholder.provider_project",
+            "Optional OpenAI project ID",
+        )));
+    bindings
+        .provider_project
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.provider_project",
+            "Optional project identifier sent to OpenAI-compatible endpoints",
+        )));
+    set_labeled_control_label(
+        bindings.provider_region.upcast_ref(),
+        &localized_mnemonic(locale, "label.provider_region", "Region"),
+    );
+    bindings
+        .provider_region
+        .set_placeholder_text(Some(&localization::text(
+            locale,
+            "placeholder.provider_region",
+            "Optional provider region or deployment geography",
+        )));
+    bindings
+        .provider_region
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.provider_region",
+            "Optional non-secret region identifier used by the provider account",
+        )));
+    set_labeled_control_label(
+        bindings.provider_account_identifier.upcast_ref(),
+        &localized_mnemonic(
+            locale,
+            "label.provider_account_identifier",
+            "Account identifier",
+        ),
+    );
+    bindings
+        .provider_account_identifier
+        .set_placeholder_text(Some(&localization::text(
+            locale,
+            "placeholder.provider_account_identifier",
+            "Optional non-secret account or tenant identifier",
+        )));
+    bindings
+        .provider_account_identifier
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.provider_account_identifier",
+            "Optional account identifier used to distinguish provider tenants",
+        )));
+    set_labeled_control_label(
         bindings.provider_credential.upcast_ref(),
         &localized_mnemonic(
             locale,
@@ -9407,6 +9559,8 @@ mod tests {
             None,
             None,
             None,
+            None,
+            None,
             Some("model-a".to_owned()),
         )
         .expect("candidate A profile");
@@ -9416,6 +9570,8 @@ mod tests {
             CUSTOM_PROVIDER_PRESET_ID.to_owned(),
             OPENAI_ADAPTER_TYPE.to_owned(),
             "http://127.0.0.1:4243/v1/".to_owned(),
+            None,
+            None,
             None,
             None,
             None,
@@ -12586,6 +12742,8 @@ mod tests {
             None,
             None,
             None,
+            None,
+            None,
             Some("fake-translator".to_owned()),
         )
         .expect("first restored profile");
@@ -12600,6 +12758,8 @@ mod tests {
             Some("Restored profile note".to_owned()),
             Some("org-restored".to_owned()),
             Some("project-restored".to_owned()),
+            Some("eu-west-1".to_owned()),
+            Some("tenant-restored".to_owned()),
             Some("fake-slow-translator".to_owned()),
         )
         .expect("second restored profile");
@@ -12657,6 +12817,11 @@ mod tests {
         assert_eq!(
             restored_bindings.provider_project.text(),
             "project-restored"
+        );
+        assert_eq!(restored_bindings.provider_region.text(), "eu-west-1");
+        assert_eq!(
+            restored_bindings.provider_account_identifier.text(),
+            "tenant-restored"
         );
         assert!(restored_bindings.remember_profile.is_active());
         assert_eq!(restored_bindings.model.selected(), 0);

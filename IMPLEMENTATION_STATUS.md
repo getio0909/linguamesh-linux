@@ -1,5 +1,21 @@
 # Implementation Status
 
+## 2026-07-22 — Linux provider region/account checkpoint
+
+Assumption: `region` and `account_identifier` are optional bounded, non-secret provider metadata;
+Linux stores and restores them but does not send them to adapters until provider-specific semantics
+are defined.
+
+- Added localized Region and Account identifier fields to the provider form. New profiles clear both;
+  saved profiles restore both; Test connection and Connect validate and pass them through Core.
+- Runtime profile/session copies preserve both fields, and the serialized GTK restore fixture checks
+  the values without exposing credentials in diagnostics.
+- Core schema 22 revision `158ade12cf1e3284d4b8a0883e771dd62abcff97` and l10n revision
+  `ec538de57c1edc198fa13d3dfc1de576ee9b2c12` (456 messages, source revision 50) are pinned in
+  Native and Flatpak inputs. Local GUI check, l10n audits, l10n sync, Flatpak metadata validation,
+  and `git diff --check` pass; remote gates are pending for this runtime head. Release remains
+  unreleased pending cross-client compatibility and provider-specific evidence.
+
 ## 2026-07-22 — Linux provider project checkpoint
 
 Assumption: `project` is an optional bounded non-secret OpenAI-compatible identifier. Linux

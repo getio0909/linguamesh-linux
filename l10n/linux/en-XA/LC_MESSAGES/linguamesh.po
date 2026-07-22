@@ -2727,3 +2727,39 @@ msgstr "［Øþŧïøñåŀ øŕĝåñïžåŧïøñ ïðëñŧïƒïëŕ šëñ
 msgctxt "tooltip.provider_project"
 msgid "Optional project identifier sent to OpenAI-compatible endpoints"
 msgstr "［Øþŧïøñåŀ þŕøĵëçŧ ïðëñŧïƒïëŕ šëñŧ ŧø ØþëñÅÏ-çøṁþåŧïƀŀë ëñðþøïñŧš~~~~~~~~~~~~~~~~~~~~~］"
+
+#. Label for the optional provider region or deployment geography in the Linux provider form.
+#, fuzzy
+msgctxt "label.provider_region"
+msgid "Region"
+msgstr "［Ŕëĝïøñ~~］"
+
+#. Label for the optional provider account identifier in the Linux provider form.
+#, fuzzy
+msgctxt "label.provider_account_identifier"
+msgid "Account identifier"
+msgstr "［Åççøûñŧ ïðëñŧïƒïëŕ~~~~~~］"
+
+#. Placeholder for the optional provider region in the Linux provider form.
+#, fuzzy
+msgctxt "placeholder.provider_region"
+msgid "Optional provider region or deployment geography"
+msgstr "［Øþŧïøñåŀ þŕøṽïðëŕ ŕëĝïøñ øŕ ðëþŀøÿṁëñŧ ĝëøĝŕåþħÿ~~~~~~~~~~~~~~~~］"
+
+#. Placeholder for the optional provider account identifier in the Linux provider form.
+#, fuzzy
+msgctxt "placeholder.provider_account_identifier"
+msgid "Optional non-secret account or tenant identifier"
+msgstr "［Øþŧïøñåŀ ñøñ-šëçŕëŧ åççøûñŧ øŕ ŧëñåñŧ ïðëñŧïƒïëŕ~~~~~~~~~~~~~~~~］"
+
+#. Tooltip for the optional provider region in the Linux provider form.
+#, fuzzy
+msgctxt "tooltip.provider_region"
+msgid "Optional non-secret region identifier used by the provider account"
+msgstr "［Øþŧïøñåŀ ñøñ-šëçŕëŧ ŕëĝïøñ ïðëñŧïƒïëŕ ûšëð ƀÿ ŧħë þŕøṽïðëŕ åççøûñŧ~~~~~~~~~~~~~~~~~~~~~~］"
+
+#. Tooltip for the optional provider account identifier in the Linux provider form.
+#, fuzzy
+msgctxt "tooltip.provider_account_identifier"
+msgid "Optional account identifier used to distinguish provider tenants"
+msgstr "［Øþŧïøñåŀ åççøûñŧ ïðëñŧïƒïëŕ ûšëð ŧø ðïšŧïñĝûïšħ þŕøṽïðëŕ ŧëñåñŧš~~~~~~~~~~~~~~~~~~~~~］"

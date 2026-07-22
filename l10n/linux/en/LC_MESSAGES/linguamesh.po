@@ -2314,3 +2314,33 @@ msgstr "Optional organization identifier sent to OpenAI-compatible endpoints"
 msgctxt "tooltip.provider_project"
 msgid "Optional project identifier sent to OpenAI-compatible endpoints"
 msgstr "Optional project identifier sent to OpenAI-compatible endpoints"
+
+#. Label for the optional provider region or deployment geography in the Linux provider form.
+msgctxt "label.provider_region"
+msgid "Region"
+msgstr "Region"
+
+#. Label for the optional provider account identifier in the Linux provider form.
+msgctxt "label.provider_account_identifier"
+msgid "Account identifier"
+msgstr "Account identifier"
+
+#. Placeholder for the optional provider region in the Linux provider form.
+msgctxt "placeholder.provider_region"
+msgid "Optional provider region or deployment geography"
+msgstr "Optional provider region or deployment geography"
+
+#. Placeholder for the optional provider account identifier in the Linux provider form.
+msgctxt "placeholder.provider_account_identifier"
+msgid "Optional non-secret account or tenant identifier"
+msgstr "Optional non-secret account or tenant identifier"
+
+#. Tooltip for the optional provider region in the Linux provider form.
+msgctxt "tooltip.provider_region"
+msgid "Optional non-secret region identifier used by the provider account"
+msgstr "Optional non-secret region identifier used by the provider account"
+
+#. Tooltip for the optional provider account identifier in the Linux provider form.
+msgctxt "tooltip.provider_account_identifier"
+msgid "Optional account identifier used to distinguish provider tenants"
+msgstr "Optional account identifier used to distinguish provider tenants"
