@@ -10766,9 +10766,11 @@ mod tests {
             .cloned()
             .collect::<Vec<_>>();
         assert_eq!(report_buttons.len(), 3);
-        assert!(report_buttons
-            .iter()
-            .all(adw::prelude::WidgetExt::is_focusable));
+        assert!(
+            report_buttons
+                .iter()
+                .all(adw::prelude::WidgetExt::is_focusable)
+        );
         assert!(report_buttons.iter().all(|button| {
             button
                 .tooltip_text()
