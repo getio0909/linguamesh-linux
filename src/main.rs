@@ -4012,6 +4012,14 @@ fn translation_output_name(source_name: &str, target_locale: &str) -> String {
         .file_stem()
         .and_then(|name| name.to_str())
         .unwrap_or(basename);
+    let base = if basename
+        .strip_prefix('.')
+        .is_some_and(|name| !name.is_empty() && !name.contains('.'))
+    {
+        "translation"
+    } else {
+        base
+    };
     let base = sanitize_output_component(base, "translation");
     let target = target_locale
         .chars()
@@ -4282,7 +4290,9 @@ fn document_translation_report(snapshot: &DocumentJobSnapshot, core_version: &st
             |glossary| format!("entries:{}", glossary.entries().len()),
         );
     let state = format!("{:?}", snapshot.state);
-    let output_identifier = translation_output_name(&snapshot.job.source_name, target_locale);
+    let output_target_locale = options.map_or("und", |options| options.target_locale.as_str());
+    let output_identifier =
+        translation_output_name(&snapshot.job.source_name, output_target_locale);
     let fields = [
         ("report_version", "1".to_owned()),
         ("source_identifier", snapshot.job.source_name.clone()),
