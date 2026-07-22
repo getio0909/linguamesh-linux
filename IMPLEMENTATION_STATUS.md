@@ -1,5 +1,24 @@
 # Implementation Status
 
+## 2026-07-22 — Linux GTK multi-document queue selection boundary
+
+Assumption: the Linux document queue must prove explicit selection at the production GTK boundary,
+not only through worker-level list tests, so selecting one persisted job cannot replace another
+job's source or state.
+
+- Added the serialized ignored fixture `gtk_document_jobs_dialog_selects_between_multiple_jobs`.
+  It opens the production Document jobs window with pending and paused snapshots, verifies both rows
+  and the localized two-file count, selects the second row, and asserts its stable job ID, paused
+  state, and source text are loaded while the dialog closes.
+- Local formatting, locked all-target/all-feature check, strict Clippy, demo-provider tests
+  (`157 passed; 3 ignored`), localization audits, l10n synchronization, Flatpak metadata, and diff
+  checks passed. The display-backed fixture remains CI-authoritative on this host; release status is
+  `unreleased`.
+
+This advances unreleased Linux document queue evidence for Milestones 3 and 6. Human visual/copy/
+Orca review, power-loss recovery, other clients, signed artifacts, rollback authorization, and stable
+release approval remain open.
+
 ## 2026-07-22 — Linux GTK OOXML macro and signature import boundary
 
 Assumption: the production GTK import boundary must reject unsupported OOXML macro and digital

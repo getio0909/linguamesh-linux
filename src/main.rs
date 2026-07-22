@@ -8090,10 +8090,10 @@ mod tests {
         routing_constraints_from_controls, routing_constraints_from_text_values,
         routing_identifier_list_from_text, routing_optional_limit_from_text,
         routing_preference_for_selection, routing_preference_selection,
-        routing_profile_id_conflicts, show_fallback_approval_dialog, show_new_profile_in_form,
-        show_routing_profiles_dialog, start_event_pump, text_metrics_label,
-        translation_preset_for_selection, translation_preset_selection, usage_label,
-        valid_routing_profile_id, validate_provider_preset_catalog,
+        routing_profile_id_conflicts, show_document_jobs_dialog, show_fallback_approval_dialog,
+        show_new_profile_in_form, show_routing_profiles_dialog, start_event_pump,
+        text_metrics_label, translation_preset_for_selection, translation_preset_selection,
+        usage_label, valid_routing_profile_id, validate_provider_preset_catalog,
     };
     use adw::prelude::*;
     use gtk::glib;
@@ -8104,7 +8104,7 @@ mod tests {
         RoutingConstraints, RoutingMode, RoutingPreference, TranslationPreset,
         TranslationQualityMode, UsageRecord,
     };
-    use linguamesh_storage::Storage;
+    use linguamesh_storage::{DocumentJobSnapshot, Storage};
     use linguamesh_testkit::FakeProviderServer;
     use std::cell::RefCell;
     use std::fmt::Write as FmtWrite;
@@ -10438,6 +10438,113 @@ mod tests {
         drop(restored_worker);
         drop(external);
         let _ = fs::remove_dir_all(database_directory);
+    }
+
+    // 验证生产文档任务对话框可以展示多个任务，并且显式选择不会混淆任务快照。
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_document_jobs_dialog_selects_between_multiple_jobs() {
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.GtkDocumentJobsTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK document jobs application");
+
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn());
+        let (window, bindings, theme, locale) = create_window(&application);
+        let first_job = DocumentJobSnapshot {
+            job_id: "gtk-queue-first".to_owned(),
+            state: DocumentJobState::Pending,
+            job: DocumentJob::from_text("first.txt", DocumentFormat::Txt, "first source"),
+            options: None,
+            created_at: 1,
+            updated_at: 1,
+        };
+        let second_job = DocumentJobSnapshot {
+            job_id: "gtk-queue-second".to_owned(),
+            state: DocumentJobState::Paused,
+            job: DocumentJob::from_text("second.md", DocumentFormat::Markdown, "second source"),
+            options: None,
+            created_at: 2,
+            updated_at: 2,
+        };
+        let context = glib::MainContext::default();
+        window.present();
+        show_document_jobs_dialog(
+            &bindings,
+            &state,
+            &worker.command_handle(),
+            vec![first_job, second_job],
+        );
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Document jobs"))
+        });
+        let dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| candidate.title().as_deref() == Some("Document jobs"))
+            .expect("document jobs dialog");
+        let widgets = descendant_widgets(dialog.upcast_ref::<gtk::Widget>());
+        let metadata = widgets
+            .iter()
+            .filter_map(|widget| {
+                widget
+                    .downcast_ref::<gtk::Label>()
+                    .map(|label| label.text().to_string())
+            })
+            .collect::<Vec<_>>();
+        assert!(metadata.iter().any(|label| label.contains("2 files")));
+        assert!(metadata.iter().any(|label| label.contains("first.txt")));
+        assert!(metadata.iter().any(|label| label.contains("second.md")));
+        let select_buttons = widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .filter(|button| {
+                button
+                    .label()
+                    .is_some_and(|label| label.contains("Select document job"))
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        assert_eq!(select_buttons.len(), 2);
+        select_buttons[1].emit_clicked();
+        assert_eq!(
+            bindings.document_job_id.borrow().as_deref(),
+            Some("gtk-queue-second")
+        );
+        assert_eq!(
+            bindings.document_job_state.get(),
+            Some(DocumentJobState::Paused)
+        );
+        assert_eq!(
+            bindings.source.text(
+                &bindings.source.start_iter(),
+                &bindings.source.end_iter(),
+                true
+            ),
+            "second source"
+        );
+        assert!(
+            !application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Document jobs"))
+        );
+
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
     }
 
     #[ignore = "run in dedicated serialized GTK fixture"]
