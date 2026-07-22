@@ -1,5 +1,28 @@
 # Implementation Status
 
+## 2026-07-22 — Linux GTK malicious archive import boundary
+
+Assumption: Scenario 15 requires the production asynchronous GTK/GIO import path to reject both
+archive path traversal and suspicious compression before any document job is created or extracted
+content can reach the source editor.
+
+- Runtime test `gtk_malicious_archive_import_fails_closed_before_document_job` now creates private
+  DOCX fixtures containing `../outside.txt` and a highly compressed `word/repetitive.bin` entry,
+  calls the real `load_source_file` callback, and asserts a fixed import error, no document-job
+  snapshot, an unchanged empty source buffer, and no forbidden extracted filename in the fixture
+  directory. The fixture is serialized with the existing GTK tests and runs in Native CI under
+  DBus/Xvfb.
+- Local `cargo fmt --all -- --check`, locked all-target/all-feature check, strict Clippy,
+  no-default tests (`83 passed; 1 ignored`), demo-provider tests (`157 passed; 3 ignored`),
+  localization key/placeholder/visible audits, l10n synchronization, Flatpak metadata, diff
+  checks, and `cargo deny --all-features check` passed. The display-backed fixture could not link
+  on this host because `xvfb-run` and the required GTK development symbols are unavailable;
+  remote Native CI remains authoritative for that execution.
+
+This advances unreleased Linux evidence for mandatory Scenario 15. Full macro/signature review,
+human visual/copy/Orca review, other clients, signed artifacts, rollback authorization, and stable
+release approval remain open.
+
 ## 2026-07-21 — Linux Incognito translation-memory isolation
 
 Assumption: Incognito requests must bypass local translation-memory lookup as well as history and

@@ -8075,10 +8075,10 @@ mod tests {
         WorkerEvent, apply_worker_event, connect_action_handlers, connect_selection_handlers,
         create_window, custom_provider_profile, destination_matches_source, document_format_label,
         endpoint_matches_preset_default, fallback_confirmation_needed, generate_custom_provider_id,
-        localized_document_job_state, localized_document_warnings, localized_provider_default_name,
-        localized_template, normalized_candidate_ids_for_mode, output_metrics_label,
-        preset_requires_manual_model, provider_preset_config, provider_preset_index,
-        quality_mode_for_selection, quality_mode_selection, refresh_ui,
+        load_source_file, localized_document_job_state, localized_document_warnings,
+        localized_provider_default_name, localized_template, normalized_candidate_ids_for_mode,
+        output_metrics_label, preset_requires_manual_model, provider_preset_config,
+        provider_preset_index, quality_mode_for_selection, quality_mode_selection, refresh_ui,
         routing_constraints_from_controls, routing_constraints_from_text_values,
         routing_identifier_list_from_text, routing_optional_limit_from_text,
         routing_preference_for_selection, routing_preference_selection,
@@ -8101,7 +8101,7 @@ mod tests {
     use std::cell::RefCell;
     use std::fmt::Write as FmtWrite;
     use std::fs;
-    use std::io::{Read, Write};
+    use std::io::{Cursor, Read, Write};
     use std::net::TcpListener;
     use std::os::unix::fs::PermissionsExt;
     use std::rc::Rc;
@@ -8111,6 +8111,7 @@ mod tests {
     use std::time::{Duration, Instant};
     use tokio::runtime::Builder;
     use tokio::sync::oneshot;
+    use zip::write::{SimpleFileOptions, ZipWriter};
 
     fn descendant_widgets(root: &gtk::Widget) -> Vec<gtk::Widget> {
         let mut descendants = Vec::new();
@@ -9305,6 +9306,36 @@ mod tests {
         panic!("Timed out while waiting for the GTK state transition.");
     }
 
+    // 构造带有恶意归档条目的最小 DOCX，复用生产导入路径验证失败闭环。
+    fn malicious_docx_fixture(entry_name: &str, payload: &[u8], compressed: bool) -> Vec<u8> {
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        let options = if compressed {
+            SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated)
+        } else {
+            SimpleFileOptions::default()
+        };
+        writer
+            .start_file("[Content_Types].xml", options)
+            .expect("content types");
+        writer.write_all(b"<Types/>").expect("content types bytes");
+        writer
+            .start_file(entry_name, options)
+            .expect("malicious entry");
+        writer.write_all(payload).expect("malicious entry bytes");
+        writer
+            .start_file("word/document.xml", options)
+            .expect("document");
+        writer
+            .write_all(
+                br#"<w:document xmlns:w="urn:w"><w:body><w:p><w:r><w:t>Safe</w:t></w:r></w:p></w:body></w:document>"#,
+            )
+            .expect("document bytes");
+        writer
+            .finish()
+            .expect("malicious DOCX archive")
+            .into_inner()
+    }
+
     fn read_http_request(stream: &mut std::net::TcpStream) -> Vec<u8> {
         let mut request = Vec::new();
         let mut chunk = [0_u8; 4096];
@@ -9855,6 +9886,91 @@ mod tests {
         drop(locale);
         drop(state);
         drop(worker);
+    }
+
+    #[allow(clippy::too_many_lines)]
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_malicious_archive_import_fails_closed_before_document_job() {
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.GtkMaliciousArchiveTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK malicious archive application");
+
+        let fixture_directory = std::env::temp_dir().join(format!(
+            "linguamesh-linux-gtk-malicious-archive-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&fixture_directory);
+        fs::create_dir_all(&fixture_directory).expect("create malicious archive directory");
+        fs::set_permissions(&fixture_directory, fs::Permissions::from_mode(0o700))
+            .expect("restrict malicious archive directory");
+        let repetitive_payload = vec![b'x'; 512 * 1024];
+        let cases = vec![
+            (
+                "unsafe.docx",
+                malicious_docx_fixture("../outside.txt", b"unsafe", false),
+                "outside.txt",
+            ),
+            (
+                "suspicious-ratio.docx",
+                malicious_docx_fixture("word/repetitive.bin", &repetitive_payload, true),
+                "repetitive.bin",
+            ),
+        ];
+
+        let context = glib::MainContext::default();
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn());
+        let (window, bindings, theme, locale) = create_window(&application);
+        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
+        connect_action_handlers(&bindings, &state, &worker);
+        start_event_pump(&bindings, &state, &worker);
+        window.present();
+        eprintln!("GTK malicious archive: waiting for worker readiness");
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().worker_ready()
+        });
+
+        for (file_name, contents, forbidden_name) in cases {
+            let fixture_path = fixture_directory.join(file_name);
+            fs::write(&fixture_path, contents).expect("write malicious archive fixture");
+            let file = gtk::gio::File::for_path(&fixture_path);
+            load_source_file(&file, &bindings, &state, &worker);
+            eprintln!("GTK malicious archive: waiting for rejected {}", file_name);
+            spin_main_context_until(&context, Duration::from_secs(5), || {
+                bindings.error.is_visible()
+            });
+            let error_text = bindings.error.text().to_string();
+            assert!(!error_text.is_empty());
+            assert!(!error_text.contains(forbidden_name));
+            assert!(bindings.document_job_id.borrow().is_none());
+            assert!(
+                bindings
+                    .source
+                    .text(
+                        &bindings.source.start_iter(),
+                        &bindings.source.end_iter(),
+                        true,
+                    )
+                    .is_empty()
+            );
+            assert!(!fixture_directory.join(forbidden_name).exists());
+            bindings.error.set_visible(false);
+        }
+
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
+        let _ = fs::remove_dir_all(fixture_directory);
     }
 
     #[allow(clippy::too_many_lines)]

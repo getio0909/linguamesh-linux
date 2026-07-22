@@ -294,6 +294,13 @@ are exercised by the Core document fixture and Linux wrapper fixtures
 `rejects_macro_and_signature_ooxml_packages_before_import`; they apply to DOCX, PPTX, and XLSX imports
 before worker translation.
 
+The serialized GTK fixture `gtk_malicious_archive_import_fails_closed_before_document_job`
+drives the production asynchronous GIO `load_source_file` path with a DOCX containing a
+`../outside.txt` traversal entry and a highly compressed repetitive entry. It verifies that both
+archives surface a fixed import error, create no document-job snapshot, preserve the empty source
+editor, and leave the private fixture directory free of the forbidden entry names. Native CI runs
+this fixture under the same DBus/Xvfb serialization as the other GTK document boundaries.
+
 A sibling `../linguamesh-l10n` checkout at the revision pinned by `tools/sync-l10n.sh` is required
 to verify the checked-in PO catalogs.
 
