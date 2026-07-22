@@ -4100,6 +4100,39 @@ fn collision_safe_destination(destination: &gtk::gio::File) -> Option<gtk::gio::
     )
 }
 
+// 以独占创建和异步写入保存新文件，避免检查与写入之间的竞争覆盖已有文件。
+fn write_new_file_async(
+    destination: &gtk::gio::File,
+    contents: Vec<u8>,
+    callback: impl FnOnce(bool) + 'static,
+) {
+    let destination = destination.clone();
+    destination.create_async(
+        gtk::gio::FileCreateFlags::NONE,
+        glib::Priority::DEFAULT,
+        None::<&gtk::gio::Cancellable>,
+        move |create_result| match create_result {
+            Ok(stream) => stream.write_all_async(
+                contents,
+                glib::Priority::DEFAULT,
+                None::<&gtk::gio::Cancellable>,
+                {
+                    let close_stream = stream.clone();
+                    move |write_result| {
+                        let write_succeeded = matches!(write_result, Ok((_, _, None)));
+                        close_stream.close_async(
+                            glib::Priority::DEFAULT,
+                            None::<&gtk::gio::Cancellable>,
+                            move |close_result| callback(write_succeeded && close_result.is_ok()),
+                        );
+                    }
+                },
+            ),
+            Err(_) => callback(false),
+        },
+    );
+}
+
 // 从已导入 URI 提取原始文件名；纯文本编辑器没有源文件时使用稳定回退名。
 fn source_name_for_export(source_uri: Option<&str>) -> String {
     source_uri
@@ -4191,32 +4224,25 @@ fn begin_translation_export(
                     return;
                 };
                 let destination_uri = file.uri().to_string();
-                let contents = glib::Bytes::from_owned(output.into_bytes());
                 let output_uri = destination_uri.clone();
                 let callback_bindings = export_bindings.clone();
                 let callback_state = Rc::clone(&export_state);
-                file.replace_contents_bytes_async(
-                    &contents,
-                    None,
-                    false,
-                    gtk::gio::FileCreateFlags::NONE,
-                    None::<&gtk::gio::Cancellable>,
-                    move |write_result| match write_result {
-                        Ok(_) => {
-                            *callback_bindings.output_uri.borrow_mut() = Some(output_uri.clone());
-                            callback_bindings.export_notice.set(true);
-                            refresh_ui(&callback_bindings, &callback_state.borrow());
-                        }
-                        Err(_) => show_file_export_error(
+                write_new_file_async(&file, output.into_bytes(), move |write_succeeded| {
+                    if write_succeeded {
+                        *callback_bindings.output_uri.borrow_mut() = Some(output_uri.clone());
+                        callback_bindings.export_notice.set(true);
+                        refresh_ui(&callback_bindings, &callback_state.borrow());
+                    } else {
+                        show_file_export_error(
                             &callback_bindings,
                             &localization::text(
                                 callback_state.borrow().locale(),
                                 "error.file_export",
                                 "The translated output could not be saved.",
                             ),
-                        ),
-                    },
-                );
+                        );
+                    }
+                });
             }
             Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
             Err(_) => show_file_export_error(
@@ -4398,30 +4424,23 @@ fn begin_document_report_export(
                     );
                     return;
                 };
-                let bytes = glib::Bytes::from_owned(report.clone().into_bytes());
                 let callback_bindings = export_bindings.clone();
                 let callback_state = Rc::clone(&export_state);
-                file.replace_contents_bytes_async(
-                    &bytes,
-                    None,
-                    false,
-                    gtk::gio::FileCreateFlags::NONE,
-                    None::<&gtk::gio::Cancellable>,
-                    move |write_result| match write_result {
-                        Ok(_) => {
-                            callback_bindings.report_export_notice.set(true);
-                            refresh_ui(&callback_bindings, &callback_state.borrow());
-                        }
-                        Err(_) => show_file_export_error(
+                write_new_file_async(&file, report.clone().into_bytes(), move |write_succeeded| {
+                    if write_succeeded {
+                        callback_bindings.report_export_notice.set(true);
+                        refresh_ui(&callback_bindings, &callback_state.borrow());
+                    } else {
+                        show_file_export_error(
                             &callback_bindings,
                             &localization::text(
                                 callback_state.borrow().locale(),
                                 "error.file_export",
                                 "The translated output could not be saved.",
                             ),
-                        ),
-                    },
-                );
+                        );
+                    }
+                });
             }
             Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
             Err(_) => show_file_export_error(
@@ -4487,32 +4506,25 @@ fn begin_document_binary_export(
                     return;
                 };
                 let destination_uri = file.uri().to_string();
-                let bytes = glib::Bytes::from_owned(contents);
                 let output_uri = destination_uri.clone();
                 let callback_bindings = export_bindings.clone();
                 let callback_state = Rc::clone(&export_state);
-                file.replace_contents_bytes_async(
-                    &bytes,
-                    None,
-                    false,
-                    gtk::gio::FileCreateFlags::NONE,
-                    None::<&gtk::gio::Cancellable>,
-                    move |write_result| match write_result {
-                        Ok(_) => {
-                            *callback_bindings.output_uri.borrow_mut() = Some(output_uri.clone());
-                            callback_bindings.export_notice.set(true);
-                            refresh_ui(&callback_bindings, &callback_state.borrow());
-                        }
-                        Err(_) => show_file_export_error(
+                write_new_file_async(&file, contents, move |write_succeeded| {
+                    if write_succeeded {
+                        *callback_bindings.output_uri.borrow_mut() = Some(output_uri.clone());
+                        callback_bindings.export_notice.set(true);
+                        refresh_ui(&callback_bindings, &callback_state.borrow());
+                    } else {
+                        show_file_export_error(
                             &callback_bindings,
                             &localization::text(
                                 callback_state.borrow().locale(),
                                 "error.file_export",
                                 "The translated output could not be saved.",
                             ),
-                        ),
-                    },
-                );
+                        );
+                    }
+                });
             }
             Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
             Err(_) => show_file_export_error(
@@ -8468,7 +8480,7 @@ mod tests {
         show_new_profile_in_form, show_routing_profiles_dialog, start_event_pump,
         text_metrics_label, translation_output_name, translation_preset_for_selection,
         translation_preset_selection, usage_label, valid_routing_profile_id,
-        validate_provider_preset_catalog,
+        validate_provider_preset_catalog, write_new_file_async,
     };
     use adw::prelude::*;
     use gtk::glib;
@@ -8481,7 +8493,7 @@ mod tests {
     };
     use linguamesh_storage::{DocumentJobSnapshot, Storage};
     use linguamesh_testkit::FakeProviderServer;
-    use std::cell::RefCell;
+    use std::cell::{Cell, RefCell};
     use std::fmt::Write as FmtWrite;
     use std::fs;
     use std::io::{Cursor, Read, Write};
@@ -9485,6 +9497,35 @@ mod tests {
         assert_eq!(
             collision_safe_output_path(&directory.join("new.txt")),
             Some(directory.join("new.txt"))
+        );
+        let _ = fs::remove_dir_all(directory);
+    }
+
+    // 验证独占异步写入在目标被占用时失败，并保留原有文件内容。
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_exclusive_output_writer_never_replaces_existing_file() {
+        adw::init().expect("initialize GTK output writer fixture");
+        let directory = std::env::temp_dir().join(format!(
+            "linguamesh-linux-exclusive-output-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).expect("directory");
+        let destination_path = directory.join("existing.txt");
+        fs::write(&destination_path, b"keep").expect("existing output");
+        let destination = gtk::gio::File::for_path(&destination_path);
+        let context = glib::MainContext::default();
+        let result = Rc::new(Cell::new(None));
+        let callback_result = Rc::clone(&result);
+        write_new_file_async(&destination, b"replace".to_vec(), move |succeeded| {
+            callback_result.set(Some(succeeded));
+        });
+        spin_main_context_until(&context, Duration::from_secs(2), || result.get().is_some());
+        assert_eq!(result.get(), Some(false));
+        assert_eq!(
+            fs::read(&destination_path).expect("read existing output"),
+            b"keep"
         );
         let _ = fs::remove_dir_all(directory);
     }
