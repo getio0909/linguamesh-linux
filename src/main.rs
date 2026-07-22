@@ -4181,7 +4181,7 @@ fn begin_document_binary_export(
 }
 
 // 通过 GIO 的分块异步读取限制内存占用，并在主线程完成 UTF-8 解码。
-#[allow(clippy::too_many_lines)]
+#[allow(clippy::single_match_else, clippy::too_many_lines)]
 fn load_source_file(
     file: &gtk::gio::File,
     bindings: &UiBindings,
@@ -4211,6 +4211,8 @@ fn load_source_file(
     let lease_expired = Rc::new(Cell::new(false));
     let read_lease_expired = Rc::clone(&lease_expired);
     let read_lease = source_lease.clone();
+    let import_failed = Rc::new(Cell::new(false));
+    let load_import_failed = Rc::clone(&import_failed);
     let load_bindings = bindings.clone();
     let load_state = Rc::clone(state);
     let load_worker = Rc::clone(worker);
@@ -4306,6 +4308,7 @@ fn load_source_file(
                         load_bindings.error.set_visible(false);
                     }
                     Err(error) => {
+                        load_import_failed.set(true);
                         let locale = load_state.borrow().locale();
                         let (key, fallback) = match error {
                             file_import::TextImportError::TooLarge => (
@@ -4331,16 +4334,21 @@ fn load_source_file(
                     }
                     }
                 }
-                Err(_) => show_file_import_error(
-                    &load_bindings,
-                    &localization::text(
-                        load_state.borrow().locale(),
-                        "error.file_read",
-                        "The selected text file could not be read.",
-                    ),
-                ),
+                Err(_) => {
+                    load_import_failed.set(true);
+                    show_file_import_error(
+                        &load_bindings,
+                        &localization::text(
+                            load_state.borrow().locale(),
+                            "error.file_read",
+                            "The selected text file could not be read.",
+                        ),
+                    );
+                }
             }
-            refresh_ui(&load_bindings, &load_state.borrow());
+            if !load_import_failed.get() {
+                refresh_ui(&load_bindings, &load_state.borrow());
+            }
         },
     );
 }
