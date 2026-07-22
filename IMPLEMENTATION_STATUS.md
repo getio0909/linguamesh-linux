@@ -5,7 +5,8 @@
 Assumption: the output contract applies to plain-text and persisted document exports, while the
 report export uses the same source/target stem with a `.report.tsv` suffix.
 
-- Runtime commit `c8ff5be178d4f85709d8f6e4efe991dd180b3837` derives defaults as
+- Runtime commits `c8ff5be178d4f85709d8f6e4efe991dd180b3837` and
+  `193ca90b94302f7ae42e2b919576d2ffd68f0aae` derive defaults as
   `<original-base-name>.<target-bcp47-tag>.<extension>`, sanitizes control characters and path
   separators, carries the persisted document target locale through the worker event, and reports
   the stable default output identifier instead of `<not-exported>`.
@@ -13,8 +14,10 @@ report export uses the same source/target stem with a `.report.tsv` suffix.
   deterministic `-1`, `-2`, ... sibling path for translated output and reports. Unit regressions
   cover multi-dot stems, invalid names, unknown locale fallback, and two occupied collision slots.
 - Local `cargo fmt --all`, locked all-target/all-feature check, strict Clippy, and demo-provider
-  tests passed (`157 passed; 3 ignored` in the full 160-test suite). The packaging source pin is
-  being updated to this runtime head before the remote gates; the display-backed chooser fixture
+  tests passed (`157 passed; 3 ignored` in the 160-test library suite). The full-feature binary
+  test target is link-limited on this host by incomplete GTK/GDK/Graphene symbols; Native CI
+  remains authoritative for those fixtures. The packaging source pin is being updated to this
+  runtime head before the remote gates; the display-backed chooser fixture
   remains a CI boundary because this host lacks the required GTK/GDK/Graphene linker symbols.
 
 This advances the Linux Milestone 3/6 output requirement. Human visual/copy/Orca review, other
