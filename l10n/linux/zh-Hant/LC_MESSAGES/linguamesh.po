@@ -1238,6 +1238,18 @@ msgctxt "tooltip.export_output"
 msgid "Save the translated output to a new file"
 msgstr "將譯文儲存到新檔案"
 
+#. Action that exports a redacted TSV report for a Linux document translation job.
+#, fuzzy
+msgctxt "action.export_report"
+msgid "Export translation report"
+msgstr "匯出翻譯報告"
+
+#. Tooltip explaining that a document report contains metadata without credentials or source text.
+#, fuzzy
+msgctxt "tooltip.export_report"
+msgid "Save a redacted TSV report for this document job"
+msgstr "儲存此文件工作項目的已去識別 TSV 報告"
+
 #. Title for the Linux translation export dialog.
 #, fuzzy
 msgctxt "dialog.export_translation"
@@ -1255,6 +1267,12 @@ msgstr "儲存"
 msgctxt "status.exported"
 msgid "Translation saved to the selected file."
 msgstr "譯文已儲存到所選檔案。"
+
+#. Status shown after a redacted document translation report is written successfully.
+#, fuzzy
+msgctxt "status.report_exported"
+msgid "Translation report saved to the selected file."
+msgstr "翻譯報告已儲存到選取的檔案。"
 
 #. Export error shown when there is no translated output to save.
 #, fuzzy

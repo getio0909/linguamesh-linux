@@ -2,7 +2,7 @@ use adw::prelude::*;
 use gtk::glib;
 use linguamesh_document::{
     DEFAULT_SUBTITLE_MAX_LINE_CHARS, DEFAULT_SUBTITLE_MAX_READING_SPEED, DocumentFormat,
-    DocumentJobState, DocumentWarning, DocumentWarningKind,
+    DocumentJobState, DocumentSegmentKind, DocumentWarning, DocumentWarningKind,
 };
 use linguamesh_domain::{
     ErrorKind, FileLease, Glossary, GlossaryEntry, MAX_GLOSSARY_CSV_BYTES,
@@ -11,6 +11,7 @@ use linguamesh_domain::{
     SecretRef, SecretRefNamespace, SecretValue, TranslationError, TranslationEvent,
     TranslationPreset, TranslationPrivacyMode, TranslationQualityMode, UsageRecord, UsageSource,
 };
+use linguamesh_engine::core_compatibility;
 use linguamesh_linux::file_import;
 use linguamesh_linux::localization;
 use linguamesh_linux::model::{
@@ -199,6 +200,7 @@ struct UiBindings {
     connection_test_model_count: Rc<Cell<Option<usize>>>,
     connection_test_profile_id: Rc<RefCell<Option<String>>>,
     export_notice: Rc<Cell<bool>>,
+    report_export_notice: Rc<Cell<bool>>,
     fallback_notice: Rc<Cell<bool>>,
     fallback_approval: Rc<Cell<bool>>,
     glossary_notice: Rc<Cell<bool>>,
@@ -1097,6 +1099,7 @@ fn create_window(
         connection_test_model_count: Rc::new(Cell::new(None)),
         connection_test_profile_id: Rc::new(RefCell::new(None)),
         export_notice: Rc::new(Cell::new(false)),
+        report_export_notice: Rc::new(Cell::new(false)),
         fallback_notice: Rc::new(Cell::new(false)),
         fallback_approval: Rc::new(Cell::new(false)),
         glossary_notice: Rc::new(Cell::new(false)),
@@ -3428,6 +3431,7 @@ fn connect_action_handlers(
     let translate_worker = Rc::clone(worker);
     bindings.translate.connect_clicked(move |_| {
         translate_bindings.export_notice.set(false);
+        translate_bindings.report_export_notice.set(false);
         translate_bindings.fallback_notice.set(false);
         *translate_bindings.output_uri.borrow_mut() = None;
         let source = translate_bindings.source.text(
@@ -4098,6 +4102,189 @@ fn begin_translation_export(
     );
 }
 
+// 将报告字段折叠为单行，避免源文件名或 warning 破坏 TSV 结构。
+fn report_field(value: &str) -> String {
+    value
+        .chars()
+        .map(|character| match character {
+            '\t' | '\r' | '\n' => ' ',
+            _ => character,
+        })
+        .collect()
+}
+
+// 生成不含凭据、源正文或本地路径的确定性文档翻译报告。
+fn document_translation_report(snapshot: &DocumentJobSnapshot, core_version: &str) -> String {
+    let options = snapshot.options.as_ref();
+    let completed = snapshot
+        .job
+        .segments
+        .iter()
+        .filter(|segment| {
+            segment.kind == DocumentSegmentKind::Prose && segment.translated_text.is_some()
+        })
+        .count();
+    let skipped = snapshot
+        .job
+        .segments
+        .iter()
+        .filter(|segment| segment.kind == DocumentSegmentKind::Verbatim)
+        .count();
+    let pending = snapshot.job.pending_count();
+    let failed = usize::from(snapshot.state == DocumentJobState::Failed);
+    let warnings = snapshot.job.warnings().unwrap_or_default();
+    let warning_text = if warnings.is_empty() {
+        "none".to_owned()
+    } else {
+        warnings
+            .iter()
+            .map(|warning| format!("{:?}", warning.kind))
+            .collect::<Vec<_>>()
+            .join(",")
+    };
+    let source_locale = options
+        .and_then(|options| options.source_locale.as_deref())
+        .unwrap_or("auto");
+    let target_locale = options.map_or("unknown", |options| options.target_locale.as_str());
+    let provider = options.map_or("unavailable", |options| options.provider_id.as_str());
+    let model = options.map_or("unavailable", |options| options.model_id.as_str());
+    let routing = options
+        .and_then(|options| options.routing_profile_id.as_deref())
+        .map_or_else(|| "manual".to_owned(), |id| format!("profile:{id}"));
+    let preset = options.map_or("unavailable", |options| {
+        options.translation_preset.id.as_str()
+    });
+    let glossary = options
+        .and_then(|options| options.glossary.as_ref())
+        .map_or_else(
+            || "none".to_owned(),
+            |glossary| format!("entries:{}", glossary.entries().len()),
+        );
+    let state = format!("{:?}", snapshot.state);
+    let fields = [
+        ("report_version", "1".to_owned()),
+        ("source_identifier", snapshot.job.source_name.clone()),
+        ("output_identifier", "<not-exported>".to_owned()),
+        ("source_locale", source_locale.to_owned()),
+        ("target_locale", target_locale.to_owned()),
+        ("provider", provider.to_owned()),
+        ("model", model.to_owned()),
+        ("routing_decision", routing),
+        ("translation_preset", preset.to_owned()),
+        ("glossary_version", glossary),
+        ("application_version", env!("CARGO_PKG_VERSION").to_owned()),
+        ("core_version", core_version.to_owned()),
+        (
+            "prompt_template_version",
+            "translation-prompt-v1".to_owned(),
+        ),
+        ("state", state),
+        ("segment_total", snapshot.job.segments.len().to_string()),
+        ("completed_count", completed.to_string()),
+        ("skipped_count", skipped.to_string()),
+        ("pending_count", pending.to_string()),
+        ("retried_count", "unknown".to_owned()),
+        ("failed_count", failed.to_string()),
+        ("warnings", warning_text),
+        ("usage", "unavailable".to_owned()),
+        ("start_time_unix_seconds", snapshot.created_at.to_string()),
+        (
+            "completion_time_unix_seconds",
+            snapshot.updated_at.to_string(),
+        ),
+    ];
+    let mut report = String::from("field\tvalue\n");
+    for (key, value) in fields {
+        report.push_str(key);
+        report.push('\t');
+        report.push_str(&report_field(&value));
+        report.push('\n');
+    }
+    report
+}
+
+// 将选中文档任务的安全报告异步写入用户指定的新文件。
+fn begin_document_report_export(
+    bindings: &UiBindings,
+    state: &Rc<RefCell<AppState>>,
+    snapshot: &DocumentJobSnapshot,
+) {
+    let locale = state.borrow().locale();
+    bindings.report_export_notice.set(false);
+    let report = document_translation_report(
+        snapshot,
+        &core_compatibility().map_or_else(
+            |_| "unavailable".to_owned(),
+            |compatibility| compatibility.core_version,
+        ),
+    );
+    let dialog = gtk::FileDialog::builder()
+        .title(localization::text(
+            locale,
+            "dialog.export_translation",
+            "Export translation",
+        ))
+        .accept_label(localization::text(locale, "dialog.save", "Save"))
+        .modal(true)
+        .build();
+    dialog.set_initial_name(Some("linguamesh-translation-report.tsv"));
+    let export_bindings = bindings.clone();
+    let export_state = Rc::clone(state);
+    let source_uri = bindings.source_uri.borrow().clone();
+    dialog.save(
+        Some(&bindings.window),
+        None::<&gtk::gio::Cancellable>,
+        move |result| match result {
+            Ok(file) => {
+                if destination_matches_source(source_uri.as_deref(), &file) {
+                    show_file_export_error(
+                        &export_bindings,
+                        &localization::text(
+                            export_state.borrow().locale(),
+                            "error.file_export_source",
+                            "Choose a different file so the source remains unchanged.",
+                        ),
+                    );
+                    return;
+                }
+                let bytes = glib::Bytes::from_owned(report.clone().into_bytes());
+                let callback_bindings = export_bindings.clone();
+                let callback_state = Rc::clone(&export_state);
+                file.replace_contents_bytes_async(
+                    &bytes,
+                    None,
+                    false,
+                    gtk::gio::FileCreateFlags::NONE,
+                    None::<&gtk::gio::Cancellable>,
+                    move |write_result| match write_result {
+                        Ok(_) => {
+                            callback_bindings.report_export_notice.set(true);
+                            refresh_ui(&callback_bindings, &callback_state.borrow());
+                        }
+                        Err(_) => show_file_export_error(
+                            &callback_bindings,
+                            &localization::text(
+                                callback_state.borrow().locale(),
+                                "error.file_export",
+                                "The translated output could not be saved.",
+                            ),
+                        ),
+                    },
+                );
+            }
+            Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
+            Err(_) => show_file_export_error(
+                &export_bindings,
+                &localization::text(
+                    export_state.borrow().locale(),
+                    "error.file_export",
+                    "The translated output could not be saved.",
+                ),
+            ),
+        },
+    );
+}
+
 // 将已完成的二进制文档任务写入新文件，并拒绝覆盖导入源文件。
 fn begin_document_binary_export(
     bindings: &UiBindings,
@@ -4217,6 +4404,7 @@ fn load_source_file(
     let load_state = Rc::clone(state);
     let load_worker = Rc::clone(worker);
     load_bindings.export_notice.set(false);
+    load_bindings.report_export_notice.set(false);
     *load_bindings.output_uri.borrow_mut() = None;
     file.load_partial_contents_async(
         None::<&gtk::gio::Cancellable>,
@@ -5813,6 +6001,24 @@ fn show_document_jobs_dialog(
                 });
                 queue_actions.append(&action);
             }
+            let report = gtk::Button::with_mnemonic(&localized_mnemonic(
+                locale,
+                "action.export_report",
+                "Export translation report",
+            ));
+            report.set_focusable(true);
+            report.set_tooltip_text(Some(&localization::text(
+                locale,
+                "tooltip.export_report",
+                "Save a redacted TSV report for this document job",
+            )));
+            let report_bindings = bindings.clone();
+            let report_state = Rc::clone(state);
+            let report_snapshot = snapshot.clone();
+            report.connect_clicked(move |_| {
+                begin_document_report_export(&report_bindings, &report_state, &report_snapshot);
+            });
+            queue_actions.append(&report);
             row.append(&queue_actions);
             list.append(&row);
         }
@@ -7768,6 +7974,12 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             "status.exported",
             "Translation saved to the selected file.",
         )
+    } else if bindings.report_export_notice.get() {
+        localization::text(
+            state.locale(),
+            "status.report_exported",
+            "Translation report saved to the selected file.",
+        )
     } else if bindings.history_warning.get() {
         localization::text(
             state.locale(),
@@ -8082,18 +8294,19 @@ mod tests {
         SecretRef, SecretRefNamespace, SecretValue, TranslationError, UiLocale, WorkerCommand,
         WorkerEvent, apply_worker_event, connect_action_handlers, connect_selection_handlers,
         create_window, custom_provider_profile, destination_matches_source, document_format_label,
-        endpoint_matches_preset_default, fallback_confirmation_needed, generate_custom_provider_id,
-        load_source_file, localized_document_job_state, localized_document_warnings,
-        localized_provider_default_name, localized_template, normalized_candidate_ids_for_mode,
-        output_metrics_label, preset_requires_manual_model, provider_preset_config,
-        provider_preset_index, quality_mode_for_selection, quality_mode_selection, refresh_ui,
-        routing_constraints_from_controls, routing_constraints_from_text_values,
-        routing_identifier_list_from_text, routing_optional_limit_from_text,
-        routing_preference_for_selection, routing_preference_selection,
-        routing_profile_id_conflicts, show_document_jobs_dialog, show_fallback_approval_dialog,
-        show_new_profile_in_form, show_routing_profiles_dialog, start_event_pump,
-        text_metrics_label, translation_preset_for_selection, translation_preset_selection,
-        usage_label, valid_routing_profile_id, validate_provider_preset_catalog,
+        document_translation_report, endpoint_matches_preset_default, fallback_confirmation_needed,
+        generate_custom_provider_id, load_source_file, localized_document_job_state,
+        localized_document_warnings, localized_provider_default_name, localized_template,
+        normalized_candidate_ids_for_mode, output_metrics_label, preset_requires_manual_model,
+        provider_preset_config, provider_preset_index, quality_mode_for_selection,
+        quality_mode_selection, refresh_ui, routing_constraints_from_controls,
+        routing_constraints_from_text_values, routing_identifier_list_from_text,
+        routing_optional_limit_from_text, routing_preference_for_selection,
+        routing_preference_selection, routing_profile_id_conflicts, show_document_jobs_dialog,
+        show_fallback_approval_dialog, show_new_profile_in_form, show_routing_profiles_dialog,
+        start_event_pump, text_metrics_label, translation_preset_for_selection,
+        translation_preset_selection, usage_label, valid_routing_profile_id,
+        validate_provider_preset_catalog,
     };
     use adw::prelude::*;
     use gtk::glib;
@@ -9079,6 +9292,34 @@ mod tests {
             ));
         }
         let _ = fs::remove_dir_all(directory);
+    }
+
+    #[test]
+    fn document_translation_report_is_redacted_and_counts_segments() {
+        let mut job = DocumentJob::from_text(
+            "guide\tprivate.txt",
+            DocumentFormat::Txt,
+            "translated\npending",
+        );
+        job.segments[0].translated_text = Some("traduction".to_owned());
+        let snapshot = DocumentJobSnapshot {
+            job,
+            job_id: "report-job".to_owned(),
+            state: DocumentJobState::Completed,
+            options: None,
+            created_at: 100,
+            updated_at: 200,
+        };
+        let report = document_translation_report(&snapshot, "0.1.0-alpha.2");
+        assert!(report.contains("source_identifier\tguide private.txt"));
+        assert!(report.contains("segment_total\t2"));
+        assert!(report.contains("completed_count\t1"));
+        assert!(report.contains("pending_count\t1"));
+        assert!(report.contains("output_identifier\t<not-exported>"));
+        assert!(report.contains("core_version\t0.1.0-alpha.2"));
+        assert!(report.contains("retried_count\tunknown"));
+        assert!(!report.contains("traduction"));
+        assert!(!report.contains("private\n"));
     }
 
     #[test]

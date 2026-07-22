@@ -1,5 +1,30 @@
 # Implementation Status
 
+## 2026-07-22 — Linux document translation report export
+
+Assumption: the first report surface is a Linux-only, redacted TSV snapshot; document-job
+persistence does not currently retain provider usage or retry counts, so those fields are explicit
+unknowns rather than inferred values.
+
+- The production Document jobs dialog now exposes a localized Export translation report action
+  for every persisted job. The generated TSV contains source/output identifiers, locales,
+  provider/model, routing decision, preset, glossary presence, application/Core/prompt versions,
+  segment counts, warnings, state, and Unix timestamps without source text, credentials, or local
+  paths.
+- Report fields are single-line escaped and the save callback reuses source-alias protection so a
+  report cannot overwrite the imported source file. The
+  document_translation_report_is_redacted_and_counts_segments regression covers deterministic
+  counts and redaction.
+- Runtime code is currently unpushed; local formatting, locked all-target/all-feature check,
+  strict Clippy, demo-provider tests (157 passed; 3 ignored), localization audits, l10n
+  synchronization at revision 88765d3358450ccfac12f396caf5290230a83577, Flatpak metadata, and
+  diff checks passed.
+
+This advances the Linux document-workspace report requirement for Milestone 3. Output identifiers
+remain <not-exported> until a document output is exported, and retry/usage values remain
+explicitly unknown. Human visual/copy/Orca review, physical interruption behavior, other clients,
+signed artifacts, rollback authorization, and stable release approval remain open.
+
 ## 2026-07-22 — Linux GTK pending document-job Pause action
 
 Assumption: a pending row in the production document queue must dispatch Pause for that exact

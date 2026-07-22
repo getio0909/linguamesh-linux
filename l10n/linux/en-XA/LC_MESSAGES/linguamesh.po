@@ -1240,6 +1240,18 @@ msgctxt "tooltip.export_output"
 msgid "Save the translated output to a new file"
 msgstr "［Šåṽë ŧħë ŧŕåñšŀåŧëð øûŧþûŧ ŧø å ñëŵ ƒïŀë~~~~~~~~~~~~~］"
 
+#. Action that exports a redacted TSV report for a Linux document translation job.
+#, fuzzy
+msgctxt "action.export_report"
+msgid "Export translation report"
+msgstr "［Ëẋþøŕŧ ŧŕåñšŀåŧïøñ ŕëþøŕŧ~~~~~~~~］"
+
+#. Tooltip explaining that a document report contains metadata without credentials or source text.
+#, fuzzy
+msgctxt "tooltip.export_report"
+msgid "Save a redacted TSV report for this document job"
+msgstr "［Šåṽë å ŕëðåçŧëð ŦŠṼ ŕëþøŕŧ ƒøŕ ŧħïš ðøçûṁëñŧ ĵøƀ~~~~~~~~~~~~~~~~］"
+
 #. Title for the Linux translation export dialog.
 #, fuzzy
 msgctxt "dialog.export_translation"
@@ -1257,6 +1269,12 @@ msgstr "［Šåṽë~~］"
 msgctxt "status.exported"
 msgid "Translation saved to the selected file."
 msgstr "［Ŧŕåñšŀåŧïøñ šåṽëð ŧø ŧħë šëŀëçŧëð ƒïŀë.~~~~~~~~~~~~~］"
+
+#. Status shown after a redacted document translation report is written successfully.
+#, fuzzy
+msgctxt "status.report_exported"
+msgid "Translation report saved to the selected file."
+msgstr "［Ŧŕåñšŀåŧïøñ ŕëþøŕŧ šåṽëð ŧø ŧħë šëŀëçŧëð ƒïŀë.~~~~~~~~~~~~~~~］"
 
 #. Export error shown when there is no translated output to save.
 #, fuzzy

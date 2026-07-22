@@ -79,6 +79,14 @@ fresh session-only provider connection, the production Resume control completes 
 segment without duplicating the first. Native CI runs the exact fixture under DBus/Xvfb, providing
 Linux Scenario 12 restart/resume evidence without claiming physical power-loss recovery.
 
+The production Document jobs dialog also exposes Export translation report for every persisted
+snapshot. The action writes a deterministic TSV report with non-secret identifiers, configuration,
+segment counts, warning kinds, state, and Unix timestamps. Fields are single-line escaped, source
+aliases are rejected before the asynchronous GIO write, and document source text, credentials,
+local paths, provider usage, and retry counts are never included. The unit regression
+document_translation_report_is_redacted_and_counts_segments covers the report builder; the
+display-backed queue action remains part of the serialized GTK evidence path.
+
 The GTK regression `provider_presets_map_to_stable_native_and_compatible_defaults` validates the
 six-position Linux preset order against the bundled Core provider catalog. Adapter types must match
 the catalog, and manual-model visibility is derived from its `model_listing` field. The application

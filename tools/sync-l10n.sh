@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # 将消费端固定到已通过本地化 CI 的不可变提交。
-expected_revision="b817ba911c2ffafb35b7a29755681ab39e950368"
+expected_revision="88765d3358450ccfac12f396caf5290230a83577"
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 l10n_root="${LINGUAMESH_L10N_DIR:-$(dirname "$project_root")/linguamesh-l10n}"
 source_root="$l10n_root/generated/linux"
