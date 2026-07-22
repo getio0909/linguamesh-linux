@@ -8849,7 +8849,9 @@ mod tests {
             })
         });
         assert!(!bindings.remember_profile.is_active());
-        assert!(bindings.provider_credential.has_focus());
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            bindings.provider_credential.has_focus()
+        });
 
         bindings.remember_profile.set_active(true);
         show_secret_storage_session_fallback(&bindings, &state);
