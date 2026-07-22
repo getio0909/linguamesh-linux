@@ -1,5 +1,28 @@
 # Implementation Status
 
+## 2026-07-22 — Linux bundled open-source notices action
+
+Assumption: bundled `THIRD_PARTY_NOTICES.md` is the authoritative legal source for production
+license text in this Linux checkpoint; no runtime network fetch is required to render the dialog.
+
+- Runtime commit `909083dee4c436d0f343785a4c95f1cda4207e35` adds a catalog-backed
+  **Open-source licenses** action and an always-read-only bundled `THIRD_PARTY_NOTICES.md` dialog.
+  It also adds a unit check for representative entries (`GTK 4`, `LGPL-2.1-or-later`, `MIT`,
+  `LinguaMesh Core`) and keeps a `bundle`-bound l10n path for the notice label/tooltip/title.
+- Packaging/docs head `909083dee4c436d0f343785a4c95f1cda4207e35` pins this tested runtime and updates
+  `README.md`, `docs/testing.md`, `docs/architecture.md`, l10n sync provenance (`3724cc9d...`),
+  localization audit automation, and workflow localization pins to the same manifest.
+- Flatpak manifest commit `909083d` updates the Linux source reference in
+  `packaging/flatpak/dev.linguamesh.LinguaMesh.yml` to the same runtime input.
+- `cargo fmt --all -- --check`, `cargo check --locked --features gui --bin linguamesh-linux`,
+  localization audits (`check-localization-keys|placeholders|visible-localization`),
+  `bash tools/sync-l10n.sh --check`, and flatpak metadata validation passed.
+
+This adds Linux Scenario 18 legal-notice evidence to the prerelease pipeline. Human visual/copy/
+Orca review, cross-client approval, stable release signing/rollout authorization, rollback,
+power-loss recovery, and repository-wide release evidence remain open; release status is
+`unreleased`.
+
 ## 2026-07-22 — Linux CI evidence integrity verification
 
 Assumption: prerelease evidence is useful only when the uploaded checksum and SBOM sidecars are
