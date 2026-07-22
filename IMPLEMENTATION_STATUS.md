@@ -12,8 +12,12 @@ excluded from diagnostics.
   adapter sends `OpenAI-Project` for Chat Completions and Responses only.
 - Core revision `17342ba0bf19dd4978707a7875bc7dbe85efae54` and l10n revision
   `fea84439f035f30b009532b40d7f67a30049846c` are pinned in Native and Flatpak inputs. The l10n
-  source revision 49 bundle contains 450 messages. Release remains unreleased pending
-  cross-client and human evidence.
+  source revision 49 bundle contains 450 messages. Linux status head
+  `36a06b664e06a29e1c6bcf81308dd812492d3c47` passed all six remote gates: push Native/Flatpak/
+  Foundation `29948859790`/`29948861048`/`29948860788` and pull-request Native/Flatpak/Foundation
+  `29948862178`/`29948862595`/`29948862093`. An earlier Flatpak attempt (`29948646035` push,
+  `29948648676` pull request) was superseded after its stale source pin was corrected in this head.
+  Release remains unreleased pending cross-client and human evidence.
 
 ## 2026-07-22 — Linux provider organization checkpoint
 
