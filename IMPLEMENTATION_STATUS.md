@@ -1,10 +1,25 @@
 # Implementation Status
 
+## 2026-07-22 — Linux provider organization checkpoint
+
+Assumption: `organization` is an optional bounded non-secret OpenAI-compatible identifier. Linux
+passes it through Core only for OpenAI Chat/Responses requests; it is not a credential and remains
+excluded from diagnostics.
+
+- Added a localized Organization field to the provider form. Saved profiles restore it, new profiles
+  clear it, and Test connection/Connect validate and pass it through Core.
+- Runtime profile/session copies preserve the field. Core schema 20 persists it and the OpenAI adapter
+  sends `OpenAI-Organization` for Chat Completions and Responses only.
+- Core revision `7e3c9ab7ab013aa4f8d01323848a399e98836f2a` and l10n revision
+  `94438a6a9ff8148cadad605c4760f88110d78984` are pinned in Native and Flatpak inputs. The l10n
+  source revision 48 bundle contains 447 messages. Release remains unreleased pending cross-client
+  and human evidence.
+
 ## 2026-07-22 — Linux provider profile notes checkpoint
 
-Assumption: an optional, single-line, bounded non-secret note is the smallest Linux-first slice of
-the ProviderProfile metadata contract; organization, region, proxy, and custom-header fields
-remain separate follow-up work.
+Assumption: an optional, single-line, bounded non-secret note was the smallest Linux-first slice of
+the ProviderProfile metadata contract at the time of this checkpoint; later fields are tracked
+independently.
 
 - Added a localized **Profile notes** field to the saved-provider form. Saved profiles restore the
   note, new profiles clear it, and both explicit **Test connection** and **Connect** pass it through

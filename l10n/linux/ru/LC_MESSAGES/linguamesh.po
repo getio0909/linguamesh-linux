@@ -2693,3 +2693,21 @@ msgstr "Optional non-secret note for this saved profile"
 msgctxt "tooltip.provider_notes"
 msgid "Optional non-secret note for this saved profile"
 msgstr "Optional non-secret note for this saved profile"
+
+#. Label for the optional organization identifier in the Linux provider form.
+#, fuzzy
+msgctxt "label.provider_organization"
+msgid "Organization"
+msgstr "Organization"
+
+#. Placeholder for the optional organization identifier in the Linux provider form.
+#, fuzzy
+msgctxt "placeholder.provider_organization"
+msgid "Optional OpenAI organization ID"
+msgstr "Optional OpenAI organization ID"
+
+#. Tooltip for the optional organization identifier in the Linux provider form.
+#, fuzzy
+msgctxt "tooltip.provider_organization"
+msgid "Optional organization identifier sent to OpenAI-compatible endpoints"
+msgstr "Optional organization identifier sent to OpenAI-compatible endpoints"

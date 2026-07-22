@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 30
     # 固定已审查的 LinguaMesh Core 提交。
     env:
-      CORE_REVISION: 072d6b92df875153a60a9d1256ab814891fe775b
+      CORE_REVISION: 7e3c9ab7ab013aa4f8d01323848a399e98836f2a
     steps:
       - name: Check out Linux client
         # 固定 actions/checkout v7.0.0。
@@ -322,7 +322,7 @@ jobs:
       - name: Run Linux performance baseline
         working-directory: linguamesh-linux
         env:
-          L10N_REVISION: 6aa074e48058bb411d09b2783cd27ba415dc7c55
+          L10N_REVISION: 94438a6a9ff8148cadad605c4760f88110d78984
         run: bash tools/run-performance-baseline.sh native-evidence
       - name: Create native checksum and SBOM evidence
         working-directory: linguamesh-linux
@@ -336,13 +336,13 @@ jobs:
           --output-dir native-evidence
           --linux-revision "$(git rev-parse HEAD)"
           --core-revision "$CORE_REVISION"
-          --localization-revision "6aa074e48058bb411d09b2783cd27ba415dc7c55"
+          --localization-revision "94438a6a9ff8148cadad605c4760f88110d78984"
           && git archive --format=tar.gz
           --prefix="linguamesh-linux-${GITHUB_SHA}/" "$GITHUB_SHA"
           > native-evidence/linguamesh-linux-source.tar.gz
           && (cd native-evidence && sha256sum linguamesh-linux-source.tar.gz >> SHA256SUMS)
           && printf 'Linux native CI evidence\nLinux revision: %s\nCore revision: %s\nLocalization revision: %s\nPerformance baseline: LINUX-PERFORMANCE-BASELINE.tsv\nArtifact status: unsigned release-mode prerelease evidence\n'
-          "$GITHUB_SHA" "$CORE_REVISION" "6aa074e48058bb411d09b2783cd27ba415dc7c55"
+          "$GITHUB_SHA" "$CORE_REVISION" "94438a6a9ff8148cadad605c4760f88110d78984"
           > native-evidence/BUILD-INFO.txt
       - name: Verify native checksum and SBOM evidence
         working-directory: linguamesh-linux

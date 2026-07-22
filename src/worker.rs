@@ -4822,6 +4822,7 @@ fn profile_without_secret(profile: &ProviderProfile) -> Result<ProviderProfile, 
             .cloned(),
     )
     .and_then(|saved| saved.with_user_notes(profile.user_notes().map(str::to_owned)))
+    .and_then(|saved| saved.with_organization(profile.organization().map(str::to_owned)))
     .map(|saved| saved.with_enabled(profile.enabled()))
     .and_then(|saved| saved.with_selected_model(profile.selected_model().map(str::to_owned)))
     .map_err(|error| map_profile_error(&error))
@@ -6447,6 +6448,8 @@ mod tests {
         .expect("runtime profile")
         .with_user_notes(saved.user_notes().map(str::to_owned))
         .expect("runtime notes")
+        .with_organization(saved.organization().map(str::to_owned))
+        .expect("runtime organization")
         .with_enabled(saved.enabled())
         .with_selected_model(saved.selected_model().map(str::to_owned))
         .expect("runtime selected model")

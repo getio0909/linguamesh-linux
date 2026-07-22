@@ -129,6 +129,7 @@ struct UiBindings {
     provider_name: gtk::Entry,
     provider_endpoint: gtk::Entry,
     provider_notes: gtk::Entry,
+    provider_organization: gtk::Entry,
     manual_model_row: gtk::Box,
     manual_model: gtk::Entry,
     provider_credential: gtk::PasswordEntry,
@@ -746,6 +747,7 @@ fn create_window(
         provider_name,
         provider_endpoint,
         provider_notes,
+        provider_organization,
         manual_model_row,
         manual_model,
         provider_credential,
@@ -1034,6 +1036,7 @@ fn create_window(
         provider_name,
         provider_endpoint,
         provider_notes,
+        provider_organization,
         manual_model_row,
         manual_model,
         provider_credential,
@@ -1142,6 +1145,10 @@ fn create_window(
             bindings.provider_name.clone().upcast::<gtk::Widget>(),
             bindings.provider_endpoint.clone().upcast::<gtk::Widget>(),
             bindings.provider_notes.clone().upcast::<gtk::Widget>(),
+            bindings
+                .provider_organization
+                .clone()
+                .upcast::<gtk::Widget>(),
             bindings.manual_model.clone().upcast::<gtk::Widget>(),
             bindings.provider_credential.clone().upcast::<gtk::Widget>(),
             bindings.connect.clone().upcast::<gtk::Widget>(),
@@ -1187,6 +1194,13 @@ fn install_keyboard_focus_probe(
         (
             "provider_notes",
             bindings.provider_notes.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_organization",
+            bindings
+                .provider_organization
+                .clone()
+                .upcast::<gtk::Widget>(),
         ),
         (
             "manual_model",
@@ -1508,6 +1522,7 @@ fn create_provider_session() -> (
     gtk::Entry,
     gtk::Entry,
     gtk::Entry,
+    gtk::Entry,
     gtk::Box,
     gtk::Entry,
     gtk::PasswordEntry,
@@ -1615,6 +1630,18 @@ fn create_provider_session() -> (
         "tooltip.provider_notes",
         "Optional non-secret note for this saved profile",
     )));
+    let provider_organization = gtk::Entry::new();
+    provider_organization.set_hexpand(true);
+    provider_organization.set_placeholder_text(Some(&localization::text(
+        locale,
+        "placeholder.provider_organization",
+        "Optional OpenAI organization ID",
+    )));
+    provider_organization.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_organization",
+        "Optional organization identifier sent to OpenAI-compatible endpoints",
+    )));
     let manual_model = gtk::Entry::new();
     manual_model.set_hexpand(true);
     manual_model.set_placeholder_text(Some(&localization::text(
@@ -1678,6 +1705,10 @@ fn create_provider_session() -> (
         &localized_mnemonic(locale, "label.provider_notes", "Profile notes"),
         provider_notes.upcast_ref::<gtk::Widget>(),
     ));
+    fields.append(&labeled_control(
+        &localized_mnemonic(locale, "label.provider_organization", "Organization"),
+        provider_organization.upcast_ref::<gtk::Widget>(),
+    ));
     fields.append(&manual_model_row);
     fields.append(&labeled_control(
         &localized_mnemonic(
@@ -1702,6 +1733,7 @@ fn create_provider_session() -> (
         provider_name,
         provider_endpoint,
         provider_notes,
+        provider_organization,
         manual_model_row,
         manual_model,
         provider_credential,
@@ -2399,6 +2431,9 @@ fn show_saved_profile_in_form(bindings: &UiBindings, profile: &ProviderProfile) 
         .provider_notes
         .set_text(profile.user_notes().unwrap_or_default());
     bindings
+        .provider_organization
+        .set_text(profile.organization().unwrap_or_default());
+    bindings
         .manual_model
         .set_text(profile.selected_model().unwrap_or_default());
     bindings
@@ -2426,6 +2461,7 @@ fn show_new_profile_in_form(
         .provider_endpoint
         .set_text(DEFAULT_PROVIDER_ENDPOINT);
     bindings.provider_notes.set_text("");
+    bindings.provider_organization.set_text("");
     bindings.manual_model.set_text("");
     bindings.manual_model_row.set_visible(false);
     bindings.provider_credential.set_text("");
@@ -2442,6 +2478,7 @@ fn custom_provider_profile(
     endpoint: String,
     secret_ref: Option<SecretRef>,
     user_notes: Option<String>,
+    organization: Option<String>,
     selected_model: Option<String>,
 ) -> Result<ProviderProfile, TranslationError> {
     ProviderProfile::new(
@@ -2453,6 +2490,7 @@ fn custom_provider_profile(
         secret_ref,
     )
     .and_then(|profile| profile.with_user_notes(user_notes))
+    .and_then(|profile| profile.with_organization(organization))
     .and_then(|profile| profile.with_selected_model(selected_model))
     .map_err(|error| {
         TranslationError::new(
@@ -3333,6 +3371,8 @@ fn connect_action_handlers(
         let endpoint = test_bindings.provider_endpoint.text().trim().to_owned();
         let notes_text = test_bindings.provider_notes.text().trim().to_owned();
         let user_notes = (!notes_text.is_empty()).then_some(notes_text);
+        let organization_text = test_bindings.provider_organization.text().trim().to_owned();
+        let organization = (!organization_text.is_empty()).then_some(organization_text);
         let credential_text = test_bindings.provider_credential.text();
         let has_credential = !credential_text.is_empty();
         let session_secret = has_credential.then(|| SecretValue::new(credential_text.as_str()));
@@ -3414,6 +3454,7 @@ fn connect_action_handlers(
             endpoint,
             secret_ref,
             user_notes,
+            organization,
             selected_model,
         ) {
             Ok(profile) => profile,
@@ -3443,6 +3484,12 @@ fn connect_action_handlers(
         let endpoint = connect_bindings.provider_endpoint.text().trim().to_owned();
         let notes_text = connect_bindings.provider_notes.text().trim().to_owned();
         let user_notes = (!notes_text.is_empty()).then_some(notes_text);
+        let organization_text = connect_bindings
+            .provider_organization
+            .text()
+            .trim()
+            .to_owned();
+        let organization = (!organization_text.is_empty()).then_some(organization_text);
         let remember_profile = connect_bindings.remember_profile.is_active();
         let credential_text = connect_bindings.provider_credential.text();
         let has_credential = !credential_text.is_empty();
@@ -3552,6 +3599,7 @@ fn connect_action_handlers(
                 saved_secret_ref
             },
             user_notes,
+            organization,
             selected_model,
         )
         .map(|profile| profile.with_enabled(enabled))
@@ -8077,6 +8125,24 @@ fn refresh_localized_widgets(bindings: &UiBindings, locale: UiLocale) {
             "Optional non-secret note for this saved profile",
         )));
     set_labeled_control_label(
+        bindings.provider_organization.upcast_ref(),
+        &localized_mnemonic(locale, "label.provider_organization", "Organization"),
+    );
+    bindings
+        .provider_organization
+        .set_placeholder_text(Some(&localization::text(
+            locale,
+            "placeholder.provider_organization",
+            "Optional OpenAI organization ID",
+        )));
+    bindings
+        .provider_organization
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.provider_organization",
+            "Optional organization identifier sent to OpenAI-compatible endpoints",
+        )));
+    set_labeled_control_label(
         bindings.provider_credential.upcast_ref(),
         &localized_mnemonic(
             locale,
@@ -8605,6 +8671,9 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         .set_sensitive(provider_controls_enabled);
     bindings
         .provider_notes
+        .set_sensitive(provider_controls_enabled);
+    bindings
+        .provider_organization
         .set_sensitive(provider_controls_enabled);
     bindings
         .manual_model_row
@@ -9298,6 +9367,7 @@ mod tests {
             "http://127.0.0.1:4242/v1/".to_owned(),
             None,
             None,
+            None,
             Some("model-a".to_owned()),
         )
         .expect("candidate A profile");
@@ -9307,6 +9377,7 @@ mod tests {
             CUSTOM_PROVIDER_PRESET_ID.to_owned(),
             OPENAI_ADAPTER_TYPE.to_owned(),
             "http://127.0.0.1:4243/v1/".to_owned(),
+            None,
             None,
             None,
             Some("model-b".to_owned()),
@@ -12473,6 +12544,7 @@ mod tests {
             "http://127.0.0.1:4242/v1/".to_owned(),
             None,
             None,
+            None,
             Some("fake-translator".to_owned()),
         )
         .expect("first restored profile");
@@ -12485,6 +12557,7 @@ mod tests {
             "http://127.0.0.1:4243/v1/".to_owned(),
             Some(SecretRef::new(SecretRefNamespace::SecretService)),
             Some("Restored profile note".to_owned()),
+            Some("org-restored".to_owned()),
             Some("fake-slow-translator".to_owned()),
         )
         .expect("second restored profile");
@@ -12534,6 +12607,10 @@ mod tests {
         assert_eq!(
             restored_bindings.provider_notes.text(),
             "Restored profile note"
+        );
+        assert_eq!(
+            restored_bindings.provider_organization.text(),
+            "org-restored"
         );
         assert!(restored_bindings.remember_profile.is_active());
         assert_eq!(restored_bindings.model.selected(), 0);
