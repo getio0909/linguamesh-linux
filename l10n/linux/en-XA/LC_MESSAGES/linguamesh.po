@@ -2631,3 +2631,21 @@ msgstr "［ŀøçåŀŀÿ ëšŧïṁåŧëð~~~~~］"
 msgctxt "usage.source.unknown"
 msgid "unknown"
 msgstr "［ûñķñøŵñ~~］"
+
+#. Action in the Linux settings controls that opens the bundled open-source license and third-party notices.
+#, fuzzy
+msgctxt "action.open_source_licenses"
+msgid "Open-source licenses"
+msgstr "［Øþëñ-šøûŕçë ŀïçëñšëš~~~~~~］"
+
+#. Dialog title for the bundled third-party license notices.
+#, fuzzy
+msgctxt "dialog.open_source_licenses"
+msgid "Open-source licenses"
+msgstr "［Øþëñ-šøûŕçë ŀïçëñšëš~~~~~~］"
+
+#. Tooltip for the open-source license notices action.
+#, fuzzy
+msgctxt "tooltip.open_source_licenses"
+msgid "Review the licenses and third-party notices included with this build"
+msgstr "［Ŕëṽïëŵ ŧħë ŀïçëñšëš åñð ŧħïŕð-þåŕŧÿ ñøŧïçëš ïñçŀûðëð ŵïŧħ ŧħïš ƀûïŀð~~~~~~~~~~~~~~~~~~~~~~］"

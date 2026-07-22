@@ -152,6 +152,7 @@ struct UiBindings {
     memory: gtk::Button,
     clear_memory: gtk::Button,
     routing_profiles: gtk::Button,
+    open_source_licenses: gtk::Button,
     fallback_enabled: gtk::CheckButton,
     fallback_profile_label: gtk::Label,
     fallback_profile: gtk::DropDown,
@@ -772,6 +773,7 @@ fn create_window(
         memory,
         clear_memory,
         routing_profiles,
+        open_source_licenses,
         theme,
         locale,
     ) = create_controls();
@@ -1051,6 +1053,7 @@ fn create_window(
         memory,
         clear_memory,
         routing_profiles,
+        open_source_licenses,
         fallback_enabled,
         fallback_profile_label,
         fallback_profile,
@@ -1746,6 +1749,7 @@ fn create_controls() -> (
     gtk::Button,
     gtk::Button,
     gtk::Button,
+    gtk::Button,
     gtk::DropDown,
     gtk::DropDown,
 ) {
@@ -1929,6 +1933,17 @@ fn create_controls() -> (
         "tooltip.routing_profiles",
         "Create, inspect, and delete non-secret routing planner profiles",
     )));
+    let open_source_licenses = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.open_source_licenses",
+        "Open-source licenses",
+    ));
+    open_source_licenses.set_focusable(true);
+    open_source_licenses.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.open_source_licenses",
+        "Review the licenses and third-party notices included with this build",
+    )));
     let theme_options = [
         localization::text(locale, "theme.system", "System"),
         localization::text(locale, "theme.light", "Light"),
@@ -2002,6 +2017,7 @@ fn create_controls() -> (
     controls.append(&memory);
     controls.append(&clear_memory);
     controls.append(&routing_profiles);
+    controls.append(&open_source_licenses);
     (
         controls,
         model,
@@ -2020,6 +2036,7 @@ fn create_controls() -> (
         memory,
         clear_memory,
         routing_profiles,
+        open_source_licenses,
         theme,
         locale,
     )
@@ -2864,6 +2881,49 @@ fn show_secret_storage_session_fallback(bindings: &UiBindings, state: &Rc<RefCel
     dialog.present();
 }
 
+// 展示随 Linux 构建捆绑的许可证与第三方声明，读取过程不访问网络。
+fn show_open_source_licenses_dialog(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
+    let locale = state.borrow().locale();
+    let dialog = gtk::Window::builder()
+        .application(&bindings.application)
+        .transient_for(&bindings.window)
+        .modal(true)
+        .title(localization::text(
+            locale,
+            "dialog.open_source_licenses",
+            "Open-source licenses",
+        ))
+        .default_width(720)
+        .default_height(560)
+        .build();
+    let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    root.set_margin_top(16);
+    root.set_margin_bottom(16);
+    root.set_margin_start(16);
+    root.set_margin_end(16);
+    let notices = gtk::TextView::new();
+    notices.set_editable(false);
+    notices.set_cursor_visible(false);
+    notices.set_monospace(true);
+    notices.set_wrap_mode(gtk::WrapMode::WordChar);
+    notices.set_focusable(true);
+    notices
+        .buffer()
+        .set_text(include_str!("../THIRD_PARTY_NOTICES.md"));
+    let scroller = gtk::ScrolledWindow::builder()
+        .vexpand(true)
+        .child(&notices)
+        .build();
+    root.append(&scroller);
+    let close = gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.close", "Close"));
+    close.set_focusable(true);
+    root.append(&close);
+    dialog.set_child(Some(&root));
+    let close_dialog = dialog.clone();
+    close.connect_clicked(move |_| close_dialog.close());
+    dialog.present();
+}
+
 // 只有用户尚未确认且开启了回退时才显示一次发送前提示。
 #[must_use]
 fn fallback_confirmation_needed(enabled: bool, approved: bool) -> bool {
@@ -3063,6 +3123,12 @@ fn connect_action_handlers(
                 .record_client_error(error.to_string());
             refresh_ui(&routing_bindings, &routing_state.borrow());
         }
+    });
+
+    let licenses_bindings = bindings.clone();
+    let licenses_state = Rc::clone(state);
+    bindings.open_source_licenses.connect_clicked(move |_| {
+        show_open_source_licenses_dialog(&licenses_bindings, &licenses_state);
     });
 
     let import_bindings = bindings.clone();
@@ -7546,6 +7612,16 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
         localization::text(locale, "action.clear_memory", "Clear translation memory");
     let routing_profiles =
         localization::text(locale, "action.routing_profiles", "Routing profiles");
+    let open_source_licenses = localization::text(
+        locale,
+        "action.open_source_licenses",
+        "Open-source licenses",
+    );
+    let open_source_licenses_tooltip = localization::text(
+        locale,
+        "tooltip.open_source_licenses",
+        "Review the licenses and third-party notices included with this build",
+    );
     let fallback_action =
         localization::text(locale, "action.enable_fallback", "Allow approved fallback");
     let fallback_tooltip = localization::text(
@@ -7634,6 +7710,12 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     bindings
         .routing_profiles
         .set_label(&format!("_{routing_profiles}"));
+    bindings
+        .open_source_licenses
+        .set_label(&format!("_{open_source_licenses}"));
+    bindings
+        .open_source_licenses
+        .set_tooltip_text(Some(&open_source_licenses_tooltip));
     bindings
         .fallback_enabled
         .set_label(Some(&format!("_{fallback_action}")));
@@ -8598,6 +8680,15 @@ mod tests {
         assert!(!valid_routing_profile_id("routing profile"));
         assert!(!valid_routing_profile_id("配置"));
         assert!(!valid_routing_profile_id(&"a".repeat(129)));
+    }
+
+    #[test]
+    fn bundled_license_notice_covers_system_and_first_party_components() {
+        let notice = include_str!("../THIRD_PARTY_NOTICES.md");
+        assert!(notice.contains("GTK 4"));
+        assert!(notice.contains("LGPL-2.1-or-later"));
+        assert!(notice.contains("MIT"));
+        assert!(notice.contains("LinguaMesh Core"));
     }
 
     #[test]

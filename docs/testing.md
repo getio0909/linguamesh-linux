@@ -155,7 +155,7 @@ The Linux checkpoint has a reproducible external pass using Docker image
 were removed after validation. This evidence is prerelease-only and does not cover GPU execution.
 
 The Linux checkout consumes the canonical gettext bundle from immutable l10n revision
-`b817ba911c2ffafb35b7a29755681ab39e950368`. The bundle contains 431 messages, and
+`3724cc9d436ebdbac3b8ebf0df9bce9af1b41b15`. The bundle contains 437 messages, and
 `bash tools/sync-l10n.sh --check` verifies every PO/MO catalog and the generated manifest before
 the native build. History/memory row metadata, document-job IDs, active-provider mode summaries,
 unavailable provider/model labels, and routing-profile actions/mode labels are asserted through
@@ -167,6 +167,12 @@ estimated, or unknown; missing counts remain unavailable rather than fabricated.
 profile tests also verify preference-index round trips and preservation of hidden Core constraints
 when visible privacy/capability controls are edited. Constraint parser tests cover comma-separated
 provider/model lists, positive numeric limits, and rejection of unsafe or empty values.
+
+The license-notice dialog uses a read-only bundled `THIRD_PARTY_NOTICES.md` file rather than any
+networked source. The regression reads the bundled notice text and requires representative
+entries (`GTK 4`, `LGPL-2.1-or-later`, `MIT`, `LinguaMesh Core`). The production action and
+dialog title/tooltip remain catalog-backed; focusability is preserved for the window and close
+controls so the boundary is still navigable under keyboard and accessibility testing.
 
 Every routing decision carries a redacted explanation into the diagnostics panel: the eligible
 candidate keys, rejected candidate keys with stable reason codes, ranking inputs, and configured

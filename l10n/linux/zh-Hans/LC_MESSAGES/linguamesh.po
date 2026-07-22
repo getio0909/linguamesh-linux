@@ -2629,3 +2629,21 @@ msgstr "本地估算"
 msgctxt "usage.source.unknown"
 msgid "unknown"
 msgstr "未知"
+
+#. Action in the Linux settings controls that opens the bundled open-source license and third-party notices.
+#, fuzzy
+msgctxt "action.open_source_licenses"
+msgid "Open-source licenses"
+msgstr "Open-source licenses"
+
+#. Dialog title for the bundled third-party license notices.
+#, fuzzy
+msgctxt "dialog.open_source_licenses"
+msgid "Open-source licenses"
+msgstr "Open-source licenses"
+
+#. Tooltip for the open-source license notices action.
+#, fuzzy
+msgctxt "tooltip.open_source_licenses"
+msgid "Review the licenses and third-party notices included with this build"
+msgstr "Review the licenses and third-party notices included with this build"

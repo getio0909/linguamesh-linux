@@ -342,6 +342,12 @@ visible-control audit scans GTK labels, titles, tooltips, placeholders, dialog a
 options and rejects non-empty literals that bypass the localization helper. Empty reset labels are
 allowed because they remove transient text rather than present user-facing copy.
 
+The Linux source exposes an Open-source licenses action in the main action row. It opens a modal,
+focusable `TextView` dialog loaded from the bundled `THIRD_PARTY_NOTICES.md`; no network or
+privileged access is used to build it, and legal notices remain separate from translated UI copy.
+The regression suite checks that the notice bundle contains representative names for GTK 4,
+LGPL-2.1-or-later, MIT, and LinguaMesh Core.
+
 The application state and worker command/event wrappers intentionally do not derive `Debug`, so
 source text and streamed output are not exposed through routine debug formatting. Diagnostics omit
 the provider endpoint, secret reference, selected model identifier, source text, and output content.
