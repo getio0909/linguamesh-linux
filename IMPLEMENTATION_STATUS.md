@@ -1,5 +1,27 @@
 # Implementation Status
 
+## 2026-07-22 — Linux GTK cancelled document-job Retry action
+
+Assumption: a cancelled row in the production document queue must dispatch Retry for that exact
+snapshot, not merely expose a visually identical button or select a different job.
+
+- Runtime commit `819eff7cff79b8e6514120d550f72658ff276bf9` extends
+  `gtk_document_jobs_dialog_selects_between_multiple_jobs` with a cancelled third snapshot. The
+  fixture verifies the localized three-file count, requires exactly one `Retry document` action,
+  activates it, and proves `gtk-queue-cancelled` remains selected with `Cancelled` state while the
+  dialog closes after sending the command.
+- Packaging/docs commit `8fae49ee451c5df22ec766eabe14c1ad0dc71ee2` pins the Flatpak source to this
+  runtime head and documents the Retry assertion. Local formatting, locked all-target/all-feature
+  check, strict Clippy, demo-provider tests (`157 passed; 3 ignored`), localization audits, l10n
+  synchronization, Flatpak metadata, and diff checks passed.
+- Push Native/Flatpak/Foundation runs `29884616494`/`29884616511`/`29884616504` and PR runs
+  `29884618885`/`29884618826`/`29884618821` all passed. Native executed the exact serialized queue
+  fixture and reported `1 passed`.
+
+This advances unreleased Linux document queue evidence for Milestones 3 and 6. Human visual/copy/
+Orca review, physical interruption behavior, other clients, signed artifacts, rollback authorization,
+and stable release approval remain open.
+
 ## 2026-07-22 — Linux GTK paused document-job Resume action
 
 Assumption: a paused row in the production document queue must dispatch Resume for that exact
