@@ -10441,6 +10441,7 @@ mod tests {
     }
 
     // 验证生产文档任务对话框可以展示多个任务，并且显式选择不会混淆任务快照。
+    #[allow(clippy::too_many_lines)]
     #[ignore = "run in dedicated serialized GTK fixture"]
     #[test]
     fn gtk_document_jobs_dialog_selects_between_multiple_jobs() {
@@ -10478,7 +10479,7 @@ mod tests {
             &bindings,
             &state,
             &worker.command_handle(),
-            vec![first_job, second_job],
+            vec![first_job.clone(), second_job.clone()],
         );
         spin_main_context_until(&context, Duration::from_secs(1), || {
             application
@@ -10530,6 +10531,51 @@ mod tests {
                 true
             ),
             "second source"
+        );
+        assert!(
+            !application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Document jobs"))
+        );
+
+        // 验证暂停任务的 Resume 动作仍然绑定到同一个任务，并在发送命令后关闭队列窗口。
+        show_document_jobs_dialog(
+            &bindings,
+            &state,
+            &worker.command_handle(),
+            vec![first_job, second_job],
+        );
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Document jobs"))
+        });
+        let resume_dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| candidate.title().as_deref() == Some("Document jobs"))
+            .expect("document jobs resume dialog");
+        let resume_buttons = descendant_widgets(resume_dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .filter(|button| {
+                button
+                    .label()
+                    .is_some_and(|label| label.contains("Resume document"))
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        assert_eq!(resume_buttons.len(), 1);
+        resume_buttons[0].emit_clicked();
+        assert_eq!(
+            bindings.document_job_id.borrow().as_deref(),
+            Some("gtk-queue-second")
+        );
+        assert_eq!(
+            bindings.document_job_state.get(),
+            Some(DocumentJobState::Paused)
         );
         assert!(
             !application
