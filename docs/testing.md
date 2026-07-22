@@ -106,6 +106,9 @@ same-directory atomic move, while a URI without a verifiable local path is const
 creation. The `non_local_export_uses_exclusive_create_fallback` regression preserves the remote URI
 unchanged and prevents a future refactor from treating a remote backend as a local rename target;
 it does not claim atomicity or connectivity for every remote GIO/VFS backend.
+The `non_local_source_alias_is_rejected_by_uri_identity` regression also rejects an export target
+that is the same non-local URI as the imported source, even though no local inode is available for
+canonicalization or hard-link checks.
 The `translation_output_name_uses_source_stem_and_target_locale` and
 `collision_safe_output_path_adds_stable_suffix_without_overwriting` regressions cover the naming
 and collision rules, while the ignored GTK regression

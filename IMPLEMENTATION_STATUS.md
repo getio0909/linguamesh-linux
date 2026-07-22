@@ -1,5 +1,22 @@
 # Implementation Status
 
+## 2026-07-22 — Linux non-local source-alias protection
+
+Assumption: source-preservation checks must reject an identical non-local URI before export even
+when the GIO backend cannot expose a local path, inode, or hard-link identity.
+
+- Runtime commit `dc5304c679feedce407981ea67d832979d81157e` adds
+  `non_local_source_alias_is_rejected_by_uri_identity`, proving the production
+  `destination_matches_source` guard rejects the same SMB URI and allows a distinct sibling URI.
+- Packaging pin and testing documentation are updated to the runtime head. Local formatting,
+  locked all-target/all-feature check, strict Clippy, localization audits, Flatpak metadata, and
+  diff checks passed. The focused GUI test target remains linker-limited on this host; Native CI
+  is authoritative for the display-backed binary suite.
+
+This strengthens unreleased Linux Scenario 18 source-preservation evidence without claiming remote
+VFS atomicity, physical power-loss recovery, human visual/copy/Orca review, other clients, signing,
+rollback authorization, or stable-release evidence.
+
 ## 2026-07-22 — Linux non-local GIO export policy guard
 
 Assumption: a non-local destination URI must retain the exclusive-create safety boundary because
