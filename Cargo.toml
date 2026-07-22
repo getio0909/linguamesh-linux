@@ -21,7 +21,7 @@ gui = ["demo-provider", "dep:adw", "dep:gtk"]
 
 [dependencies]
 adw = { package = "libadwaita", version = "0.9.2", features = ["v1_4"], optional = true }
-gtk = { package = "gtk4", version = "0.11.4", features = ["v4_10"], optional = true }
+gtk = { package = "gtk4", version = "0.11.4", features = ["v4_10", "gnome_42"], optional = true }
 linguamesh-application = { version = "=0.1.0-alpha.2", path = "../linguamesh-core/crates/linguamesh-application", optional = true }
 linguamesh-domain = { version = "=0.1.0-alpha.2", path = "../linguamesh-core/crates/linguamesh-domain" }
 linguamesh-document = { version = "=0.1.0-alpha.2", path = "../linguamesh-core/crates/linguamesh-document" }

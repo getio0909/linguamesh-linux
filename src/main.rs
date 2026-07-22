@@ -4095,7 +4095,7 @@ fn collision_safe_destination(destination: &gtk::gio::File) -> Option<gtk::gio::
 }
 
 // 以独占创建和异步写入保存新文件，避免检查与写入之间的竞争覆盖已有文件。
-fn write_new_file_async(
+fn write_contents_to_new_file_async(
     destination: &gtk::gio::File,
     contents: Vec<u8>,
     callback: impl FnOnce(bool) + 'static,
@@ -4125,6 +4125,54 @@ fn write_new_file_async(
             Err(_) => callback(false),
         },
     );
+}
+
+// 先写入同目录临时文件，再以 GIO 非覆盖移动完成本地输出，避免半成品可见。
+fn write_new_file_async(
+    destination: &gtk::gio::File,
+    contents: Vec<u8>,
+    callback: impl FnOnce(bool) + 'static,
+) {
+    let Some(destination_path) = destination.path() else {
+        write_contents_to_new_file_async(destination, contents, callback);
+        return;
+    };
+    let Some(parent) = destination_path.parent() else {
+        write_contents_to_new_file_async(destination, contents, callback);
+        return;
+    };
+    let temporary_path = parent.join(format!(
+        ".linguamesh-export-{}.tmp",
+        glib::uuid_string_random()
+    ));
+    let temporary = gtk::gio::File::for_path(temporary_path);
+    let destination = destination.clone();
+    let temporary_for_cleanup = temporary.clone();
+    let temporary_for_write = temporary.clone();
+    write_contents_to_new_file_async(&temporary_for_write, contents, move |write_succeeded| {
+        if !write_succeeded {
+            callback(false);
+            return;
+        }
+        temporary.move_async(
+            &destination,
+            gtk::gio::FileCopyFlags::NONE,
+            glib::Priority::DEFAULT,
+            None::<&gtk::gio::Cancellable>,
+            None,
+            move |move_result| {
+                if move_result.is_ok() {
+                    callback(true);
+                    return;
+                }
+                temporary_for_cleanup.delete_async(
+                    glib::Priority::DEFAULT,
+                    None::<&gtk::gio::Cancellable>,
+                    move |_| callback(false),
+                );
+            },
+        );
+    });
 }
 
 // 从已导入 URI 提取原始文件名；纯文本编辑器没有源文件时使用稳定回退名。
@@ -9475,10 +9523,10 @@ mod tests {
         let _ = fs::remove_dir_all(directory);
     }
 
-    // 验证独占异步写入在目标被占用时失败，并保留原有文件内容。
+    // 验证临时文件原子完成在目标被占用时失败，并保留原有文件内容。
     #[ignore = "run in dedicated serialized GTK fixture"]
     #[test]
-    fn gtk_exclusive_output_writer_never_replaces_existing_file() {
+    fn gtk_atomic_output_writer_never_replaces_existing_file() {
         adw::init().expect("initialize GTK output writer fixture");
         let directory = std::env::temp_dir().join(format!(
             "linguamesh-linux-exclusive-output-{}",
@@ -9500,6 +9548,12 @@ mod tests {
         assert_eq!(
             fs::read(&destination_path).expect("read existing output"),
             b"keep"
+        );
+        assert_eq!(
+            fs::read_dir(&directory)
+                .expect("read output directory")
+                .count(),
+            1
         );
         let new_destination_path = directory.join("new.txt");
         let new_destination = gtk::gio::File::for_path(&new_destination_path);
