@@ -9941,7 +9941,7 @@ mod tests {
             fs::write(&fixture_path, contents).expect("write malicious archive fixture");
             let file = gtk::gio::File::for_path(&fixture_path);
             load_source_file(&file, &bindings, &state, &worker);
-            eprintln!("GTK malicious archive: waiting for rejected {}", file_name);
+            eprintln!("GTK malicious archive: waiting for rejected {file_name}");
             spin_main_context_until(&context, Duration::from_secs(5), || {
                 bindings.error.is_visible()
             });
