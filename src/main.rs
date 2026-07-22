@@ -8834,7 +8834,11 @@ mod tests {
         let close = widgets
             .iter()
             .filter_map(|widget| widget.clone().downcast::<gtk::Button>().ok())
-            .find(|button| button.label().as_deref() == Some("Close"))
+            .find(|button| {
+                button
+                    .label()
+                    .is_some_and(|label| label.trim_start_matches('_') == "Close")
+            })
             .expect("about close button");
         assert!(close.is_focusable());
         dialog.close();
