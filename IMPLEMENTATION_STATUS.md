@@ -9,8 +9,8 @@ report usage field; retry attempt history remains unavailable and is not inferre
   `UsageRecord::locally_estimated` JSON object from persisted source and translated segment lengths.
   The report contains only the source marker and token counts, never document text, credentials, or
   paths; `retried_count` remains explicit `unknown`.
-- `document_translation_report_is_redacted_and_counts_segments` now checks the deterministic local
-  usage JSON and redaction together. The Flatpak manifest pins the same runtime commit.
+- Regression commit `89de426c6fcfce77a395fc066017c01a5bb7c247` makes the report test assert that both
+  translated and pending source-segment bodies are absent. The Flatpak manifest pins this tested head.
 - Local formatting, locked all-target/all-feature check, strict Clippy, localization audits, Flatpak
   metadata, and diff checks pass. The focused GUI test remains a CI boundary because this host lacks
   the GTK/GDK/Graphene linker symbols.

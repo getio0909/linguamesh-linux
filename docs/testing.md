@@ -86,7 +86,8 @@ aliases are rejected before the asynchronous GIO write, and document source text
 local paths, and provider-reported usage are never included. The `usage` field is a bounded,
 non-sensitive local estimate derived from persisted source/translated segment lengths; retry counts
 remain explicit `unknown` because persistence does not retain attempt history. The unit regression
-document_translation_report_is_redacted_and_counts_segments covers the report builder; the
+document_translation_report_is_redacted_and_counts_segments covers the report builder, deterministic
+usage JSON, and absence of source-segment bodies; the
 serialized GTK queue fixture also requires one focusable, redacted-report button with a tooltip for
 each persisted row. The fixture does not open a native chooser, so the asynchronous write callback
 and visual file-selection flow remain covered by the existing portal/CI boundary.
