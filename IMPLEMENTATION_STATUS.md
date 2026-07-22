@@ -1,5 +1,27 @@
 # Implementation Status
 
+## 2026-07-22 — Linux GTK paused document-job Resume action
+
+Assumption: a paused row in the production document queue must dispatch Resume for that exact
+snapshot, not merely expose a visually identical button or select a different job.
+
+- Runtime commit `7b92bd43915ebefde3e29463252aacb94d064691` extends
+  `gtk_document_jobs_dialog_selects_between_multiple_jobs`: after selecting the paused second
+  snapshot, the fixture reopens the production queue, requires exactly one `Resume document`
+  action, activates it, and verifies the same job ID/state remains selected while the dialog closes
+  after sending the command.
+- Packaging/docs commit `ea5bf4768a9f8b40fd04fbc929d8ea788ead32bc` pins the Flatpak source to this
+  runtime head and documents the Resume assertion. Local formatting, locked all-target/all-feature
+  check, strict Clippy, demo-provider tests (`157 passed; 3 ignored`), localization audits, l10n
+  synchronization, Flatpak metadata, and diff checks passed.
+- Push Native/Flatpak/Foundation runs `29883463058`/`29883463047`/`29883463039` and PR runs
+  `29883464806`/`29883464810`/`29883464848` all passed; Native executed the exact serialized
+  queue fixture successfully.
+
+This advances unreleased Linux document queue evidence for Milestones 3 and 6. Human visual/copy/
+Orca review, physical interruption behavior, other clients, signed artifacts, rollback authorization,
+and stable release approval remain open.
+
 ## 2026-07-22 — Linux GTK multi-document queue selection boundary
 
 Assumption: the Linux document queue must prove explicit selection at the production GTK boundary,
