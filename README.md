@@ -20,7 +20,7 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `be5b7220587289be78b7654d979099c57ea4cc6d`, which adds bounded
+reviewed Core functional revision `cf08384c829ca1b95ecfc79d23bc5b0feb3a701f`, which adds bounded
 FileLease lifecycle validation and strict
 routing-profile validation, schema-15 routing-profile persistence, schema-16 document-job
 routing-profile persistence, and schema-17 document quality-mode persistence on top of the existing
@@ -46,8 +46,9 @@ The GTK provider form consumes the pinned Core provider catalog for adapter and 
 compatibility. It supports optional bounded, non-secret profile notes, custom request headers,
 organization/project IDs, region, and account identifiers. Saved profiles restore these values;
 custom headers reject authorization, credential-shaped, and built-in metadata names, while the
-application layer forwards safe headers plus OpenAI organization/project headers for Chat
-Completions and Responses. A catalog drift fails closed before the
+application layer forwards safe headers to Chat Completions, Responses, and Azure Chat without
+replacing their authentication metadata, while OpenAI organization/project headers remain limited
+to Chat Completions and Responses. A catalog drift fails closed before the
 window is created; localized labels and endpoint defaults remain Linux-native UI data.
 
 ## Native stack
