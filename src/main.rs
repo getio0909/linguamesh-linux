@@ -10473,13 +10473,21 @@ mod tests {
             created_at: 2,
             updated_at: 2,
         };
+        let cancelled_job = DocumentJobSnapshot {
+            job_id: "gtk-queue-cancelled".to_owned(),
+            state: DocumentJobState::Cancelled,
+            job: DocumentJob::from_text("cancelled.txt", DocumentFormat::Txt, "cancelled source"),
+            options: None,
+            created_at: 3,
+            updated_at: 3,
+        };
         let context = glib::MainContext::default();
         window.present();
         show_document_jobs_dialog(
             &bindings,
             &state,
             &worker.command_handle(),
-            vec![first_job.clone(), second_job.clone()],
+            vec![first_job.clone(), second_job.clone(), cancelled_job.clone()],
         );
         spin_main_context_until(&context, Duration::from_secs(1), || {
             application
@@ -10501,9 +10509,10 @@ mod tests {
                     .map(|label| label.text().to_string())
             })
             .collect::<Vec<_>>();
-        assert!(metadata.iter().any(|label| label.contains("2 files")));
+        assert!(metadata.iter().any(|label| label.contains("3 files")));
         assert!(metadata.iter().any(|label| label.contains("first.txt")));
         assert!(metadata.iter().any(|label| label.contains("second.md")));
+        assert!(metadata.iter().any(|label| label.contains("cancelled.txt")));
         let select_buttons = widgets
             .iter()
             .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
@@ -10514,7 +10523,7 @@ mod tests {
             })
             .cloned()
             .collect::<Vec<_>>();
-        assert_eq!(select_buttons.len(), 2);
+        assert_eq!(select_buttons.len(), 3);
         select_buttons[1].emit_clicked();
         assert_eq!(
             bindings.document_job_id.borrow().as_deref(),
@@ -10544,7 +10553,7 @@ mod tests {
             &bindings,
             &state,
             &worker.command_handle(),
-            vec![first_job, second_job],
+            vec![first_job.clone(), second_job.clone(), cancelled_job.clone()],
         );
         spin_main_context_until(&context, Duration::from_secs(1), || {
             application
@@ -10576,6 +10585,51 @@ mod tests {
         assert_eq!(
             bindings.document_job_state.get(),
             Some(DocumentJobState::Paused)
+        );
+        assert!(
+            !application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Document jobs"))
+        );
+
+        // 验证取消任务的 Retry 动作绑定到同一个任务，并在发送命令后关闭队列窗口。
+        show_document_jobs_dialog(
+            &bindings,
+            &state,
+            &worker.command_handle(),
+            vec![first_job, second_job, cancelled_job],
+        );
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Document jobs"))
+        });
+        let retry_dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| candidate.title().as_deref() == Some("Document jobs"))
+            .expect("document jobs retry dialog");
+        let retry_buttons = descendant_widgets(retry_dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .filter(|button| {
+                button
+                    .label()
+                    .is_some_and(|label| label.contains("Retry document"))
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        assert_eq!(retry_buttons.len(), 1);
+        retry_buttons[0].emit_clicked();
+        assert_eq!(
+            bindings.document_job_id.borrow().as_deref(),
+            Some("gtk-queue-cancelled")
+        );
+        assert_eq!(
+            bindings.document_job_state.get(),
+            Some(DocumentJobState::Cancelled)
         );
         assert!(
             !application

@@ -271,12 +271,14 @@ are listed together for explicit selection. `cancelled_document_job_can_be_retri
 verifies that a cancelled job retains both pending segments and can be retried to completion with
 the saved provider/model options. The worker regressions
 The serialized GTK fixture `gtk_document_jobs_dialog_selects_between_multiple_jobs` drives the
-production Document jobs window with two persisted snapshots, asserts both rows and their localized
-file count, then selects the second row and verifies its job ID, paused state, and source text are
-loaded without selecting the first job. It then reopens the queue, finds the single Resume action
+production Document jobs window with pending, paused, and cancelled snapshots, asserts all rows and
+their localized file count, then selects the paused row and verifies its job ID, state, and source
+text are loaded without selecting another job. It reopens the queue, finds the single Resume action
 for the paused row, activates it, and verifies that the same paused job remains selected while the
-dialog closes after the command is sent. Native CI runs this fixture under the same serialized
-DBus/Xvfb boundary as the other GTK document controls.
+dialog closes after the command is sent. It then finds the single Retry action for the cancelled
+row, activates it, and verifies the cancelled snapshot remains selected while the dialog closes.
+Native CI runs this fixture under the same serialized DBus/Xvfb boundary as the other GTK document
+controls.
 
 `imports_pptx_and_preserves_notes_and_resources`,
 `document_job_translation_reconstructs_docx_and_preserves_binary_parts` and
