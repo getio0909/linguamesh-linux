@@ -4147,11 +4147,16 @@ fn write_new_file_async(
     ));
     let temporary = gtk::gio::File::for_path(temporary_path);
     let destination = destination.clone();
-    let temporary_for_cleanup = temporary.clone();
+    let temporary_for_write_cleanup = temporary.clone();
+    let temporary_for_move_cleanup = temporary.clone();
     let temporary_for_write = temporary.clone();
     write_contents_to_new_file_async(&temporary_for_write, contents, move |write_succeeded| {
         if !write_succeeded {
-            callback(false);
+            temporary_for_write_cleanup.delete_async(
+                glib::Priority::DEFAULT,
+                None::<&gtk::gio::Cancellable>,
+                move |_| callback(false),
+            );
             return;
         }
         temporary.move_async(
@@ -4165,7 +4170,7 @@ fn write_new_file_async(
                     callback(true);
                     return;
                 }
-                temporary_for_cleanup.delete_async(
+                temporary_for_move_cleanup.delete_async(
                     glib::Priority::DEFAULT,
                     None::<&gtk::gio::Cancellable>,
                     move |_| callback(false),
