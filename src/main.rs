@@ -8504,10 +8504,11 @@ mod tests {
         routing_identifier_list_from_text, routing_optional_limit_from_text,
         routing_preference_for_selection, routing_preference_selection,
         routing_profile_id_conflicts, show_document_jobs_dialog, show_fallback_approval_dialog,
-        show_new_profile_in_form, show_routing_profiles_dialog, start_event_pump,
-        text_metrics_label, translation_output_name, translation_preset_for_selection,
-        translation_preset_selection, usage_label, valid_routing_profile_id,
-        validate_provider_preset_catalog, write_new_file_async,
+        show_new_profile_in_form, show_routing_profiles_dialog,
+        show_secret_storage_session_fallback, start_event_pump, text_metrics_label,
+        translation_output_name, translation_preset_for_selection, translation_preset_selection,
+        usage_label, valid_routing_profile_id, validate_provider_preset_catalog,
+        write_new_file_async,
     };
     use adw::prelude::*;
     use gtk::glib;
@@ -8761,6 +8762,127 @@ mod tests {
             true,
             bindings.fallback_approval.get()
         ));
+
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+    }
+
+    // 验证 Secret Service 持久化失败时，用户必须明确选择仅会话恢复且关闭不会改写意图。
+    #[allow(clippy::too_many_lines)]
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_secret_storage_fallback_dialog_requires_explicit_session_only_action() {
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.SecretStorageFallbackTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK test application");
+
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let (window, bindings, theme, locale) = create_window(&application);
+        bindings.remember_profile.set_active(true);
+        let context = glib::MainContext::default();
+        window.present();
+
+        show_secret_storage_session_fallback(&bindings, &state);
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application.windows().iter().any(|candidate| {
+                candidate.title().as_deref() == Some("Secure credential storage is unavailable.")
+            })
+        });
+        let dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| {
+                candidate.title().as_deref() == Some("Secure credential storage is unavailable.")
+            })
+            .expect("secure-storage fallback dialog");
+        assert!(dialog.is_modal());
+        let widgets = descendant_widgets(dialog.upcast_ref::<gtk::Widget>());
+        let message = widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Label>())
+            .find(|label| {
+                label
+                    .label()
+                    .contains("Profile storage is unavailable; use session-only mode.")
+            })
+            .expect("session-only recovery message");
+        assert!(message.is_focusable());
+        let buttons = widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .cloned()
+            .collect::<Vec<_>>();
+        let session_only = buttons
+            .iter()
+            .find(|button| {
+                button.label().as_deref().is_some_and(|label| {
+                    label.trim_start_matches('_')
+                        == "Profile storage is unavailable; use session-only mode."
+                })
+            })
+            .cloned()
+            .expect("session-only recovery button");
+        let close = buttons
+            .iter()
+            .find(|button| {
+                button
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.trim_start_matches('_') == "Close")
+            })
+            .cloned()
+            .expect("secure-storage close button");
+        assert!(session_only.is_focusable());
+        assert!(close.is_focusable());
+        session_only.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            !application.windows().iter().any(|candidate| {
+                candidate.title().as_deref() == Some("Secure credential storage is unavailable.")
+            })
+        });
+        assert!(!bindings.remember_profile.is_active());
+        assert!(bindings.provider_credential.has_focus());
+
+        bindings.remember_profile.set_active(true);
+        show_secret_storage_session_fallback(&bindings, &state);
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application.windows().iter().any(|candidate| {
+                candidate.title().as_deref() == Some("Secure credential storage is unavailable.")
+            })
+        });
+        let dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| {
+                candidate.title().as_deref() == Some("Secure credential storage is unavailable.")
+            })
+            .expect("second secure-storage fallback dialog");
+        let close = descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .find(|button| {
+                button
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.trim_start_matches('_') == "Close")
+            })
+            .cloned()
+            .expect("second secure-storage close button");
+        close.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            !application.windows().iter().any(|candidate| {
+                candidate.title().as_deref() == Some("Secure credential storage is unavailable.")
+            })
+        });
+        assert!(bindings.remember_profile.is_active());
 
         window.close();
         drop(bindings);
