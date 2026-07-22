@@ -273,7 +273,9 @@ the saved provider/model options. The worker regressions
 The serialized GTK fixture `gtk_document_jobs_dialog_selects_between_multiple_jobs` drives the
 production Document jobs window with two persisted snapshots, asserts both rows and their localized
 file count, then selects the second row and verifies its job ID, paused state, and source text are
-loaded without selecting the first job. Native CI runs this fixture under the same serialized
+loaded without selecting the first job. It then reopens the queue, finds the single Resume action
+for the paused row, activates it, and verifies that the same paused job remains selected while the
+dialog closes after the command is sent. Native CI runs this fixture under the same serialized
 DBus/Xvfb boundary as the other GTK document controls.
 
 `imports_pptx_and_preserves_notes_and_resources`,
