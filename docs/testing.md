@@ -94,9 +94,15 @@ Translation export naming follows the document contract: the default is
 separators sanitized and `und` used when no target tag is available. If the selected local
 destination already exists, the GTK save path chooses the first available deterministic `-1`,
 `-2`, ... suffix instead of replacing it; the same collision guard applies to report exports.
+After the collision check, each export uses GIO's exclusive create followed by asynchronous
+write-and-close, so a file created by another process in the race window is left unchanged and
+the export reports a save error instead of overwriting it.
 The `translation_output_name_uses_source_stem_and_target_locale` and
 `collision_safe_output_path_adds_stable_suffix_without_overwriting` regressions cover the naming
-and collision rules, while the report regression checks the stable output identifier.
+and collision rules, while the ignored GTK regression
+`gtk_exclusive_output_writer_never_replaces_existing_file` covers the exclusive-write boundary
+and the report regression checks the stable output identifier. Native CI runs the ignored fixture
+under serialized DBus/Xvfb; the local host's GUI linker limitation keeps that check CI-authoritative.
 
 The GTK regression `provider_presets_map_to_stable_native_and_compatible_defaults` validates the
 six-position Linux preset order against the bundled Core provider catalog. Adapter types must match
