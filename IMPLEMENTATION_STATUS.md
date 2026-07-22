@@ -16,8 +16,11 @@ report export uses the same source/target stem with a `.report.tsv` suffix.
 - Local `cargo fmt --all`, locked all-target/all-feature check, strict Clippy, and demo-provider
   tests passed (`157 passed; 3 ignored` in the 160-test library suite). The full-feature binary
   test target is link-limited on this host by incomplete GTK/GDK/Graphene symbols; Native CI
-  remains authoritative for those fixtures. The packaging source pin is being updated to this
-  runtime head before the remote gates; the display-backed chooser fixture
+  remains authoritative for those fixtures. Packaging/docs commit
+  `6db0d8723b3907b4b8a673e64a5d2f1887b01c8d` pins the runtime input, and final push
+  Native/Flatpak/Foundation runs `29890242568`/`29890242544`/`29890242538` plus PR runs
+  `29890244011`/`29890244000`/`29890244013` all passed. Native completed the full GTK fixture,
+  release-build, checksum/SBOM, and performance-baseline suite; the display-backed chooser fixture
   remains a CI boundary because this host lacks the required GTK/GDK/Graphene linker symbols.
 
 This advances the Linux Milestone 3/6 output requirement. Human visual/copy/Orca review, other
