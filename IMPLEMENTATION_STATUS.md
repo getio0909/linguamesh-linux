@@ -9,9 +9,12 @@ Completions and Responses requests; storing and restoring the field alone is ins
   through `ProviderManager` into both adapter configurations. Core's header-enforced Chat and
   Responses regressions passed locally (application suite: 14 tests).
 - Linux repins Native and Flatpak to the corrected Core revision while retaining l10n revision
-  `ec538de57c1edc198fa13d3dfc1de576ee9b2c12`. Local Linux formatting, GUI checks, strict Clippy,
-  demo-provider tests, localization synchronization, Flatpak metadata, and diff checks remain
-  required before this checkpoint is remotely verified. Release remains unreleased.
+  `ec538de57c1edc198fa13d3dfc1de576ee9b2c12`. Local `cargo fmt`, GUI `cargo check`, strict
+  Clippy, demo-provider tests (`158 passed; 3 ignored`), localization synchronization, Flatpak
+  metadata, and diff checks passed. Code head `69b2d4510c51e9f34d7807687e6536ec411b1611` passed
+  push Native/Flatpak/Foundation `29953555497`/`29953555335`/`29953555493` and pull-request
+  Native/Flatpak/Foundation `29953558037`/`29953558082`/`29953558045`. Status-only evidence
+  refresh is pending; release remains unreleased.
 
 ## 2026-07-22 — Linux provider region/account checkpoint
 
