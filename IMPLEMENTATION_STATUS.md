@@ -10,7 +10,8 @@ job's source or state.
   It opens the production Document jobs window with pending and paused snapshots, verifies both rows
   and the localized two-file count, selects the second row, and asserts its stable job ID, paused
   state, and source text are loaded while the dialog closes.
-- Local formatting, locked all-target/all-feature check, strict Clippy, demo-provider tests
+- Flatpak source pin is synchronized to `c652232196f09ee9a2cbf69f7eaa9e01ca7672e7`. Local
+  formatting, locked all-target/all-feature check, strict Clippy, demo-provider tests
   (`157 passed; 3 ignored`), localization audits, l10n synchronization, Flatpak metadata, and diff
   checks passed. The display-backed fixture remains CI-authoritative on this host; release status is
   `unreleased`.
