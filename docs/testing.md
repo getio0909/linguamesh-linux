@@ -294,7 +294,7 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`1e96422c7e5a49b99fd278b7570898fbc650c448`. This revision carries bounded document lease
+`be5b7220587289be78b7654d979099c57ea4cc6d`. This revision carries bounded document lease
 consumption smoke, POSIX-descriptor document consumption, and the AddressSanitizer gate, plus the
 protocol decoder fuzz gate and bounded FileLease lifecycle,
 including Linux's portal-read lease checks, and the explicit request-level
@@ -634,7 +634,7 @@ python3 tools/create-native-evidence.py \
   --cargo-lock Cargo.lock \
   --output-dir native-evidence \
   --linux-revision "$(git rev-parse HEAD)" \
-  --core-revision "1e96422c7e5a49b99fd278b7570898fbc650c448" \
+  --core-revision "be5b7220587289be78b7654d979099c57ea4cc6d" \
   --localization-revision "294e593ab2c71b9ab0ea3475c35ebc61bca2bbc6"
 (cd native-evidence && sha256sum -c SHA256SUMS)
 ```
