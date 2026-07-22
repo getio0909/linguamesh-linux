@@ -96,7 +96,9 @@ destination already exists, the GTK save path chooses the first available determ
 `-2`, ... suffix instead of replacing it; the same collision guard applies to report exports.
 After the collision check, each export uses GIO's exclusive create followed by asynchronous
 write-and-close, so a file created by another process in the race window is left unchanged and
-the export reports a save error instead of overwriting it.
+the export reports a save error instead of overwriting it. This writer is shared by translated
+output, document reports, glossary CSV, routing-profile JSON, translation-history TSV, and
+translation-memory TSV exports; no user-visible export path uses overwrite-enabled replacement.
 The `translation_output_name_uses_source_stem_and_target_locale` and
 `collision_safe_output_path_adds_stable_suffix_without_overwriting` regressions cover the naming
 and collision rules, while the ignored GTK regression
