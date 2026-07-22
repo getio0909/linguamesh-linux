@@ -20,7 +20,7 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `158ade12cf1e3284d4b8a0883e771dd62abcff97`, which adds bounded
+reviewed Core functional revision `8717251375290cc3f825cee86d467ab1c60dd508`, which adds bounded
 FileLease lifecycle validation and strict
 routing-profile validation, schema-15 routing-profile persistence, schema-16 document-job
 routing-profile persistence, and schema-17 document quality-mode persistence on top of the existing
@@ -45,7 +45,8 @@ retrying a candidate.
 The GTK provider form consumes the pinned Core provider catalog for adapter and model-listing
 compatibility. It supports optional bounded, non-secret profile notes, organization/project IDs,
 region, and account identifiers. Saved profiles restore these values; only provider-defined
-organization/project headers are sent as provider input. A catalog drift fails closed before the
+organization/project headers are sent as provider input, and the application layer forwards both
+OpenAI headers for Chat Completions and Responses. A catalog drift fails closed before the
 window is created; localized labels and endpoint defaults remain Linux-native UI data.
 
 ## Native stack
