@@ -160,6 +160,9 @@ profile copy in Core's SQLite database at
 with no-follow protection on Linux's default Unix VFS, rejecting any symbolic-link component; the
 Linux layer additionally rejects hard links and non-private storage paths.
 
+Secret custom request headers follow the same boundary: they are cleared from the form immediately,
+stored by Secret Service when remembered, or passed through a `session:` reference for one connection.
+
 Startup restores the complete saved-profile list and displays the last persistently activated row,
 but remains disconnected and performs no provider request. Selecting another row only prefills the
 form. Enter the credential again when required, then click **Connect** to validate and switch.
@@ -234,7 +237,7 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`294e593ab2c71b9ab0ea3475c35ebc61bca2bbc6` and validated with `msgfmt`; the 459-message bundle
+`32397a72c267677f04419a5084514f025f94a0bc` and validated with `msgfmt`; the 462-message bundle
 adds Linux routing-profile persistence/editor, profile-ID validation and duplicate protection, ordinary-text selection labels, routing preference/privacy/document constraints, provider/model allowlists and denylists, quality/request-size limits, translation quality-mode and translation-preset labels, and source/output character plus approximate-token metrics. The locale selector
 exposes all twelve official BCP 47 packs plus the generated `en-XA` accented and `ar-XB` RTL
 pseudo-locales. It switches runtime action, workspace-widget,

@@ -134,6 +134,7 @@ struct UiBindings {
     provider_region: gtk::Entry,
     provider_account_identifier: gtk::Entry,
     provider_custom_headers: gtk::Entry,
+    provider_secret_custom_headers: gtk::PasswordEntry,
     manual_model_row: gtk::Box,
     manual_model: gtk::Entry,
     provider_credential: gtk::PasswordEntry,
@@ -756,6 +757,7 @@ fn create_window(
         provider_region,
         provider_account_identifier,
         provider_custom_headers,
+        provider_secret_custom_headers,
         manual_model_row,
         manual_model,
         provider_credential,
@@ -1049,6 +1051,7 @@ fn create_window(
         provider_region,
         provider_account_identifier,
         provider_custom_headers,
+        provider_secret_custom_headers,
         manual_model_row,
         manual_model,
         provider_credential,
@@ -1171,6 +1174,10 @@ fn create_window(
                 .provider_custom_headers
                 .clone()
                 .upcast::<gtk::Widget>(),
+            bindings
+                .provider_secret_custom_headers
+                .clone()
+                .upcast::<gtk::Widget>(),
             bindings.manual_model.clone().upcast::<gtk::Widget>(),
             bindings.provider_credential.clone().upcast::<gtk::Widget>(),
             bindings.connect.clone().upcast::<gtk::Widget>(),
@@ -1243,6 +1250,13 @@ fn install_keyboard_focus_probe(
             "provider_custom_headers",
             bindings
                 .provider_custom_headers
+                .clone()
+                .upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_secret_custom_headers",
+            bindings
+                .provider_secret_custom_headers
                 .clone()
                 .upcast::<gtk::Widget>(),
         ),
@@ -1571,6 +1585,7 @@ fn create_provider_session() -> (
     gtk::Entry,
     gtk::Entry,
     gtk::Entry,
+    gtk::PasswordEntry,
     gtk::Box,
     gtk::Entry,
     gtk::PasswordEntry,
@@ -1738,6 +1753,20 @@ fn create_provider_session() -> (
         "tooltip.provider_custom_headers",
         "Optional bounded non-secret headers; authorization and credential headers are rejected",
     )));
+    let provider_secret_custom_headers = gtk::PasswordEntry::builder()
+        .show_peek_icon(true)
+        .hexpand(true)
+        .build();
+    provider_secret_custom_headers.set_placeholder_text(Some(&localization::text(
+        locale,
+        "placeholder.provider_secret_custom_headers",
+        "Optional JSON object of secret request headers",
+    )));
+    provider_secret_custom_headers.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_secret_custom_headers",
+        "Optional bounded secret headers; stored in Secret Service when remembered and otherwise kept for this session",
+    )));
     let manual_model = gtk::Entry::new();
     manual_model.set_hexpand(true);
     manual_model.set_placeholder_text(Some(&localization::text(
@@ -1829,6 +1858,14 @@ fn create_provider_session() -> (
         ),
         provider_custom_headers.upcast_ref::<gtk::Widget>(),
     ));
+    fields.append(&labeled_control(
+        &localized_mnemonic(
+            locale,
+            "label.provider_secret_custom_headers",
+            "Custom headers (secret JSON)",
+        ),
+        provider_secret_custom_headers.upcast_ref::<gtk::Widget>(),
+    ));
     fields.append(&manual_model_row);
     fields.append(&labeled_control(
         &localized_mnemonic(
@@ -1858,6 +1895,7 @@ fn create_provider_session() -> (
         provider_region,
         provider_account_identifier,
         provider_custom_headers,
+        provider_secret_custom_headers,
         manual_model_row,
         manual_model,
         provider_credential,
@@ -2576,6 +2614,8 @@ fn show_saved_profile_in_form(bindings: &UiBindings, profile: &ProviderProfile) 
         .manual_model_row
         .set_visible(preset_requires_manual_model(preset_index));
     bindings.provider_credential.set_text("");
+    // 保存的秘密请求头只保留引用，不把 Secret Service 内容回填到表单。
+    bindings.provider_secret_custom_headers.set_text("");
     bindings.remember_profile.set_active(true);
     bindings.draft_profile_id.replace(None);
 }
@@ -2605,6 +2645,7 @@ fn show_new_profile_in_form(
     bindings.manual_model.set_text("");
     bindings.manual_model_row.set_visible(false);
     bindings.provider_credential.set_text("");
+    bindings.provider_secret_custom_headers.set_text("");
     bindings.remember_profile.set_active(false);
     Ok(())
 }
@@ -3537,6 +3578,12 @@ fn connect_action_handlers(
             .trim()
             .to_owned();
         let custom_headers = (!custom_headers_text.is_empty()).then_some(custom_headers_text);
+        let secret_custom_headers_text = test_bindings.provider_secret_custom_headers.text();
+        let has_secret_custom_headers = !secret_custom_headers_text.is_empty();
+        let session_secret_custom_headers = has_secret_custom_headers
+            .then(|| SecretValue::new(secret_custom_headers_text.as_str()));
+        test_bindings.provider_secret_custom_headers.set_text("");
+        drop(secret_custom_headers_text);
         let credential_text = test_bindings.provider_credential.text();
         let has_credential = !credential_text.is_empty();
         let session_secret = has_credential.then(|| SecretValue::new(credential_text.as_str()));
@@ -3582,33 +3629,41 @@ fn connect_action_handlers(
             refresh_ui(&test_bindings, &state);
             return;
         }
-        let (profile_id, saved_secret_ref, selected_model) = match state.selected_saved_profile() {
-            Some(saved) => (
-                saved.id().clone(),
-                saved.secret_ref().cloned(),
-                if preset_requires_manual_model(preset_index) {
-                    Some(manual_model.clone())
-                } else {
-                    saved.selected_model().map(str::to_owned)
-                },
-            ),
-            None => match ensure_draft_profile_id(&test_bindings, &state) {
-                Ok(profile_id) => (
-                    profile_id,
-                    None,
-                    preset_requires_manual_model(preset_index).then_some(manual_model.clone()),
+        let (profile_id, saved_secret_ref, saved_secret_custom_headers_ref, selected_model) =
+            match state.selected_saved_profile() {
+                Some(saved) => (
+                    saved.id().clone(),
+                    saved.secret_ref().cloned(),
+                    saved.secret_custom_headers_ref().cloned(),
+                    if preset_requires_manual_model(preset_index) {
+                        Some(manual_model.clone())
+                    } else {
+                        saved.selected_model().map(str::to_owned)
+                    },
                 ),
-                Err(error) => {
-                    state.record_client_error(error.to_string());
-                    refresh_ui(&test_bindings, &state);
-                    return;
-                }
-            },
-        };
+                None => match ensure_draft_profile_id(&test_bindings, &state) {
+                    Ok(profile_id) => (
+                        profile_id,
+                        None,
+                        None,
+                        preset_requires_manual_model(preset_index).then_some(manual_model.clone()),
+                    ),
+                    Err(error) => {
+                        state.record_client_error(error.to_string());
+                        refresh_ui(&test_bindings, &state);
+                        return;
+                    }
+                },
+            };
         let secret_ref = if has_credential {
             Some(SecretRef::new(SecretRefNamespace::Session))
         } else {
             saved_secret_ref
+        };
+        let secret_custom_headers_ref = if has_secret_custom_headers {
+            Some(SecretRef::new(SecretRefNamespace::Session))
+        } else {
+            saved_secret_custom_headers_ref
         };
         let profile = match custom_provider_profile(
             profile_id,
@@ -3632,15 +3687,11 @@ fn connect_action_handlers(
                 return;
             }
         };
-        let profile = profile.with_secret_custom_headers_ref(
-            state
-                .selected_saved_profile()
-                .and_then(|saved| saved.secret_custom_headers_ref())
-                .cloned(),
-        );
+        let profile = profile.with_secret_custom_headers_ref(secret_custom_headers_ref);
         if let Err(error) = test_worker.try_send(WorkerCommand::TestConnection {
             profile,
             secret: session_secret,
+            secret_custom_headers: session_secret_custom_headers,
         }) {
             state.record_client_error(error.to_string());
         }
@@ -3680,6 +3731,12 @@ fn connect_action_handlers(
             .trim()
             .to_owned();
         let custom_headers = (!custom_headers_text.is_empty()).then_some(custom_headers_text);
+        let secret_custom_headers_text = connect_bindings.provider_secret_custom_headers.text();
+        let has_secret_custom_headers = !secret_custom_headers_text.is_empty();
+        let session_secret_custom_headers = has_secret_custom_headers
+            .then(|| SecretValue::new(secret_custom_headers_text.as_str()));
+        connect_bindings.provider_secret_custom_headers.set_text("");
+        drop(secret_custom_headers_text);
         let remember_profile = connect_bindings.remember_profile.is_active();
         let credential_text = connect_bindings.provider_credential.text();
         let has_credential = !credential_text.is_empty();
@@ -3730,25 +3787,32 @@ fn connect_action_handlers(
             refresh_ui(&connect_bindings, &state);
             return;
         }
-        let (profile_id, saved_secret_ref, enabled, selected_model) =
-            match state.selected_saved_profile() {
-                Some(saved) => (
-                    Ok(saved.id().clone()),
-                    saved.secret_ref().cloned(),
-                    saved.enabled(),
-                    if preset_requires_manual_model(preset_index) {
-                        Some(manual_model.clone())
-                    } else {
-                        saved.selected_model().map(str::to_owned)
-                    },
-                ),
-                None => (
-                    ensure_draft_profile_id(&connect_bindings, &state),
-                    None,
-                    true,
-                    preset_requires_manual_model(preset_index).then_some(manual_model.clone()),
-                ),
-            };
+        let (
+            profile_id,
+            saved_secret_ref,
+            saved_secret_custom_headers_ref,
+            enabled,
+            selected_model,
+        ) = match state.selected_saved_profile() {
+            Some(saved) => (
+                Ok(saved.id().clone()),
+                saved.secret_ref().cloned(),
+                saved.secret_custom_headers_ref().cloned(),
+                saved.enabled(),
+                if preset_requires_manual_model(preset_index) {
+                    Some(manual_model.clone())
+                } else {
+                    saved.selected_model().map(str::to_owned)
+                },
+            ),
+            None => (
+                ensure_draft_profile_id(&connect_bindings, &state),
+                None,
+                None,
+                true,
+                preset_requires_manual_model(preset_index).then_some(manual_model.clone()),
+            ),
+        };
         let profile_id = match profile_id {
             Ok(profile_id) => profile_id,
             Err(error) => {
@@ -3775,6 +3839,33 @@ fn connect_action_handlers(
         } else {
             None
         };
+        let persistent_secret_custom_headers_ref = if remember_profile && has_secret_custom_headers
+        {
+            let secret_ref = saved_secret_custom_headers_ref
+                .clone()
+                .filter(SecretRef::is_persistent)
+                .unwrap_or_else(|| SecretRef::new(SecretRefNamespace::SecretService));
+            if let Some(secret) = session_secret_custom_headers.as_ref()
+                && let Err(error) = secret_service::store_secret(&secret_ref, secret)
+            {
+                state.provider_failed(error);
+                refresh_ui(&connect_bindings, &state);
+                drop(state);
+                show_secret_storage_session_fallback(&connect_bindings, &connect_state);
+                return;
+            }
+            Some(secret_ref)
+        } else {
+            None
+        };
+        let secret_custom_headers_ref =
+            if let Some(secret_ref) = persistent_secret_custom_headers_ref {
+                Some(secret_ref)
+            } else if has_secret_custom_headers {
+                Some(SecretRef::new(SecretRefNamespace::Session))
+            } else {
+                saved_secret_custom_headers_ref
+            };
         let profile = match custom_provider_profile(
             profile_id,
             display_name,
@@ -3799,12 +3890,7 @@ fn connect_action_handlers(
         .map(|profile| {
             profile
                 .with_enabled(enabled)
-                .with_secret_custom_headers_ref(
-                    state
-                        .selected_saved_profile()
-                        .and_then(|saved| saved.secret_custom_headers_ref())
-                        .cloned(),
-                )
+                .with_secret_custom_headers_ref(secret_custom_headers_ref)
         }) {
             Ok(profile) => profile,
             Err(error) => {
@@ -3818,6 +3904,7 @@ fn connect_action_handlers(
                 if let Err(error) = connect_worker.try_send(WorkerCommand::Connect {
                     profile,
                     secret: session_secret,
+                    secret_custom_headers: session_secret_custom_headers,
                     persistence: if remember_profile {
                         PersistenceIntent::Persistent
                     } else {
@@ -8423,6 +8510,28 @@ fn refresh_localized_widgets(bindings: &UiBindings, locale: UiLocale) {
             locale,
             "tooltip.provider_custom_headers",
             "Optional bounded non-secret headers; authorization and credential headers are rejected",
+        )));
+    set_labeled_control_label(
+        bindings.provider_secret_custom_headers.upcast_ref(),
+        &localized_mnemonic(
+            locale,
+            "label.provider_secret_custom_headers",
+            "Custom headers (secret JSON)",
+        ),
+    );
+    bindings
+        .provider_secret_custom_headers
+        .set_placeholder_text(Some(&localization::text(
+            locale,
+            "placeholder.provider_secret_custom_headers",
+            "Optional JSON object of secret request headers",
+        )));
+    bindings
+        .provider_secret_custom_headers
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.provider_secret_custom_headers",
+            "Optional bounded secret headers; stored in Secret Service when remembered and otherwise kept for this session",
         )));
     set_labeled_control_label(
         bindings.provider_credential.upcast_ref(),

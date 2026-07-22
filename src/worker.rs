@@ -85,6 +85,8 @@ pub enum WorkerCommand {
         profile: ProviderProfile,
         /// 只允许消费一次的会话秘密。
         secret: Option<SecretValue>,
+        /// 只允许消费一次的会话级自定义请求头秘密。
+        secret_custom_headers: Option<SecretValue>,
         /// 用户明确选择的持久化行为。
         persistence: PersistenceIntent,
     },
@@ -94,6 +96,8 @@ pub enum WorkerCommand {
         profile: ProviderProfile,
         /// 只允许消费一次的会话秘密。
         secret: Option<SecretValue>,
+        /// 只允许消费一次的会话级自定义请求头秘密。
+        secret_custom_headers: Option<SecretValue>,
     },
     /// 明确选择当前提供商已经发现的模型。
     SelectModel {
@@ -663,12 +667,14 @@ enum QueuedCommand {
     Connect {
         profile: ProviderProfile,
         secret: Option<SecretValue>,
+        secret_custom_headers: Option<SecretValue>,
         persistence: PersistenceIntent,
         cancellation: CancellationToken,
     },
     TestConnection {
         profile: ProviderProfile,
         secret: Option<SecretValue>,
+        secret_custom_headers: Option<SecretValue>,
     },
     SelectModel {
         profile_id: ProviderProfileId,
@@ -867,6 +873,7 @@ impl CoreWorker {
             WorkerCommand::Connect {
                 profile,
                 secret,
+                secret_custom_headers,
                 persistence,
             } => {
                 let cancellation = self.shutdown_cancellation.child_token();
@@ -877,6 +884,7 @@ impl CoreWorker {
                 let result = self.commands.try_send(QueuedCommand::Connect {
                     profile,
                     secret,
+                    secret_custom_headers,
                     persistence,
                     cancellation,
                 });
@@ -885,9 +893,17 @@ impl CoreWorker {
                 }
                 result.map_err(|_| WorkerSendError)
             }
-            WorkerCommand::TestConnection { profile, secret } => self
+            WorkerCommand::TestConnection {
+                profile,
+                secret,
+                secret_custom_headers,
+            } => self
                 .commands
-                .try_send(QueuedCommand::TestConnection { profile, secret })
+                .try_send(QueuedCommand::TestConnection {
+                    profile,
+                    secret,
+                    secret_custom_headers,
+                })
                 .map_err(|_| WorkerSendError),
             WorkerCommand::SelectModel {
                 profile_id,
@@ -2524,7 +2540,11 @@ async fn run_worker(
             command = commands.recv() => command,
         };
         match command {
-            Some(QueuedCommand::TestConnection { profile, secret }) => {
+            Some(QueuedCommand::TestConnection {
+                profile,
+                secret,
+                secret_custom_headers,
+            }) => {
                 let profile_id = profile.id().clone();
                 let cancellation = shutdown_cancellation.child_token();
                 set_active_cancellation(
@@ -2536,7 +2556,7 @@ async fn run_worker(
                     &mut candidate,
                     &profile,
                     secret,
-                    None,
+                    secret_custom_headers,
                     &cancellation,
                     &mut secret_requests,
                 )
@@ -2568,6 +2588,7 @@ async fn run_worker(
             Some(QueuedCommand::Connect {
                 profile,
                 secret,
+                secret_custom_headers,
                 persistence,
                 cancellation,
             }) => {
@@ -2582,7 +2603,7 @@ async fn run_worker(
                             &mut candidate,
                             &profile,
                             secret,
-                            None,
+                            secret_custom_headers,
                             &cancellation,
                             &mut secret_requests,
                         )
@@ -6517,6 +6538,7 @@ mod tests {
             .try_send(WorkerCommand::Connect {
                 profile,
                 secret,
+                secret_custom_headers: None,
                 persistence,
             })
             .expect("connect command");
@@ -6550,7 +6572,11 @@ mod tests {
         secret: Option<SecretValue>,
     ) -> Result<usize, TranslationError> {
         worker
-            .try_send(WorkerCommand::TestConnection { profile, secret })
+            .try_send(WorkerCommand::TestConnection {
+                profile,
+                secret,
+                secret_custom_headers: None,
+            })
             .expect("connection test command");
         match worker
             .events
@@ -9164,6 +9190,32 @@ mod tests {
     }
 
     #[test]
+    fn session_secret_custom_headers_reach_core_validation() {
+        let external = ExternalFakeProvider::start(FakeMode::Standard);
+        let (worker, _) = started_worker();
+        let profile = profile("session-header-validation", &external.endpoint, None, None)
+            .with_secret_custom_headers_ref(Some(SecretRef::new(SecretRefNamespace::Session)));
+        worker
+            .try_send(WorkerCommand::Connect {
+                profile,
+                secret: None,
+                secret_custom_headers: Some(SecretValue::new("not-json")),
+                persistence: PersistenceIntent::SessionOnly,
+            })
+            .expect("session header connection command");
+        let result = worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("session header connection result");
+        assert!(matches!(
+            result,
+            WorkerEvent::ProviderRejected { error, .. }
+                if error.kind == ErrorKind::InvalidConfiguration
+        ));
+        shutdown(&worker);
+    }
+
+    #[test]
     fn loopback_openai_compatible_provider_translates_without_secret() {
         let external = ExternalFakeProvider::start(FakeMode::Standard);
         let (worker, _) = started_worker();
@@ -10101,6 +10153,7 @@ mod tests {
             .try_send(WorkerCommand::Connect {
                 profile: profile("cancelled-provider", &delayed.endpoint, None, None),
                 secret: None,
+                secret_custom_headers: None,
                 persistence: PersistenceIntent::Persistent,
             })
             .expect("candidate connection");
@@ -10141,6 +10194,7 @@ mod tests {
             .try_send(QueuedCommand::Connect {
                 profile: profile("cancelled-provider", &endpoint, None, None),
                 secret: None,
+                secret_custom_headers: None,
                 persistence: PersistenceIntent::Persistent,
                 cancellation,
             })
@@ -10785,6 +10839,7 @@ mod tests {
             .try_send(WorkerCommand::Connect {
                 profile: candidate,
                 secret: None,
+                secret_custom_headers: None,
                 persistence: PersistenceIntent::SessionOnly,
             })
             .expect("connect command");
@@ -10814,6 +10869,7 @@ mod tests {
             .try_send(WorkerCommand::Connect {
                 profile: profile("shutdown-provider", &external.endpoint, None, None),
                 secret: None,
+                secret_custom_headers: None,
                 persistence: PersistenceIntent::SessionOnly,
             })
             .expect("connect command");
@@ -10848,6 +10904,7 @@ mod tests {
                 .try_send(WorkerCommand::Connect {
                     profile: profile(profile_id, &external.endpoint, None, None),
                     secret: None,
+                    secret_custom_headers: None,
                     persistence: PersistenceIntent::SessionOnly,
                 })
                 .expect("connect command");
@@ -10886,6 +10943,7 @@ mod tests {
             .try_send(WorkerCommand::Connect {
                 profile: profile("full-queue-provider", &external.endpoint, None, None),
                 secret: None,
+                secret_custom_headers: None,
                 persistence: PersistenceIntent::SessionOnly,
             })
             .expect("connect command");

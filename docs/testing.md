@@ -167,7 +167,7 @@ The Linux checkpoint has a reproducible external pass using Docker image
 were removed after validation. This evidence is prerelease-only and does not cover GPU execution.
 
 The Linux checkout consumes the canonical gettext bundle from immutable l10n revision
-`294e593ab2c71b9ab0ea3475c35ebc61bca2bbc6`. The bundle contains 459 messages, and
+`32397a72c267677f04419a5084514f025f94a0bc`. The bundle contains 462 messages, and
 `bash tools/sync-l10n.sh --check` verifies every PO/MO catalog and the generated manifest before
 the native build. History/memory row metadata, document-job IDs, active-provider mode summaries,
 unavailable provider/model labels, and routing-profile actions/mode labels are asserted through
@@ -635,7 +635,7 @@ python3 tools/create-native-evidence.py \
   --output-dir native-evidence \
   --linux-revision "$(git rev-parse HEAD)" \
   --core-revision "28baaa2f85bb70b4fc6ecc4c07566e7004a659c5" \
-  --localization-revision "294e593ab2c71b9ab0ea3475c35ebc61bca2bbc6"
+  --localization-revision "32397a72c267677f04419a5084514f025f94a0bc"
 (cd native-evidence && sha256sum -c SHA256SUMS)
 ```
 

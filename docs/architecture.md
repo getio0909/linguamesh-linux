@@ -208,10 +208,11 @@ breaches become fixed localized errors, and the default path remains unchanged w
 With `gui`, `src/main.rs` binds this state and worker to GTK 4/libadwaita widgets. GTK objects remain
 on the main context, which processes at most 64 queued events per timer tick without performing
 network work. The shell exposes a saved-profile dropdown, provider name, endpoint, optional
-non-secret profile notes, bounded non-secret custom request headers, optional organization
-identifier, optional session credential, explicit
+non-secret profile notes, bounded non-secret custom request headers, bounded secret custom request
+headers, optional organization identifier, optional session credential, explicit
 Connect, **Remember profile, model, and credential in Secret Service**. Core forwards bounded
-custom headers and the organization identifier only to OpenAI-compatible Chat/Responses requests;
+custom headers, Secret Service-backed secret custom headers, and the organization identifier only to
+OpenAI-compatible Chat/Responses requests;
 authorization, credential-shaped, and built-in metadata headers are rejected before persistence.
 Other adapters ignore the OpenAI-specific metadata,
 **Remove saved profile**,
@@ -323,16 +324,16 @@ regular-file or alternate-directory parent replacement, distinct regular-file fi
 hard-linked final leaves. A missing final leaf is created only with an exclusive open, so a file
 created after preflight is rejected. Broader filesystem and VFS guarantees remain platform-specific.
 
-Neither credential values nor session references are persisted. A runtime session reference is
-stripped before the profile reaches SQLite. When the user chooses Remember with a credential, the
-Linux GIO Secret Service adapter stores the value and SQLite retains only its persistent
-`secret-service:` reference. Restored profiles resolve that reference on explicit Connect; missing,
+Neither credential or secret custom-header values nor session references are persisted. Runtime
+session references are stripped before the profile reaches SQLite. When the user chooses Remember
+with either secret, the Linux GIO Secret Service adapter stores the value and SQLite retains only
+its persistent `secret-service:` reference. Restored profiles resolve those references on explicit Connect; missing,
 locked, unavailable, or interactive-only keyring states fail closed. There is no plaintext fallback,
 startup does not auto-connect, and the UI keeps an explicit session-only path.
 
 Native CI exercises this onboarding boundary with an authenticated loopback provider: the GTK form
-clears the credential immediately, persists only the SecretRef, reconnects after worker restart, and
-checks that the credential canary is absent from SQLite. A separate prompt fixture returns non-root
+clears credential and secret custom-header values immediately, persists only SecretRefs, reconnects
+after worker restart, and checks that secret canaries are absent from SQLite. A separate prompt fixture returns non-root
 prompt paths for store and delete and verifies the adapter fails closed; user approval and unlock UI
 remain outside the automated boundary.
 

@@ -2789,3 +2789,21 @@ msgstr "⁧⟦Optional JSON object of non-secret request headers⟧⁩"
 msgctxt "tooltip.provider_custom_headers"
 msgid "Optional bounded non-secret headers; authorization and credential headers are rejected"
 msgstr "⁧⟦Optional bounded non-secret headers; authorization and credential headers are rejected⟧⁩"
+
+#. Label for optional secret custom request headers in the Linux provider form.
+#, fuzzy
+msgctxt "label.provider_secret_custom_headers"
+msgid "Custom headers (secret JSON)"
+msgstr "⁧⟦Custom headers (secret JSON)⟧⁩"
+
+#. Placeholder for optional secret custom request headers in the Linux provider form.
+#, fuzzy
+msgctxt "placeholder.provider_secret_custom_headers"
+msgid "Optional JSON object of secret request headers"
+msgstr "⁧⟦Optional JSON object of secret request headers⟧⁩"
+
+#. Tooltip for optional bounded secret custom request headers.
+#, fuzzy
+msgctxt "tooltip.provider_secret_custom_headers"
+msgid "Optional bounded secret headers; stored in Secret Service when remembered and otherwise kept for this session"
+msgstr "⁧⟦Optional bounded secret headers; stored in Secret Service when remembered and otherwise kept for this session⟧⁩"
