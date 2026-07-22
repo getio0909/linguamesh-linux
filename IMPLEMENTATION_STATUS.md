@@ -18,9 +18,10 @@ remain separate follow-up work.
   Flatpak manifest is pinned to this exact commit for reproducible packaging.
 - Local `cargo fmt`, GUI check, strict all-feature Clippy, demo-provider tests (`158 passed; 3
   ignored`), localization audits, Flatpak metadata validation, and `git diff --check` passed.
-- Remote evidence for runtime head `eaa9dc3e6bf07222fe3b2da5c078d39e9419b88d` passed all six
-  gates: push Native/Flatpak/Foundation `29942117427`/`29942117421`/`29942119527` and PR
-  Native/Flatpak/Foundation `29942119153`/`29942118843`/`29942118834`. The existing human
+- Remote evidence for status head `3c1a4ad5e9f8d8ae613c5b2f8aa447d057212de0` (runtime code and
+  packaging unchanged from `eaa9dc3e6bf07222fe3b2da5c078d39e9419b88d`) passed all six gates:
+  push Native/Flatpak/Foundation `29942842016`/`29942841964`/`29942842049` and PR
+  Native/Flatpak/Foundation `29942844853`/`29942844878`/`29942848089`. The existing human
   visual/copy, Orca, Secret Service prompt, physical VFS/power-loss, signing, rollback, and
   stable-release boundaries remain open.
 
