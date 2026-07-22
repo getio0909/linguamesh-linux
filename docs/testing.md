@@ -164,7 +164,7 @@ The Linux checkpoint has a reproducible external pass using Docker image
 were removed after validation. This evidence is prerelease-only and does not cover GPU execution.
 
 The Linux checkout consumes the canonical gettext bundle from immutable l10n revision
-`94438a6a9ff8148cadad605c4760f88110d78984`. The bundle contains 447 messages, and
+`fea84439f035f30b009532b40d7f67a30049846c`. The bundle contains 450 messages, and
 `bash tools/sync-l10n.sh --check` verifies every PO/MO catalog and the generated manifest before
 the native build. History/memory row metadata, document-job IDs, active-provider mode summaries,
 unavailable provider/model labels, and routing-profile actions/mode labels are asserted through
@@ -291,7 +291,7 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`1b8737bbad3d1bb6df7cd5c852d51838f72b9ca1`. This revision carries bounded document lease
+`17342ba0bf19dd4978707a7875bc7dbe85efae54`. This revision carries bounded document lease
 consumption smoke, POSIX-descriptor document consumption, and the AddressSanitizer gate, plus the
 protocol decoder fuzz gate and bounded FileLease lifecycle,
 including Linux's portal-read lease checks, and the explicit request-level
@@ -303,9 +303,9 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 1b8737bbad3d1bb6df7cd5c852d51838f72b9ca1^{commit}
+git -C ../linguamesh-core cat-file -e 17342ba0bf19dd4978707a7875bc7dbe85efae54^{commit}
 git -C ../linguamesh-core diff --quiet \
-  1b8737bbad3d1bb6df7cd5c852d51838f72b9ca1..HEAD -- \
+  17342ba0bf19dd4978707a7875bc7dbe85efae54..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -631,8 +631,8 @@ python3 tools/create-native-evidence.py \
   --cargo-lock Cargo.lock \
   --output-dir native-evidence \
   --linux-revision "$(git rev-parse HEAD)" \
-  --core-revision "1b8737bbad3d1bb6df7cd5c852d51838f72b9ca1" \
-  --localization-revision "94438a6a9ff8148cadad605c4760f88110d78984"
+  --core-revision "17342ba0bf19dd4978707a7875bc7dbe85efae54" \
+  --localization-revision "fea84439f035f30b009532b40d7f67a30049846c"
 (cd native-evidence && sha256sum -c SHA256SUMS)
 ```
 

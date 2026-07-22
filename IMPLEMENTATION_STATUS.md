@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-22 — Linux provider project checkpoint
+
+Assumption: `project` is an optional bounded non-secret OpenAI-compatible identifier. Linux
+passes it through Core only for OpenAI Chat/Responses requests; it is not a credential and remains
+excluded from diagnostics.
+
+- Added localized Project field to the provider form. Saved profiles restore it, new profiles clear
+  it, and Test connection/Connect validate and pass it through Core.
+- Runtime profile/session copies preserve the field. Core schema 21 persists it and the OpenAI
+  adapter sends `OpenAI-Project` for Chat Completions and Responses only.
+- Core revision `17342ba0bf19dd4978707a7875bc7dbe85efae54` and l10n revision
+  `fea84439f035f30b009532b40d7f67a30049846c` are pinned in Native and Flatpak inputs. The l10n
+  source revision 49 bundle contains 450 messages. Release remains unreleased pending
+  cross-client and human evidence.
+
 ## 2026-07-22 — Linux provider organization checkpoint
 
 Assumption: `organization` is an optional bounded non-secret OpenAI-compatible identifier. Linux
@@ -10,16 +25,16 @@ excluded from diagnostics.
   clear it, and Test connection/Connect validate and pass it through Core.
 - Runtime profile/session copies preserve the field. Core schema 20 persists it and the OpenAI adapter
   sends `OpenAI-Organization` for Chat Completions and Responses only.
-- Core revision `1b8737bbad3d1bb6df7cd5c852d51838f72b9ca1` and l10n revision
-  `94438a6a9ff8148cadad605c4760f88110d78984` are pinned in Native and Flatpak inputs. The l10n
-  source revision 48 bundle contains 447 messages. Release remains unreleased pending cross-client
+- Core revision `17342ba0bf19dd4978707a7875bc7dbe85efae54` and l10n revision
+  `fea84439f035f30b009532b40d7f67a30049846c` are pinned in Native and Flatpak inputs. The l10n
+  source revision 49 bundle contains 450 messages. Release remains unreleased pending cross-client
   and human evidence.
 - Linux runtime/packaging/workflow head `82ff59132ddcd444856d496f12e635a084b9a385` contains the
   GTK binding, updated Core/l10n checkout pins, and reproducible Flatpak source pin. Push Native,
   Flatpak, and Foundation runs `29946235481`/`29946235488`/`29946235499` passed; pull-request
   Native, Flatpak, and Foundation runs `29946238655`/`29946238640`/`29946238604` also passed.
-- Core revision `1b8737bbad3d1bb6df7cd5c852d51838f72b9ca1` passed CI/Fuzz/Native SDK runs
-  `29945917593`/`29945917625`/`29945917579`; l10n revision `94438a6a9ff8148cadad605c4760f88110d78984`
+- Core revision `17342ba0bf19dd4978707a7875bc7dbe85efae54` passed CI/Fuzz/Native SDK runs
+  `29945917593`/`29945917625`/`29945917579`; l10n revision `fea84439f035f30b009532b40d7f67a30049846c`
   passed Localization/Foundation runs `29945592293`/`29945590422`.
 
 ## 2026-07-22 — Linux provider profile notes checkpoint

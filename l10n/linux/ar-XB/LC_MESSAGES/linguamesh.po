@@ -2706,14 +2706,32 @@ msgctxt "label.provider_organization"
 msgid "Organization"
 msgstr "⁧⟦Organization⟧⁩"
 
+#. Label for the optional project identifier in the Linux provider form.
+#, fuzzy
+msgctxt "label.provider_project"
+msgid "Project"
+msgstr "⁧⟦Project⟧⁩"
+
 #. Placeholder for the optional organization identifier in the Linux provider form.
 #, fuzzy
 msgctxt "placeholder.provider_organization"
 msgid "Optional OpenAI organization ID"
 msgstr "⁧⟦Optional OpenAI organization ID⟧⁩"
 
+#. Placeholder for the optional project identifier in the Linux provider form.
+#, fuzzy
+msgctxt "placeholder.provider_project"
+msgid "Optional OpenAI project ID"
+msgstr "⁧⟦Optional OpenAI project ID⟧⁩"
+
 #. Tooltip for the optional organization identifier in the Linux provider form.
 #, fuzzy
 msgctxt "tooltip.provider_organization"
 msgid "Optional organization identifier sent to OpenAI-compatible endpoints"
 msgstr "⁧⟦Optional organization identifier sent to OpenAI-compatible endpoints⟧⁩"
+
+#. Tooltip for the optional project identifier in the Linux provider form.
+#, fuzzy
+msgctxt "tooltip.provider_project"
+msgid "Optional project identifier sent to OpenAI-compatible endpoints"
+msgstr "⁧⟦Optional project identifier sent to OpenAI-compatible endpoints⟧⁩"
