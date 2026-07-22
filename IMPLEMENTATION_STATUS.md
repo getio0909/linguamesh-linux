@@ -15,10 +15,15 @@ unknowns rather than inferred values.
   report cannot overwrite the imported source file. The
   document_translation_report_is_redacted_and_counts_segments regression covers deterministic
   counts and redaction.
-- Runtime code is currently unpushed; local formatting, locked all-target/all-feature check,
-  strict Clippy, demo-provider tests (157 passed; 3 ignored), localization audits, l10n
-  synchronization at revision 88765d3358450ccfac12f396caf5290230a83577, Flatpak metadata, and
-  diff checks passed.
+- Runtime commit `cc5beeea530e500ee2d42b6d05d26dc34a26c7ab` adds the report builder and GTK action;
+  Flatpak source pin commit `4407ce947f86af070f986e4c4ee0fee6b2305683` and workflow localization
+  pin commit `c14760c4c14fe26681c2f11a22a5dd8e9af6b1e9` consume the same tested inputs. Local
+  formatting, locked all-target/all-feature check, strict Clippy, demo-provider tests
+  (157 passed; 3 ignored), localization audits, l10n synchronization at revision
+  88765d3358450ccfac12f396caf5290230a83577, Flatpak metadata, and diff checks passed. Push
+  Native/Flatpak/Foundation runs `29887890227`/`29887890202`/`29887890226` and PR runs
+  `29887892891`/`29887892948`/`29887892894` all passed; Native completed the full GTK fixture
+  suite and native release evidence.
 
 This advances the Linux document-workspace report requirement for Milestone 3. Output identifiers
 remain <not-exported> until a document output is exported, and retry/usage values remain
