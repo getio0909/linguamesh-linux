@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           repository: ${{ github.repository_owner }}/linguamesh-l10n
-          ref: 3724cc9d436ebdbac3b8ebf0df9bce9af1b41b15
+          ref: a65a327a8418332e50d9ab302fca24508e7266ef
           path: linguamesh-l10n
           persist-credentials: false
       - name: Install native development headers
@@ -342,7 +342,7 @@ jobs:
           > native-evidence/linguamesh-linux-source.tar.gz
           && (cd native-evidence && sha256sum linguamesh-linux-source.tar.gz >> SHA256SUMS)
           && printf 'Linux native CI evidence\nLinux revision: %s\nCore revision: %s\nLocalization revision: %s\nPerformance baseline: LINUX-PERFORMANCE-BASELINE.tsv\nArtifact status: unsigned release-mode prerelease evidence\n'
-          "$GITHUB_SHA" "$CORE_REVISION" "3724cc9d436ebdbac3b8ebf0df9bce9af1b41b15"
+          "$GITHUB_SHA" "$CORE_REVISION" "a65a327a8418332e50d9ab302fca24508e7266ef"
           > native-evidence/BUILD-INFO.txt
       - name: Verify native checksum and SBOM evidence
         working-directory: linguamesh-linux
