@@ -19,6 +19,9 @@ The profile form also round-trips an optional bounded non-secret note through Co
 credential-shaped notes are rejected before persistence, and the note never enters provider input.
 It also round-trips the optional bounded organization identifier through Core schema 20; the
 OpenAI-compatible adapter adds it only as `OpenAI-Organization` and rejects credential-shaped values.
+The same form round-trips bounded canonical JSON custom headers through Core schema 23; the Core
+domain and OpenAI adapter reject authorization, credential-shaped, and built-in metadata names,
+while a safe header is applied without replacing authentication metadata.
 
 The same provider fixture covers the Google Gemini preset through the `/v1beta/` Generate Content
 contract: `models` discovery filters entries that support `generateContent`, and the streaming
@@ -164,7 +167,7 @@ The Linux checkpoint has a reproducible external pass using Docker image
 were removed after validation. This evidence is prerelease-only and does not cover GPU execution.
 
 The Linux checkout consumes the canonical gettext bundle from immutable l10n revision
-`fea84439f035f30b009532b40d7f67a30049846c`. The bundle contains 450 messages, and
+`294e593ab2c71b9ab0ea3475c35ebc61bca2bbc6`. The bundle contains 459 messages, and
 `bash tools/sync-l10n.sh --check` verifies every PO/MO catalog and the generated manifest before
 the native build. History/memory row metadata, document-job IDs, active-provider mode summaries,
 unavailable provider/model labels, and routing-profile actions/mode labels are asserted through
@@ -291,7 +294,7 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`17342ba0bf19dd4978707a7875bc7dbe85efae54`. This revision carries bounded document lease
+`1e96422c7e5a49b99fd278b7570898fbc650c448`. This revision carries bounded document lease
 consumption smoke, POSIX-descriptor document consumption, and the AddressSanitizer gate, plus the
 protocol decoder fuzz gate and bounded FileLease lifecycle,
 including Linux's portal-read lease checks, and the explicit request-level
@@ -631,8 +634,8 @@ python3 tools/create-native-evidence.py \
   --cargo-lock Cargo.lock \
   --output-dir native-evidence \
   --linux-revision "$(git rev-parse HEAD)" \
-  --core-revision "17342ba0bf19dd4978707a7875bc7dbe85efae54" \
-  --localization-revision "fea84439f035f30b009532b40d7f67a30049846c"
+  --core-revision "1e96422c7e5a49b99fd278b7570898fbc650c448" \
+  --localization-revision "294e593ab2c71b9ab0ea3475c35ebc61bca2bbc6"
 (cd native-evidence && sha256sum -c SHA256SUMS)
 ```
 

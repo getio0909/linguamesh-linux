@@ -133,6 +133,7 @@ struct UiBindings {
     provider_project: gtk::Entry,
     provider_region: gtk::Entry,
     provider_account_identifier: gtk::Entry,
+    provider_custom_headers: gtk::Entry,
     manual_model_row: gtk::Box,
     manual_model: gtk::Entry,
     provider_credential: gtk::PasswordEntry,
@@ -754,6 +755,7 @@ fn create_window(
         provider_project,
         provider_region,
         provider_account_identifier,
+        provider_custom_headers,
         manual_model_row,
         manual_model,
         provider_credential,
@@ -1046,6 +1048,7 @@ fn create_window(
         provider_project,
         provider_region,
         provider_account_identifier,
+        provider_custom_headers,
         manual_model_row,
         manual_model,
         provider_credential,
@@ -1164,6 +1167,10 @@ fn create_window(
                 .provider_account_identifier
                 .clone()
                 .upcast::<gtk::Widget>(),
+            bindings
+                .provider_custom_headers
+                .clone()
+                .upcast::<gtk::Widget>(),
             bindings.manual_model.clone().upcast::<gtk::Widget>(),
             bindings.provider_credential.clone().upcast::<gtk::Widget>(),
             bindings.connect.clone().upcast::<gtk::Widget>(),
@@ -1229,6 +1236,13 @@ fn install_keyboard_focus_probe(
             "provider_account_identifier",
             bindings
                 .provider_account_identifier
+                .clone()
+                .upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_custom_headers",
+            bindings
+                .provider_custom_headers
                 .clone()
                 .upcast::<gtk::Widget>(),
         ),
@@ -1556,6 +1570,7 @@ fn create_provider_session() -> (
     gtk::Entry,
     gtk::Entry,
     gtk::Entry,
+    gtk::Entry,
     gtk::Box,
     gtk::Entry,
     gtk::PasswordEntry,
@@ -1711,6 +1726,18 @@ fn create_provider_session() -> (
         "tooltip.provider_account_identifier",
         "Optional account identifier used to distinguish provider tenants",
     )));
+    let provider_custom_headers = gtk::Entry::new();
+    provider_custom_headers.set_hexpand(true);
+    provider_custom_headers.set_placeholder_text(Some(&localization::text(
+        locale,
+        "placeholder.provider_custom_headers",
+        "Optional JSON object of non-secret request headers",
+    )));
+    provider_custom_headers.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_custom_headers",
+        "Optional bounded non-secret headers; authorization and credential headers are rejected",
+    )));
     let manual_model = gtk::Entry::new();
     manual_model.set_hexpand(true);
     manual_model.set_placeholder_text(Some(&localization::text(
@@ -1794,6 +1821,14 @@ fn create_provider_session() -> (
         ),
         provider_account_identifier.upcast_ref::<gtk::Widget>(),
     ));
+    fields.append(&labeled_control(
+        &localized_mnemonic(
+            locale,
+            "label.provider_custom_headers",
+            "Custom headers (non-secret JSON)",
+        ),
+        provider_custom_headers.upcast_ref::<gtk::Widget>(),
+    ));
     fields.append(&manual_model_row);
     fields.append(&labeled_control(
         &localized_mnemonic(
@@ -1822,6 +1857,7 @@ fn create_provider_session() -> (
         provider_project,
         provider_region,
         provider_account_identifier,
+        provider_custom_headers,
         manual_model_row,
         manual_model,
         provider_credential,
@@ -2531,6 +2567,9 @@ fn show_saved_profile_in_form(bindings: &UiBindings, profile: &ProviderProfile) 
         .provider_account_identifier
         .set_text(profile.account_identifier().unwrap_or_default());
     bindings
+        .provider_custom_headers
+        .set_text(profile.custom_headers().unwrap_or_default());
+    bindings
         .manual_model
         .set_text(profile.selected_model().unwrap_or_default());
     bindings
@@ -2562,6 +2601,7 @@ fn show_new_profile_in_form(
     bindings.provider_project.set_text("");
     bindings.provider_region.set_text("");
     bindings.provider_account_identifier.set_text("");
+    bindings.provider_custom_headers.set_text("");
     bindings.manual_model.set_text("");
     bindings.manual_model_row.set_visible(false);
     bindings.provider_credential.set_text("");
@@ -2582,6 +2622,7 @@ fn custom_provider_profile(
     project: Option<String>,
     region: Option<String>,
     account_identifier: Option<String>,
+    custom_headers: Option<String>,
     selected_model: Option<String>,
 ) -> Result<ProviderProfile, TranslationError> {
     ProviderProfile::new(
@@ -2597,6 +2638,7 @@ fn custom_provider_profile(
     .and_then(|profile| profile.with_project(project))
     .and_then(|profile| profile.with_region(region))
     .and_then(|profile| profile.with_account_identifier(account_identifier))
+    .and_then(|profile| profile.with_custom_headers(custom_headers))
     .and_then(|profile| profile.with_selected_model(selected_model))
     .map_err(|error| {
         TranslationError::new(
@@ -3489,6 +3531,12 @@ fn connect_action_handlers(
             .trim()
             .to_owned();
         let account_identifier = (!account_text.is_empty()).then_some(account_text);
+        let custom_headers_text = test_bindings
+            .provider_custom_headers
+            .text()
+            .trim()
+            .to_owned();
+        let custom_headers = (!custom_headers_text.is_empty()).then_some(custom_headers_text);
         let credential_text = test_bindings.provider_credential.text();
         let has_credential = !credential_text.is_empty();
         let session_secret = has_credential.then(|| SecretValue::new(credential_text.as_str()));
@@ -3574,6 +3622,7 @@ fn connect_action_handlers(
             project,
             region,
             account_identifier,
+            custom_headers,
             selected_model,
         ) {
             Ok(profile) => profile,
@@ -3619,6 +3668,12 @@ fn connect_action_handlers(
             .trim()
             .to_owned();
         let account_identifier = (!account_text.is_empty()).then_some(account_text);
+        let custom_headers_text = connect_bindings
+            .provider_custom_headers
+            .text()
+            .trim()
+            .to_owned();
+        let custom_headers = (!custom_headers_text.is_empty()).then_some(custom_headers_text);
         let remember_profile = connect_bindings.remember_profile.is_active();
         let credential_text = connect_bindings.provider_credential.text();
         let has_credential = !credential_text.is_empty();
@@ -3732,6 +3787,7 @@ fn connect_action_handlers(
             project,
             region,
             account_identifier,
+            custom_headers,
             selected_model,
         )
         .map(|profile| profile.with_enabled(enabled))
@@ -8333,6 +8389,28 @@ fn refresh_localized_widgets(bindings: &UiBindings, locale: UiLocale) {
             "Optional account identifier used to distinguish provider tenants",
         )));
     set_labeled_control_label(
+        bindings.provider_custom_headers.upcast_ref(),
+        &localized_mnemonic(
+            locale,
+            "label.provider_custom_headers",
+            "Custom headers (non-secret JSON)",
+        ),
+    );
+    bindings
+        .provider_custom_headers
+        .set_placeholder_text(Some(&localization::text(
+            locale,
+            "placeholder.provider_custom_headers",
+            "Optional JSON object of non-secret request headers",
+        )));
+    bindings
+        .provider_custom_headers
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.provider_custom_headers",
+            "Optional bounded non-secret headers; authorization and credential headers are rejected",
+        )));
+    set_labeled_control_label(
         bindings.provider_credential.upcast_ref(),
         &localized_mnemonic(
             locale,
@@ -9561,6 +9639,7 @@ mod tests {
             None,
             None,
             None,
+            None,
             Some("model-a".to_owned()),
         )
         .expect("candidate A profile");
@@ -9570,6 +9649,7 @@ mod tests {
             CUSTOM_PROVIDER_PRESET_ID.to_owned(),
             OPENAI_ADAPTER_TYPE.to_owned(),
             "http://127.0.0.1:4243/v1/".to_owned(),
+            None,
             None,
             None,
             None,
@@ -12744,6 +12824,7 @@ mod tests {
             None,
             None,
             None,
+            None,
             Some("fake-translator".to_owned()),
         )
         .expect("first restored profile");
@@ -12760,6 +12841,7 @@ mod tests {
             Some("project-restored".to_owned()),
             Some("eu-west-1".to_owned()),
             Some("tenant-restored".to_owned()),
+            None,
             Some("fake-slow-translator".to_owned()),
         )
         .expect("second restored profile");

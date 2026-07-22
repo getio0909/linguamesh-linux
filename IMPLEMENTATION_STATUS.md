@@ -1,5 +1,25 @@
 # Implementation Status
 
+## 2026-07-22 — Linux provider custom-header checkpoint
+
+Assumption: custom request headers are optional, bounded, non-secret provider metadata. Linux
+does not expose proxy settings or secret custom headers in this slice; authorization,
+credential-shaped, and built-in metadata names are rejected before persistence or adapter use.
+
+- Added localized Custom headers field to the provider form. Saved profiles restore the canonical
+  JSON value, new profiles clear it, and Test connection/Connect pass it through Core.
+- Core schema 23 persists the value with a 16-header, 128-byte-name, and 2 KiB-value bound. Core
+  domain and OpenAI adapter regressions reject credential-shaped/reserved headers and prove a safe
+  header is applied without replacing authentication metadata.
+- Core revision `1e96422c7e5a49b99fd278b7570898fbc650c448` and l10n revision
+  `294e593ab2c71b9ab0ea3475c35ebc61bca2bbc6` (source revision 51, 459 messages) are pinned in
+  Native and Flatpak inputs. Local `cargo fmt`, GUI check, strict Clippy, demo-provider tests
+  (`158 passed; 3 ignored`), localization audits, l10n synchronization, Flatpak metadata, and
+  diff checks are required before pushing this head.
+
+Human translation review, native visual/RTL/Orca review, live-provider interoperability, and
+stable-release qualification remain open; release remains unreleased.
+
 ## 2026-07-22 — Linux provider-project application wiring correction
 
 Assumption: Linux's persisted non-secret `project` field must reach both OpenAI-compatible Chat

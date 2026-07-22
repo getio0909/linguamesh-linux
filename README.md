@@ -20,7 +20,7 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `8717251375290cc3f825cee86d467ab1c60dd508`, which adds bounded
+reviewed Core functional revision `1e96422c7e5a49b99fd278b7570898fbc650c448`, which adds bounded
 FileLease lifecycle validation and strict
 routing-profile validation, schema-15 routing-profile persistence, schema-16 document-job
 routing-profile persistence, and schema-17 document quality-mode persistence on top of the existing
@@ -43,10 +43,11 @@ waits, and an in-memory two-failure circuit breaker that cools down for thirty s
 retrying a candidate.
 
 The GTK provider form consumes the pinned Core provider catalog for adapter and model-listing
-compatibility. It supports optional bounded, non-secret profile notes, organization/project IDs,
-region, and account identifiers. Saved profiles restore these values; only provider-defined
-organization/project headers are sent as provider input, and the application layer forwards both
-OpenAI headers for Chat Completions and Responses. A catalog drift fails closed before the
+compatibility. It supports optional bounded, non-secret profile notes, custom request headers,
+organization/project IDs, region, and account identifiers. Saved profiles restore these values;
+custom headers reject authorization, credential-shaped, and built-in metadata names, while the
+application layer forwards safe headers plus OpenAI organization/project headers for Chat
+Completions and Responses. A catalog drift fails closed before the
 window is created; localized labels and endpoint defaults remain Linux-native UI data.
 
 ## Native stack
@@ -232,7 +233,7 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`ec538de57c1edc198fa13d3dfc1de576ee9b2c12` and validated with `msgfmt`; the 456-message bundle
+`294e593ab2c71b9ab0ea3475c35ebc61bca2bbc6` and validated with `msgfmt`; the 459-message bundle
 adds Linux routing-profile persistence/editor, profile-ID validation and duplicate protection, ordinary-text selection labels, routing preference/privacy/document constraints, provider/model allowlists and denylists, quality/request-size limits, translation quality-mode and translation-preset labels, and source/output character plus approximate-token metrics. The locale selector
 exposes all twelve official BCP 47 packs plus the generated `en-XA` accented and `ar-XB` RTL
 pseudo-locales. It switches runtime action, workspace-widget,

@@ -2344,3 +2344,18 @@ msgstr "Optional non-secret region identifier used by the provider account"
 msgctxt "tooltip.provider_account_identifier"
 msgid "Optional account identifier used to distinguish provider tenants"
 msgstr "Optional account identifier used to distinguish provider tenants"
+
+#. Label for optional custom request headers in the Linux provider form.
+msgctxt "label.provider_custom_headers"
+msgid "Custom headers (non-secret JSON)"
+msgstr "Custom headers (non-secret JSON)"
+
+#. Placeholder for optional custom request headers in the Linux provider form.
+msgctxt "placeholder.provider_custom_headers"
+msgid "Optional JSON object of non-secret request headers"
+msgstr "Optional JSON object of non-secret request headers"
+
+#. Tooltip for optional bounded non-secret custom request headers.
+msgctxt "tooltip.provider_custom_headers"
+msgid "Optional bounded non-secret headers; authorization and credential headers are rejected"
+msgstr "Optional bounded non-secret headers; authorization and credential headers are rejected"

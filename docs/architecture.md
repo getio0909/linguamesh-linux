@@ -26,7 +26,7 @@ confirmation, or rollback.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `8717251375290cc3f825cee86d467ab1c60dd508`; compared with the prior
+functional revision is `1e96422c7e5a49b99fd278b7570898fbc650c448`; compared with the prior
 alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW`, adds streamed
 protected-span and request-level glossary restoration, and rejects suspicious OOXML compression
 ratios and unsupported macro/signature parts before XML inspection. Core now advertises the bounded
@@ -206,10 +206,12 @@ breaches become fixed localized errors, and the default path remains unchanged w
 With `gui`, `src/main.rs` binds this state and worker to GTK 4/libadwaita widgets. GTK objects remain
 on the main context, which processes at most 64 queued events per timer tick without performing
 network work. The shell exposes a saved-profile dropdown, provider name, endpoint, optional
-non-secret profile notes, optional organization identifier, optional session credential, explicit
-Connect, **Remember profile, model, and credential in Secret Service**. Core forwards the
-organization identifier only to OpenAI-compatible Chat/Responses requests as
-`OpenAI-Organization`; other adapters ignore it,
+non-secret profile notes, bounded non-secret custom request headers, optional organization
+identifier, optional session credential, explicit
+Connect, **Remember profile, model, and credential in Secret Service**. Core forwards bounded
+custom headers and the organization identifier only to OpenAI-compatible Chat/Responses requests;
+authorization, credential-shaped, and built-in metadata headers are rejected before persistence.
+Other adapters ignore the OpenAI-specific metadata,
 **Remove saved profile**,
 model selection, source and target locales, source and streamed output editors, native **Open text
 file** import, single-file drag-and-drop onto the source editor, Translate/Stop,
