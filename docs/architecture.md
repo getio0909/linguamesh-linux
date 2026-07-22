@@ -26,7 +26,7 @@ confirmation, or rollback.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `cf08384c829ca1b95ecfc79d23bc5b0feb3a701f`; compared with the prior
+functional revision is `530e6ea0e4c568e9d873115573e9b1e05f213601`; compared with the prior
 alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW`, adds streamed
 protected-span and request-level glossary restoration, and rejects suspicious OOXML compression
 ratios and unsupported macro/signature parts before XML inspection. Core now advertises the bounded
@@ -92,7 +92,9 @@ through schema 18 after pause, retry, or restart.
 Completed ordinary text requests may carry Core's optional `UsageRecord`. Linux stores the record
 only in the in-memory reducer and renders a localized output line with a provider-reported,
 locally estimated, or unknown source label. The current engine path emits a bounded local estimate;
-provider wire parsing, pricing, and stable C ABI/protobuf projection remain outside this slice.
+provider wire parsing and pricing remain outside this slice. Core's ABI 1 command now also projects
+bounded non-secret organization, project, and custom-header metadata for native clients; Linux's
+direct Rust path continues to use its typed application contract.
 
 The Linux GTK form consumes the bundled Core provider catalog for adapter compatibility and model
 listing policy before creating a window; a stale mapping fails closed. Its localized labels and

@@ -1,5 +1,19 @@
 # Implementation Status
 
+## 2026-07-22 — Linux Core ABI metadata pin
+
+Assumption: Linux's direct typed Rust path remains the production-facing integration for this
+slice, while the shared Core ABI projection is pinned now so future native clients consume the
+same non-secret provider metadata contract.
+
+- Native and Flatpak inputs now pin Core revision `530e6ea0e4c568e9d873115573e9b1e05f213601`, which
+  adds optional ABI 1 `organization`, `project`, and bounded `custom_headers_json` fields without
+  changing the envelope or protocol version. Core validates credential-shaped metadata before any
+  host-secret request and forwards accepted values to the OpenAI-compatible adapter.
+- Linux GUI behavior is unchanged and continues to validate the typed application contract; this
+  pin supplies compatibility evidence for the Android/raw-envelope consumers. Release remains
+  unreleased pending cross-client integration, human review, signing, and rollback evidence.
+
 ## 2026-07-22 — Linux provider custom-header checkpoint
 
 Assumption: custom request headers are optional, bounded, non-secret provider metadata. Linux
