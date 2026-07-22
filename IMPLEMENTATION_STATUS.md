@@ -13,8 +13,12 @@ are defined.
 - Core schema 22 revision `158ade12cf1e3284d4b8a0883e771dd62abcff97` and l10n revision
   `ec538de57c1edc198fa13d3dfc1de576ee9b2c12` (456 messages, source revision 50) are pinned in
   Native and Flatpak inputs. Local GUI check, l10n audits, l10n sync, Flatpak metadata validation,
-  and `git diff --check` pass; remote gates are pending for this runtime head. Release remains
-  unreleased pending cross-client compatibility and provider-specific evidence.
+  and `git diff --check` pass. Runtime/packaging head `761a931538fc49c30d759089185cdf21cf2015ab`
+  passed push Native/Flatpak/Foundation runs `29951714545`/`29951713816`/`29951713476` and
+  pull-request Native/Flatpak/Foundation runs `29951717533`/`29951717528`/`29951717487`.
+  An earlier Flatpak attempt (`29951517923` push, `29951520086` pull request) was superseded
+  after its stale source pin was corrected in this head. Release remains unreleased pending
+  cross-client compatibility and provider-specific evidence.
 
 ## 2026-07-22 — Linux provider project checkpoint
 
