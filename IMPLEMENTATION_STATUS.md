@@ -1,5 +1,18 @@
 # Implementation Status
 
+## 2026-07-22 — Current-head Linux regression refresh
+
+Assumption: a status-only checkpoint may refresh reproducible local evidence without changing the
+reviewed Linux runtime or release posture.
+
+- The current head `4154aaef160a0578624f581063dbd62a29cadb79` passed `cargo fmt --all -- --check`,
+  GUI all-target `cargo check --features gui --offline`, strict all-feature Clippy, and
+  `cargo test --features demo-provider --locked --offline` (`158 passed; 3 ignored`).
+- `./tools/sync-l10n.sh --check`, `bash tools/validate-flatpak-metadata.sh`, and `git diff --check`
+  passed. The only Flatpak output is the existing advisory desktop-category hint.
+- The ignored tests remain environment-bound OCR, third-party Ollama, and private storage-fault
+  fixtures; no unavailable local display, keyring, or physical-desktop evidence is claimed.
+
 ## 2026-07-22 — Linux LM Studio-style compatibility fixture
 
 Assumption: LM Studio-style local servers are covered by the required generic OpenAI-compatible
