@@ -1,5 +1,24 @@
 # Implementation Status
 
+## 2026-07-22 — Linux document report usage estimate
+
+Assumption: persisted document segments are the only local, non-sensitive source available for a
+report usage field; retry attempt history remains unavailable and is not inferred.
+
+- Runtime commit `ae4750beec1d9aa1c2d53c96754a6ca5a4e55c66` serializes a bounded
+  `UsageRecord::locally_estimated` JSON object from persisted source and translated segment lengths.
+  The report contains only the source marker and token counts, never document text, credentials, or
+  paths; `retried_count` remains explicit `unknown`.
+- `document_translation_report_is_redacted_and_counts_segments` now checks the deterministic local
+  usage JSON and redaction together. The Flatpak manifest pins the same runtime commit.
+- Local formatting, locked all-target/all-feature check, strict Clippy, localization audits, Flatpak
+  metadata, and diff checks pass. The focused GUI test remains a CI boundary because this host lacks
+  the GTK/GDK/Graphene linker symbols.
+
+This advances the Linux Milestone 3/6 document report requirement. Provider-reported usage, retry
+history, human visual/copy/Orca review, other clients, signed artifacts, rollback authorization, and
+stable release approval remain open.
+
 ## 2026-07-22 — Linux non-local source-alias protection
 
 Assumption: source-preservation checks must reject an identical non-local URI before export even
@@ -161,9 +180,10 @@ unknowns rather than inferred values.
   suite and native release evidence.
 
 This advances the Linux document-workspace report requirement for Milestone 3. Output identifiers
-remain <not-exported> until a document output is exported, and retry/usage values remain
-explicitly unknown. Human visual/copy/Orca review, physical interruption behavior, other clients,
-signed artifacts, rollback authorization, and stable release approval remain open.
+remain <not-exported> until a document output is exported, retry counts remain explicitly unknown,
+and usage now reports a bounded local estimate. Human visual/copy/Orca review, physical interruption
+behavior, other clients, signed artifacts, rollback authorization, and stable release approval remain
+open.
 
 ## 2026-07-22 — Linux GTK document report action fixture
 

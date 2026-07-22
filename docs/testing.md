@@ -83,7 +83,9 @@ The production Document jobs dialog also exposes Export translation report for e
 snapshot. The action writes a deterministic TSV report with non-secret identifiers, configuration,
 segment counts, warning kinds, state, and Unix timestamps. Fields are single-line escaped, source
 aliases are rejected before the asynchronous GIO write, and document source text, credentials,
-local paths, provider usage, and retry counts are never included. The unit regression
+local paths, and provider-reported usage are never included. The `usage` field is a bounded,
+non-sensitive local estimate derived from persisted source/translated segment lengths; retry counts
+remain explicit `unknown` because persistence does not retain attempt history. The unit regression
 document_translation_report_is_redacted_and_counts_segments covers the report builder; the
 serialized GTK queue fixture also requires one focusable, redacted-report button with a tooltip for
 each persisted row. The fixture does not open a native chooser, so the asynchronous write callback
