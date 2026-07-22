@@ -1,5 +1,29 @@
 # Implementation Status
 
+## 2026-07-22 — Linux exclusive translation output writer
+
+Assumption: collision-safe output naming must remain safe if another process creates the selected
+destination after the deterministic sibling-path check but before the asynchronous write starts.
+
+- Runtime commit `a48dafe259b794211ed2d1bec0a858b647dcd3d3` replaces export `replace_contents` calls
+  for plain text, document reports, and binary document outputs with GIO exclusive creation,
+  asynchronous `write_all`, and explicit stream close. A race that occupies the path now reports a
+  localized save error while leaving the existing file unchanged; no overwrite fallback is used.
+- The ignored GTK regression `gtk_exclusive_output_writer_never_replaces_existing_file` proves
+  the occupied-file boundary and preserves the sentinel contents. Native CI runs it as a dedicated
+  serialized DBus/Xvfb step. Local formatting, locked all-target/all-feature checks, strict Clippy,
+  demo-provider tests (`157 passed; 3 ignored`), Flatpak metadata, and diff checks passed; the full
+  GTK binary remains linker-limited on this host by incomplete GTK/GDK/Graphene symbols.
+- Packaging/workflow commit `95a47ef6dcec45bb55feb967076cc2bfcb5f5919` pins the runtime input.
+  Push Native/Flatpak/Foundation runs `29891347377`/`29891347329`/`29891347335` and PR
+  Native/Flatpak/Foundation runs `29891349140`/`29891349152`/`29891349162` all passed; Native
+  completed the exclusive fixture, full GTK suite, release build, checksum/SBOM, and performance
+  baseline.
+
+This strengthens unreleased Linux Milestones 3 and 6 export safety. Human visual/copy/Orca review,
+other clients, signed artifacts, rollback authorization, and stable release approval remain open;
+release status is `unreleased`.
+
 ## 2026-07-22 — Linux collision-safe translation output naming
 
 Assumption: the output contract applies to plain-text and persisted document exports, while the
