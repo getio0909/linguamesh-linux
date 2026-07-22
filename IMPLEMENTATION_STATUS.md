@@ -1,5 +1,31 @@
 # Implementation Status
 
+## 2026-07-22 — Linux Secret Service session-only recovery UX
+
+Assumption: a failed persistent Secret Service write must preserve the user's Remember intent
+until an explicit recovery action is selected; closing the warning cannot silently downgrade the
+connection to session-only mode.
+
+- Runtime test commit `64909399aa55de6b3dc70b69b46e01ae34bc0606` adds the serialized GTK fixture
+  `gtk_secret_storage_fallback_dialog_requires_explicit_session_only_action`. It verifies the
+  localized modal warning, focusable recovery controls, explicit Remember clearing on the
+  session-only action, and unchanged Remember state when the dialog is closed. The production
+  callback still requests focus on the credential field; the exact active-window focus owner is
+  left to the window manager.
+- Packaging/docs commit `6ca9f4ee41dd2c70690565fdfe1dbfc3243cd284` pins the Flatpak source to the
+  runtime commit and documents the UI evidence boundary. Local formatting, locked all-target
+  check, strict Clippy, localization key/placeholder/visible-control audits, Flatpak metadata,
+  and diff checks passed. This host lacks `xvfb-run`, so the display-backed fixture is CI evidence.
+- Push Native/Flatpak/Foundation runs `29896152664`/`29896152686`/`29896152678` and PR
+  Native/Flatpak/Foundation runs `29896154969`/`29896154998`/`29896154971` all passed. Native
+  executed the exact fixture and the complete GTK, Secret Service, accessibility, release, and
+  evidence suites.
+
+This closes the automatable Linux session-only recovery UX boundary without claiming real end-user
+Secret Service prompt approval or visual review. Human translated-copy/visual/Orca review,
+non-local VFS and power-loss evidence, other clients, signing, rollback authorization, and stable
+release remain open; release status is `unreleased`.
+
 ## 2026-07-22 — Linux auxiliary export overwrite protection
 
 Assumption: every user-visible export must fail closed on an occupied destination, not only
