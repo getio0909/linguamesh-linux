@@ -3912,7 +3912,7 @@ fn begin_glossary_export(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
         );
         return;
     };
-    let contents = glib::Bytes::from_owned(glossary.to_csv().into_bytes());
+    let contents = glossary.to_csv().into_bytes();
     let dialog_title = localization::text(locale, "dialog.export_glossary", "Export glossary");
     let dialog_accept = localization::text(locale, "dialog.save", "Save");
     let dialog = gtk::FileDialog::builder()
@@ -3930,27 +3930,21 @@ fn begin_glossary_export(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
             Ok(file) => {
                 let callback_bindings = export_bindings.clone();
                 let callback_state = Rc::clone(&export_state);
-                file.replace_contents_bytes_async(
-                    &contents,
-                    None,
-                    false,
-                    gtk::gio::FileCreateFlags::NONE,
-                    None::<&gtk::gio::Cancellable>,
-                    move |write_result| match write_result {
-                        Ok(_) => {
-                            callback_bindings.glossary_notice.set(true);
-                            refresh_ui(&callback_bindings, &callback_state.borrow());
-                        }
-                        Err(_) => show_file_export_error(
+                write_new_file_async(&file, contents, move |write_succeeded| {
+                    if write_succeeded {
+                        callback_bindings.glossary_notice.set(true);
+                        refresh_ui(&callback_bindings, &callback_state.borrow());
+                    } else {
+                        show_file_export_error(
                             &callback_bindings,
                             &localization::text(
                                 callback_state.borrow().locale(),
                                 "error.glossary_export",
                                 "The glossary CSV could not be saved.",
                             ),
-                        ),
-                    },
-                );
+                        );
+                    }
+                });
             }
             Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
             Err(_) => show_file_export_error(
@@ -5979,7 +5973,6 @@ fn begin_routing_profile_export(
     file_dialog.set_initial_name(Some(&format!("linguamesh-routing-{profile_id}.json")));
     let export_bindings = bindings.clone();
     let export_state = Rc::clone(state);
-    let contents = glib::Bytes::from_owned(contents);
     file_dialog.save(
         Some(&bindings.window),
         None::<&gtk::gio::Cancellable>,
@@ -5987,25 +5980,18 @@ fn begin_routing_profile_export(
             Ok(file) => {
                 let callback_bindings = export_bindings.clone();
                 let callback_state = Rc::clone(&export_state);
-                file.replace_contents_bytes_async(
-                    &contents,
-                    None,
-                    false,
-                    gtk::gio::FileCreateFlags::NONE,
-                    None::<&gtk::gio::Cancellable>,
-                    move |write_result| {
-                        if write_result.is_err() {
-                            show_file_export_error(
-                                &callback_bindings,
-                                &localization::text(
-                                    callback_state.borrow().locale(),
-                                    "error.routing_profile_export",
-                                    "The routing profile JSON could not be saved.",
-                                ),
-                            );
-                        }
-                    },
-                );
+                write_new_file_async(&file, contents, move |write_succeeded| {
+                    if !write_succeeded {
+                        show_file_export_error(
+                            &callback_bindings,
+                            &localization::text(
+                                callback_state.borrow().locale(),
+                                "error.routing_profile_export",
+                                "The routing profile JSON could not be saved.",
+                            ),
+                        );
+                    }
+                });
             }
             Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
             Err(_) => show_file_export_error(
@@ -6382,7 +6368,7 @@ fn begin_history_export(
         contents.push_str(&history_tsv_field(&entry.translated_text));
         contents.push('\n');
     }
-    let contents = glib::Bytes::from_owned(contents.into_bytes());
+    let contents = contents.into_bytes();
     let dialog = gtk::FileDialog::builder()
         .title(localization::text(
             locale,
@@ -6402,27 +6388,21 @@ fn begin_history_export(
             Ok(file) => {
                 let callback_bindings = export_bindings.clone();
                 let callback_state = Rc::clone(&export_state);
-                file.replace_contents_bytes_async(
-                    &contents,
-                    None,
-                    false,
-                    gtk::gio::FileCreateFlags::NONE,
-                    None::<&gtk::gio::Cancellable>,
-                    move |write_result| match write_result {
-                        Ok(_) => {
-                            callback_bindings.history_export_notice.set(true);
-                            refresh_ui(&callback_bindings, &callback_state.borrow());
-                        }
-                        Err(_) => show_file_export_error(
+                write_new_file_async(&file, contents, move |write_succeeded| {
+                    if write_succeeded {
+                        callback_bindings.history_export_notice.set(true);
+                        refresh_ui(&callback_bindings, &callback_state.borrow());
+                    } else {
+                        show_file_export_error(
                             &callback_bindings,
                             &localization::text(
                                 callback_state.borrow().locale(),
                                 "error.history_export",
                                 "The translation history could not be saved.",
                             ),
-                        ),
-                    },
-                );
+                        );
+                    }
+                });
             }
             Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
             Err(_) => show_file_export_error(
@@ -6617,7 +6597,7 @@ fn begin_memory_export(
         contents.push_str(&memory_tsv_field(&entry.identity_json));
         contents.push('\n');
     }
-    let contents = glib::Bytes::from_owned(contents.into_bytes());
+    let contents = contents.into_bytes();
     let dialog = gtk::FileDialog::builder()
         .title(localization::text(
             locale,
@@ -6637,27 +6617,21 @@ fn begin_memory_export(
             Ok(file) => {
                 let callback_bindings = export_bindings.clone();
                 let callback_state = Rc::clone(&export_state);
-                file.replace_contents_bytes_async(
-                    &contents,
-                    None,
-                    false,
-                    gtk::gio::FileCreateFlags::NONE,
-                    None::<&gtk::gio::Cancellable>,
-                    move |write_result| match write_result {
-                        Ok(_) => {
-                            callback_bindings.memory_export_notice.set(true);
-                            refresh_ui(&callback_bindings, &callback_state.borrow());
-                        }
-                        Err(_) => show_file_export_error(
+                write_new_file_async(&file, contents, move |write_succeeded| {
+                    if write_succeeded {
+                        callback_bindings.memory_export_notice.set(true);
+                        refresh_ui(&callback_bindings, &callback_state.borrow());
+                    } else {
+                        show_file_export_error(
                             &callback_bindings,
                             &localization::text(
                                 callback_state.borrow().locale(),
                                 "error.memory_export",
                                 "The translation memory could not be saved.",
                             ),
-                        ),
-                    },
-                );
+                        );
+                    }
+                });
             }
             Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
             Err(_) => show_file_export_error(
@@ -9526,6 +9500,21 @@ mod tests {
         assert_eq!(
             fs::read(&destination_path).expect("read existing output"),
             b"keep"
+        );
+        let new_destination_path = directory.join("new.txt");
+        let new_destination = gtk::gio::File::for_path(&new_destination_path);
+        let new_result = Rc::new(Cell::new(None));
+        let new_callback_result = Rc::clone(&new_result);
+        write_new_file_async(&new_destination, b"created".to_vec(), move |succeeded| {
+            new_callback_result.set(Some(succeeded));
+        });
+        spin_main_context_until(&context, Duration::from_secs(2), || {
+            new_result.get().is_some()
+        });
+        assert_eq!(new_result.get(), Some(true));
+        assert_eq!(
+            fs::read(&new_destination_path).expect("read new output"),
+            b"created"
         );
         let _ = fs::remove_dir_all(directory);
     }
