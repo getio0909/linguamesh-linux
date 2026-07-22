@@ -9681,6 +9681,17 @@ mod tests {
         assert_eq!(selected.uri().as_str(), "smb://server/share/output.txt");
     }
 
+    #[test]
+    fn non_local_source_alias_is_rejected_by_uri_identity() {
+        let source_uri = "smb://server/share/source.txt";
+        let source = gtk::gio::File::for_uri(source_uri);
+        assert!(destination_matches_source(Some(source_uri), &source));
+        assert!(!destination_matches_source(
+            Some(source_uri),
+            &gtk::gio::File::for_uri("smb://server/share/translated.txt")
+        ));
+    }
+
     // 验证临时文件原子完成在目标被占用时失败，并保留原有文件内容。
     #[ignore = "run in dedicated serialized GTK fixture"]
     #[test]
