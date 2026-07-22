@@ -478,9 +478,10 @@ prompt acceptance and unlock UX remain separate manual validation gates. The GTK
 localized session-only recovery dialog is covered by the serialized
 `gtk_secret_storage_fallback_dialog_requires_explicit_session_only_action` fixture in Native CI:
 the dialog keeps Remember enabled until the user activates the explicit session-only action, then
-clears Remember and returns focus to the credential field; closing the dialog leaves the choice
-unchanged. This is UI lifecycle evidence only; physical prompt approval and visual review remain
-manual.
+clears Remember while the credential field remains focusable; closing the dialog leaves the choice
+unchanged. The production callback requests focus on that field, while the exact active-window
+focus owner remains a window-manager concern. This is UI lifecycle evidence only; physical prompt
+approval and visual review remain manual.
 
 The localization unit suite parses every official Linux MO catalog, checks action entries are
 available, and verifies unique BCP 47 tags plus Arabic RTL metadata:
