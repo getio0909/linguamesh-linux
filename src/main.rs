@@ -4086,6 +4086,20 @@ fn collision_safe_output_path(destination: &Path) -> Option<PathBuf> {
     None
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ExportWriteStrategy {
+    LocalAtomicRename,
+    ExclusiveCreate,
+}
+
+// 非本地 URI 没有可验证的同目录路径，只能使用 GIO 独占创建保持不覆盖语义。
+fn export_write_strategy(destination: &gtk::gio::File) -> ExportWriteStrategy {
+    match destination.path() {
+        Some(path) if path.parent().is_some() => ExportWriteStrategy::LocalAtomicRename,
+        _ => ExportWriteStrategy::ExclusiveCreate,
+    }
+}
+
 // 将 GIO 目标转换为不会覆盖已有本地文件的确定性路径。
 fn collision_safe_destination(destination: &gtk::gio::File) -> Option<gtk::gio::File> {
     destination.path().map_or_else(
@@ -4133,6 +4147,10 @@ fn write_new_file_async(
     contents: Vec<u8>,
     callback: impl FnOnce(bool) + 'static,
 ) {
+    if export_write_strategy(destination) == ExportWriteStrategy::ExclusiveCreate {
+        write_contents_to_new_file_async(destination, contents, callback);
+        return;
+    }
     let Some(destination_path) = destination.path() else {
         write_contents_to_new_file_async(destination, contents, callback);
         return;
@@ -8487,19 +8505,20 @@ mod tests {
         DEFAULT_AZURE_PROVIDER_NAME, DEFAULT_GEMINI_ENDPOINT, DEFAULT_GEMINI_PROVIDER_NAME,
         DEFAULT_OLLAMA_ENDPOINT, DEFAULT_OLLAMA_PROVIDER_NAME, DEFAULT_PROVIDER_ENDPOINT,
         DEFAULT_PROVIDER_NAME, DEFAULT_RESPONSES_ENDPOINT, DEFAULT_RESPONSES_PROVIDER_NAME,
-        ErrorKind, GEMINI_ADAPTER_TYPE, GEMINI_PROVIDER_PRESET_ID, OLLAMA_ADAPTER_TYPE,
-        OLLAMA_PROVIDER_PRESET_ID, OPENAI_ADAPTER_TYPE, OnboardingStage, ProviderProfileId,
-        RESPONSES_ADAPTER_TYPE, RESPONSES_PROVIDER_PRESET_ID, RoutingCandidate,
+        ErrorKind, ExportWriteStrategy, GEMINI_ADAPTER_TYPE, GEMINI_PROVIDER_PRESET_ID,
+        OLLAMA_ADAPTER_TYPE, OLLAMA_PROVIDER_PRESET_ID, OPENAI_ADAPTER_TYPE, OnboardingStage,
+        ProviderProfileId, RESPONSES_ADAPTER_TYPE, RESPONSES_PROVIDER_PRESET_ID, RoutingCandidate,
         RoutingConstraintTextValues, RoutingDecisionSummary, RoutingProfile, RoutingProfileRecord,
         SecretRef, SecretRefNamespace, SecretValue, TranslationError, UiLocale, WorkerCommand,
-        WorkerEvent, apply_worker_event, collision_safe_output_path, connect_action_handlers,
-        connect_selection_handlers, create_window, custom_provider_profile,
-        destination_matches_source, document_format_label, document_translation_report,
-        endpoint_matches_preset_default, fallback_confirmation_needed, generate_custom_provider_id,
-        load_source_file, localized_document_job_state, localized_document_warnings,
-        localized_provider_default_name, localized_template, normalized_candidate_ids_for_mode,
-        output_metrics_label, preset_requires_manual_model, provider_preset_config,
-        provider_preset_index, quality_mode_for_selection, quality_mode_selection, refresh_ui,
+        WorkerEvent, apply_worker_event, collision_safe_destination, collision_safe_output_path,
+        connect_action_handlers, connect_selection_handlers, create_window,
+        custom_provider_profile, destination_matches_source, document_format_label,
+        document_translation_report, endpoint_matches_preset_default, export_write_strategy,
+        fallback_confirmation_needed, generate_custom_provider_id, load_source_file,
+        localized_document_job_state, localized_document_warnings, localized_provider_default_name,
+        localized_template, normalized_candidate_ids_for_mode, output_metrics_label,
+        preset_requires_manual_model, provider_preset_config, provider_preset_index,
+        quality_mode_for_selection, quality_mode_selection, refresh_ui,
         routing_constraints_from_controls, routing_constraints_from_text_values,
         routing_identifier_list_from_text, routing_optional_limit_from_text,
         routing_preference_for_selection, routing_preference_selection,
@@ -9648,6 +9667,18 @@ mod tests {
             Some(directory.join("new.txt"))
         );
         let _ = fs::remove_dir_all(directory);
+    }
+
+    #[test]
+    fn non_local_export_uses_exclusive_create_fallback() {
+        let destination = gtk::gio::File::for_uri("smb://server/share/output.txt");
+        assert_eq!(
+            export_write_strategy(&destination),
+            ExportWriteStrategy::ExclusiveCreate
+        );
+        assert!(destination.path().is_none());
+        let selected = collision_safe_destination(&destination).expect("non-local destination");
+        assert_eq!(selected.uri().as_str(), "smb://server/share/output.txt");
     }
 
     // 验证临时文件原子完成在目标被占用时失败，并保留原有文件内容。
