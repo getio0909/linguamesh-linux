@@ -10,7 +10,7 @@ URLs must not contain userinfo, query strings, or paths.
 - Core schema 25 validates HTTP, HTTPS, SOCKS5, and SOCKS5H proxy URLs, persists only the bounded
   non-secret URL, and applies the selected proxy to OpenAI Chat/Responses/Azure, Anthropic,
   Gemini, and Ollama transports. Domain, storage, and explicit loopback-proxy regressions pass.
-- Core `354542696e8ee7b1ba45d0e3ae0cb98144049742` and l10n
+- Core `7a9da3f467c5dec539dd8f7850b90b54ae712331` and l10n
   `bba90a89089c954bdfe1dcda19c210e6ea230b9e` are pinned in Native and Flatpak inputs. Local
   Core workspace tests (all passing), Linux demo-provider tests (`159 passed; 3 ignored`),
   strict Clippy, localization audits, synchronization, Flatpak metadata, and diff checks pass.
