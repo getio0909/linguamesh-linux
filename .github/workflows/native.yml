@@ -336,6 +336,11 @@ jobs:
           && printf 'Linux native CI evidence\nLinux revision: %s\nCore revision: %s\nLocalization revision: %s\nPerformance baseline: LINUX-PERFORMANCE-BASELINE.tsv\nArtifact status: unsigned release-mode prerelease evidence\n'
           "$GITHUB_SHA" "$CORE_REVISION" "88765d3358450ccfac12f396caf5290230a83577"
           > native-evidence/BUILD-INFO.txt
+      - name: Verify native checksum and SBOM evidence
+        working-directory: linguamesh-linux
+        run: >-
+          sha256sum --check native-evidence/SHA256SUMS
+          && python3 -c "import json; json.load(open('native-evidence/SBOM.spdx.json', encoding='utf-8'))"
       - name: Upload native checksum and SBOM evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

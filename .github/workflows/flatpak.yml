@@ -38,6 +38,10 @@ jobs:
           --manifest packaging/flatpak/dev.linguamesh.LinguaMesh.yml
           --cargo-lock Cargo.lock
           --output-dir flatpak-evidence
+      - name: Verify Flatpak checksum and SBOM evidence
+        run: >-
+          sha256sum --check flatpak-evidence/SHA256SUMS
+          && python3 -c "import json; json.load(open('flatpak-evidence/SBOM.spdx.json', encoding='utf-8'))"
       - name: Upload checksum and SBOM evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
