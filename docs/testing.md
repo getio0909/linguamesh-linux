@@ -277,8 +277,9 @@ text are loaded without selecting another job. It reopens the queue, finds the s
 for the paused row, activates it, and verifies that the same paused job remains selected while the
 dialog closes after the command is sent. It then finds the single Retry action for the cancelled
 row, activates it, and verifies the cancelled snapshot remains selected while the dialog closes.
-Native CI runs this fixture under the same serialized DBus/Xvfb boundary as the other GTK document
-controls.
+It finally finds the single Pause action for the pending row, activates it, and verifies the pending
+snapshot remains selected while the dialog closes. Native CI runs this fixture under the same
+serialized DBus/Xvfb boundary as the other GTK document controls.
 
 `imports_pptx_and_preserves_notes_and_resources`,
 `document_job_translation_reconstructs_docx_and_preserves_binary_parts` and

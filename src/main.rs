@@ -10598,7 +10598,7 @@ mod tests {
             &bindings,
             &state,
             &worker.command_handle(),
-            vec![first_job, second_job, cancelled_job],
+            vec![first_job.clone(), second_job.clone(), cancelled_job.clone()],
         );
         spin_main_context_until(&context, Duration::from_secs(1), || {
             application
@@ -10630,6 +10630,51 @@ mod tests {
         assert_eq!(
             bindings.document_job_state.get(),
             Some(DocumentJobState::Cancelled)
+        );
+        assert!(
+            !application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Document jobs"))
+        );
+
+        // 验证待处理任务的 Pause 动作绑定到同一个任务，并在发送命令后关闭队列窗口。
+        show_document_jobs_dialog(
+            &bindings,
+            &state,
+            &worker.command_handle(),
+            vec![first_job, second_job, cancelled_job],
+        );
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Document jobs"))
+        });
+        let pause_dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| candidate.title().as_deref() == Some("Document jobs"))
+            .expect("document jobs pause dialog");
+        let pause_buttons = descendant_widgets(pause_dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .filter(|button| {
+                button
+                    .label()
+                    .is_some_and(|label| label.contains("Pause document"))
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        assert_eq!(pause_buttons.len(), 1);
+        pause_buttons[0].emit_clicked();
+        assert_eq!(
+            bindings.document_job_id.borrow().as_deref(),
+            Some("gtk-queue-first")
+        );
+        assert_eq!(
+            bindings.document_job_state.get(),
+            Some(DocumentJobState::Pending)
         );
         assert!(
             !application
