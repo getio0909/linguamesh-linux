@@ -3632,6 +3632,12 @@ fn connect_action_handlers(
                 return;
             }
         };
+        let profile = profile.with_secret_custom_headers_ref(
+            state
+                .selected_saved_profile()
+                .and_then(|saved| saved.secret_custom_headers_ref())
+                .cloned(),
+        );
         if let Err(error) = test_worker.try_send(WorkerCommand::TestConnection {
             profile,
             secret: session_secret,
@@ -3790,8 +3796,16 @@ fn connect_action_handlers(
             custom_headers,
             selected_model,
         )
-        .map(|profile| profile.with_enabled(enabled))
-        {
+        .map(|profile| {
+            profile
+                .with_enabled(enabled)
+                .with_secret_custom_headers_ref(
+                    state
+                        .selected_saved_profile()
+                        .and_then(|saved| saved.secret_custom_headers_ref())
+                        .cloned(),
+                )
+        }) {
             Ok(profile) => profile,
             Err(error) => {
                 state.provider_failed(error);

@@ -2536,6 +2536,7 @@ async fn run_worker(
                     &mut candidate,
                     &profile,
                     secret,
+                    None,
                     &cancellation,
                     &mut secret_requests,
                 )
@@ -2581,6 +2582,7 @@ async fn run_worker(
                             &mut candidate,
                             &profile,
                             secret,
+                            None,
                             &cancellation,
                             &mut secret_requests,
                         )
@@ -2701,7 +2703,7 @@ async fn run_worker(
             Some(QueuedCommand::DeleteSavedProfile { profile_id }) => {
                 let result = delete_saved_profile(storage.as_mut(), &profile_id);
                 match result {
-                    Ok(secret_ref) => {
+                    Ok(secret_refs) => {
                         if active_saved_profile
                             .as_ref()
                             .is_some_and(|profile| profile.id() == &profile_id)
@@ -2717,7 +2719,7 @@ async fn run_worker(
                             shutting_down = true;
                         }
                         #[cfg(feature = "gui")]
-                        if let Some(secret_ref) = secret_ref {
+                        for secret_ref in secret_refs {
                             let cleanup = tokio::task::spawn_blocking(move || {
                                 crate::secret_service::delete_secret(&secret_ref)
                             })
@@ -2731,7 +2733,7 @@ async fn run_worker(
                             if let Err(error) = cleanup
                                 && events
                                     .send(WorkerEvent::SecretCleanupFailed {
-                                        profile_id: deleted_profile_id,
+                                        profile_id: deleted_profile_id.clone(),
                                         error,
                                     })
                                     .is_err()
@@ -2740,7 +2742,7 @@ async fn run_worker(
                             }
                         }
                         #[cfg(not(feature = "gui"))]
-                        let _ = secret_ref;
+                        let _ = secret_refs;
                     }
                     Err(error) => {
                         let storage_error = degrade_profile_storage_after_persistence_error(
@@ -4737,6 +4739,9 @@ fn validate_persistence_request(
     if profile
         .secret_ref()
         .is_some_and(linguamesh_domain::SecretRef::is_persistent)
+        || profile
+            .secret_custom_headers_ref()
+            .is_some_and(linguamesh_domain::SecretRef::is_persistent)
     {
         #[cfg(not(feature = "gui"))]
         return Err(TranslationError::new(
@@ -4824,6 +4829,19 @@ fn profile_without_secret(profile: &ProviderProfile) -> Result<ProviderProfile, 
     .and_then(|saved| saved.with_user_notes(profile.user_notes().map(str::to_owned)))
     .and_then(|saved| saved.with_organization(profile.organization().map(str::to_owned)))
     .and_then(|saved| saved.with_project(profile.project().map(str::to_owned)))
+    .and_then(|saved| saved.with_region(profile.region().map(str::to_owned)))
+    .and_then(|saved| {
+        saved.with_account_identifier(profile.account_identifier().map(str::to_owned))
+    })
+    .and_then(|saved| saved.with_custom_headers(profile.custom_headers().map(str::to_owned)))
+    .map(|saved| {
+        saved.with_secret_custom_headers_ref(
+            profile
+                .secret_custom_headers_ref()
+                .filter(|secret_ref| secret_ref.is_persistent())
+                .cloned(),
+        )
+    })
     .map(|saved| saved.with_enabled(profile.enabled()))
     .and_then(|saved| saved.with_selected_model(profile.selected_model().map(str::to_owned)))
     .map_err(|error| map_profile_error(&error))
@@ -4873,14 +4891,14 @@ fn prepare_model_selection(
 fn delete_saved_profile(
     storage: Option<&mut Storage>,
     profile_id: &ProviderProfileId,
-) -> Result<Option<linguamesh_domain::SecretRef>, TranslationError> {
+) -> Result<Vec<linguamesh_domain::SecretRef>, TranslationError> {
     let storage = storage.ok_or_else(|| {
         TranslationError::new(
             ErrorKind::Persistence,
             "Profile storage is unavailable; no saved profile was removed.",
         )
     })?;
-    let secret_ref = storage
+    let profile = storage
         .provider_profile(profile_id)?
         .ok_or_else(|| {
             TranslationError::new(
@@ -4888,11 +4906,19 @@ fn delete_saved_profile(
                 "The saved provider profile no longer exists.",
             )
         })?
-        .secret_ref()
+        .clone();
+    let mut secret_refs = Vec::new();
+    for secret_ref in [profile.secret_ref(), profile.secret_custom_headers_ref()]
+        .into_iter()
+        .flatten()
         .filter(|secret_ref| secret_ref.is_persistent())
-        .cloned();
+    {
+        if !secret_refs.contains(secret_ref) {
+            secret_refs.push(secret_ref.clone());
+        }
+    }
     if storage.delete_provider_profile(profile_id)? {
-        Ok(secret_ref)
+        Ok(secret_refs)
     } else {
         Err(TranslationError::new(
             ErrorKind::InvalidConfiguration,
@@ -4941,6 +4967,7 @@ async fn connect_candidate(
     manager: &mut ProviderManager,
     profile: &ProviderProfile,
     mut session_secret: Option<SecretValue>,
+    mut session_secret_custom_headers: Option<SecretValue>,
     cancellation: &CancellationToken,
     requests: &mut HostSecretRequests,
 ) -> Result<Vec<ModelDescriptor>, TranslationError> {
@@ -4948,6 +4975,12 @@ async fn connect_candidate(
         return Err(TranslationError::new(
             ErrorKind::InvalidConfiguration,
             "A session credential requires an explicit session secret reference.",
+        ));
+    }
+    if session_secret_custom_headers.is_some() && profile.secret_custom_headers_ref().is_none() {
+        return Err(TranslationError::new(
+            ErrorKind::InvalidConfiguration,
+            "Session custom headers require an explicit session secret reference.",
         ));
     }
 
@@ -4966,8 +4999,15 @@ async fn connect_candidate(
                     ));
                 };
                 let required_ref = request.required().secret_ref.clone();
-                let response = if profile.secret_ref() == Some(&required_ref) {
-                    if let Some(secret) = session_secret.take() {
+                let response = if profile.secret_ref() == Some(&required_ref)
+                    || profile.secret_custom_headers_ref() == Some(&required_ref)
+                {
+                    let secret = if profile.secret_ref() == Some(&required_ref) {
+                        session_secret.take()
+                    } else {
+                        session_secret_custom_headers.take()
+                    };
+                    if let Some(secret) = secret {
                         request.provide_secret(secret)
                     } else if required_ref.is_persistent() {
                         #[cfg(feature = "gui")]
@@ -5039,7 +5079,8 @@ async fn connect_fallback_candidate(
         )
     })?;
     let mut manager = ProviderManager::new(secret_broker);
-    let models = connect_candidate(&mut manager, &profile, None, cancellation, requests).await?;
+    let models =
+        connect_candidate(&mut manager, &profile, None, None, cancellation, requests).await?;
     if !models.iter().any(|candidate| candidate.id == model) {
         manager.disconnect();
         return Err(TranslationError::new(
@@ -5079,7 +5120,8 @@ async fn connect_routing_candidate(
             )
         })?;
     let mut manager = ProviderManager::new(secret_broker);
-    let models = connect_candidate(&mut manager, &profile, None, cancellation, requests).await?;
+    let models =
+        connect_candidate(&mut manager, &profile, None, None, cancellation, requests).await?;
     if !models.iter().any(|model| model.id == candidate.model_id) {
         manager.disconnect();
         return Err(TranslationError::new(
@@ -9096,9 +9138,15 @@ mod tests {
             "http://127.0.0.1:1/v1/",
             Some(SecretRef::new(SecretRefNamespace::SecretService)),
             None,
-        );
+        )
+        .with_secret_custom_headers_ref(Some(SecretRef::new(SecretRefNamespace::SecretService)));
         let saved = profile_without_secret(&persistent).expect("persistent profile");
         assert!(saved.secret_ref().is_some_and(SecretRef::is_persistent));
+        assert!(
+            saved
+                .secret_custom_headers_ref()
+                .is_some_and(SecretRef::is_persistent)
+        );
 
         let session = profile(
             "session-ref",
@@ -9108,6 +9156,11 @@ mod tests {
         );
         let saved = profile_without_secret(&session).expect("session profile");
         assert!(saved.secret_ref().is_none());
+
+        let session_headers = profile("session-headers-ref", "http://127.0.0.1:1/v1/", None, None)
+            .with_secret_custom_headers_ref(Some(SecretRef::new(SecretRefNamespace::Session)));
+        let saved = profile_without_secret(&session_headers).expect("session headers profile");
+        assert!(saved.secret_custom_headers_ref().is_none());
     }
 
     #[test]
