@@ -9793,6 +9793,8 @@ mod tests {
             "usage\t{\"source\":\"locally_estimated\",\"input_tokens\":5,\"output_tokens\":3,\"total_tokens\":8}"
         ));
         assert!(!report.contains("traduction"));
+        assert!(!report.contains("\ttranslated\n"));
+        assert!(!report.contains("\tpending\n"));
         assert!(!report.contains("private\n"));
     }
 
