@@ -3397,8 +3397,8 @@ in the GitHub Actions evidence above, but those native checks remain unavailable
 - End-user Secret Service prompt acceptance and unlock UX. The GIO adapter, fail-closed prompted
   store/delete boundary, remembered-credential path, and secure persistent-credential onboarding
   are implemented, while session-only fallback remains available when the keyring is unavailable.
-- Central release-manifest integration for this exact Linux/Core revision; broader product
-  compatibility beyond the alpha.2 startup gate remains unclaimed.
+- Broader product compatibility beyond the alpha.2 startup gate remains unclaimed. The central
+  release manifest now pins this Linux runtime/l10n checkpoint, but the train remains unreleased.
 - Other third-party local-server variants beyond the verified Ollama daemon; the deterministic
   Ollama-compatible OpenAI `/v1/` loopback contract and native `/api` daemon path are covered.
 - Complete canonical UI gettext coverage, plural/placeholder handling, and visual locale/RTL verification.
