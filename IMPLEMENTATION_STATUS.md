@@ -18,12 +18,13 @@ and limited to non-sensitive build and Core compatibility fields.
   linker-limited on this host by missing GTK4/Graphene symbols; CI supplies the executable GUI
   evidence.
 - Runtime/packaging head `0d7b3927fb98e461317feaefeb4c806676e6acc0` includes the corrected GTK
-  mnemonic-aware Close assertion. The first About push Native run `29937509002` failed only on
-  that assertion; corrected push Native `29938498949`, PR Native `29938501797`, push/PR Flatpak
-  `29938498660`/`29938501835`, and push/PR Foundation `29938498667`/`29938501772` all passed,
-  including About, accessibility, release, checksum/SBOM, performance, Flatpak sandbox, and
-  localization checks. Earlier stale-pin Flatpak run `29937961470` was superseded by the corrected
-  pin in `0d7b392`.
+  mnemonic-aware Close assertion. The first About push Native run `29937178278` failed because
+  the workflow still pinned the previous l10n revision; after that pin was corrected, Native run
+  `29937509002` failed only on the mnemonic assertion. Corrected push Native `29938498949`, PR
+  Native `29938501797`, push/PR Flatpak `29938498660`/`29938501835`, and push/PR Foundation
+  `29938498667`/`29938501772` all passed, including About, accessibility, release, checksum/SBOM,
+  performance, Flatpak sandbox, and localization checks. Earlier stale-pin Flatpak run
+  `29937961470` was superseded by the corrected pin in `0d7b392`.
 - Linux PR #1 remains Draft/Open/mergeable with no submitted reviews or unresolved threads.
   Human visual/copy/Orca review, physical VFS and power-loss evidence, signing, rollback
   authorization, and stable release acceptance remain open; release status stays `unreleased`.
