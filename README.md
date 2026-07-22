@@ -20,7 +20,7 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `28baaa2f85bb70b4fc6ecc4c07566e7004a659c5`, which adds bounded
+reviewed Core functional revision `354542696e8ee7b1ba45d0e3ae0cb98144049742`, which adds bounded
 FileLease lifecycle validation and strict
 routing-profile validation, schema-15 routing-profile persistence, schema-16 document-job
 routing-profile persistence, and schema-17 document quality-mode persistence on top of the existing
@@ -44,7 +44,9 @@ retrying a candidate.
 
 The GTK provider form consumes the pinned Core provider catalog for adapter and model-listing
 compatibility. It supports optional bounded, non-secret profile notes, custom request headers,
-organization/project IDs, region, and account identifiers. Saved profiles restore these values;
+organization/project IDs, region, account identifiers, and an optional HTTP/HTTPS/SOCKS5 proxy URL.
+The proxy is validated without embedded credentials and applied by Core's transport. Saved profiles
+restore these values;
 custom headers reject authorization, credential-shaped, and built-in metadata names, while the
 application layer forwards safe headers to Chat Completions, Responses, and Azure Chat without
 replacing their authentication metadata, while OpenAI organization/project headers remain limited
@@ -237,7 +239,7 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`32397a72c267677f04419a5084514f025f94a0bc` and validated with `msgfmt`; the 462-message bundle
+`bba90a89089c954bdfe1dcda19c210e6ea230b9e` and validated with `msgfmt`; the 465-message bundle
 adds Linux routing-profile persistence/editor, profile-ID validation and duplicate protection, ordinary-text selection labels, routing preference/privacy/document constraints, provider/model allowlists and denylists, quality/request-size limits, translation quality-mode and translation-preset labels, and source/output character plus approximate-token metrics. The locale selector
 exposes all twelve official BCP 47 packs plus the generated `en-XA` accented and `ar-XB` RTL
 pseudo-locales. It switches runtime action, workspace-widget,

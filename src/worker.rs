@@ -272,6 +272,7 @@ pub enum WorkerCommand {
 }
 
 /// 描述从共享核心传回原生主线程的事件。
+#[allow(clippy::large_enum_variant)]
 pub enum WorkerEvent {
     /// 内建假提供商已启动，但尚未建立应用连接。
     DemoProviderReady {

@@ -78,8 +78,8 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `8717251375290cc3f825cee86d467ab1c60dd508` and l10n
-`ec538de57c1edc198fa13d3dfc1de576ee9b2c12` (456 catalog messages). Normalized usage labels
+The current Linux gate consumes Core `354542696e8ee7b1ba45d0e3ae0cb98144049742` and l10n
+`bba90a89089c954bdfe1dcda19c210e6ea230b9e` (465 catalog messages). Normalized usage labels
 distinguish provider-reported, locally estimated, and unknown counts without pricing assumptions;
 provider billing equivalence and stable ABI projection remain open. Request-level glossary rules, bounded CSV,
 interchange are implemented in the Linux slice; persistent glossary libraries and TBX import

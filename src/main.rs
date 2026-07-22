@@ -133,6 +133,7 @@ struct UiBindings {
     provider_project: gtk::Entry,
     provider_region: gtk::Entry,
     provider_account_identifier: gtk::Entry,
+    provider_proxy: gtk::Entry,
     provider_custom_headers: gtk::Entry,
     provider_secret_custom_headers: gtk::PasswordEntry,
     manual_model_row: gtk::Box,
@@ -756,6 +757,7 @@ fn create_window(
         provider_project,
         provider_region,
         provider_account_identifier,
+        provider_proxy,
         provider_custom_headers,
         provider_secret_custom_headers,
         manual_model_row,
@@ -1050,6 +1052,7 @@ fn create_window(
         provider_project,
         provider_region,
         provider_account_identifier,
+        provider_proxy,
         provider_custom_headers,
         provider_secret_custom_headers,
         manual_model_row,
@@ -1170,6 +1173,7 @@ fn create_window(
                 .provider_account_identifier
                 .clone()
                 .upcast::<gtk::Widget>(),
+            bindings.provider_proxy.clone().upcast::<gtk::Widget>(),
             bindings
                 .provider_custom_headers
                 .clone()
@@ -1245,6 +1249,10 @@ fn install_keyboard_focus_probe(
                 .provider_account_identifier
                 .clone()
                 .upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_proxy",
+            bindings.provider_proxy.clone().upcast::<gtk::Widget>(),
         ),
         (
             "provider_custom_headers",
@@ -1585,6 +1593,7 @@ fn create_provider_session() -> (
     gtk::Entry,
     gtk::Entry,
     gtk::Entry,
+    gtk::Entry,
     gtk::PasswordEntry,
     gtk::Box,
     gtk::Entry,
@@ -1741,6 +1750,18 @@ fn create_provider_session() -> (
         "tooltip.provider_account_identifier",
         "Optional account identifier used to distinguish provider tenants",
     )));
+    let provider_proxy = gtk::Entry::new();
+    provider_proxy.set_hexpand(true);
+    provider_proxy.set_placeholder_text(Some(&localization::text(
+        locale,
+        "placeholder.provider_proxy",
+        "Optional proxy URL, for example http://127.0.0.1:8080",
+    )));
+    provider_proxy.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_proxy",
+        "Optional HTTP, HTTPS, SOCKS5, or SOCKS5H proxy without embedded credentials",
+    )));
     let provider_custom_headers = gtk::Entry::new();
     provider_custom_headers.set_hexpand(true);
     provider_custom_headers.set_placeholder_text(Some(&localization::text(
@@ -1851,6 +1872,10 @@ fn create_provider_session() -> (
         provider_account_identifier.upcast_ref::<gtk::Widget>(),
     ));
     fields.append(&labeled_control(
+        &localized_mnemonic(locale, "label.provider_proxy", "Proxy URL"),
+        provider_proxy.upcast_ref::<gtk::Widget>(),
+    ));
+    fields.append(&labeled_control(
         &localized_mnemonic(
             locale,
             "label.provider_custom_headers",
@@ -1894,6 +1919,7 @@ fn create_provider_session() -> (
         provider_project,
         provider_region,
         provider_account_identifier,
+        provider_proxy,
         provider_custom_headers,
         provider_secret_custom_headers,
         manual_model_row,
@@ -2605,6 +2631,9 @@ fn show_saved_profile_in_form(bindings: &UiBindings, profile: &ProviderProfile) 
         .provider_account_identifier
         .set_text(profile.account_identifier().unwrap_or_default());
     bindings
+        .provider_proxy
+        .set_text(profile.proxy_url().unwrap_or_default());
+    bindings
         .provider_custom_headers
         .set_text(profile.custom_headers().unwrap_or_default());
     bindings
@@ -2641,6 +2670,7 @@ fn show_new_profile_in_form(
     bindings.provider_project.set_text("");
     bindings.provider_region.set_text("");
     bindings.provider_account_identifier.set_text("");
+    bindings.provider_proxy.set_text("");
     bindings.provider_custom_headers.set_text("");
     bindings.manual_model.set_text("");
     bindings.manual_model_row.set_visible(false);
@@ -2663,6 +2693,7 @@ fn custom_provider_profile(
     project: Option<String>,
     region: Option<String>,
     account_identifier: Option<String>,
+    proxy_url: Option<String>,
     custom_headers: Option<String>,
     selected_model: Option<String>,
 ) -> Result<ProviderProfile, TranslationError> {
@@ -2679,6 +2710,7 @@ fn custom_provider_profile(
     .and_then(|profile| profile.with_project(project))
     .and_then(|profile| profile.with_region(region))
     .and_then(|profile| profile.with_account_identifier(account_identifier))
+    .and_then(|profile| profile.with_proxy_url(proxy_url))
     .and_then(|profile| profile.with_custom_headers(custom_headers))
     .and_then(|profile| profile.with_selected_model(selected_model))
     .map_err(|error| {
@@ -3572,6 +3604,8 @@ fn connect_action_handlers(
             .trim()
             .to_owned();
         let account_identifier = (!account_text.is_empty()).then_some(account_text);
+        let proxy_text = test_bindings.provider_proxy.text().trim().to_owned();
+        let proxy_url = (!proxy_text.is_empty()).then_some(proxy_text);
         let custom_headers_text = test_bindings
             .provider_custom_headers
             .text()
@@ -3677,6 +3711,7 @@ fn connect_action_handlers(
             project,
             region,
             account_identifier,
+            proxy_url,
             custom_headers,
             selected_model,
         ) {
@@ -3725,6 +3760,8 @@ fn connect_action_handlers(
             .trim()
             .to_owned();
         let account_identifier = (!account_text.is_empty()).then_some(account_text);
+        let proxy_text = connect_bindings.provider_proxy.text().trim().to_owned();
+        let proxy_url = (!proxy_text.is_empty()).then_some(proxy_text);
         let custom_headers_text = connect_bindings
             .provider_custom_headers
             .text()
@@ -3884,6 +3921,7 @@ fn connect_action_handlers(
             project,
             region,
             account_identifier,
+            proxy_url,
             custom_headers,
             selected_model,
         )
@@ -8490,6 +8528,24 @@ fn refresh_localized_widgets(bindings: &UiBindings, locale: UiLocale) {
             "Optional account identifier used to distinguish provider tenants",
         )));
     set_labeled_control_label(
+        bindings.provider_proxy.upcast_ref(),
+        &localized_mnemonic(locale, "label.provider_proxy", "Proxy URL"),
+    );
+    bindings
+        .provider_proxy
+        .set_placeholder_text(Some(&localization::text(
+            locale,
+            "placeholder.provider_proxy",
+            "Optional proxy URL, for example http://127.0.0.1:8080",
+        )));
+    bindings
+        .provider_proxy
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.provider_proxy",
+            "Optional HTTP, HTTPS, SOCKS5, or SOCKS5H proxy without embedded credentials",
+        )));
+    set_labeled_control_label(
         bindings.provider_custom_headers.upcast_ref(),
         &localized_mnemonic(
             locale,
@@ -9763,6 +9819,7 @@ mod tests {
             None,
             None,
             None,
+            None,
             Some("model-a".to_owned()),
         )
         .expect("candidate A profile");
@@ -9772,6 +9829,7 @@ mod tests {
             CUSTOM_PROVIDER_PRESET_ID.to_owned(),
             OPENAI_ADAPTER_TYPE.to_owned(),
             "http://127.0.0.1:4243/v1/".to_owned(),
+            None,
             None,
             None,
             None,
@@ -12948,6 +13006,7 @@ mod tests {
             None,
             None,
             None,
+            None,
             Some("fake-translator".to_owned()),
         )
         .expect("first restored profile");
@@ -12964,6 +13023,7 @@ mod tests {
             Some("project-restored".to_owned()),
             Some("eu-west-1".to_owned()),
             Some("tenant-restored".to_owned()),
+            None,
             None,
             Some("fake-slow-translator".to_owned()),
         )

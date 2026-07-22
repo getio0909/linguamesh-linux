@@ -2345,6 +2345,21 @@ msgctxt "tooltip.provider_account_identifier"
 msgid "Optional account identifier used to distinguish provider tenants"
 msgstr "Optional account identifier used to distinguish provider tenants"
 
+#. Label for the optional proxy URL in the Linux provider form.
+msgctxt "label.provider_proxy"
+msgid "Proxy URL"
+msgstr "Proxy URL"
+
+#. Placeholder for the optional provider proxy URL in the Linux provider form.
+msgctxt "placeholder.provider_proxy"
+msgid "Optional proxy URL, for example http://127.0.0.1:8080"
+msgstr "Optional proxy URL, for example http://127.0.0.1:8080"
+
+#. Tooltip for the optional provider proxy URL.
+msgctxt "tooltip.provider_proxy"
+msgid "Optional HTTP, HTTPS, SOCKS5, or SOCKS5H proxy without embedded credentials"
+msgstr "Optional HTTP, HTTPS, SOCKS5, or SOCKS5H proxy without embedded credentials"
+
 #. Label for optional custom request headers in the Linux provider form.
 msgctxt "label.provider_custom_headers"
 msgid "Custom headers (non-secret JSON)"

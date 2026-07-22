@@ -1,5 +1,22 @@
 # Implementation Status
 
+## 2026-07-22 — Linux proxy settings checkpoint
+
+Assumption: proxy authentication remains out of scope for this prerelease slice; persisted proxy
+URLs must not contain userinfo, query strings, or paths.
+
+- Linux now exposes a localized optional proxy URL field, restores it with saved profiles, clears
+  it for new profiles, and includes it in Test connection/Connect without changing provider logic.
+- Core schema 25 validates HTTP, HTTPS, SOCKS5, and SOCKS5H proxy URLs, persists only the bounded
+  non-secret URL, and applies the selected proxy to OpenAI Chat/Responses/Azure, Anthropic,
+  Gemini, and Ollama transports. Domain, storage, and explicit loopback-proxy regressions pass.
+- Core `354542696e8ee7b1ba45d0e3ae0cb98144049742` and l10n
+  `bba90a89089c954bdfe1dcda19c210e6ea230b9e` are pinned in Native and Flatpak inputs. Local
+  Core workspace tests (all passing), Linux demo-provider tests (`159 passed; 3 ignored`),
+  strict Clippy, localization audits, synchronization, Flatpak metadata, and diff checks pass.
+  Release remains unreleased pending remote gates and the documented human, cross-client, signing,
+  rollback, and stable-release boundaries.
+
 ## 2026-07-22 — Linux Core ABI metadata pin
 
 Assumption: Linux's direct typed Rust path remains the production-facing integration for this

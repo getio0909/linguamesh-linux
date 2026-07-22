@@ -21,7 +21,10 @@ It also round-trips the optional bounded organization identifier through Core sc
 OpenAI-compatible adapter adds it only as `OpenAI-Organization` and rejects credential-shaped values.
 The same form round-trips bounded canonical JSON custom headers through Core schema 23; the Core
 domain and OpenAI adapter reject authorization, credential-shaped, and built-in metadata names,
-while a safe header is applied without replacing authentication metadata.
+while a safe header is applied without replacing authentication metadata. The same provider profile
+contract round-trips a credential-free proxy URL through Core schema 25; unsupported schemes, URL
+paths, query strings, and embedded proxy credentials are rejected before any host-secret request,
+and the selected transport applies the proxy to provider HTTP requests.
 
 The same provider fixture covers the Google Gemini preset through the `/v1beta/` Generate Content
 contract: `models` discovery filters entries that support `generateContent`, and the streaming
@@ -167,7 +170,7 @@ The Linux checkpoint has a reproducible external pass using Docker image
 were removed after validation. This evidence is prerelease-only and does not cover GPU execution.
 
 The Linux checkout consumes the canonical gettext bundle from immutable l10n revision
-`32397a72c267677f04419a5084514f025f94a0bc`. The bundle contains 462 messages, and
+`bba90a89089c954bdfe1dcda19c210e6ea230b9e`. The bundle contains 465 messages, and
 `bash tools/sync-l10n.sh --check` verifies every PO/MO catalog and the generated manifest before
 the native build. History/memory row metadata, document-job IDs, active-provider mode summaries,
 unavailable provider/model labels, and routing-profile actions/mode labels are asserted through
@@ -294,7 +297,7 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`28baaa2f85bb70b4fc6ecc4c07566e7004a659c5`. This revision carries bounded document lease
+`354542696e8ee7b1ba45d0e3ae0cb98144049742`. This revision carries bounded document lease
 consumption smoke, POSIX-descriptor document consumption, and the AddressSanitizer gate, plus the
 protocol decoder fuzz gate and bounded FileLease lifecycle,
 including Linux's portal-read lease checks, and the explicit request-level
@@ -306,9 +309,9 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 28baaa2f85bb70b4fc6ecc4c07566e7004a659c5^{commit}
+git -C ../linguamesh-core cat-file -e 354542696e8ee7b1ba45d0e3ae0cb98144049742^{commit}
 git -C ../linguamesh-core diff --quiet \
-  28baaa2f85bb70b4fc6ecc4c07566e7004a659c5..HEAD -- \
+  354542696e8ee7b1ba45d0e3ae0cb98144049742..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -634,8 +637,8 @@ python3 tools/create-native-evidence.py \
   --cargo-lock Cargo.lock \
   --output-dir native-evidence \
   --linux-revision "$(git rev-parse HEAD)" \
-  --core-revision "28baaa2f85bb70b4fc6ecc4c07566e7004a659c5" \
-  --localization-revision "32397a72c267677f04419a5084514f025f94a0bc"
+  --core-revision "354542696e8ee7b1ba45d0e3ae0cb98144049742" \
+  --localization-revision "bba90a89089c954bdfe1dcda19c210e6ea230b9e"
 (cd native-evidence && sha256sum -c SHA256SUMS)
 ```
 
