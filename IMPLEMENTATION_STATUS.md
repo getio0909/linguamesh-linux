@@ -10,7 +10,7 @@ excluded from diagnostics.
   clear it, and Test connection/Connect validate and pass it through Core.
 - Runtime profile/session copies preserve the field. Core schema 20 persists it and the OpenAI adapter
   sends `OpenAI-Organization` for Chat Completions and Responses only.
-- Core revision `7e3c9ab7ab013aa4f8d01323848a399e98836f2a` and l10n revision
+- Core revision `1b8737bbad3d1bb6df7cd5c852d51838f72b9ca1` and l10n revision
   `94438a6a9ff8148cadad605c4760f88110d78984` are pinned in Native and Flatpak inputs. The l10n
   source revision 48 bundle contains 447 messages. Release remains unreleased pending cross-client
   and human evidence.

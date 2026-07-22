@@ -291,7 +291,7 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`7e3c9ab7ab013aa4f8d01323848a399e98836f2a`. This revision carries bounded document lease
+`1b8737bbad3d1bb6df7cd5c852d51838f72b9ca1`. This revision carries bounded document lease
 consumption smoke, POSIX-descriptor document consumption, and the AddressSanitizer gate, plus the
 protocol decoder fuzz gate and bounded FileLease lifecycle,
 including Linux's portal-read lease checks, and the explicit request-level
@@ -303,9 +303,9 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 7e3c9ab7ab013aa4f8d01323848a399e98836f2a^{commit}
+git -C ../linguamesh-core cat-file -e 1b8737bbad3d1bb6df7cd5c852d51838f72b9ca1^{commit}
 git -C ../linguamesh-core diff --quiet \
-  7e3c9ab7ab013aa4f8d01323848a399e98836f2a..HEAD -- \
+  1b8737bbad3d1bb6df7cd5c852d51838f72b9ca1..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -631,7 +631,7 @@ python3 tools/create-native-evidence.py \
   --cargo-lock Cargo.lock \
   --output-dir native-evidence \
   --linux-revision "$(git rev-parse HEAD)" \
-  --core-revision "7e3c9ab7ab013aa4f8d01323848a399e98836f2a" \
+  --core-revision "1b8737bbad3d1bb6df7cd5c852d51838f72b9ca1" \
   --localization-revision "94438a6a9ff8148cadad605c4760f88110d78984"
 (cd native-evidence && sha256sum -c SHA256SUMS)
 ```
