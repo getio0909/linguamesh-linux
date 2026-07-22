@@ -85,7 +85,9 @@ segment counts, warning kinds, state, and Unix timestamps. Fields are single-lin
 aliases are rejected before the asynchronous GIO write, and document source text, credentials,
 local paths, provider usage, and retry counts are never included. The unit regression
 document_translation_report_is_redacted_and_counts_segments covers the report builder; the
-display-backed queue action remains part of the serialized GTK evidence path.
+serialized GTK queue fixture also requires one focusable, redacted-report button with a tooltip for
+each persisted row. The fixture does not open a native chooser, so the asynchronous write callback
+and visual file-selection flow remain covered by the existing portal/CI boundary.
 
 The GTK regression `provider_presets_map_to_stable_native_and_compatible_defaults` validates the
 six-position Linux preset order against the bundled Core provider catalog. Adapter types must match

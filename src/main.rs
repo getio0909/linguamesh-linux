@@ -10754,6 +10754,26 @@ mod tests {
         assert!(metadata.iter().any(|label| label.contains("first.txt")));
         assert!(metadata.iter().any(|label| label.contains("second.md")));
         assert!(metadata.iter().any(|label| label.contains("cancelled.txt")));
+        // 验证每个持久化任务都暴露可聚焦且带有安全提示的报告导出动作。
+        let report_buttons = widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .filter(|button| {
+                button
+                    .label()
+                    .is_some_and(|label| label.contains("Export translation report"))
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        assert_eq!(report_buttons.len(), 3);
+        assert!(report_buttons
+            .iter()
+            .all(adw::prelude::WidgetExt::is_focusable));
+        assert!(report_buttons.iter().all(|button| {
+            button
+                .tooltip_text()
+                .is_some_and(|tooltip| tooltip.contains("redacted TSV report"))
+        }));
         let select_buttons = widgets
             .iter()
             .filter_map(|widget| widget.downcast_ref::<gtk::Button>())

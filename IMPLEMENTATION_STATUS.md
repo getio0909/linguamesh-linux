@@ -30,6 +30,24 @@ remain <not-exported> until a document output is exported, and retry/usage value
 explicitly unknown. Human visual/copy/Orca review, physical interruption behavior, other clients,
 signed artifacts, rollback authorization, and stable release approval remain open.
 
+## 2026-07-22 — Linux GTK document report action fixture
+
+Assumption: each persisted queue row must expose the same safe report action at the production GTK
+boundary, not only through the report-builder unit test.
+
+- Extended `gtk_document_jobs_dialog_selects_between_multiple_jobs` to require exactly one
+  focusable **Export translation report** button per pending, paused, and cancelled row, with the
+  catalog-backed redacted-TSV tooltip. The fixture still verifies queue selection and lifecycle
+  actions without opening a native chooser.
+- Local formatting, locked all-target/all-feature check, strict Clippy, demo-provider tests
+  (`157 passed; 3 ignored`), localization audits, l10n synchronization, Flatpak metadata, and diff
+  checks passed. The full GTK fixture binary cannot link on this host because installed GTK/GDK/
+  Graphene symbols are incomplete; Native CI remains the authoritative display-backed gate.
+
+This strengthens unreleased Linux Milestone 3/6 report evidence. Native CI must execute the exact
+fixture before this boundary is considered remotely verified; visual copy, chooser interaction,
+Orca review, other clients, signing, rollback, and stable release remain open.
+
 ## 2026-07-22 — Linux GTK pending document-job Pause action
 
 Assumption: a pending row in the production document queue must dispatch Pause for that exact
