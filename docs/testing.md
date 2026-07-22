@@ -89,6 +89,15 @@ serialized GTK queue fixture also requires one focusable, redacted-report button
 each persisted row. The fixture does not open a native chooser, so the asynchronous write callback
 and visual file-selection flow remain covered by the existing portal/CI boundary.
 
+Translation export naming follows the document contract: the default is
+`<original-base-name>.<target-bcp47-tag>.<extension>`, with control characters and path
+separators sanitized and `und` used when no target tag is available. If the selected local
+destination already exists, the GTK save path chooses the first available deterministic `-1`,
+`-2`, ... suffix instead of replacing it; the same collision guard applies to report exports.
+The `translation_output_name_uses_source_stem_and_target_locale` and
+`collision_safe_output_path_adds_stable_suffix_without_overwriting` regressions cover the naming
+and collision rules, while the report regression checks the stable output identifier.
+
 The GTK regression `provider_presets_map_to_stable_native_and_compatible_defaults` validates the
 six-position Linux preset order against the bundled Core provider catalog. Adapter types must match
 the catalog, and manual-model visibility is derived from its `model_listing` field. The application
