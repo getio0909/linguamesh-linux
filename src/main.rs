@@ -4333,6 +4333,29 @@ fn report_field(value: &str) -> String {
         .collect()
 }
 
+// 根据已持久化的文档段生成不含正文的本地 usage 估算。
+fn document_usage_report(snapshot: &DocumentJobSnapshot) -> String {
+    let source = snapshot
+        .job
+        .segments
+        .iter()
+        .map(|segment| segment.source_text.as_str())
+        .collect::<String>();
+    let translated = snapshot
+        .job
+        .segments
+        .iter()
+        .filter_map(|segment| segment.translated_text.as_deref())
+        .collect::<String>();
+    let usage = UsageRecord::locally_estimated(&source, &translated);
+    format!(
+        "{{\"source\":\"locally_estimated\",\"input_tokens\":{},\"output_tokens\":{},\"total_tokens\":{}}}",
+        usage.input_tokens.unwrap_or_default(),
+        usage.output_tokens.unwrap_or_default(),
+        usage.total_tokens.unwrap_or_default()
+    )
+}
+
 // 生成不含凭据、源正文或本地路径的确定性文档翻译报告。
 fn document_translation_report(snapshot: &DocumentJobSnapshot, core_version: &str) -> String {
     let options = snapshot.options.as_ref();
@@ -4409,7 +4432,7 @@ fn document_translation_report(snapshot: &DocumentJobSnapshot, core_version: &st
         ("retried_count", "unknown".to_owned()),
         ("failed_count", failed.to_string()),
         ("warnings", warning_text),
-        ("usage", "unavailable".to_owned()),
+        ("usage", document_usage_report(snapshot)),
         ("start_time_unix_seconds", snapshot.created_at.to_string()),
         (
             "completion_time_unix_seconds",
@@ -9766,6 +9789,9 @@ mod tests {
         assert!(report.contains("output_identifier\tguide_private.und.txt"));
         assert!(report.contains("core_version\t0.1.0-alpha.2"));
         assert!(report.contains("retried_count\tunknown"));
+        assert!(report.contains(
+            "usage\t{\"source\":\"locally_estimated\",\"input_tokens\":5,\"output_tokens\":3,\"total_tokens\":8}"
+        ));
         assert!(!report.contains("traduction"));
         assert!(!report.contains("private\n"));
     }
