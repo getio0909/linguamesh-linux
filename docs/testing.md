@@ -101,6 +101,11 @@ artifacts are removed after a failed finalization, and the export reports a save
 overwriting it. This writer is shared by translated output, document reports, glossary CSV,
 routing-profile JSON, translation-history TSV, and translation-memory TSV exports; no user-visible
 export path uses overwrite-enabled replacement.
+The `ExportWriteStrategy` policy makes that split explicit: a local path with a parent uses the
+same-directory atomic move, while a URI without a verifiable local path is constrained to exclusive
+creation. The `non_local_export_uses_exclusive_create_fallback` regression preserves the remote URI
+unchanged and prevents a future refactor from treating a remote backend as a local rename target;
+it does not claim atomicity or connectivity for every remote GIO/VFS backend.
 The `translation_output_name_uses_source_stem_and_target_locale` and
 `collision_safe_output_path_adds_stable_suffix_without_overwriting` regressions cover the naming
 and collision rules, while the ignored GTK regression
