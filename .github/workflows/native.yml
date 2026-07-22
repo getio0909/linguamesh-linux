@@ -332,7 +332,7 @@ jobs:
           && git archive --format=tar.gz
           --prefix="linguamesh-linux-${GITHUB_SHA}/" "$GITHUB_SHA"
           > native-evidence/linguamesh-linux-source.tar.gz
-          && sha256sum native-evidence/linguamesh-linux-source.tar.gz >> native-evidence/SHA256SUMS
+          && (cd native-evidence && sha256sum linguamesh-linux-source.tar.gz >> SHA256SUMS)
           && printf 'Linux native CI evidence\nLinux revision: %s\nCore revision: %s\nLocalization revision: %s\nPerformance baseline: LINUX-PERFORMANCE-BASELINE.tsv\nArtifact status: unsigned release-mode prerelease evidence\n'
           "$GITHUB_SHA" "$CORE_REVISION" "88765d3358450ccfac12f396caf5290230a83577"
           > native-evidence/BUILD-INFO.txt
