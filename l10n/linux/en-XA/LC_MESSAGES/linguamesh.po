@@ -2782,6 +2782,24 @@ msgctxt "tooltip.provider_proxy"
 msgid "Optional HTTP, HTTPS, SOCKS5, or SOCKS5H proxy without embedded credentials"
 msgstr "［Øþŧïøñåŀ ĦŦŦÞ, ĦŦŦÞŠ, ŠØÇĶŠ5, øŕ ŠØÇĶŠ5Ħ þŕøẋÿ ŵïŧħøûŧ ëṁƀëððëð çŕëðëñŧïåŀš~~~~~~~~~~~~~~~~~~~~~~~~~］"
 
+#. Label for optional proxy username and password input in the Linux provider form.
+#, fuzzy
+msgctxt "label.provider_proxy_credentials"
+msgid "Proxy credentials"
+msgstr "［Þŕøẋÿ çŕëðëñŧïåŀš~~~~~］"
+
+#. Placeholder for optional proxy username and password input.
+#, fuzzy
+msgctxt "placeholder.provider_proxy_credentials"
+msgid "Optional username:password for the proxy"
+msgstr "［Øþŧïøñåŀ ûšëŕñåṁë:þåššŵøŕð ƒøŕ ŧħë þŕøẋÿ~~~~~~~~~~~~~］"
+
+#. Tooltip for optional proxy authentication input.
+#, fuzzy
+msgctxt "tooltip.provider_proxy_credentials"
+msgid "Stored in Secret Service when remembered and never embedded in the proxy URL"
+msgstr "［Šŧøŕëð ïñ Šëçŕëŧ Šëŕṽïçë ŵħëñ ŕëṁëṁƀëŕëð åñð ñëṽëŕ ëṁƀëððëð ïñ ŧħë þŕøẋÿ ÛŔĿ~~~~~~~~~~~~~~~~~~~~~~~~~］"
+
 #. Label for optional custom request headers in the Linux provider form.
 #, fuzzy
 msgctxt "label.provider_custom_headers"

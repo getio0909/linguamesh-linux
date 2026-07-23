@@ -2360,6 +2360,21 @@ msgctxt "tooltip.provider_proxy"
 msgid "Optional HTTP, HTTPS, SOCKS5, or SOCKS5H proxy without embedded credentials"
 msgstr "Optional HTTP, HTTPS, SOCKS5, or SOCKS5H proxy without embedded credentials"
 
+#. Label for optional proxy username and password input in the Linux provider form.
+msgctxt "label.provider_proxy_credentials"
+msgid "Proxy credentials"
+msgstr "Proxy credentials"
+
+#. Placeholder for optional proxy username and password input.
+msgctxt "placeholder.provider_proxy_credentials"
+msgid "Optional username:password for the proxy"
+msgstr "Optional username:password for the proxy"
+
+#. Tooltip for optional proxy authentication input.
+msgctxt "tooltip.provider_proxy_credentials"
+msgid "Stored in Secret Service when remembered and never embedded in the proxy URL"
+msgstr "Stored in Secret Service when remembered and never embedded in the proxy URL"
+
 #. Label for optional custom request headers in the Linux provider form.
 msgctxt "label.provider_custom_headers"
 msgid "Custom headers (non-secret JSON)"
