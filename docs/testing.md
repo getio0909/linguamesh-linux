@@ -818,7 +818,8 @@ contrast, motion, and text-scaling behavior; manual visual review remains requir
 releases.
 
 The GitHub Actions native workflow pins Core revision
-`460728d79b0e2373445c3d8994793d069b8057b9`, installs the headers plus D-Bus, Xvfb, test-only
+`8623b2c8829e4d9cf7299c74440dcfabb4e320db` and localization revision
+`630a8f36d96be358d81b72e2efc87cd527e66974`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
 namespace test through the unprivileged path.

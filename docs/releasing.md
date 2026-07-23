@@ -78,10 +78,10 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `460728d79b0e2373445c3d8994793d069b8057b9` and l10n
-`74f773774bdf01ca5d2ab61ce199dbd76cdadb04` (499 catalog messages). The reviewed Flatpak source
-pin is Linux `1155a224f74da8b2e2b201ad01139ef1df97a2e2`; the functional release pin remains the
-packaging commit `4784764b50b4362833e26a1e88b3792a811ae768`. The Provider Hub displays the
+The current Linux gate consumes Core `8623b2c8829e4d9cf7299c74440dcfabb4e320db` and l10n
+`630a8f36d96be358d81b72e2efc87cd527e66974` (500 catalog messages). The reviewed Flatpak source
+pin is Linux `a7ac73d6fe8707519dd02698c26ebf8ca78a4246`; the current packaging pin is the same
+commit. The Provider Hub displays the
 selected saved profile's last health-check timestamp or normalized failure category using the
 same catalog; raw provider diagnostics and credentials remain excluded. The profile contract includes
 a bounded total provider request timeout of 1–600 seconds, a bounded connection-establishment
