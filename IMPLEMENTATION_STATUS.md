@@ -8,9 +8,9 @@ while Android, Windows, macOS, stable release, and human/physical evidence remai
 - Core `460728d79b0e2373445c3d8994793d069b8057b9` adds schema-34 `ProviderProfile` health fields:
   the last successful Unix-second check and the last normalized `ErrorKind`. Raw provider error
   text and credentials are never persisted; successful checks clear the previous failure category.
-- Linux `303cf3d8857dd5a4bd5a8d6b10d49d0b8097b08f` records health after explicit cancellable
+- Linux `fb9b1e6c9bb3703ade5c4b8e4c1993f716d3126c` records health after explicit cancellable
   connection tests, refreshes saved-profile state, and covers success/failure/restart behavior in
-  the worker fixture. Flatpak packaging `e2cf532ceeebca86881dbc49c76c8b036dad89b0` pins both
+  the worker fixture. Flatpak packaging `4784764b50b4362833e26a1e88b3792a811ae768` pins both
   Core and Linux inputs to these health-aware revisions.
 - Local Core workspace tests passed; Linux `cargo test --lib --all-features` passed 163 tests with
   12 documented environment-gated ignores. Remote Linux Native/Flatpak/Foundation gates for the
