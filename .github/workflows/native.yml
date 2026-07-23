@@ -245,6 +245,14 @@ jobs:
           env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
           tests::gtk_atomic_output_writer_never_replaces_existing_file
           -- --exact --ignored --test-threads=1
+      - name: Run GTK interrupted export writer fixture
+        working-directory: linguamesh-linux
+        run: >-
+          dbus-run-session -- xvfb-run --auto-servernum
+          --server-args="-screen 0 1280x800x24"
+          env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
+          tests::gtk_atomic_output_writer_survives_process_interruption
+          -- --exact --ignored --test-threads=1
       - name: Run GTK malicious archive import fixture
         working-directory: linguamesh-linux
         run: >-

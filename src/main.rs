@@ -5744,6 +5744,27 @@ fn write_contents_to_new_file_async(
     );
 }
 
+// 在专用进程中暂停本地导出移动，供中断回归确认半成品不会提前可见。
+#[cfg(test)]
+fn pause_before_local_export_move_for_test() {
+    let (Ok(marker), Ok(release)) = (
+        std::env::var("LINGUAMESH_TEST_EXPORT_PAUSE_MARKER"),
+        std::env::var("LINGUAMESH_TEST_EXPORT_PAUSE_RELEASE"),
+    ) else {
+        return;
+    };
+    if fs::write(&marker, b"ready").is_err() {
+        return;
+    }
+    while !Path::new(&release).exists() {
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
+// 生产构建不启用测试进程暂停钩子，保持导出路径不受测试环境变量影响。
+#[cfg(not(test))]
+fn pause_before_local_export_move_for_test() {}
+
 // 先写入同目录临时文件，再以 GIO 非覆盖移动完成本地输出，避免半成品可见。
 fn write_new_file_async(
     destination: &gtk::gio::File,
@@ -5781,6 +5802,7 @@ fn write_new_file_async(
             );
             return;
         }
+        pause_before_local_export_move_for_test();
         temporary.move_async(
             &destination,
             gtk::gio::FileCopyFlags::NONE,
@@ -10646,6 +10668,8 @@ mod tests {
     use std::io::{Cursor, Read, Write};
     use std::net::TcpListener;
     use std::os::unix::fs::PermissionsExt;
+    use std::path::PathBuf;
+    use std::process::Command;
     use std::rc::Rc;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::{Arc, mpsc};
@@ -12045,6 +12069,85 @@ mod tests {
             fs::read(&new_destination_path).expect("read new output"),
             b"created"
         );
+        let _ = fs::remove_dir_all(directory);
+    }
+
+    // 验证进程在本地临时文件同步后中断时不会留下可见的最终输出文件。
+    #[ignore = "run as a child of the serialized GTK interruption fixture"]
+    #[test]
+    fn gtk_atomic_output_writer_crash_child() {
+        adw::init().expect("initialize GTK export interruption child");
+        let destination = gtk::gio::File::for_path(PathBuf::from(
+            std::env::var_os("LINGUAMESH_TEST_EXPORT_DESTINATION")
+                .expect("export interruption destination"),
+        ));
+        let context = glib::MainContext::default();
+        write_new_file_async(&destination, b"interrupted output".to_vec(), |_| {});
+        loop {
+            context.iteration(true);
+        }
+    }
+
+    // 通过 SIGKILL 模拟最终移动前的进程中断，并检查源目录安全边界。
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_atomic_output_writer_survives_process_interruption() {
+        adw::init().expect("initialize GTK export interruption fixture");
+        let directory = std::env::temp_dir().join(format!(
+            "linguamesh-linux-export-interruption-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).expect("create interruption directory");
+        let marker = directory.join("pause.marker");
+        let release = directory.join("release.marker");
+        let destination = directory.join("interrupted.txt");
+        let mut child = Command::new(std::env::current_exe().expect("current test binary"))
+            .args([
+                "--exact",
+                "tests::gtk_atomic_output_writer_crash_child",
+                "--ignored",
+                "--nocapture",
+            ])
+            .env("LINGUAMESH_TEST_EXPORT_PAUSE_MARKER", marker.as_os_str())
+            .env("LINGUAMESH_TEST_EXPORT_PAUSE_RELEASE", release.as_os_str())
+            .env(
+                "LINGUAMESH_TEST_EXPORT_DESTINATION",
+                destination.as_os_str(),
+            )
+            .spawn()
+            .expect("spawn export interruption child");
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while !marker.is_file() {
+            if Instant::now() >= deadline {
+                child
+                    .kill()
+                    .expect("kill stalled export interruption child");
+                let _ = child.wait();
+                let _ = fs::remove_dir_all(&directory);
+                panic!("export interruption child did not reach the pre-move barrier");
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        child.kill().expect("kill export interruption child");
+        let status = child.wait().expect("wait child");
+        assert!(!status.success());
+        assert!(!destination.exists());
+        let temporary = fs::read_dir(&directory)
+            .expect("read interrupted export directory")
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .find(|path| {
+                path.file_name()
+                    .and_then(|name| name.to_str())
+                    .is_some_and(|name| name.starts_with(".linguamesh-export-"))
+            })
+            .expect("durable temporary export");
+        assert_eq!(
+            fs::read(&temporary).expect("read temporary export"),
+            b"interrupted output"
+        );
+        assert!(!destination.exists());
         let _ = fs::remove_dir_all(directory);
     }
 
