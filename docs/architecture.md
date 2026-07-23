@@ -234,7 +234,10 @@ Local exports use a same-directory temporary file and a non-overwriting move. Li
 the completed temporary file and its parent directory before the move, then synchronizes the parent
 again after finalization; a failed barrier is reported as an output-write error. Non-local URIs use
 exclusive creation because the application cannot verify a remote parent or atomic rename. This is a
-bounded crash-durability barrier, not physical power-loss or alternate-VFS evidence.
+bounded crash-durability barrier, not physical power-loss or alternate-VFS evidence. The focused
+`local_export_sync_barrier_accepts_file_and_parent_directory` regression exercises the local file
+and nested parent-directory descriptors directly; the serialized GTK writer fixture remains the
+authoritative end-to-end path.
 
 Image-only PDF pages are a separate, explicit opt-in path. The GTK toggle is only used when Core
 reports a PDF with no extractable text. The worker then invokes `pdftoppm` and `tesseract` through

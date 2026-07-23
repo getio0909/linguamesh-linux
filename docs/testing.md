@@ -172,6 +172,10 @@ and collision rules, while the ignored GTK regression
 failed-finalization cleanup, and the report regression checks the stable output identifier. Native
 CI runs the ignored fixture
 under serialized DBus/Xvfb; the local host's GUI linker limitation keeps that check CI-authoritative.
+The focused unit regression `local_export_sync_barrier_accepts_file_and_parent_directory` also
+opens a nested local export, calls the file-and-directory barrier directly, and removes the fixture.
+It proves the local descriptor path is callable without claiming physical power-loss recovery or
+alternate-VFS behavior.
 
 The GTK regression `provider_presets_map_to_stable_native_and_compatible_defaults` validates the
 six-position Linux preset order against the bundled Core provider catalog. Adapter types must match

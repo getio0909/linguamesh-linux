@@ -10,6 +10,10 @@ remain separate evidence boundaries.
   temporary export file and its parent directory before the non-overwriting move, then synchronizes
   the parent directory again after finalization. A failed barrier reports an output-write failure;
   non-local URIs retain their exclusive-create boundary.
+- Runtime regression `local_export_sync_barrier_accepts_file_and_parent_directory` directly checks
+  the local file and parent-directory barrier with a nested temporary export. `cargo check
+  --tests --all-features --locked` and strict Clippy pass; the focused GTK binary test remains
+  compile-checked but cannot link on this host because GTK/GDK/Graphene symbols are incomplete.
 - The existing serialized GTK fixture `gtk_atomic_output_writer_never_replaces_existing_file`
   now exercises this writer path, preserving occupied destinations and cleaning failed temporary
   artifacts. Local formatting, all-target/all-feature check, strict Clippy, 163 demo-provider
