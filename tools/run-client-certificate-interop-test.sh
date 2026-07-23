@@ -28,16 +28,26 @@ done
 
 cd "$fixture_dir"
 openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
-  -keyout ca.key -out ca.pem -subj '/CN=LinguaMesh test CA' >/dev/null 2>&1
+  -keyout ca.key -out ca.pem -subj '/CN=LinguaMesh test CA' \
+  -addext 'basicConstraints=critical,CA:TRUE' \
+  -addext 'keyUsage=critical,keyCertSign,cRLSign' >/dev/null 2>&1
 openssl req -newkey rsa:2048 -nodes \
   -keyout server.key -out server.csr -subj '/CN=127.0.0.1' >/dev/null 2>&1
-printf '%s\n' 'subjectAltName=IP:127.0.0.1' > server.ext
+printf '%s\n' \
+  'basicConstraints=critical,CA:FALSE' \
+  'keyUsage=critical,digitalSignature,keyEncipherment' \
+  'extendedKeyUsage=serverAuth' \
+  'subjectAltName=IP:127.0.0.1' > server.ext
 openssl x509 -req -days 1 -in server.csr -CA ca.pem -CAkey ca.key -CAcreateserial \
   -out server.pem -extfile server.ext >/dev/null 2>&1
 openssl req -newkey rsa:2048 -nodes \
   -keyout client.key -out client.csr -subj '/CN=LinguaMesh test client' >/dev/null 2>&1
-openssl x509 -req -days 1 -in client.csr -CA ca.pem -CAkey ca.key -CAcreateserial \
-  -out client.pem >/dev/null 2>&1
+printf '%s\n' \
+  'basicConstraints=critical,CA:FALSE' \
+  'keyUsage=critical,digitalSignature,keyEncipherment' \
+  'extendedKeyUsage=clientAuth' > client.ext
+openssl x509 -req -days 1 -in client.csr -CA ca.pem -CAkey ca.key -CAserial ca.srl \
+  -out client.pem -extfile client.ext >/dev/null 2>&1
 cat client.pem client.key > client-identity.pem
 
 port_file="$fixture_dir/port"
