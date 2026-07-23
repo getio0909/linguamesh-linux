@@ -9989,6 +9989,51 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires the temporary client-authentication rejection HTTPS fixture"]
+    fn running_client_certificate_provider_rejects_untrusted_client() {
+        let endpoint = std::env::var("LINGUAMESH_CLIENT_CERT_UNTRUSTED_CLIENT_ENDPOINT")
+            .expect("LINGUAMESH_CLIENT_CERT_UNTRUSTED_CLIENT_ENDPOINT must name the HTTPS fixture");
+        let identity_path = std::env::var("LINGUAMESH_CLIENT_CERT_IDENTITY_PATH")
+            .expect("LINGUAMESH_CLIENT_CERT_IDENTITY_PATH must name the client identity PEM");
+        let ca_path = std::env::var("LINGUAMESH_CLIENT_CERT_CA_PATH")
+            .expect("LINGUAMESH_CLIENT_CERT_CA_PATH must name the trusted test CA PEM");
+        let identity = fs::read_to_string(identity_path).expect("client identity PEM");
+        let trusted_certificates = fs::read_to_string(ca_path).expect("trusted test CA PEM");
+        let profile = profile("client-certificate-untrusted-client", &endpoint, None, None)
+            .with_trusted_certificates_pem(Some(trusted_certificates))
+            .expect("trusted certificate bundle")
+            .with_client_certificate_identity_ref(Some(SecretRef::new(
+                SecretRefNamespace::Session,
+            )));
+        let (worker, _) = started_worker();
+        worker
+            .try_send(WorkerCommand::Connect {
+                profile,
+                secret: None,
+                secret_custom_headers: None,
+                proxy_authentication: None,
+                client_certificate_identity: Some(SecretValue::new(identity)),
+                persistence: PersistenceIntent::SessionOnly,
+            })
+            .expect("untrusted-client connection command");
+        let result = worker
+            .events
+            .recv_timeout(Duration::from_secs(10))
+            .expect("untrusted-client connection result");
+        match result {
+            WorkerEvent::ProviderRejected { error, .. } => {
+                assert_eq!(error.kind, ErrorKind::Network);
+                assert!(!error.message.contains("client-certificate"));
+            }
+            WorkerEvent::Connected { .. } => {
+                panic!("client-certificate provider accepted an untrusted client");
+            }
+            _ => panic!("unexpected untrusted-client event"),
+        }
+        shutdown(&worker);
+    }
+
+    #[test]
     fn session_client_certificate_identity_reaches_core_validation() {
         let external = ExternalFakeProvider::start(FakeMode::Standard);
         let (worker, _) = started_worker();

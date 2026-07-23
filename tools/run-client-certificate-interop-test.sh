@@ -7,6 +7,7 @@ fixture_dir="$(mktemp -d /tmp/linguamesh-client-certificate.XXXXXX)"
 server_pid=""
 untrusted_server_pid=""
 hostname_server_pid=""
+client_auth_server_pid=""
 
 cleanup() {
   local exit_status=$?
@@ -21,6 +22,10 @@ cleanup() {
   if [[ -n "$hostname_server_pid" ]]; then
     kill "$hostname_server_pid" >/dev/null 2>&1 || true
     wait "$hostname_server_pid" >/dev/null 2>&1 || true
+  fi
+  if [[ -n "$client_auth_server_pid" ]]; then
+    kill "$client_auth_server_pid" >/dev/null 2>&1 || true
+    wait "$client_auth_server_pid" >/dev/null 2>&1 || true
   fi
   if [[ "$fixture_dir" == /tmp/linguamesh-client-certificate.* ]]; then
     rm -rf -- "$fixture_dir"
@@ -81,6 +86,13 @@ printf '%s\n' \
 openssl x509 -req -days 1 -in hostname-server.csr \
   -CA ca.pem -CAkey ca.key -CAserial ca.srl \
   -out hostname-server.pem -extfile hostname-server.ext >/dev/null 2>&1
+
+openssl req -newkey rsa:2048 -nodes \
+  -keyout client-auth-server.key -out client-auth-server.csr -subj '/CN=127.0.0.1' >/dev/null 2>&1
+cp server.ext client-auth-server.ext
+openssl x509 -req -days 1 -in client-auth-server.csr \
+  -CA ca.pem -CAkey ca.key -CAserial ca.srl \
+  -out client-auth-server.pem -extfile client-auth-server.ext >/dev/null 2>&1
 
 port_file="$fixture_dir/port"
 python3 "$repository_dir/tools/client-certificate-http-fixture.py" \
@@ -151,6 +163,29 @@ if [[ ! -s "$hostname_port_file" ]]; then
 fi
 
 hostname_endpoint="https://127.0.0.1:$(<"$hostname_port_file")/v1/"
+client_auth_port_file="$fixture_dir/client-auth-port"
+python3 "$repository_dir/tools/client-certificate-http-fixture.py" \
+  --certificate "$fixture_dir/client-auth-server.pem" \
+  --private-key "$fixture_dir/client-auth-server.key" \
+  --client-ca "$fixture_dir/untrusted-ca.pem" \
+  --port-file "$client_auth_port_file" &
+client_auth_server_pid=$!
+for _ in {1..100}; do
+  if [[ -s "$client_auth_port_file" ]]; then
+    break
+  fi
+  if ! kill -0 "$client_auth_server_pid" >/dev/null 2>&1; then
+    printf '%s\n' 'The client-authentication rejection fixture exited before publishing its port.' >&2
+    exit 1
+  fi
+  sleep 0.05
+done
+if [[ ! -s "$client_auth_port_file" ]]; then
+  printf '%s\n' 'Timed out waiting for the client-authentication rejection fixture.' >&2
+  exit 1
+fi
+
+client_auth_endpoint="https://127.0.0.1:$(<"$client_auth_port_file")/v1/"
 printf '%s\n' 'Running the client-certificate HTTPS interoperability tests.'
 cd "$repository_dir"
 LINGUAMESH_CLIENT_CERT_ENDPOINT="$endpoint" \
@@ -170,4 +205,10 @@ LINGUAMESH_CLIENT_CERT_IDENTITY_PATH="$fixture_dir/client-identity.pem" \
 LINGUAMESH_CLIENT_CERT_CA_PATH="$fixture_dir/ca.pem" \
   cargo test --features demo-provider --locked \
   worker::tests::running_client_certificate_provider_rejects_hostname_mismatch \
+  -- --ignored --exact --nocapture
+LINGUAMESH_CLIENT_CERT_UNTRUSTED_CLIENT_ENDPOINT="$client_auth_endpoint" \
+LINGUAMESH_CLIENT_CERT_IDENTITY_PATH="$fixture_dir/client-identity.pem" \
+LINGUAMESH_CLIENT_CERT_CA_PATH="$fixture_dir/ca.pem" \
+  cargo test --features demo-provider --locked \
+  worker::tests::running_client_certificate_provider_rejects_untrusted_client \
   -- --ignored --exact --nocapture

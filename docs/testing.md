@@ -35,16 +35,18 @@ the client; Linux form tests cover the persisted optional trust-bundle field.
 
 The environment-gated `running_client_certificate_provider_connects`,
 `running_client_certificate_provider_rejects_untrusted_server`, and
-`running_client_certificate_provider_rejects_hostname_mismatch` regressions exercise real HTTPS
+`running_client_certificate_provider_rejects_hostname_mismatch`, and
+`running_client_certificate_provider_rejects_untrusted_client` regressions exercise real HTTPS
 model-discovery requests against `tools/client-certificate-http-fixture.py`. Run them with
 `bash tools/run-client-certificate-interop-test.sh`; the runner creates temporary trusted and
 untrusted CAs, server certificates, a wrong-SAN server certificate, and a client identity,
-requires the client certificate during the TLS handshake, and deletes all material after all three
+requires the client certificate during the TLS handshake, and deletes all material after all four
 tests. The worker supplies the identity through a session SecretRef and the trusted CA through the
 bounded trust-bundle field. The first test proves successful Linux rustls client-authentication
 wiring; the second proves that a server certificate outside the configured trust bundle is rejected;
-the third proves hostname verification rejects a wrong SAN even when the signing CA is trusted.
-Neither test persists a key or claims live enterprise interoperability.
+the third proves hostname verification rejects a wrong SAN even when the signing CA is trusted; the
+fourth proves a server with a different client-CA trust chain rejects the presented identity.
+None of the tests persists a key or claims live enterprise interoperability.
 
 The same provider fixture covers the Google Gemini preset through the `/v1beta/` Generate Content
 contract: `models` discovery filters entries that support `generateContent`, and the streaming

@@ -95,10 +95,11 @@ timeout of 1–120 seconds (default 10), and a bounded streaming-idle timeout of
 (default 60). Optional PEM trust bundles augment system roots without disabling TLS verification;
 malformed bundles are rejected before transport construction. The environment-gated Linux
 client-certificate fixtures create trusted and untrusted temporary CAs, a trusted-CA wrong-SAN
-endpoint, and mutual-TLS endpoints, and Native CI runs the worker's real `/v1/models` discovery
-against all three cases. This validates certificate wiring, server-side client authentication,
-configured trust-bundle enforcement, and hostname verification; generated keys are deleted after
-the tests, and no enterprise endpoint, signed artifact, or stable release is implied. Normalized
+endpoint, and a server with a different client-CA trust chain, and Native CI runs the worker's real
+`/v1/models` discovery against all four cases. This validates certificate wiring, server-side
+client authentication, configured trust-bundle enforcement, hostname verification, and rejection
+of an untrusted client identity; generated keys are deleted after the tests, and no enterprise
+endpoint, signed artifact, or stable release is implied. Normalized
 usage
 labels
 distinguish provider-reported, locally estimated, and unknown counts without pricing assumptions;
