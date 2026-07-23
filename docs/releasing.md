@@ -79,7 +79,9 @@ Wayland/headless Weston. Neither validation creates a distributable artifact or 
 future release gate below.
 
 The current Linux gate consumes Core `dffa07eca2b006279f99673edff5bd0ae1b24a0f` and l10n
-`d8d9084cdf0448039ad0aa7612e8725c6c875036` (494 catalog messages). The profile contract includes
+`7c2cb9fd71835ea0f9c6605d82dac87c0df012f0` (497 catalog messages). The reviewed Flatpak source
+pin is Linux `00186c29fc4e3e6682114ee29cd587d31610a1d6`; the functional release pin remains the
+packaging commit `73051b70028359c56654e1260621ada77def67e9`. The profile contract includes
 a bounded total provider request timeout of 1–600 seconds, a bounded connection-establishment
 timeout of 1–120 seconds (default 10), and a bounded streaming-idle timeout of 1–300 seconds
 (default 60). Optional PEM trust bundles augment system roots without disabling TLS verification;
