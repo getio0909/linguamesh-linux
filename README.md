@@ -250,7 +250,7 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`d8d9084cdf0448039ad0aa7612e8725c6c875036` and validated with `msgfmt`; the 494-message bundle
+`7c2cb9fd71835ea0f9c6605d82dac87c0df012f0` and validated with `msgfmt`; the 497-message bundle
 adds Linux routing-profile persistence/editor, profile-ID validation and duplicate protection, ordinary-text selection labels, routing preference/privacy/document constraints, provider/model allowlists and denylists, quality/request-size limits, translation quality-mode and translation-preset labels, and source/output character plus approximate-token metrics. The locale selector
 exposes all twelve official BCP 47 packs plus the generated `en-XA` accented and `ar-XB` RTL
 pseudo-locales. It switches runtime action, workspace-widget,
@@ -262,6 +262,10 @@ Core compatibility, and profile-storage error sentences now use the same catalog
 diagnostic detail remains an explicit English fallback. Completed ordinary text output also shows
 localized usage metadata with a provider-reported, locally estimated, or unknown source label;
 provider parsing, pricing, and stable ABI projection remain future work.
+
+The connected model selector appends a localized provenance label to each entry, identifying whether
+the model was **Discovered**, provided by the **Catalog**, or entered **Manually**. This presentation
+does not persist credentials or change the selected model ID.
 
 Pseudo-locales are layout and direction test data, not qualified translations. Headless fixtures can
 select them with `LINGUAMESH_TEST_LOCALE=en-XA` or `LINGUAMESH_TEST_LOCALE=ar-XB`; generated strings

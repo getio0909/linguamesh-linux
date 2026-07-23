@@ -23,6 +23,11 @@ as `Starting`, `Unavailable`, `Configure provider`, `Connecting`, `Select model`
 parallel wizard state or persisted completion flag can race startup, restoration, pending model
 confirmation, or rollback.
 
+Every model entry rendered by the connected GTK selector includes its Core source provenance beside
+the display name: localized `Discovered`, `Catalog`, or `Manual`. The source is presentation-only;
+the selected model ID and provider profile remain the persisted non-secret contract, and a failed
+discovery never removes a manually configured model.
+
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
