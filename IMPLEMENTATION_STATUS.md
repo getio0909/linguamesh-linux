@@ -11,10 +11,13 @@ isolation.
   connects again. It verifies that the form selection does not issue inference, the active provider
   remains A until B succeeds, the next request reaches only B, and both credential fields are
   cleared immediately after capture.
-- The Native workflow now runs this serialized fixture under Xvfb/DBus. Local GUI compilation and
-  formatting passed; the full GTK fixture is unverified locally because `xvfb-run` is unavailable
-  on this workstation. Release remains `unreleased` pending the remote Native/Flatpak/Foundation
-  gates and the broader cross-client evidence.
+- The Native workflow now runs this serialized fixture under Xvfb/DBus. Local GUI compilation,
+  formatting, strict Clippy, core-library tests (`83 passed; 1 ignored`), and Flatpak metadata
+  validation passed; the full GTK fixture is verified remotely because `xvfb-run` is unavailable
+  on this workstation. Push Native/Flatpak/Foundation runs `29980182737`/`29980182712`/
+  `29980182800` and PR Native/Flatpak/Foundation runs `29980184753`/`29980184796`/`29980184751`
+  all passed for implementation head `b64d064be48a4440bcbeb68432459a3d8bab302c`. Release remains
+  `unreleased` pending the broader cross-client evidence.
 
 ## 2026-07-23 — Linux client-certificate identity settings
 
