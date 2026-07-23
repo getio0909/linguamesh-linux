@@ -254,6 +254,11 @@ circuit after two retryable failures for a thirty-second cooldown. The worker te
 `routing_circuit_breaker_opens_after_repeated_failures_and_resets` cover the policy without logging
 endpoints, credentials, request text, or provider output.
 
+The GTK action row covers text translation, retry, native clipboard copy, export, provider switching,
+and cancellation. Copy is enabled only for non-empty output and sends bytes directly to the display
+clipboard without passing through Core or persistence; the display-backed assertion remains a Native
+GTK boundary because this host cannot link the GTK test binary locally.
+
 Translation-preset UI behavior maps the localized General/Technical/Marketing dropdown to the Core
 `TranslationPreset` values and carries the selection into ordinary requests. Linux tests cover all
 stable IDs and compatibility negotiation rejects a Core that does not advertise
@@ -819,7 +824,7 @@ releases.
 
 The GitHub Actions native workflow pins Core revision
 `8623b2c8829e4d9cf7299c74440dcfabb4e320db` and localization revision
-`630a8f36d96be358d81b72e2efc87cd527e66974`, installs the headers plus D-Bus, Xvfb, test-only
+`0ee87720a8613d3dc130dfb379ab4dc7bc1e1f62`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
 namespace test through the unprivileged path.

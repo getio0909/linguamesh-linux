@@ -188,6 +188,7 @@ struct UiBindings {
     output_metrics: gtk::Label,
     translate: gtk::Button,
     retry_translation: gtk::Button,
+    copy_output: gtk::Button,
     export_output: gtk::Button,
     open_output: gtk::Button,
     open_source: gtk::Button,
@@ -983,6 +984,20 @@ fn create_window(
     );
     retry_translation
         .update_property(&[gtk::accessible::Property::Label(&retry_translation_label)]);
+    let copy_output = gtk::Button::with_mnemonic(&localized_mnemonic(
+        display_locale,
+        "action.copy_output",
+        "Copy translation",
+    ));
+    copy_output.set_focusable(true);
+    copy_output.set_tooltip_text(Some(&localization::text(
+        display_locale,
+        "tooltip.copy_output",
+        "Copy the translated output to the system clipboard",
+    )));
+    let copy_output_label =
+        localization::text(display_locale, "action.copy_output", "Copy translation");
+    copy_output.update_property(&[gtk::accessible::Property::Label(&copy_output_label)]);
     let export_output = gtk::Button::with_mnemonic(&localized_mnemonic(
         display_locale,
         "action.export_output",
@@ -1037,6 +1052,7 @@ fn create_window(
     action_row.append(&document_jobs);
     action_row.append(&translate);
     action_row.append(&retry_translation);
+    action_row.append(&copy_output);
     action_row.append(&export_output);
     action_row.append(&open_output);
     action_row.append(&pause_document);
@@ -1163,6 +1179,7 @@ fn create_window(
         output_metrics: editor_bindings.output_metrics,
         translate,
         retry_translation,
+        copy_output,
         export_output,
         open_output,
         open_source,
@@ -1486,6 +1503,10 @@ fn install_keyboard_focus_probe(
         (
             "translate",
             bindings.translate.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "copy_output",
+            bindings.copy_output.clone().upcast::<gtk::Widget>(),
         ),
         (
             "export_output",
@@ -4975,6 +4996,19 @@ fn connect_action_handlers(
     let retry_button = bindings.translate.clone();
     bindings.retry_translation.connect_clicked(move |_| {
         retry_button.emit_clicked();
+    });
+
+    let copy_bindings = bindings.clone();
+    bindings.copy_output.connect_clicked(move |_| {
+        let output = text_buffer_contents(&copy_bindings.output);
+        if output.is_empty() {
+            return;
+        }
+        copy_bindings
+            .output_view
+            .display()
+            .clipboard()
+            .set_text(&output);
     });
 
     let pause_bindings = bindings.clone();
@@ -9063,6 +9097,12 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
         "tooltip.retry_translation",
         "Retry the last failed or cancelled text translation",
     );
+    let copy_output = localization::text(locale, "action.copy_output", "Copy translation");
+    let copy_output_tooltip = localization::text(
+        locale,
+        "tooltip.copy_output",
+        "Copy the translated output to the system clipboard",
+    );
     let stop = localization::text(locale, "accessibility.stop_translation", "Stop translation");
     let pause = localization::text(locale, "action.pause_document", "Pause document");
     let resume = localization::text(locale, "action.resume_document", "Resume document");
@@ -9153,6 +9193,13 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     bindings
         .retry_translation
         .update_property(&[gtk::accessible::Property::Label(&retry_translation)]);
+    bindings.copy_output.set_label(&format!("_{copy_output}"));
+    bindings
+        .copy_output
+        .set_tooltip_text(Some(&copy_output_tooltip));
+    bindings
+        .copy_output
+        .update_property(&[gtk::accessible::Property::Label(&copy_output)]);
     bindings.export_output.set_label(&format!("_{export}"));
     bindings
         .export_output
@@ -10283,6 +10330,9 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     );
     bindings
         .export_output
+        .set_sensitive(!state.output().is_empty() && !blocked);
+    bindings
+        .copy_output
         .set_sensitive(!state.output().is_empty() && !blocked);
     bindings
         .open_output
@@ -13998,6 +14048,8 @@ mod tests {
         state.borrow_mut().set_locale(UiLocale::SimplifiedChinese);
         refresh_ui(&bindings, &state.borrow());
         assert_eq!(bindings.translate.label().as_deref(), Some("_翻译"));
+        assert_eq!(bindings.copy_output.label().as_deref(), Some("_复制译文"));
+        assert!(!bindings.copy_output.is_sensitive());
         assert_eq!(bindings.export_output.label().as_deref(), Some("_导出翻译"));
         assert!(!bindings.export_output.is_sensitive());
         assert_eq!(
@@ -14151,6 +14203,7 @@ mod tests {
             &bindings.connect,
             &bindings.open_source,
             &bindings.translate,
+            &bindings.copy_output,
             &bindings.retry_translation,
             &bindings.export_output,
             &bindings.open_output,
@@ -14543,6 +14596,25 @@ mod tests {
         });
         assert_eq!(state.borrow().output(), "你好，LinguaMesh！");
         assert!(!state.borrow().has_partial_output());
+        assert!(bindings.copy_output.is_sensitive());
+        let copied_output = Rc::new(RefCell::new(None::<String>));
+        let copied_output_callback = Rc::clone(&copied_output);
+        bindings.copy_output.emit_clicked();
+        bindings.output_view.display().clipboard().read_text_async(
+            None::<&gtk::gio::Cancellable>,
+            move |result| {
+                if let Ok(Some(text)) = result {
+                    *copied_output_callback.borrow_mut() = Some(text.to_string());
+                }
+            },
+        );
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            copied_output.borrow().as_deref() == Some("你好，LinguaMesh！")
+        });
+        assert_eq!(
+            copied_output.borrow().as_deref(),
+            Some("你好，LinguaMesh！")
+        );
         assert_eq!(bindings.status.label(), "Status: Completed");
         assert!(!gtk::test_accessible_has_state(
             &bindings.workspace,

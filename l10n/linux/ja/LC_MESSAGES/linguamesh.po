@@ -1232,11 +1232,23 @@ msgctxt "locale.name.hi"
 msgid "Hindi"
 msgstr "ヒンディー語"
 
+#. Action that copies the current translated output to the system clipboard.
+#, fuzzy
+msgctxt "action.copy_output"
+msgid "Copy translation"
+msgstr "Copy translation"
+
 #. Action that exports the current translated output to a user-selected file.
 #, fuzzy
 msgctxt "action.export_output"
 msgid "Export translation"
 msgstr "Export translation"
+
+#. Tooltip explaining that copy places translated output on the system clipboard.
+#, fuzzy
+msgctxt "tooltip.copy_output"
+msgid "Copy the translated output to the system clipboard"
+msgstr "Copy the translated output to the system clipboard"
 
 #. Tooltip explaining that export writes translated output to a new file.
 #, fuzzy

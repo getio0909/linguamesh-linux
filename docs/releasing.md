@@ -79,7 +79,7 @@ Wayland/headless Weston. Neither validation creates a distributable artifact or 
 future release gate below.
 
 The current Linux gate consumes Core `8623b2c8829e4d9cf7299c74440dcfabb4e320db` and l10n
-`630a8f36d96be358d81b72e2efc87cd527e66974` (500 catalog messages). The reviewed Flatpak source
+`0ee87720a8613d3dc130dfb379ab4dc7bc1e1f62` (502 catalog messages). The reviewed Flatpak source
 pin is Linux `a7ac73d6fe8707519dd02698c26ebf8ca78a4246`; the current packaging pin is the same
 commit. The Provider Hub displays the
 selected saved profile's last health-check timestamp or normalized failure category using the
