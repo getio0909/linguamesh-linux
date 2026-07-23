@@ -64,6 +64,11 @@ actionable authentication message before GTK renders the error label. The focuse
 checks Simplified Chinese copy and confirms backend status numbers are not shown to users; worker
 fixtures separately verify wrong credentials remain out of diagnostics and persistence.
 
+Provider HTTP 429 responses are mapped to the shared `RateLimited` category while preserving the
+bounded `Retry-After` hint. The focused model regression renders the localized category and plural
+retry instruction; the shared Core provider-api test covers the status mapping used by every adapter.
+Live provider quota behavior remains unverified.
+
 The serialized GTK fixture `gtk_authentication_failure_shows_localized_redacted_error` extends this
 boundary through the real Connect button, Core worker rejection event, Simplified Chinese locale,
 and `Alert` presentation. It is marked ignored in the ordinary Rust suite because GTK initialization

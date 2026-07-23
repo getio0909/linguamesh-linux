@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-23 — Linux typed provider rate-limit handling
+
+Assumption: Linux remains the active client priority; HTTP 429 is the stable provider signal for
+temporary throttling, while quota/billing semantics, other clients, and stable release remain open.
+
+- Core `8623b2c8829e4d9cf7299c74440dcfabb4e320db` adds shared `RateLimited` normalization for all
+  supported adapters, preserves bounded `Retry-After`, and persists the category safely. The
+  provider-api mapping test covers authentication, model-unavailable, rate-limited, and network
+  statuses.
+- Linux renders a localized `Rate limited` category and converts a provider 429 diagnostic plus its
+  retry hint into actionable plural copy. l10n `630a8f36d96be358d81b72e2efc87cd527e66974` adds
+  the category to all official packs and synchronized PO/MO resources.
+- Release remains `unreleased`; human visual/Orca review, live quota behavior, cross-client parity,
+  signing, rollback, and stable-release authorization are not claimed.
+
 ## 2026-07-23 — Linux manual model discovery fallback
 
 Assumption: Linux remains the active client priority; this slice preserves an explicitly validated

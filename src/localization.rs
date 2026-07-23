@@ -462,6 +462,7 @@ mod tests {
             for key in [
                 "error.category.internal",
                 "error.category.network",
+                "error.category.rate_limited",
                 "error.state.missing_source",
                 "error.state.missing_model",
                 "error.state.busy",

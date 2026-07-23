@@ -59,6 +59,10 @@ is exact Core `0.1.0-alpha.2`, ABI 1, protocol 1, provider catalog `0.1.0`, and 
 - `text_translation_v1`
 - `usage_records_v1`
 
+HTTP 429 responses are normalized by Core to the shared `RateLimited` category. Linux keeps the
+bounded `Retry-After` hint, renders a localized category, and presents a plural retry instruction;
+it does not infer quota exhaustion or provider billing from response bodies.
+
 The worker loads every stored profile and the last activated ID before the development fake service
 starts on loopback and emits `DemoProviderReady`, which only supplies an endpoint when no restored
 profile exists. Startup does not create an active provider or issue a provider request. Provider

@@ -217,6 +217,8 @@ Every preset also exposes an optional manual model field. Native or protocol-com
 remains first; when its listing endpoint is unavailable or returns no models, Core retains the
 validated selected model as a localized `Manual` entry. Authentication, network, and timeout errors
 remain typed failures and do not silently fall back.
+HTTP 429 responses are classified as a localized rate limit and retain a bounded `Retry-After`
+retry hint; quota and billing semantics are not inferred.
 OpenAI Responses uses `/v1/models` discovery and typed SSE events from `/v1/responses`, including
 `response.output_text.delta` and `response.completed`; its credential is sent only as Bearer
 authentication. Custom endpoint edits remain preserved when switching presets.

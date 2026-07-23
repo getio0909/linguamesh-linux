@@ -838,6 +838,12 @@ msgctxt "error.category.network"
 msgid "Network"
 msgstr "［Ñëŧŵøŕķ~~］"
 
+#. Error category shown before a provider rate-limit diagnostic.
+#, fuzzy
+msgctxt "error.category.rate_limited"
+msgid "Rate limited"
+msgstr "［Ŕåŧë ŀïṁïŧëð~~~~］"
+
 #. Error category shown before a timeout diagnostic.
 #, fuzzy
 msgctxt "error.category.timeout"

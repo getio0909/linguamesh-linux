@@ -8820,6 +8820,7 @@ fn localized_provider_health_category(locale: UiLocale, kind: ErrorKind) -> Stri
         ErrorKind::Network => ("error.category.network", "Network"),
         ErrorKind::Timeout => ("error.category.timeout", "Timeout"),
         ErrorKind::Authentication => ("error.category.authentication", "Authentication"),
+        ErrorKind::RateLimited => ("error.category.rate_limited", "Rate limited"),
         ErrorKind::ModelUnavailable => ("error.category.model_unavailable", "Model unavailable"),
         ErrorKind::MalformedResponse => ("error.category.malformed_response", "Malformed response"),
         ErrorKind::Persistence => ("error.category.persistence", "Persistence"),

@@ -1516,6 +1516,7 @@ impl AppState {
                 ErrorKind::Network => "Network",
                 ErrorKind::Timeout => "Timeout",
                 ErrorKind::Authentication => "Authentication",
+                ErrorKind::RateLimited => "Rate limited",
                 ErrorKind::ModelUnavailable => "Model unavailable",
                 ErrorKind::MalformedResponse => "Malformed response",
                 ErrorKind::Persistence => "Persistence",
@@ -1536,7 +1537,7 @@ impl AppState {
         self.error.as_ref().map(|error| {
             let (category_key, category_fallback) = error_category(error.kind);
             let category = localization::text(locale, category_key, category_fallback);
-            let message = localized_error_message(locale, &error.message);
+            let message = localized_error_message(locale, &error.message, error.retry_after_ms);
             format!("{category}: {message}")
         })
     }
@@ -1869,6 +1870,7 @@ fn error_category(kind: ErrorKind) -> (&'static str, &'static str) {
         ErrorKind::Network => ("error.category.network", "Network"),
         ErrorKind::Timeout => ("error.category.timeout", "Timeout"),
         ErrorKind::Authentication => ("error.category.authentication", "Authentication"),
+        ErrorKind::RateLimited => ("error.category.rate_limited", "Rate limited"),
         ErrorKind::ModelUnavailable => ("error.category.model_unavailable", "Model unavailable"),
         ErrorKind::MalformedResponse => ("error.category.malformed_response", "Malformed response"),
         ErrorKind::Persistence => ("error.category.persistence", "Persistence"),
@@ -2145,7 +2147,7 @@ fn additional_state_error_message(message: &str) -> Option<(&'static str, &'stat
     })
 }
 
-fn localized_error_message(locale: UiLocale, message: &str) -> String {
+fn localized_error_message(locale: UiLocale, message: &str, retry_after_ms: Option<u64>) -> String {
     if message.starts_with("Provider request failed with HTTP status 401")
         || message.starts_with("Provider request failed with HTTP status 403")
     {
@@ -2154,6 +2156,20 @@ fn localized_error_message(locale: UiLocale, message: &str) -> String {
             "error.authentication",
             "Check the provider credential and try again.",
         );
+    }
+
+    if message.starts_with("Provider request failed with HTTP status 429") {
+        let seconds = retry_after_ms
+            .map_or(1, |milliseconds| milliseconds.saturating_add(999) / 1_000)
+            .max(1);
+        return localization::text_plural(
+            locale,
+            "error.rate_limited",
+            "Try again in {seconds} second.",
+            "Try again in {seconds} seconds.",
+            seconds,
+        )
+        .replace("{seconds}", &seconds.to_string());
     }
 
     if let Some((key, fallback)) = state_error_message(message) {
@@ -3131,10 +3147,33 @@ mod tests {
     }
 
     #[test]
+    fn http_rate_limit_uses_retry_hint_and_localized_actionable_copy() {
+        let mut state = AppState::default();
+        state.provider_failed(
+            TranslationError::new(
+                ErrorKind::RateLimited,
+                "Provider request failed with HTTP status 429 Too Many Requests.",
+            )
+            .with_retry_after_ms(Some(2_500)),
+        );
+        assert_eq!(
+            state
+                .localized_error_text(UiLocale::SimplifiedChinese)
+                .as_deref(),
+            Some("请求受限: 请在 3 秒后重试。")
+        );
+        assert_eq!(
+            state.error_text().as_deref(),
+            Some("Rate limited: Provider request failed with HTTP status 429 Too Many Requests.")
+        );
+    }
+
+    #[test]
     fn alpha_two_error_kinds_have_actionable_categories() {
         let cases = [
             (ErrorKind::InvalidConfiguration, "Invalid configuration"),
             (ErrorKind::UnsupportedCapability, "Unsupported capability"),
+            (ErrorKind::RateLimited, "Rate limited"),
             (ErrorKind::SecretUnavailable, "Secret unavailable"),
             (
                 ErrorKind::SecureStorageUnavailable,

@@ -718,6 +718,11 @@ msgctxt "error.category.network"
 msgid "Network"
 msgstr "Network"
 
+#. Error category shown before a provider rate-limit diagnostic.
+msgctxt "error.category.rate_limited"
+msgid "Rate limited"
+msgstr "Rate limited"
+
 #. Error category shown before a timeout diagnostic.
 msgctxt "error.category.timeout"
 msgid "Timeout"
