@@ -12,9 +12,13 @@ reference-only; the smallest complete UI accepts one combined PEM certificate/pr
   identity reference; all built-in provider adapters apply the one-shot identity through reqwest
   rustls while retaining system roots and TLS verification. l10n `552d87e88a8df42055b1ac76e4dfbaadca92e291`
   supplies source revision 59 and the 480-message generated bundle.
-- Local validation is in progress: Core workspace tests and Linux demo-provider checks already
-  compile with the new field; final GUI/Clippy/Flatpak evidence and remote CI will be recorded
-  against the pushed Linux implementation head. Release stays `unreleased`.
+- Local validation passed: Core workspace tests/strict Clippy/secret-pattern scan, Linux demo-
+  provider tests (`159 passed; 3 ignored`), strict Clippy, GUI `cargo check`, formatting,
+  localization sync/audits, and Flatpak metadata validation all pass. Linux push Native/Flatpak/
+  Foundation `29978367171`/`29978367181`/`29978367167` and PR Native/Flatpak/Foundation
+  `29978368905`/`29978368870`/`29978368862` pass for the exact pin head
+  `b4bd13c1ec778e62ef466b7fa9d106de87731f29`; the earlier `60d2257` Flatpak failures were
+  superseded by the source-pin correction. Release stays `unreleased`.
 
 ## 2026-07-23 — Linux proxy authentication SecretRef settings
 
