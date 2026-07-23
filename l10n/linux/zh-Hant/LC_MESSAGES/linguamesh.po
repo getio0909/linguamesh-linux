@@ -2786,6 +2786,18 @@ msgctxt "label.provider_custom_headers"
 msgid "Custom headers (non-secret JSON)"
 msgstr "Custom headers (non-secret JSON)"
 
+#. Label for the provider request timeout in seconds in the Linux provider form.
+#, fuzzy
+msgctxt "label.provider_request_timeout"
+msgid "Request timeout (seconds)"
+msgstr "Request timeout (seconds)"
+
+#. Tooltip for the provider request timeout in the Linux provider form.
+#, fuzzy
+msgctxt "tooltip.provider_request_timeout"
+msgid "Total provider request timeout in seconds, from 1 to 600"
+msgstr "Total provider request timeout in seconds, from 1 to 600"
+
 #. Placeholder for optional custom request headers in the Linux provider form.
 #, fuzzy
 msgctxt "placeholder.provider_custom_headers"

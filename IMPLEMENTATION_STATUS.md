@@ -1,5 +1,22 @@
 # Implementation Status
 
+## 2026-07-23 — Linux provider request timeout settings
+
+Assumption: this slice implements only the bounded total request timeout. Separate connection
+timeout, streaming-idle timeout, and TLS policy fields remain follow-up work.
+
+- Linux adds a localized integer control for a 1–600 second provider request timeout, restores it
+  with saved profiles, defaults new profiles to 30 seconds, and validates it before Test connection
+  or Connect.
+- Core schema 26 persists the timeout and applies it to OpenAI Chat/Responses/Azure, Anthropic,
+  Gemini, and Ollama transports. Core revision `7e78cb0086d85eb5c218d8863b7f11f506bae016` and
+  l10n revision `65bf0c8772f75649b2be2e2f9cea610772657c93` (467 messages) are pinned in Native and
+  Flatpak inputs.
+- Local Core workspace tests, strict Clippy, Linux demo-provider tests (`159 passed; 3 ignored`),
+  localization audits, synchronization, Flatpak metadata, and diff checks pass. Release remains
+  unreleased pending remote gates and the documented human, cross-client, signing, rollback, and
+  stable-release boundaries.
+
 ## 2026-07-22 — Linux proxy settings checkpoint
 
 Assumption: proxy authentication remains out of scope for this prerelease slice; persisted proxy

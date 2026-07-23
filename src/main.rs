@@ -134,6 +134,7 @@ struct UiBindings {
     provider_region: gtk::Entry,
     provider_account_identifier: gtk::Entry,
     provider_proxy: gtk::Entry,
+    provider_request_timeout: gtk::SpinButton,
     provider_custom_headers: gtk::Entry,
     provider_secret_custom_headers: gtk::PasswordEntry,
     manual_model_row: gtk::Box,
@@ -758,6 +759,7 @@ fn create_window(
         provider_region,
         provider_account_identifier,
         provider_proxy,
+        provider_request_timeout,
         provider_custom_headers,
         provider_secret_custom_headers,
         manual_model_row,
@@ -1053,6 +1055,7 @@ fn create_window(
         provider_region,
         provider_account_identifier,
         provider_proxy,
+        provider_request_timeout,
         provider_custom_headers,
         provider_secret_custom_headers,
         manual_model_row,
@@ -1175,6 +1178,10 @@ fn create_window(
                 .upcast::<gtk::Widget>(),
             bindings.provider_proxy.clone().upcast::<gtk::Widget>(),
             bindings
+                .provider_request_timeout
+                .clone()
+                .upcast::<gtk::Widget>(),
+            bindings
                 .provider_custom_headers
                 .clone()
                 .upcast::<gtk::Widget>(),
@@ -1253,6 +1260,13 @@ fn install_keyboard_focus_probe(
         (
             "provider_proxy",
             bindings.provider_proxy.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_request_timeout",
+            bindings
+                .provider_request_timeout
+                .clone()
+                .upcast::<gtk::Widget>(),
         ),
         (
             "provider_custom_headers",
@@ -1593,6 +1607,7 @@ fn create_provider_session() -> (
     gtk::Entry,
     gtk::Entry,
     gtk::Entry,
+    gtk::SpinButton,
     gtk::Entry,
     gtk::PasswordEntry,
     gtk::Box,
@@ -1762,6 +1777,16 @@ fn create_provider_session() -> (
         "tooltip.provider_proxy",
         "Optional HTTP, HTTPS, SOCKS5, or SOCKS5H proxy without embedded credentials",
     )));
+    let provider_request_timeout = gtk::SpinButton::with_range(1.0, 600.0, 1.0);
+    provider_request_timeout.set_value(30.0);
+    provider_request_timeout.set_digits(0);
+    provider_request_timeout.set_numeric(true);
+    provider_request_timeout.set_hexpand(true);
+    provider_request_timeout.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_request_timeout",
+        "Total provider request timeout in seconds, from 1 to 600",
+    )));
     let provider_custom_headers = gtk::Entry::new();
     provider_custom_headers.set_hexpand(true);
     provider_custom_headers.set_placeholder_text(Some(&localization::text(
@@ -1878,6 +1903,14 @@ fn create_provider_session() -> (
     fields.append(&labeled_control(
         &localized_mnemonic(
             locale,
+            "label.provider_request_timeout",
+            "Request timeout (seconds)",
+        ),
+        provider_request_timeout.upcast_ref::<gtk::Widget>(),
+    ));
+    fields.append(&labeled_control(
+        &localized_mnemonic(
+            locale,
             "label.provider_custom_headers",
             "Custom headers (non-secret JSON)",
         ),
@@ -1920,6 +1953,7 @@ fn create_provider_session() -> (
         provider_region,
         provider_account_identifier,
         provider_proxy,
+        provider_request_timeout,
         provider_custom_headers,
         provider_secret_custom_headers,
         manual_model_row,
@@ -2634,6 +2668,9 @@ fn show_saved_profile_in_form(bindings: &UiBindings, profile: &ProviderProfile) 
         .provider_proxy
         .set_text(profile.proxy_url().unwrap_or_default());
     bindings
+        .provider_request_timeout
+        .set_value(f64::from(profile.request_timeout_secs()));
+    bindings
         .provider_custom_headers
         .set_text(profile.custom_headers().unwrap_or_default());
     bindings
@@ -2671,6 +2708,7 @@ fn show_new_profile_in_form(
     bindings.provider_region.set_text("");
     bindings.provider_account_identifier.set_text("");
     bindings.provider_proxy.set_text("");
+    bindings.provider_request_timeout.set_value(30.0);
     bindings.provider_custom_headers.set_text("");
     bindings.manual_model.set_text("");
     bindings.manual_model_row.set_visible(false);
@@ -2694,6 +2732,7 @@ fn custom_provider_profile(
     region: Option<String>,
     account_identifier: Option<String>,
     proxy_url: Option<String>,
+    request_timeout_secs: u32,
     custom_headers: Option<String>,
     selected_model: Option<String>,
 ) -> Result<ProviderProfile, TranslationError> {
@@ -2711,12 +2750,22 @@ fn custom_provider_profile(
     .and_then(|profile| profile.with_region(region))
     .and_then(|profile| profile.with_account_identifier(account_identifier))
     .and_then(|profile| profile.with_proxy_url(proxy_url))
+    .and_then(|profile| profile.with_request_timeout_secs(request_timeout_secs))
     .and_then(|profile| profile.with_custom_headers(custom_headers))
     .and_then(|profile| profile.with_selected_model(selected_model))
     .map_err(|error| {
         TranslationError::new(
             ErrorKind::InvalidConfiguration,
             format!("The provider profile is invalid: {error}"),
+        )
+    })
+}
+
+fn provider_request_timeout_secs(spin_button: &gtk::SpinButton) -> Result<u32, TranslationError> {
+    u32::try_from(spin_button.value_as_int()).map_err(|_| {
+        TranslationError::new(
+            ErrorKind::InvalidConfiguration,
+            "The provider request timeout must be a positive whole number of seconds.",
         )
     })
 }
@@ -3606,6 +3655,16 @@ fn connect_action_handlers(
         let account_identifier = (!account_text.is_empty()).then_some(account_text);
         let proxy_text = test_bindings.provider_proxy.text().trim().to_owned();
         let proxy_url = (!proxy_text.is_empty()).then_some(proxy_text);
+        let request_timeout_secs =
+            match provider_request_timeout_secs(&test_bindings.provider_request_timeout) {
+                Ok(value) => value,
+                Err(error) => {
+                    let mut state = test_state.borrow_mut();
+                    state.record_client_error(error.to_string());
+                    refresh_ui(&test_bindings, &state);
+                    return;
+                }
+            };
         let custom_headers_text = test_bindings
             .provider_custom_headers
             .text()
@@ -3712,6 +3771,7 @@ fn connect_action_handlers(
             region,
             account_identifier,
             proxy_url,
+            request_timeout_secs,
             custom_headers,
             selected_model,
         ) {
@@ -3762,6 +3822,16 @@ fn connect_action_handlers(
         let account_identifier = (!account_text.is_empty()).then_some(account_text);
         let proxy_text = connect_bindings.provider_proxy.text().trim().to_owned();
         let proxy_url = (!proxy_text.is_empty()).then_some(proxy_text);
+        let request_timeout_secs =
+            match provider_request_timeout_secs(&connect_bindings.provider_request_timeout) {
+                Ok(value) => value,
+                Err(error) => {
+                    let mut state = connect_state.borrow_mut();
+                    state.provider_failed(error);
+                    refresh_ui(&connect_bindings, &state);
+                    return;
+                }
+            };
         let custom_headers_text = connect_bindings
             .provider_custom_headers
             .text()
@@ -3922,6 +3992,7 @@ fn connect_action_handlers(
             region,
             account_identifier,
             proxy_url,
+            request_timeout_secs,
             custom_headers,
             selected_model,
         )
@@ -9819,6 +9890,7 @@ mod tests {
             None,
             None,
             None,
+            30,
             None,
             Some("model-a".to_owned()),
         )
@@ -9836,6 +9908,7 @@ mod tests {
             None,
             None,
             None,
+            30,
             None,
             Some("model-b".to_owned()),
         )
@@ -13006,6 +13079,7 @@ mod tests {
             None,
             None,
             None,
+            30,
             None,
             Some("fake-translator".to_owned()),
         )
@@ -13024,6 +13098,7 @@ mod tests {
             Some("eu-west-1".to_owned()),
             Some("tenant-restored".to_owned()),
             None,
+            30,
             None,
             Some("fake-slow-translator".to_owned()),
         )

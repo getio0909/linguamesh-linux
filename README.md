@@ -45,8 +45,9 @@ retrying a candidate.
 The GTK provider form consumes the pinned Core provider catalog for adapter and model-listing
 compatibility. It supports optional bounded, non-secret profile notes, custom request headers,
 organization/project IDs, region, account identifiers, and an optional HTTP/HTTPS/SOCKS5 proxy URL.
-The proxy is validated without embedded credentials and applied by Core's transport. Saved profiles
-restore these values;
+The proxy is validated without embedded credentials and applied by Core's transport. A bounded total
+provider request timeout (1–600 seconds, default 30) is saved with the profile and applied by Core's
+transport. Saved profiles restore these values;
 custom headers reject authorization, credential-shaped, and built-in metadata names, while the
 application layer forwards safe headers to Chat Completions, Responses, and Azure Chat without
 replacing their authentication metadata, while OpenAI organization/project headers remain limited
