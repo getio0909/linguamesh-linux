@@ -1,5 +1,23 @@
 # Implementation Status
 
+## 2026-07-23 — Linux GTK glossary-library selector
+
+Assumption: the existing request-level glossary editor is the source of truth; a bounded GTK
+selector is the smallest Linux UI slice that makes Core schema 33 libraries usable without adding
+TBX or cross-client behavior.
+
+- The text workspace now exposes **Glossary libraries** and **Save glossary library** actions. The
+  modal selector lists validated local libraries, loads one back into the request editor, and
+  deletes by stable ID. Saving uses the same Core validation path and never stores credentials,
+  endpoints, or provider metadata.
+- Focus probes, localized action refresh, storage-availability gating, and worker event handling
+  cover the new controls. `cargo fmt --all --check`, `cargo test --features demo-provider --lib
+  --locked -- --nocapture` (`160 passed; 0 failed; 3 ignored`), strict Clippy, and `git diff
+  --check` pass locally.
+- The GTK display-backed selector test remains CI-authoritative on the pinned Native workflow;
+  TBX import, other clients, manual accessibility review, signing, rollback, and stable release
+  evidence remain open. Release stays `unreleased`.
+
 ## 2026-07-23 — Linux persistent glossary-library slice
 
 Assumption: a bounded Core-owned glossary library store and Linux worker CRUD path are the

@@ -136,9 +136,10 @@ The Linux text workspace accepts an in-memory request-level glossary field. Core
 rules and credential-shaped terms, selects only locale-matching entries, protects immutable names,
 and restores required target terms after streaming. Reusable glossary libraries are now persisted
 by Core schema 33 as bounded `glossaries` and `glossary_terms` rows; the Linux worker exposes
-validated save/list/delete commands, while credentials and endpoints remain outside the schema.
-The GTK request field still remains request-scoped until a library is explicitly selected by a
-future UI slice.
+validated save/list/delete commands, while credentials and endpoints remain outside the schema. The
+GTK text workspace exposes a modal **Glossary libraries** selector and **Save glossary library**
+action: loading a record copies its validated terms into the request editor, and deletion uses the
+stable Core-owned ID. TBX import and cross-client library parity remain outside this Linux slice.
 
 The GTK routing-profile dialog maps a stable dropdown order to Core's `Manual`, `Ordered`, and
 `Automatic` modes. A separate **Allow approved fallback** checkbox records explicit consent and is

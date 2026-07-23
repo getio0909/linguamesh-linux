@@ -104,8 +104,10 @@ without persisting glossary content or claiming provider-specific behavior beyon
 
 The worker fixture `glossary_library_commands_persist_and_delete_across_worker_restart` exercises
 Core schema 33 through the Linux command path. It saves a validated library, lists it, deletes it,
-and confirms the normalized term rows are gone; it does not claim a GTK library selector or TBX
-import support.
+and confirms the normalized term rows are gone. The GTK workspace actions now provide the
+production save/list/load/delete path; a display-backed selector fixture remains Native-CI
+authoritative because this host lacks the pinned GTK test runtime. TBX import and cross-client
+library parity are not claimed.
 
 The serialized GTK fixture `gtk_interrupted_document_job_restores_and_resumes` creates a persisted
 two-segment text job, drives the production Translate and Pause controls after the first segment is

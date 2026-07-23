@@ -25,7 +25,8 @@ use linguamesh_linux::worker::{
 };
 use linguamesh_provider_catalog::{ProviderCatalog, ProviderPreset};
 use linguamesh_storage::{
-    DocumentJobSnapshot, RoutingProfileRecord, TranslationHistoryEntry, TranslationMemoryEntry,
+    DocumentJobSnapshot, GlossaryRecord, RoutingProfileRecord, TranslationHistoryEntry,
+    TranslationMemoryEntry,
 };
 use std::cell::{Cell, RefCell};
 use std::fs;
@@ -158,6 +159,8 @@ struct UiBindings {
     glossary: gtk::Entry,
     import_glossary: gtk::Button,
     export_glossary: gtk::Button,
+    glossary_libraries: gtk::Button,
+    save_glossary: gtk::Button,
     incognito: gtk::CheckButton,
     history_enabled: gtk::CheckButton,
     history: gtk::Button,
@@ -794,6 +797,8 @@ fn create_window(
         glossary,
         import_glossary,
         export_glossary,
+        glossary_libraries,
+        save_glossary,
         incognito,
         history_enabled,
         history,
@@ -1089,6 +1094,8 @@ fn create_window(
         glossary,
         import_glossary,
         export_glossary,
+        glossary_libraries,
+        save_glossary,
         incognito,
         history_enabled,
         history,
@@ -1381,6 +1388,14 @@ fn install_keyboard_focus_probe(
         (
             "export_glossary",
             bindings.export_glossary.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "glossary_libraries",
+            bindings.glossary_libraries.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "save_glossary",
+            bindings.save_glossary.clone().upcast::<gtk::Widget>(),
         ),
         (
             "incognito",
@@ -2204,6 +2219,8 @@ fn create_controls() -> (
     gtk::Entry,
     gtk::Button,
     gtk::Button,
+    gtk::Button,
+    gtk::Button,
     gtk::CheckButton,
     gtk::CheckButton,
     gtk::Button,
@@ -2306,6 +2323,28 @@ fn create_controls() -> (
         locale,
         "tooltip.export_glossary",
         "Save the current glossary rules as a UTF-8 CSV file",
+    )));
+    let glossary_libraries = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.glossary_libraries",
+        "Glossary libraries",
+    ));
+    glossary_libraries.set_focusable(true);
+    glossary_libraries.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.glossary_libraries",
+        "Inspect, select, and delete reusable local glossary libraries",
+    )));
+    let save_glossary = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.save_glossary",
+        "Save glossary library",
+    ));
+    save_glossary.set_focusable(true);
+    save_glossary.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.save_glossary",
+        "Save the current validated glossary as a reusable local library",
     )));
     let incognito = gtk::CheckButton::with_mnemonic(&localized_mnemonic(
         locale,
@@ -2484,6 +2523,8 @@ fn create_controls() -> (
     }
     controls.append(&import_glossary);
     controls.append(&export_glossary);
+    controls.append(&glossary_libraries);
+    controls.append(&save_glossary);
     controls.append(&incognito);
     controls.append(&history_enabled);
     controls.append(&history);
@@ -2504,6 +2545,8 @@ fn create_controls() -> (
         glossary,
         import_glossary,
         export_glossary,
+        glossary_libraries,
+        save_glossary,
         incognito,
         history_enabled,
         history,
@@ -2596,6 +2639,32 @@ fn parse_glossary(
             "Glossary entries conflict.",
         )
     })
+}
+
+// 将经过校验的词汇表转换为编辑框可再次导入的确定性摘要。
+fn glossary_summary(glossary: &Glossary) -> String {
+    glossary
+        .entries()
+        .iter()
+        .map(|entry| format!("{} => {}", entry.source_term, entry.target_term))
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
+// 读取当前编辑框或已导入的词汇表，统一保存和导出前的校验路径。
+fn current_glossary_for_library(
+    bindings: &UiBindings,
+    state: &AppState,
+) -> Result<Option<Glossary>, TranslationError> {
+    if bindings.glossary_from_csv.get() {
+        Ok(state.glossary().cloned())
+    } else {
+        parse_glossary(
+            bindings.glossary.text().as_str(),
+            SOURCE_LOCALES[bindings.source_locale.selected() as usize],
+            TARGET_LOCALES[bindings.target_locale.selected() as usize],
+        )
+    }
 }
 
 fn current_document_options(
@@ -3582,6 +3651,205 @@ fn show_open_source_licenses_dialog(bindings: &UiBindings, state: &Rc<RefCell<Ap
     dialog.present();
 }
 
+// 展示保存词汇表库的最小命名对话框，实际校验和写入由核心工作线程完成。
+fn show_save_glossary_dialog(
+    bindings: &UiBindings,
+    state: &Rc<RefCell<AppState>>,
+    worker: &WorkerCommandHandle,
+    glossary: Glossary,
+) {
+    let locale = state.borrow().locale();
+    let dialog = gtk::Window::builder()
+        .application(&bindings.application)
+        .transient_for(&bindings.window)
+        .modal(true)
+        .title(localization::text(
+            locale,
+            "dialog.save_glossary",
+            "Save glossary library",
+        ))
+        .default_width(520)
+        .default_height(180)
+        .build();
+    let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    root.set_margin_top(16);
+    root.set_margin_bottom(16);
+    root.set_margin_start(16);
+    root.set_margin_end(16);
+    let id_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let id_label = gtk::Label::with_mnemonic(&localized_mnemonic(
+        locale,
+        "label.glossary_id",
+        "Glossary library ID",
+    ));
+    let id_entry = gtk::Entry::new();
+    id_entry.set_text("default");
+    id_entry.set_max_length(128);
+    id_entry.set_hexpand(true);
+    id_entry.set_focusable(true);
+    id_entry.set_placeholder_text(Some("letters, numbers, '.', '_' or '-'"));
+    id_entry.set_tooltip_text(Some(
+        "Use 1-128 ASCII letters, numbers, '.', '_' or '-' for the glossary library ID.",
+    ));
+    id_label.set_mnemonic_widget(Some(&id_entry));
+    id_row.append(&id_label);
+    id_row.append(&id_entry);
+    root.append(&id_row);
+    let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let save = gtk::Button::with_mnemonic(&localized_mnemonic(locale, "dialog.save", "Save"));
+    save.set_focusable(true);
+    save.add_css_class("suggested-action");
+    let close = gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.close", "Close"));
+    close.set_focusable(true);
+    actions.append(&save);
+    actions.append(&close);
+    root.append(&actions);
+    dialog.set_child(Some(&root));
+
+    let close_dialog = dialog.clone();
+    close.connect_clicked(move |_| close_dialog.close());
+    let save_dialog = dialog.clone();
+    let save_bindings = bindings.clone();
+    let save_state = Rc::clone(state);
+    let save_worker = worker.clone();
+    save.connect_clicked(move |_| {
+        let glossary_id = id_entry.text().trim().to_owned();
+        if glossary_id.is_empty() {
+            save_state
+                .borrow_mut()
+                .record_client_error("Glossary library ID is required.");
+            refresh_ui(&save_bindings, &save_state.borrow());
+            return;
+        }
+        match save_worker.save_glossary(glossary_id, glossary.clone()) {
+            Ok(()) => save_dialog.close(),
+            Err(error) => {
+                save_state
+                    .borrow_mut()
+                    .record_client_error(error.to_string());
+                refresh_ui(&save_bindings, &save_state.borrow());
+            }
+        }
+    });
+    dialog.present();
+}
+
+// 展示可复用的本地词汇表库，并提供安全的加载与删除操作。
+#[allow(clippy::too_many_lines)]
+fn show_glossary_libraries_dialog(
+    bindings: &UiBindings,
+    state: &Rc<RefCell<AppState>>,
+    worker: &WorkerCommandHandle,
+    glossaries: Vec<GlossaryRecord>,
+) {
+    let locale = state.borrow().locale();
+    let dialog = gtk::Window::builder()
+        .application(&bindings.application)
+        .transient_for(&bindings.window)
+        .modal(true)
+        .title(localization::text(
+            locale,
+            "dialog.glossary_libraries",
+            "Glossary libraries",
+        ))
+        .default_width(720)
+        .default_height(480)
+        .build();
+    let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    root.set_margin_top(16);
+    root.set_margin_bottom(16);
+    root.set_margin_start(16);
+    root.set_margin_end(16);
+    let list = gtk::ListBox::new();
+    list.set_selection_mode(gtk::SelectionMode::None);
+    list.set_vexpand(true);
+    if glossaries.is_empty() {
+        let empty = gtk::Label::new(Some("No local glossary libraries are stored."));
+        empty.set_xalign(0.0);
+        empty.add_css_class("dim-label");
+        list.append(&empty);
+    } else {
+        for record in glossaries {
+            let row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+            row.set_margin_top(8);
+            row.set_margin_bottom(8);
+            let details = gtk::Label::new(Some(&format!(
+                "{} — {} entries",
+                record.id,
+                record.glossary.entries().len()
+            )));
+            details.set_xalign(0.0);
+            details.set_hexpand(true);
+            details.set_selectable(true);
+            let use_button = gtk::Button::with_mnemonic(&localized_mnemonic(
+                locale,
+                "action.use_glossary",
+                "Use",
+            ));
+            use_button.set_focusable(true);
+            let delete_button = gtk::Button::with_mnemonic(&localized_mnemonic(
+                locale,
+                "action.delete_glossary",
+                "Delete",
+            ));
+            delete_button.set_focusable(true);
+            delete_button.add_css_class("destructive-action");
+            row.append(&details);
+            row.append(&use_button);
+            row.append(&delete_button);
+
+            let use_bindings = bindings.clone();
+            let use_state = Rc::clone(state);
+            let use_dialog = dialog.clone();
+            let use_glossary = record.glossary.clone();
+            use_button.connect_clicked(move |_| {
+                use_bindings
+                    .glossary
+                    .set_text(&glossary_summary(&use_glossary));
+                use_bindings.glossary_from_csv.set(true);
+                use_bindings.glossary_notice.set(true);
+                use_state
+                    .borrow_mut()
+                    .set_glossary(Some(use_glossary.clone()));
+                use_bindings.error.set_label("");
+                use_bindings.error.set_visible(false);
+                refresh_ui(&use_bindings, &use_state.borrow());
+                use_dialog.close();
+            });
+
+            let delete_bindings = bindings.clone();
+            let delete_state = Rc::clone(state);
+            let delete_worker = worker.clone();
+            let delete_dialog = dialog.clone();
+            let glossary_id = record.id;
+            delete_button.connect_clicked(move |_| {
+                match delete_worker.delete_glossary(glossary_id.clone()) {
+                    Ok(()) => delete_dialog.close(),
+                    Err(error) => {
+                        delete_state
+                            .borrow_mut()
+                            .record_client_error(error.to_string());
+                        refresh_ui(&delete_bindings, &delete_state.borrow());
+                    }
+                }
+            });
+            list.append(&row);
+        }
+    }
+    let scroller = gtk::ScrolledWindow::builder()
+        .vexpand(true)
+        .child(&list)
+        .build();
+    root.append(&scroller);
+    let close = gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.close", "Close"));
+    close.set_focusable(true);
+    root.append(&close);
+    dialog.set_child(Some(&root));
+    let close_dialog = dialog.clone();
+    close.connect_clicked(move |_| close_dialog.close());
+    dialog.present();
+}
+
 // 只有用户尚未确认且开启了回退时才显示一次发送前提示。
 #[must_use]
 fn fallback_confirmation_needed(enabled: bool, approved: bool) -> bool {
@@ -3805,6 +4073,58 @@ fn connect_action_handlers(
     let export_state = Rc::clone(state);
     bindings.export_glossary.connect_clicked(move |_| {
         begin_glossary_export(&export_bindings, &export_state);
+    });
+
+    let libraries_bindings = bindings.clone();
+    let libraries_state = Rc::clone(state);
+    let libraries_worker = Rc::clone(worker);
+    bindings.glossary_libraries.connect_clicked(move |_| {
+        if !libraries_state.borrow().profile_storage_available() {
+            return;
+        }
+        if let Err(error) = libraries_worker.command_handle().list_glossaries() {
+            libraries_state
+                .borrow_mut()
+                .record_client_error(error.to_string());
+            refresh_ui(&libraries_bindings, &libraries_state.borrow());
+        }
+    });
+
+    let save_library_bindings = bindings.clone();
+    let save_library_state = Rc::clone(state);
+    let save_library_worker = Rc::clone(worker);
+    bindings.save_glossary.connect_clicked(move |_| {
+        let glossary = {
+            let state = save_library_state.borrow();
+            match current_glossary_for_library(&save_library_bindings, &state) {
+                Ok(Some(glossary)) => glossary,
+                Ok(None) => {
+                    drop(state);
+                    save_library_state
+                        .borrow_mut()
+                        .record_client_error("Enter or import glossary rules before saving.");
+                    refresh_ui(&save_library_bindings, &save_library_state.borrow());
+                    return;
+                }
+                Err(error) => {
+                    drop(state);
+                    save_library_state
+                        .borrow_mut()
+                        .record_client_error(error.to_string());
+                    refresh_ui(&save_library_bindings, &save_library_state.borrow());
+                    return;
+                }
+            }
+        };
+        save_library_state
+            .borrow_mut()
+            .set_glossary(Some(glossary.clone()));
+        show_save_glossary_dialog(
+            &save_library_bindings,
+            &save_library_state,
+            &save_library_worker.command_handle(),
+            glossary,
+        );
     });
 
     let open_bindings = bindings.clone();
@@ -7988,10 +8308,21 @@ fn apply_worker_event(
             bindings.memory_warning.set(true);
             bindings.memory_clear_pending.set(false);
         }
-        WorkerEvent::GlossariesListed { .. }
-        | WorkerEvent::GlossarySaved(_)
-        | WorkerEvent::GlossaryDeleted { .. }
-        | WorkerEvent::DocumentJobSegment { .. } => {}
+        WorkerEvent::GlossariesListed { glossaries } => {
+            let glossary_worker = worker.command_handle();
+            show_glossary_libraries_dialog(bindings, state, &glossary_worker, glossaries);
+        }
+        WorkerEvent::GlossarySaved(record) => {
+            let summary = glossary_summary(&record.glossary);
+            bindings.glossary.set_text(&summary);
+            bindings.glossary_from_csv.set(true);
+            bindings.glossary_notice.set(true);
+            state.borrow_mut().set_glossary(Some(record.glossary));
+        }
+        WorkerEvent::GlossaryDeleted { .. } => {
+            bindings.glossary_notice.set(true);
+        }
+        WorkerEvent::DocumentJobSegment { .. } => {}
         WorkerEvent::RoutingProfilesListed { profiles } => {
             let routing_worker = worker.command_handle();
             show_routing_profiles_dialog(bindings, state, &routing_worker, profiles);
@@ -8581,6 +8912,9 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     );
     let import_glossary = localization::text(locale, "action.import_glossary", "Import glossary");
     let export_glossary = localization::text(locale, "action.export_glossary", "Export glossary");
+    let glossary_libraries =
+        localization::text(locale, "action.glossary_libraries", "Glossary libraries");
+    let save_glossary = localization::text(locale, "action.save_glossary", "Save glossary library");
     let incognito = localization::text(locale, "settings.incognito", "Incognito mode");
     let history_enabled =
         localization::text(locale, "settings.save_history", "Save translation history");
@@ -8681,6 +9015,12 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     bindings
         .export_glossary
         .set_label(&format!("_{export_glossary}"));
+    bindings
+        .glossary_libraries
+        .set_label(&format!("_{glossary_libraries}"));
+    bindings
+        .save_glossary
+        .set_label(&format!("_{save_glossary}"));
     bindings.incognito.set_label(Some(&format!("_{incognito}")));
     bindings
         .history_enabled
@@ -8728,6 +9068,20 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
             locale,
             "tooltip.export_glossary",
             "Save the current glossary rules as a UTF-8 CSV file",
+        )));
+    bindings
+        .glossary_libraries
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.glossary_libraries",
+            "Inspect, select, and delete reusable local glossary libraries",
+        )));
+    bindings
+        .save_glossary
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.save_glossary",
+            "Save the current validated glossary as a reusable local library",
         )));
     bindings
         .incognito
@@ -9772,6 +10126,15 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         state.worker_ready() && !blocked && !ocr_pending && state.profile_storage_available(),
     );
     bindings.import_glossary.set_sensitive(!blocked);
+    bindings
+        .glossary_libraries
+        .set_sensitive(state.worker_ready() && state.profile_storage_available() && !blocked);
+    bindings.save_glossary.set_sensitive(
+        state.worker_ready()
+            && state.profile_storage_available()
+            && !blocked
+            && (!bindings.glossary.text().trim().is_empty() || state.glossary().is_some()),
+    );
     if bindings.incognito.is_active() != state.is_incognito() {
         bindings.incognito.set_active(state.is_incognito());
     }
