@@ -161,9 +161,11 @@ uncertain reading order without including source content in diagnostics.
 
 After a translation completes, **Copy translation** places the output on the system clipboard through
 the native GTK display clipboard, while **Export translation** opens a native GTK save dialog and
-writes the output asynchronously as UTF-8. **Clear workspace** is a local, network-free action that
-removes the source text, translated output, request diagnostics, and transient file notices while
-preserving provider, locale, glossary, and history settings. Both output actions remain disabled
+writes the output asynchronously as UTF-8. **Swap languages** locally exchanges the supported
+English/Chinese source-target pair without sending a request or changing editor contents; Auto-source
+and Japanese-target combinations keep the action disabled. **Clear workspace** is a local,
+network-free action that removes the source text, translated output, request diagnostics, and
+transient file notices while preserving provider, locale, glossary, and history settings. Both output actions remain disabled
 without output; export reports a localized success notice and refuses to overwrite the imported source
 file. Clipboard contents are never persisted or logged.
 

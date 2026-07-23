@@ -1,5 +1,23 @@
 # Implementation Status
 
+## 2026-07-23 — Linux localized language swap action
+
+Assumption: Linux remains the active implementation priority; the swap action is a local,
+request-free control for the supported English/Chinese pair, while Auto-source and Japanese-target
+combinations remain intentionally disabled.
+
+- Linux code `4e5a94feef09bbe382a0b6690dc8e8f7b138656f` adds a localized, focusable **Swap languages**
+  button, a reducer-safe selection helper, sensitivity gating, runtime locale refresh, and GTK/unit
+  regression coverage. It exchanges only the supported selector pair and preserves editor contents.
+- l10n `c2526bfb3f6ff57895bdc3eeed743e26c8783613` adds the action and tooltip to all twelve official
+  packs and generated pseudo-locales; `make check` passed 506 messages and 26 tests. Linux resources
+  are synchronized at that exact revision, and Native workflow `L10N_REVISION` is updated.
+- Local `cargo fmt`, GUI/all-target checks, strict Clippy, 163 demo-provider library tests with three
+  documented environment-gated ignores, localization audits, sync checks, and diff checks passed.
+  The GTK binary test could not link on this workstation because its installed GTK symbols are
+  incomplete; the Native CI display gate remains authoritative for that boundary.
+- Release remains `unreleased`; Flatpak/package and remote CI evidence are pending for this head.
+
 ## 2026-07-23 — Linux explicit Clear workspace action
 
 Assumption: Linux remains the active implementation priority; the text workspace `clear` action

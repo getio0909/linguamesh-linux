@@ -254,7 +254,7 @@ circuit after two retryable failures for a thirty-second cooldown. The worker te
 `routing_circuit_breaker_opens_after_repeated_failures_and_resets` cover the policy without logging
 endpoints, credentials, request text, or provider output.
 
-The GTK action row covers text translation, retry, native clipboard copy, local clear-workspace, export, provider switching,
+The GTK action row covers text translation, retry, native clipboard copy, local language swap and clear-workspace, export, provider switching,
 and cancellation. Copy is enabled only for non-empty output and sends bytes directly to the display
 clipboard without passing through Core or persistence; the display-backed assertion remains a Native
 GTK boundary because this host cannot link the GTK test binary locally.

@@ -1244,6 +1244,12 @@ msgctxt "action.clear_workspace"
 msgid "Clear workspace"
 msgstr "清除工作區"
 
+#. Action that swaps the supported Linux text workspace source and target languages.
+#, fuzzy
+msgctxt "action.swap_languages"
+msgid "Swap languages"
+msgstr "交換語言"
+
 #. Action that exports the current translated output to a user-selected file.
 #, fuzzy
 msgctxt "action.export_output"
@@ -1261,6 +1267,12 @@ msgstr "將譯文複製到系統剪貼簿"
 msgctxt "tooltip.clear_workspace"
 msgid "Clear the source text, translated output, and request diagnostics"
 msgstr "清除來源文字、譯文與請求診斷資訊"
+
+#. Tooltip explaining that the language action swaps the supported source and target selections.
+#, fuzzy
+msgctxt "tooltip.swap_languages"
+msgid "Swap the source and target languages"
+msgstr "交換來源語言和目標語言"
 
 #. Tooltip explaining that export writes translated output to a new file.
 #, fuzzy

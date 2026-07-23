@@ -1246,6 +1246,12 @@ msgctxt "action.clear_workspace"
 msgid "Clear workspace"
 msgstr "［Çŀëåŕ ŵøŕķšþåçë~~~~~］"
 
+#. Action that swaps the supported Linux text workspace source and target languages.
+#, fuzzy
+msgctxt "action.swap_languages"
+msgid "Swap languages"
+msgstr "［Šŵåþ ŀåñĝûåĝëš~~~~］"
+
 #. Action that exports the current translated output to a user-selected file.
 #, fuzzy
 msgctxt "action.export_output"
@@ -1263,6 +1269,12 @@ msgstr "［Çøþÿ ŧħë ŧŕåñšŀåŧëð øûŧþûŧ ŧø ŧħë šÿš�
 msgctxt "tooltip.clear_workspace"
 msgid "Clear the source text, translated output, and request diagnostics"
 msgstr "［Çŀëåŕ ŧħë šøûŕçë ŧëẋŧ, ŧŕåñšŀåŧëð øûŧþûŧ, åñð ŕëǫûëšŧ ðïåĝñøšŧïçš~~~~~~~~~~~~~~~~~~~~~］"
+
+#. Tooltip explaining that the language action swaps the supported source and target selections.
+#, fuzzy
+msgctxt "tooltip.swap_languages"
+msgid "Swap the source and target languages"
+msgstr "［Šŵåþ ŧħë šøûŕçë åñð ŧåŕĝëŧ ŀåñĝûåĝëš~~~~~~~~~~~~］"
 
 #. Tooltip explaining that export writes translated output to a new file.
 #, fuzzy
