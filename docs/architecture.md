@@ -296,6 +296,11 @@ before the in-memory confirmation is emitted, even when another row is displayed
 failed candidate or cancellation observed before the persistence commit leaves the active manager,
 every saved row, and the restart default unchanged; a session-only switch does the same.
 
+The production GTK provider-switch fixture restores two independent saved rows, performs a streamed
+translation through A, then deliberately selects and connects B. It verifies that switching does not
+issue an inference request, that the next request reaches only B, and that each one-shot credential is
+cleared without copying A's secret into B's session.
+
 Profile deletion is a separate exact-ID command. Core commits its transactional row deletion first,
 then the worker emits success. Removing a non-default row leaves the persisted default unchanged.
 Removing the connected or persisted-default row clears its persisted/default marker after commit;

@@ -12913,6 +12913,178 @@ mod tests {
         drop(worker);
     }
 
+    // 验证生产 GTK 配置列表可以在两个独立会话提供商之间切换，并把下一次请求送到新配置。
+    #[allow(clippy::too_many_lines)]
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_one_click_provider_switch_uses_new_session_and_isolates_credentials() {
+        const SECRET_A: &str = "GTK_SWITCH_PROVIDER_A_SECRET";
+        const SECRET_B: &str = "GTK_SWITCH_PROVIDER_B_SECRET";
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.GtkProviderSwitchTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK provider switch test application");
+
+        let provider_a = ExternalFakeProvider::start(SECRET_A);
+        let provider_b = ExternalFakeProvider::start(SECRET_B);
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn());
+        let (window, bindings, theme, locale) = create_window(&application);
+        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
+        connect_action_handlers(&bindings, &state, &worker);
+        start_event_pump(&bindings, &state, &worker);
+        let context = glib::MainContext::default();
+        window.present();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().worker_ready()
+        });
+
+        let profile_a = custom_provider_profile(
+            ProviderProfileId::parse("gtk-switch-provider-a").expect("provider A ID"),
+            "Provider A".to_owned(),
+            CUSTOM_PROVIDER_PRESET_ID.to_owned(),
+            OPENAI_ADAPTER_TYPE.to_owned(),
+            provider_a.endpoint.clone(),
+            Some(SecretRef::new(SecretRefNamespace::SecretService)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            30,
+            10,
+            60,
+            None,
+            None,
+            None,
+            None,
+        )
+        .expect("provider A profile");
+        let profile_b = custom_provider_profile(
+            ProviderProfileId::parse("gtk-switch-provider-b").expect("provider B ID"),
+            "Provider B".to_owned(),
+            CUSTOM_PROVIDER_PRESET_ID.to_owned(),
+            OPENAI_ADAPTER_TYPE.to_owned(),
+            provider_b.endpoint.clone(),
+            Some(SecretRef::new(SecretRefNamespace::SecretService)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            30,
+            10,
+            60,
+            None,
+            None,
+            None,
+            None,
+        )
+        .expect("provider B profile");
+        apply_worker_event(
+            &bindings,
+            &state,
+            &worker,
+            WorkerEvent::ProfilesRestored {
+                profiles: vec![profile_b.clone(), profile_a.clone()],
+                active_profile_id: None,
+            },
+        );
+        refresh_ui(&bindings, &state.borrow());
+
+        bindings.saved_profile.set_selected(1);
+        assert_eq!(
+            state
+                .borrow()
+                .selected_saved_profile_id()
+                .map(ProviderProfileId::as_str),
+            Some("gtk-switch-provider-a")
+        );
+        assert_eq!(bindings.provider_name.text(), "Provider A");
+        bindings.remember_profile.set_active(false);
+        bindings.provider_credential.set_text(SECRET_A);
+        bindings.connect.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Ready
+                && state
+                    .borrow()
+                    .active_provider()
+                    .is_some_and(|profile| profile.id().as_str() == "gtk-switch-provider-a")
+                && !state.borrow().models().is_empty()
+        });
+        bindings.model.set_selected(1);
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().selected_model() == Some("fake-translator")
+        });
+        bindings.source.set_text("Hello from provider A");
+        bindings.translate.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Completed
+        });
+        assert_eq!(provider_a.chat_requests.load(Ordering::SeqCst), 1);
+        assert_eq!(provider_b.chat_requests.load(Ordering::SeqCst), 0);
+
+        bindings.saved_profile.set_selected(2);
+        assert_eq!(
+            state
+                .borrow()
+                .selected_saved_profile_id()
+                .map(ProviderProfileId::as_str),
+            Some("gtk-switch-provider-b")
+        );
+        assert_eq!(bindings.provider_name.text(), "Provider B");
+        assert!(bindings.provider_credential.text().is_empty());
+        assert_eq!(
+            state
+                .borrow()
+                .active_provider()
+                .map(|profile| profile.id().as_str()),
+            Some("gtk-switch-provider-a")
+        );
+        bindings.remember_profile.set_active(false);
+        bindings.provider_credential.set_text(SECRET_B);
+        bindings.connect.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Ready
+                && state
+                    .borrow()
+                    .active_provider()
+                    .is_some_and(|profile| profile.id().as_str() == "gtk-switch-provider-b")
+                && !state.borrow().models().is_empty()
+        });
+        assert_eq!(provider_a.chat_requests.load(Ordering::SeqCst), 1);
+        assert_eq!(provider_b.chat_requests.load(Ordering::SeqCst), 0);
+        bindings.model.set_selected(1);
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().selected_model() == Some("fake-translator")
+        });
+        bindings.source.set_text("Hello from provider B");
+        bindings.translate.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Completed
+        });
+        assert_eq!(provider_a.chat_requests.load(Ordering::SeqCst), 1);
+        assert_eq!(provider_b.chat_requests.load(Ordering::SeqCst), 1);
+        assert_eq!(state.borrow().output(), "你好，LinguaMesh！");
+        assert!(bindings.provider_credential.text().is_empty());
+
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
+    }
+
     #[allow(clippy::too_many_lines)]
     #[test]
     fn gtk_buttons_explicitly_connect_select_and_translate_with_session_credential() {

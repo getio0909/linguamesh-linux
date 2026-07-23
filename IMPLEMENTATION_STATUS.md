@@ -1,5 +1,21 @@
 # Implementation Status
 
+## 2026-07-23 — GTK one-click provider switch evidence
+
+Assumption: Linux remains the active client scope; the switch fixture uses two one-shot session
+credentials so it can run without touching a developer keyring while still proving credential
+isolation.
+
+- The production GTK test `gtk_one_click_provider_switch_uses_new_session_and_isolates_credentials`
+  restores two saved provider rows, connects and translates through A, deliberately selects B, and
+  connects again. It verifies that the form selection does not issue inference, the active provider
+  remains A until B succeeds, the next request reaches only B, and both credential fields are
+  cleared immediately after capture.
+- The Native workflow now runs this serialized fixture under Xvfb/DBus. Local GUI compilation and
+  formatting passed; the full GTK fixture is unverified locally because `xvfb-run` is unavailable
+  on this workstation. Release remains `unreleased` pending the remote Native/Flatpak/Foundation
+  gates and the broader cross-client evidence.
+
 ## 2026-07-23 — Linux client-certificate identity settings
 
 Assumption: Linux is the active client scope and enterprise mutual-TLS credentials must be

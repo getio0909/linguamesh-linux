@@ -712,6 +712,10 @@ instead of remaining at Starting, with Connect, model, translation, and stop con
 waits for fake-endpoint readiness without auto-connect, clears a session credential from the form
 immediately after Connect, explicitly selects a discovered model, preserves the active
 provider/model and Ready identity after a failed switch, and completes a streamed translation. The
+The dedicated `gtk_one_click_provider_switch_uses_new_session_and_isolates_credentials` fixture
+restores two saved rows, connects A, translates once, selects B, and connects once more. It proves
+that the next request reaches only B, the old provider receives no additional inference, the active
+provider remains A while B is only displayed, and both one-shot credential fields are cleared.
 The same GTK binary regression selects the native Ollama preset, connects to the deterministic
 `/api/` fixture, verifies `ollama_chat` model discovery, and translates `你好，Ollama！` without a
 credential. A completed translation also exercises the registered application notification path; its payload is
