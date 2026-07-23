@@ -561,7 +561,10 @@ resolves an item, locks the collection and verifies fail-closed lookup, stops an
 daemon, then resolves and deletes the item before rerunning the cleanup round trip. It also runs the
 worker secure-onboarding connect/translate/restart test and the GTK Remember/clear-form flow against
 an authenticated loopback provider under Xvfb. It proves CRUD, persistent restoration, locked-item
-handling, cleanup, and SecretRef-only persistence without touching a developer keyring.
+handling, cleanup, and SecretRef-only persistence without touching a developer keyring. The GTK
+flow also enters a bounded secret custom-header JSON value, verifies that a second persistent
+SecretRef is created and that both sensitive fields clear immediately, scans SQLite artifacts for
+both canaries, and deletes both Secret Service items during cleanup.
 
 The prompted-flow runner starts a separate Python Secret Service fixture four times. It returns a
 non-root prompt path from `CreateItem` and `Delete`, then exercises both completion outcomes: an

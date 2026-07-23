@@ -12907,8 +12907,12 @@ mod tests {
     // 单个原生流程覆盖真实控件生命周期和恢复表单，避免拆分后并行初始化 GTK。
     #[ignore = "requires the persistent Secret Service onboarding fixture"]
     #[test]
+    #[allow(clippy::too_many_lines)]
     fn gtk_remembered_credential_uses_secret_service_and_clears_the_form() {
         const SECRET_CANARY: &str = "GTK_PERSISTENT_ONBOARDING_SECRET_CANARY";
+        const SECRET_HEADERS_CANARY: &str = "GTK_PERSISTENT_SECRET_HEADERS_CANARY";
+        const SECRET_HEADERS_VALUE: &str =
+            r#"{"X-LinguaMesh-Test":"GTK_PERSISTENT_SECRET_HEADERS_CANARY"}"#;
         adw::init().expect("initialize GTK and libadwaita");
         let application = adw::Application::builder()
             .application_id("dev.linguamesh.LinguaMesh.SecureOnboardingTest")
@@ -12943,9 +12947,13 @@ mod tests {
             .set_text("Secure onboarding provider");
         bindings.provider_endpoint.set_text(&external.endpoint);
         bindings.provider_credential.set_text(SECRET_CANARY);
+        bindings
+            .provider_secret_custom_headers
+            .set_text(SECRET_HEADERS_VALUE);
         bindings.remember_profile.set_active(true);
         bindings.connect.emit_clicked();
         assert!(bindings.provider_credential.text().is_empty());
+        assert!(bindings.provider_secret_custom_headers.text().is_empty());
         assert_eq!(state.borrow().status(), AppStatus::Connecting);
         spin_main_context_until(&context, Duration::from_secs(5), || {
             state.borrow().status() == AppStatus::Ready
@@ -12959,13 +12967,25 @@ mod tests {
             .cloned()
             .expect("saved Secret Service reference");
         assert!(saved_secret_ref.is_persistent());
+        let saved_secret_headers_ref = state
+            .borrow()
+            .saved_profiles()
+            .first()
+            .and_then(|profile| profile.secret_custom_headers_ref())
+            .cloned()
+            .expect("saved Secret Service custom-header reference");
+        assert!(saved_secret_headers_ref.is_persistent());
         assert!(
             state
                 .borrow()
                 .active_provider()
                 .is_some_and(|profile| { profile.secret_ref() == Some(&saved_secret_ref) })
         );
+        assert!(state.borrow().active_provider().is_some_and(|profile| {
+            profile.secret_custom_headers_ref() == Some(&saved_secret_headers_ref)
+        }));
         assert!(bindings.provider_credential.text().is_empty());
+        assert!(bindings.provider_secret_custom_headers.text().is_empty());
         for entry in fs::read_dir(&database_directory).expect("database directory") {
             let path = entry.expect("database entry").path();
             if path.is_file() {
@@ -12974,6 +12994,11 @@ mod tests {
                     !bytes
                         .windows(SECRET_CANARY.len())
                         .any(|candidate| candidate == SECRET_CANARY.as_bytes())
+                );
+                assert!(
+                    !bytes
+                        .windows(SECRET_HEADERS_CANARY.len())
+                        .any(|candidate| candidate == SECRET_HEADERS_CANARY.as_bytes())
                 );
             }
         }
@@ -12990,6 +13015,8 @@ mod tests {
         assert_eq!(state.borrow().output(), "你好，LinguaMesh！");
         super::secret_service::delete_secret(&saved_secret_ref)
             .expect("delete onboarding credential");
+        super::secret_service::delete_secret(&saved_secret_headers_ref)
+            .expect("delete onboarding custom headers");
         let _ = worker.try_send(WorkerCommand::Shutdown);
         drop(window);
         drop(bindings);
