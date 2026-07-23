@@ -8,7 +8,7 @@ and external-network interoperability remain unverified.
 
 - The ignored production GTK fixture `gtk_provider_protocol_presets_use_native_transports` now
   drives Anthropic through Connect, manual `claude-test` selection, and streamed Translate. The
-  Core testkit revision `2f91f31b5baf8c22adba9d8e31b10af7bf6fe4a5` supplies `/v1/messages`, checks
+  Core testkit revision `2f91f313025b189df237294485fd47bafc1f1f53` supplies `/v1/messages`, checks
   the one-shot `x-api-key`, emits usage and `message_stop`, and returns deterministic
   `你好，Anthropic！` output.
 - The fixture keeps the credential field empty immediately after capture and does not issue
