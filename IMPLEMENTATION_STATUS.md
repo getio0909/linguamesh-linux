@@ -1,5 +1,25 @@
 # Implementation Status
 
+## 2026-07-23 — Linux mTLS trust-bundle rejection
+
+Assumption: a second local HTTPS endpoint signed by an unrelated CA is the smallest
+reproducible evidence that the configured trust bundle is enforced; enterprise-provider
+interoperability and cross-client certificate handling remain separate qualification gates.
+
+- Linux runtime/test commit `896cd2352aef73a86ca80d7d92e2b5c7850af7d7` extends the client-certificate
+  fixture runner with a trusted endpoint and an untrusted-server endpoint. The worker's
+  session-only certificate identity succeeds against the trusted endpoint and is rejected with
+  a network error by the untrusted endpoint; the rejection diagnostic contains no secret name.
+  The exact local runner passed once for each regression (`1 passed; 0 failed` each), and the
+  library suite passed `166 passed; 0 failed; 5 ignored`.
+- Source-pin correction commit `cb6a3b166344c240c135a829ef32d14e6b5214e6` aligns the Flatpak
+  source and release documentation with the tested head after the first stale-pin validation
+  failure. Its push Native/Flatpak/Foundation runs `30048916581`/`30048916829`/`30048916743`
+  and PR Native/Flatpak/Foundation runs `30048918982`/`30048919026`/`30048918938` all passed.
+- No provider credential or production certificate is stored. Release remains `unreleased`; this
+  does not claim enterprise interoperability, interactive prompt approval, human review,
+  cross-client parity, signing, rollback, or stable-release authorization.
+
 ## 2026-07-23 — Linux client-certificate HTTPS transport
 
 Assumption: a temporary local mutual-TLS endpoint is the smallest reproducible Linux evidence
