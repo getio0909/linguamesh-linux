@@ -1,5 +1,26 @@
 # Implementation Status
 
+## 2026-07-23 — Linux session SecretRef validation paths
+
+Assumption: worker-level provider rejection tests are the smallest reproducible evidence that
+session-only proxy-authentication and client-certificate identity values reach Core validation
+without being persisted; real proxy and certificate interoperability remains a separate gate.
+
+- Runtime test commit `f0a65c0d7bd1ddfda6e531db1b93c6be0096d491` adds session-only proxy-authentication
+  and client-certificate identity regressions. Each test requires Core to reject the deliberately
+  invalid value while proving the canary is absent from the surfaced diagnostic.
+- Packaging/docs commit `dcd3f49620b427d460c98082acaf97498f2b98ff` pins the Flatpak source to the
+  tested runtime and records the release pin. Local formatting, locked all-target/all-feature and
+  test-target checks, strict Clippy, 165 demo-provider library tests (3 documented environment-
+  gated ignores), localization synchronization, Flatpak metadata, and diff checks passed.
+- Push Native/Flatpak/Foundation runs `30043013677`/`30043013730`/`30043013752` and PR
+  Native/Flatpak/Foundation runs `30043017215`/`30043017137`/`30043017157` all passed. Native
+  completed the existing display-backed GTK validation suite.
+
+This strengthens unreleased Linux secret-boundary evidence without claiming live proxy or
+certificate interoperability, interactive prompt approval, human visual review, other-client
+parity, signed artifacts, rollback authorization, or stable-release approval.
+
 ## 2026-07-23 — Linux all-SecretRef persistence filtering
 
 Assumption: a worker-level persistence regression is the smallest reproducible evidence that
