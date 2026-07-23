@@ -1,5 +1,18 @@
 # Implementation Status
 
+## 2026-07-23 — Linux PR gate result for status head `90a2753`
+
+Assumption: the completed workflow jobs are authoritative for this documentation head; GitHub's
+summary check may lag even after the job API reports success.
+
+- Push Native `29990602946`, Flatpak `29990602971`, and Repository Foundation `29990602947`
+  completed successfully.
+- PR Native `29990604854`, Flatpak `29990604856`, and Repository Foundation `29990604877`
+  completed successfully. The Rust/GTK job finished at `2026-07-23T08:21:06Z`; `gh pr checks`
+  may briefly continue to display Native as pending while the check-run aggregation catches up.
+- The PR remains Draft/Open; no merge or release promotion was performed, and release remains
+  `unreleased`.
+
 ## 2026-07-23 — Linux PR documentation-head gate refresh
 
 Assumption: the documentation-only head `18c019f49965a9e758a0b292748dd38adeafb0e7` is the
