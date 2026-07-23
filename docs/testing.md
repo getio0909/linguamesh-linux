@@ -149,10 +149,12 @@ separators sanitized and `und` used when no target tag is available. If the sele
 destination already exists, the GTK save path chooses the first available deterministic `-1`,
 `-2`, ... suffix instead of replacing it; the same collision guard applies to report exports.
 After the collision check, each local export writes to a same-directory temporary file, closes it,
-and uses GIO's non-overwriting move to finalize the destination; non-local URIs fall back to GIO's
-exclusive create. A file created by another process in the race window is left unchanged, temporary
-artifacts are removed after a failed finalization, and the export reports a save error instead of
-overwriting it. This writer is shared by translated output, document reports, glossary CSV,
+syncs the file and parent directory, and uses GIO's non-overwriting move to finalize the destination;
+the parent directory is synced again after the move. If either durability barrier fails, the export
+reports a save error rather than claiming durable completion. Non-local URIs fall back to GIO's
+exclusive create and retain an explicit remote-VFS boundary. A file created by another process in the
+race window is left unchanged, temporary artifacts are removed after a failed finalization, and the
+export reports a save error instead of overwriting it. This writer is shared by translated output, document reports, glossary CSV,
 routing-profile JSON, translation-history TSV, and translation-memory TSV exports; no user-visible
 export path uses overwrite-enabled replacement.
 The `ExportWriteStrategy` policy makes that split explicit: a local path with a parent uses the

@@ -1,5 +1,26 @@
 # Implementation Status
 
+## 2026-07-23 — Linux local-export durability barriers
+
+Assumption: Linux local exports must make a bounded best effort to persist both file bytes and
+directory metadata before reporting success, while physical power-loss and alternate-VFS behavior
+remain separate evidence boundaries.
+
+- Runtime commit `cf4246c24e087de870adae4878379512cbaf2b8a` synchronizes each completed local
+  temporary export file and its parent directory before the non-overwriting move, then synchronizes
+  the parent directory again after finalization. A failed barrier reports an output-write failure;
+  non-local URIs retain their exclusive-create boundary.
+- The existing serialized GTK fixture `gtk_atomic_output_writer_never_replaces_existing_file`
+  now exercises this writer path, preserving occupied destinations and cleaning failed temporary
+  artifacts. Local formatting, all-target/all-feature check, strict Clippy, 163 demo-provider
+  library tests (3 documented environment-gated ignores), localization audits, synchronization,
+  Flatpak metadata validation, and diff checks passed. The display-backed fixture remains Native-CI
+  authoritative because this host lacks the matching GTK/GDK/Graphene linker runtime.
+
+This strengthens unreleased Linux Scenario 18 crash-durability evidence without claiming physical
+power-loss simulation, alternate SQLite or GIO VFS behavior, other clients, signing, rollback, or
+stable-release authorization.
+
 ## 2026-07-23 — Linux localized language swap action
 
 Assumption: Linux remains the active implementation priority; the swap action is a local,
