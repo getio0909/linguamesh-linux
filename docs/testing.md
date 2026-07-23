@@ -172,6 +172,12 @@ and collision rules, while the ignored GTK regression
 failed-finalization cleanup, and the report regression checks the stable output identifier. Native
 CI runs the ignored fixture
 under serialized DBus/Xvfb; the local host's GUI linker limitation keeps that check CI-authoritative.
+The paired ignored fixture `gtk_atomic_output_writer_survives_process_interruption` starts a child
+GTK test process, waits until its same-directory temporary file is synced and the final move is
+about to begin, then terminates that process. It requires the final destination to remain absent
+and the durable temporary bytes to remain inspectable, demonstrating the process-interruption
+boundary without claiming physical power-loss recovery. Native CI runs this fixture serialized
+under DBus/Xvfb; the child uses only temporary files and removes its directory after inspection.
 The focused unit regression `local_export_sync_barrier_accepts_file_and_parent_directory` also
 opens a nested local export, calls the file-and-directory barrier directly, and removes the fixture.
 It proves the local descriptor path is callable without claiming physical power-loss recovery or
