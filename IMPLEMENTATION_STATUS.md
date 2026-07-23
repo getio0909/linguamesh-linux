@@ -1,5 +1,19 @@
 # Implementation Status
 
+## 2026-07-23 — Linux persistent glossary-library slice
+
+Assumption: a bounded Core-owned glossary library store and Linux worker CRUD path are the
+smallest complete persistence slice; a GTK library selector and TBX import remain separate work.
+
+- Core schema 33 adds normalized `glossaries` and `glossary_terms` tables, validates stable IDs and
+  term rules, caps libraries at 32, and atomically replaces terms on save. Reads revalidate stored
+  rules, deletion cascades terms, and no credentials, endpoints, or provider secrets are stored.
+- Linux worker commands expose validated save/list/delete operations. The worker regression
+  `glossary_library_commands_persist_and_delete_across_worker_restart` passes; request-level GTK
+  glossary input remains unchanged and still does not silently persist content.
+- Core revision `1bd150bf0d94b37747919db3f40c92d1d86d1891` is pinned in Native and Flatpak inputs.
+  Local storage/full Core suites and Linux demo-provider tests pass; release remains `unreleased`.
+
 ## 2026-07-23 — Linux normalized usage-record persistence
 
 Assumption: usage metadata is safe to retain only as bounded, non-secret accounting metadata; the

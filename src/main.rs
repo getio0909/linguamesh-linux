@@ -7916,6 +7916,7 @@ fn apply_worker_event(
         WorkerEvent::TranslationHistoryActionRejected(error)
         | WorkerEvent::SecretCleanupFailed { error, .. }
         | WorkerEvent::TranslationMemoryActionRejected(error)
+        | WorkerEvent::GlossaryActionRejected(error)
         | WorkerEvent::DocumentJobStorageUnavailable(error)
         | WorkerEvent::RoutingProfileActionRejected(error) => {
             state.borrow_mut().record_client_error(error.to_string());
@@ -7987,6 +7988,9 @@ fn apply_worker_event(
             bindings.memory_warning.set(true);
             bindings.memory_clear_pending.set(false);
         }
+        WorkerEvent::GlossariesListed { .. }
+        | WorkerEvent::GlossarySaved(_)
+        | WorkerEvent::GlossaryDeleted { .. } => {}
         WorkerEvent::RoutingProfilesListed { profiles } => {
             let routing_worker = worker.command_handle();
             show_routing_profiles_dialog(bindings, state, &routing_worker, profiles);

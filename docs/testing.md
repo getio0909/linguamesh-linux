@@ -102,6 +102,11 @@ across streamed deltas; the production reducer restores `凌瓦网` in the compl
 runs the exact fixture under DBus/Xvfb, providing Linux Scenario 9 glossary/protected-span evidence
 without persisting glossary content or claiming provider-specific behavior beyond the contract.
 
+The worker fixture `glossary_library_commands_persist_and_delete_across_worker_restart` exercises
+Core schema 33 through the Linux command path. It saves a validated library, lists it, deletes it,
+and confirms the normalized term rows are gone; it does not claim a GTK library selector or TBX
+import support.
+
 The serialized GTK fixture `gtk_interrupted_document_job_restores_and_resumes` creates a persisted
 two-segment text job, drives the production Translate and Pause controls after the first segment is
 committed, shuts down the worker, and starts a second GTK worker against the same database. The
@@ -798,7 +803,7 @@ contrast, motion, and text-scaling behavior; manual visual review remains requir
 releases.
 
 The GitHub Actions native workflow pins Core revision
-`4badabe735499a50265a1260a838df3254622c15`, installs the headers plus D-Bus, Xvfb, test-only
+`1bd150bf0d94b37747919db3f40c92d1d86d1891`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
 namespace test through the unprivileged path.

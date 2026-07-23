@@ -14,9 +14,9 @@ use linguamesh_domain::{
 };
 use linguamesh_engine::{CancellationHandle, TranslationOperation, core_compatibility};
 use linguamesh_storage::{
-    DocumentJobOptions, DocumentJobSnapshot, MAX_DOCUMENT_JOBS, MAX_TRANSLATION_HISTORY_ENTRIES,
-    MAX_TRANSLATION_MEMORY_ENTRIES, RoutingProfileRecord, Storage, TranslationHistoryEntry,
-    TranslationMemoryEntry,
+    DocumentJobOptions, DocumentJobSnapshot, GlossaryRecord, MAX_DOCUMENT_JOBS,
+    MAX_TRANSLATION_HISTORY_ENTRIES, MAX_TRANSLATION_MEMORY_ENTRIES, RoutingProfileRecord, Storage,
+    TranslationHistoryEntry, TranslationMemoryEntry,
 };
 use linguamesh_testkit::FakeProviderServer;
 use rustix::fs::{
@@ -147,6 +147,20 @@ pub enum WorkerCommand {
     },
     /// 清空本地翻译记忆。
     ClearTranslationMemory,
+    /// 保存或替换一个经过核心校验的本地词汇表库。
+    SaveGlossary {
+        /// 词汇表库稳定标识。
+        glossary_id: String,
+        /// 词汇表规则。
+        glossary: Glossary,
+    },
+    /// 读取全部本地词汇表库。
+    ListGlossaries,
+    /// 删除一个本地词汇表库。
+    DeleteGlossary {
+        /// 词汇表库稳定标识。
+        glossary_id: String,
+    },
     /// 保存或替换一个不含秘密的路由配置。
     SaveRoutingProfile {
         /// 经过核心校验的路由配置。
@@ -358,6 +372,20 @@ pub enum WorkerEvent {
     TranslationMemoryCleared,
     /// 清空本地翻译记忆被拒绝。
     TranslationMemoryClearRejected(TranslationError),
+    /// 已读取本地词汇表库。
+    GlossariesListed {
+        /// 按更新时间排列的本地词汇表库。
+        glossaries: Vec<GlossaryRecord>,
+    },
+    /// 词汇表库已保存。
+    GlossarySaved(GlossaryRecord),
+    /// 词汇表库已删除。
+    GlossaryDeleted {
+        /// 被删除的词汇表库稳定标识。
+        glossary_id: String,
+    },
+    /// 读取、保存或删除词汇表库被精确拒绝。
+    GlossaryActionRejected(TranslationError),
     /// 已读取本地路由配置。
     RoutingProfilesListed {
         /// 按更新时间排列的非秘密路由配置。
@@ -636,6 +664,34 @@ impl WorkerCommandHandle {
             .map_err(|_| WorkerSendError)
     }
 
+    /// 非阻塞保存或替换一个本地词汇表库。
+    pub fn save_glossary(
+        &self,
+        glossary_id: String,
+        glossary: Glossary,
+    ) -> Result<(), WorkerSendError> {
+        self.commands
+            .try_send(QueuedCommand::SaveGlossary {
+                glossary_id,
+                glossary,
+            })
+            .map_err(|_| WorkerSendError)
+    }
+
+    /// 非阻塞请求读取本地词汇表库。
+    pub fn list_glossaries(&self) -> Result<(), WorkerSendError> {
+        self.commands
+            .try_send(QueuedCommand::ListGlossaries)
+            .map_err(|_| WorkerSendError)
+    }
+
+    /// 非阻塞删除一个本地词汇表库。
+    pub fn delete_glossary(&self, glossary_id: String) -> Result<(), WorkerSendError> {
+        self.commands
+            .try_send(QueuedCommand::DeleteGlossary { glossary_id })
+            .map_err(|_| WorkerSendError)
+    }
+
     /// 非阻塞保存或替换一个不含秘密的路由配置。
     pub fn save_routing_profile(&self, profile: RoutingProfile) -> Result<(), WorkerSendError> {
         self.commands
@@ -712,6 +768,14 @@ enum QueuedCommand {
         cache_key: String,
     },
     ClearTranslationMemory,
+    SaveGlossary {
+        glossary_id: String,
+        glossary: Glossary,
+    },
+    ListGlossaries,
+    DeleteGlossary {
+        glossary_id: String,
+    },
     SaveRoutingProfile {
         profile: RoutingProfile,
     },
@@ -971,6 +1035,24 @@ impl CoreWorker {
             WorkerCommand::ClearTranslationMemory => self
                 .commands
                 .try_send(QueuedCommand::ClearTranslationMemory)
+                .map_err(|_| WorkerSendError),
+            WorkerCommand::SaveGlossary {
+                glossary_id,
+                glossary,
+            } => self
+                .commands
+                .try_send(QueuedCommand::SaveGlossary {
+                    glossary_id,
+                    glossary,
+                })
+                .map_err(|_| WorkerSendError),
+            WorkerCommand::ListGlossaries => self
+                .commands
+                .try_send(QueuedCommand::ListGlossaries)
+                .map_err(|_| WorkerSendError),
+            WorkerCommand::DeleteGlossary { glossary_id } => self
+                .commands
+                .try_send(QueuedCommand::DeleteGlossary { glossary_id })
                 .map_err(|_| WorkerSendError),
             WorkerCommand::SaveRoutingProfile { profile } => self
                 .commands
@@ -1743,6 +1825,17 @@ async fn run_worker(
                             "Translation memory cannot be changed while a translation is running.",
                         ),
                     ));
+                }
+                ActiveStep::Command(Some(
+                    QueuedCommand::SaveGlossary { .. }
+                    | QueuedCommand::ListGlossaries
+                    | QueuedCommand::DeleteGlossary { .. },
+                )) => {
+                    let _ =
+                        events.send(WorkerEvent::GlossaryActionRejected(TranslationError::new(
+                            ErrorKind::InvalidConfiguration,
+                            "Glossary libraries cannot change while a translation is running.",
+                        )));
                 }
                 ActiveStep::Command(Some(
                     QueuedCommand::SaveRoutingProfile { .. }
@@ -3063,6 +3156,102 @@ async fn run_worker(
                     Err(error) => {
                         if events
                             .send(WorkerEvent::TranslationMemoryActionRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
+            Some(QueuedCommand::SaveGlossary {
+                glossary_id,
+                glossary,
+            }) => {
+                let result = storage
+                    .as_mut()
+                    .ok_or_else(|| {
+                        TranslationError::new(
+                            ErrorKind::Persistence,
+                            "Local glossary library storage is unavailable.",
+                        )
+                    })
+                    .and_then(|storage| storage.save_glossary(glossary_id.as_str(), &glossary));
+                match result {
+                    Ok(record) => {
+                        if events.send(WorkerEvent::GlossarySaved(record)).is_err() {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::GlossaryActionRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
+            Some(QueuedCommand::ListGlossaries) => {
+                let result = storage
+                    .as_ref()
+                    .ok_or_else(|| {
+                        TranslationError::new(
+                            ErrorKind::Persistence,
+                            "Local glossary library storage is unavailable.",
+                        )
+                    })
+                    .and_then(Storage::glossaries);
+                match result {
+                    Ok(glossaries) => {
+                        if events
+                            .send(WorkerEvent::GlossariesListed { glossaries })
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::GlossaryActionRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
+            Some(QueuedCommand::DeleteGlossary { glossary_id }) => {
+                let result = storage
+                    .as_mut()
+                    .ok_or_else(|| {
+                        TranslationError::new(
+                            ErrorKind::Persistence,
+                            "Local glossary library storage is unavailable.",
+                        )
+                    })
+                    .and_then(|storage| {
+                        if storage.delete_glossary(glossary_id.as_str())? {
+                            Ok(())
+                        } else {
+                            Err(TranslationError::new(
+                                ErrorKind::InvalidConfiguration,
+                                "The glossary library no longer exists.",
+                            ))
+                        }
+                    });
+                match result {
+                    Ok(()) => {
+                        if events
+                            .send(WorkerEvent::GlossaryDeleted { glossary_id })
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::GlossaryActionRejected(error))
                             .is_err()
                         {
                             shutting_down = true;
@@ -4429,6 +4618,11 @@ fn reject_queued_commands_for_shutdown(
             QueuedCommand::ListTranslationMemory
             | QueuedCommand::DeleteTranslationMemory { .. } => events.send(
                 WorkerEvent::TranslationMemoryActionRejected(TranslationError::cancelled()),
+            ),
+            QueuedCommand::SaveGlossary { .. }
+            | QueuedCommand::ListGlossaries
+            | QueuedCommand::DeleteGlossary { .. } => events.send(
+                WorkerEvent::GlossaryActionRejected(TranslationError::cancelled()),
             ),
             QueuedCommand::SaveRoutingProfile { .. }
             | QueuedCommand::ListRoutingProfiles
@@ -5998,8 +6192,8 @@ mod tests {
     use crate::model::{ProviderProfile, ProviderProfileId};
     use linguamesh_document::{DocumentFormat, DocumentJob, DocumentJobState};
     use linguamesh_domain::{
-        ErrorKind, RetryPolicy, RoutingCandidate, RoutingConstraints, RoutingMode,
-        RoutingPreference, RoutingProfile, SecretRef, SecretRefNamespace, SecretValue,
+        ErrorKind, Glossary, GlossaryEntry, RetryPolicy, RoutingCandidate, RoutingConstraints,
+        RoutingMode, RoutingPreference, RoutingProfile, SecretRef, SecretRefNamespace, SecretValue,
         TranslationError, TranslationEvent, TranslationPreset, TranslationPrivacyMode,
         TranslationQualityMode, TranslationRequest, serialize_routing_profile,
     };
@@ -6986,6 +7180,78 @@ mod tests {
         shutdown(&worker);
         let storage = Storage::open(database.path()).expect("history storage");
         assert_eq!(storage.usage_record_count().expect("usage count"), 0);
+    }
+
+    #[test]
+    fn glossary_library_commands_persist_and_delete_across_worker_restart() {
+        let database = TestDatabase::new();
+        let worker = CoreWorker::spawn_with_database(database.path());
+        loop {
+            match worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("glossary startup event")
+            {
+                WorkerEvent::DemoProviderReady { .. } => break,
+                WorkerEvent::ProfileStorageUnavailable(error) => {
+                    panic!("glossary storage unavailable: {error}");
+                }
+                _ => {}
+            }
+        }
+        let glossary = Glossary::new(vec![
+            GlossaryEntry::new("LinguaMesh", "凌瓦网")
+                .expect("glossary entry")
+                .with_source_locale("en")
+                .with_target_locale("zh-CN"),
+        ])
+        .expect("glossary");
+        worker
+            .try_send(WorkerCommand::SaveGlossary {
+                glossary_id: "product-terms".to_owned(),
+                glossary: glossary.clone(),
+            })
+            .expect("save glossary command");
+        match worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("glossary save event")
+        {
+            WorkerEvent::GlossarySaved(record) => {
+                assert_eq!(record.id, "product-terms");
+                assert_eq!(record.glossary, glossary);
+            }
+            _ => panic!("unexpected glossary save event"),
+        }
+        worker
+            .try_send(WorkerCommand::ListGlossaries)
+            .expect("list glossary command");
+        match worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("glossary list event")
+        {
+            WorkerEvent::GlossariesListed { glossaries } => {
+                assert_eq!(glossaries.len(), 1);
+                assert_eq!(glossaries[0].id, "product-terms");
+            }
+            _ => panic!("unexpected glossary list event"),
+        }
+        worker
+            .try_send(WorkerCommand::DeleteGlossary {
+                glossary_id: "product-terms".to_owned(),
+            })
+            .expect("delete glossary command");
+        assert!(matches!(
+            worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("glossary delete event"),
+            WorkerEvent::GlossaryDeleted { glossary_id } if glossary_id == "product-terms"
+        ));
+        shutdown(&worker);
+        let storage = Storage::open(database.path()).expect("glossary storage");
+        assert!(storage.glossaries().expect("glossaries").is_empty());
     }
 
     #[allow(clippy::too_many_lines)]

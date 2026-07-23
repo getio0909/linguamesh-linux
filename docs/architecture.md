@@ -132,10 +132,13 @@ endpoint and `/v1/responses` translation endpoint. The client sends the credenti
 the Bearer header and consumes typed SSE events, including `response.output_text.delta` and
 `response.completed`; metadata events are not treated as translated text.
 
-The Linux text workspace adds an in-memory request-level glossary field. Core validates duplicate
+The Linux text workspace accepts an in-memory request-level glossary field. Core validates duplicate
 rules and credential-shaped terms, selects only locale-matching entries, protects immutable names,
-and restores required target terms after streaming; glossary content is not part of saved provider
-profiles or SQLite persistence.
+and restores required target terms after streaming. Reusable glossary libraries are now persisted
+by Core schema 33 as bounded `glossaries` and `glossary_terms` rows; the Linux worker exposes
+validated save/list/delete commands, while credentials and endpoints remain outside the schema.
+The GTK request field still remains request-scoped until a library is explicitly selected by a
+future UI slice.
 
 The GTK routing-profile dialog maps a stable dropdown order to Core's `Manual`, `Ordered`, and
 `Automatic` modes. A separate **Allow approved fallback** checkbox records explicit consent and is
