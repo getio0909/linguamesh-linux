@@ -9,9 +9,12 @@ proxy URL or persisted as a credential value.
 - The GTK provider form adds a password-style proxy credential field, clears it after capture,
   restores only the reference-bearing profile state, and supports session-only or explicit
   Secret Service persistence through the existing host secret service.
-- Core schema 30 and the shared provider adapters accept the same reference-only contract and
+- Core `cee5bd8abc5b35a50640c484bc4fbeedeb426745` (schema 30) and the shared provider adapters
+  accept the same reference-only contract; l10n `f0b1c507d73f540f298a534303d0e6e63d44e87b`
+  supplies source revision 58 and regenerated resources. Linux runtime `14d8657` wires the GTK
+  form, worker, and host-secret persistence path. They
   apply proxy Basic authentication without exposing credentials in SQLite, URLs, diagnostics, or
-  logs. Localization source revision 58 supplies the three Linux strings and regenerated resources.
+  logs.
 - Local Core workspace tests, Linux workspace checks, and l10n `make check` pass. Remote CI and
   Linux packaging evidence for the exact commits remain pending; release stays `unreleased`.
 
