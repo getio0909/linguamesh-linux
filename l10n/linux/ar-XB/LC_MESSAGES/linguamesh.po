@@ -2987,3 +2987,15 @@ msgstr "⁧⟦Use 1-128 ASCII letters, numbers, '.', '_' or '-' for the glossary
 msgctxt "status.glossary_libraries_empty"
 msgid "No local glossary libraries are stored."
 msgstr "⁧⟦No local glossary libraries are stored.⟧⁩"
+
+#. Translation preset that prefers United States English regional conventions and Latin script.
+#, fuzzy
+msgctxt "translation.preset.english_us"
+msgid "English (United States)"
+msgstr "⁧⟦English (United States)⟧⁩"
+
+#. Translation preset that prefers Mainland China regional conventions and Simplified Chinese script.
+#, fuzzy
+msgctxt "translation.preset.chinese_simplified"
+msgid "Chinese (Simplified, Mainland China)"
+msgstr "⁧⟦Chinese (Simplified, Mainland China)⟧⁩"

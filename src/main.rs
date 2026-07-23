@@ -340,11 +340,21 @@ fn quality_mode_for_selection(selection: u32) -> TranslationQualityMode {
 }
 
 // 根据界面语言生成内置翻译预设标签。
-fn translation_preset_labels(locale: UiLocale) -> [String; 3] {
+fn translation_preset_labels(locale: UiLocale) -> [String; 5] {
     [
         localization::text(locale, "translation.preset.general", "General"),
         localization::text(locale, "translation.preset.technical", "Technical"),
         localization::text(locale, "translation.preset.marketing", "Marketing"),
+        localization::text(
+            locale,
+            "translation.preset.english_us",
+            "English (United States)",
+        ),
+        localization::text(
+            locale,
+            "translation.preset.chinese_simplified",
+            "Chinese (Simplified, Mainland China)",
+        ),
     ]
 }
 
@@ -353,6 +363,8 @@ fn translation_preset_selection(preset: &TranslationPreset) -> u32 {
     match preset.id() {
         "technical" => 1,
         "marketing" => 2,
+        "english_us" => 3,
+        "chinese_simplified" => 4,
         _ => 0,
     }
 }
@@ -362,6 +374,8 @@ fn translation_preset_for_selection(selection: u32) -> TranslationPreset {
     match selection {
         1 => TranslationPreset::technical(),
         2 => TranslationPreset::marketing(),
+        3 => TranslationPreset::english_us(),
+        4 => TranslationPreset::chinese_simplified(),
         _ => TranslationPreset::general(),
     }
 }
@@ -10383,6 +10397,8 @@ mod tests {
             TranslationPreset::general(),
             TranslationPreset::technical(),
             TranslationPreset::marketing(),
+            TranslationPreset::english_us(),
+            TranslationPreset::chinese_simplified(),
         ] {
             assert_eq!(
                 translation_preset_for_selection(translation_preset_selection(&preset)),
