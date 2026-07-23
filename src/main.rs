@@ -10625,9 +10625,9 @@ mod tests {
         routing_profile_id_conflicts, show_about_dialog, show_document_jobs_dialog,
         show_fallback_approval_dialog, show_new_profile_in_form, show_routing_profiles_dialog,
         show_secret_storage_session_fallback, start_event_pump, swap_locale_selection,
-        text_metrics_label, translation_output_name, translation_preset_for_selection,
-        translation_preset_selection, usage_label, valid_routing_profile_id,
-        validate_provider_preset_catalog, write_new_file_async,
+        sync_local_export, text_metrics_label, translation_output_name,
+        translation_preset_for_selection, translation_preset_selection, usage_label,
+        valid_routing_profile_id, validate_provider_preset_catalog, write_new_file_async,
     };
     use adw::prelude::*;
     use gtk::glib;
@@ -10675,6 +10675,24 @@ mod tests {
         assert!(!valid_routing_profile_id("routing profile"));
         assert!(!valid_routing_profile_id("配置"));
         assert!(!valid_routing_profile_id(&"a".repeat(129)));
+    }
+
+    #[test]
+    fn local_export_sync_barrier_accepts_file_and_parent_directory() {
+        let root = std::env::temp_dir().join(format!(
+            "linguamesh-linux-export-sync-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).expect("create export sync test directory");
+        let output = root.join("nested").join("translation.txt");
+        fs::create_dir_all(output.parent().expect("nested export directory"))
+            .expect("create nested directory");
+        fs::write(&output, b"durable test output").expect("write export sync test file");
+
+        assert!(sync_local_export(&output));
+
+        fs::remove_dir_all(&root).expect("remove export sync test directory");
     }
 
     #[test]
