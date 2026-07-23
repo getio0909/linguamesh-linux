@@ -615,6 +615,29 @@ impl AppState {
             .and_then(|profile_id| saved_profile_by_id(&self.saved_profiles, profile_id))
     }
 
+    /// 更新已保存配置的非秘密健康状态。
+    pub fn update_saved_profile_health(
+        &mut self,
+        profile: ProviderProfile,
+    ) -> Result<(), StateError> {
+        let Some(index) = self
+            .saved_profiles
+            .iter()
+            .position(|saved_profile| saved_profile.id() == profile.id())
+        else {
+            return Err(StateError::InvalidSavedProfile);
+        };
+        self.saved_profiles[index] = profile.clone();
+        if self
+            .active_provider
+            .as_ref()
+            .is_some_and(|active| active.id() == profile.id())
+        {
+            self.active_provider = Some(profile);
+        }
+        Ok(())
+    }
+
     /// 返回兼容单配置调用方的当前表单配置。
     #[must_use]
     pub fn saved_profile(&self) -> Option<&ProviderProfile> {

@@ -35,7 +35,7 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver, SyncSender, TryRecvError};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tokio::runtime::Builder;
 use tokio::sync::mpsc::{Receiver as CommandReceiver, Sender as CommandSender};
 use tokio_util::sync::CancellationToken;
@@ -49,7 +49,7 @@ const REVIEWED_CORE_VERSION: &str = "0.1.0-alpha.2";
 const REVIEWED_ABI_MAJOR: u32 = 1;
 const REVIEWED_PROTOCOL_VERSION: u32 = 1;
 const REVIEWED_PROVIDER_CATALOG_VERSION: &str = "0.1.0";
-const REQUIRED_CORE_FEATURES: [&str; 16] = [
+const REQUIRED_CORE_FEATURES: [&str; 17] = [
     "cancellation_v1",
     "azure_openai_chat_v1",
     "openai_responses_v1",
@@ -57,6 +57,7 @@ const REQUIRED_CORE_FEATURES: [&str; 16] = [
     "file_lease_v1",
     "typed_rust_host_secret_broker_v1",
     "model_discovery_v1",
+    "provider_health_status_v1",
     "protected_spans_v1",
     "long_text_chunking_v1",
     "bounded_text_document_v1",
@@ -67,6 +68,15 @@ const REQUIRED_CORE_FEATURES: [&str; 16] = [
     "text_translation_v1",
     "usage_records_v1",
 ];
+
+// 生成只用于本地健康状态的 Unix 秒时间戳。
+fn current_unix_timestamp() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .ok()
+        .and_then(|duration| i64::try_from(duration.as_secs()).ok())
+        .unwrap_or(i64::MAX)
+}
 
 /// 描述连接配置是否应跨进程重启保留。
 #[derive(Clone, Copy, Eq, PartialEq)]
@@ -502,6 +512,18 @@ pub enum WorkerEvent {
         /// 被测试的配置标识。
         profile_id: ProviderProfileId,
         /// 不包含秘密的类型化错误。
+        error: TranslationError,
+    },
+    /// 已保存配置的健康状态已更新。
+    ProfileHealthUpdated {
+        /// 健康状态更新后的非秘密配置。
+        profile: ProviderProfile,
+    },
+    /// 健康状态写入失败，但连接测试结果仍独立报告。
+    ProfileHealthPersistenceFailed {
+        /// 写入失败对应的配置标识。
+        profile_id: ProviderProfileId,
+        /// 不包含秘密的持久化错误。
         error: TranslationError,
     },
     /// 工作线程已确认用户选择的模型。
@@ -2688,6 +2710,37 @@ async fn run_worker(
                 clear_active_cancellation(&active_cancellation);
                 match result {
                     Ok(models) => {
+                        if let Some(storage) = storage.as_mut() {
+                            match storage.record_provider_health_success(
+                                &profile_id,
+                                current_unix_timestamp(),
+                            ) {
+                                Ok(true) => match storage.provider_profile(&profile_id) {
+                                    Ok(Some(health_profile)) => {
+                                        let _ = events.send(WorkerEvent::ProfileHealthUpdated {
+                                            profile: health_profile,
+                                        });
+                                    }
+                                    Ok(None) => {}
+                                    Err(error) => {
+                                        let _ = events.send(
+                                            WorkerEvent::ProfileHealthPersistenceFailed {
+                                                profile_id: profile_id.clone(),
+                                                error,
+                                            },
+                                        );
+                                    }
+                                },
+                                Ok(false) => {}
+                                Err(error) => {
+                                    let _ =
+                                        events.send(WorkerEvent::ProfileHealthPersistenceFailed {
+                                            profile_id: profile_id.clone(),
+                                            error,
+                                        });
+                                }
+                            }
+                        }
                         if events
                             .send(WorkerEvent::ConnectionTested {
                                 profile_id,
@@ -2699,6 +2752,34 @@ async fn run_worker(
                         }
                     }
                     Err(error) => {
+                        if let Some(storage) = storage.as_mut() {
+                            match storage.record_provider_health_failure(&profile_id, error.kind) {
+                                Ok(true) => match storage.provider_profile(&profile_id) {
+                                    Ok(Some(health_profile)) => {
+                                        let _ = events.send(WorkerEvent::ProfileHealthUpdated {
+                                            profile: health_profile,
+                                        });
+                                    }
+                                    Ok(None) => {}
+                                    Err(persistence_error) => {
+                                        let _ = events.send(
+                                            WorkerEvent::ProfileHealthPersistenceFailed {
+                                                profile_id: profile_id.clone(),
+                                                error: persistence_error,
+                                            },
+                                        );
+                                    }
+                                },
+                                Ok(false) => {}
+                                Err(persistence_error) => {
+                                    let _ =
+                                        events.send(WorkerEvent::ProfileHealthPersistenceFailed {
+                                            profile_id: profile_id.clone(),
+                                            error: persistence_error,
+                                        });
+                                }
+                            }
+                        }
                         if events
                             .send(WorkerEvent::ConnectionTestRejected { profile_id, error })
                             .is_err()
@@ -6886,14 +6967,18 @@ mod tests {
                 client_certificate_identity: None,
             })
             .expect("connection test command");
-        match worker
-            .events
-            .recv_timeout(Duration::from_secs(5))
-            .expect("connection test event")
-        {
-            WorkerEvent::ConnectionTested { model_count, .. } => Ok(model_count),
-            WorkerEvent::ConnectionTestRejected { error, .. } => Err(error),
-            _ => panic!("unexpected connection test event"),
+        loop {
+            match worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("connection test event")
+            {
+                WorkerEvent::ProfileHealthUpdated { .. } => {}
+                WorkerEvent::ConnectionTested { model_count, .. } => return Ok(model_count),
+                WorkerEvent::ConnectionTestRejected { error, .. } => return Err(error),
+                WorkerEvent::ProfileHealthPersistenceFailed { error, .. } => return Err(error),
+                _ => panic!("unexpected connection test event"),
+            }
         }
     }
 
@@ -9391,6 +9476,36 @@ mod tests {
         assert_eq!(output, "你好，LinguaMesh！");
         assert!(matches!(terminal, TranslationEvent::Completed { .. }));
         shutdown(&worker);
+    }
+
+    #[test]
+    fn explicit_connection_test_persists_saved_profile_health() {
+        let database = TestDatabase::new();
+        let (worker, _, _, endpoint) = started_worker_with_database_snapshot(database.path());
+        let saved = profile("health-worker-provider", &endpoint, None, None);
+        connect(&worker, saved.clone(), None, PersistenceIntent::Persistent)
+            .expect("saved connection");
+        test_connection(&worker, saved.clone(), None).expect("successful health check");
+        test_connection(
+            &worker,
+            profile(
+                "health-worker-provider",
+                "http://127.0.0.1:1/v1/",
+                None,
+                None,
+            ),
+            None,
+        )
+        .expect_err("failed health check");
+        shutdown(&worker);
+
+        let storage = Storage::open(database.path()).expect("reopened storage");
+        let restored = storage
+            .provider_profile(saved.id())
+            .expect("health profile query")
+            .expect("health profile");
+        assert!(restored.last_successful_health_check().is_some());
+        assert_eq!(restored.last_failure_category(), Some(ErrorKind::Network));
     }
 
     #[test]

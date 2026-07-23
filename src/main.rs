@@ -8567,6 +8567,22 @@ fn apply_worker_event(
                 .connection_test_profile_id
                 .replace(Some(profile_id.as_str().to_owned()));
         }
+        WorkerEvent::ProfileHealthUpdated { profile } => {
+            let selected = state.borrow().selected_saved_profile_id() == Some(profile.id());
+            let updated = {
+                let mut state = state.borrow_mut();
+                state.update_saved_profile_health(profile.clone()).is_ok()
+            };
+            if updated {
+                rebuild_saved_profile_dropdown(bindings, &state.borrow());
+                if selected {
+                    show_saved_profile_in_form(bindings, &profile);
+                }
+            }
+        }
+        WorkerEvent::ProfileHealthPersistenceFailed { error, .. } => {
+            state.borrow_mut().record_operation_failure(error);
+        }
         WorkerEvent::ConnectionTestRejected { error, .. } => {
             bindings.connection_test_notice.set(false);
             bindings.connection_test_model_count.set(None);

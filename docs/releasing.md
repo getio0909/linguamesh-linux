@@ -78,7 +78,7 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `dffa07eca2b006279f99673edff5bd0ae1b24a0f` and l10n
+The current Linux gate consumes Core `460728d79b0e2373445c3d8994793d069b8057b9` and l10n
 `7c2cb9fd71835ea0f9c6605d82dac87c0df012f0` (497 catalog messages). The reviewed Flatpak source
 pin is Linux `00186c29fc4e3e6682114ee29cd587d31610a1d6`; the functional release pin remains the
 packaging commit `73051b70028359c56654e1260621ada77def67e9`. The profile contract includes
