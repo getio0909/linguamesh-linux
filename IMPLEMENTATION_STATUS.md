@@ -11,7 +11,7 @@ smallest complete persistence slice; a GTK library selector and TBX import remai
 - Linux worker commands expose validated save/list/delete operations. The worker regression
   `glossary_library_commands_persist_and_delete_across_worker_restart` passes; request-level GTK
   glossary input remains unchanged and still does not silently persist content.
-- Core revision `1bd150bf0d94b37747919db3f40c92d1d86d1891` is pinned in Native and Flatpak inputs.
+- Core revision `1bd150b3063b6471dbf8a279db1fccb03d2c916c` is pinned in Native and Flatpak inputs.
   Local storage/full Core suites and Linux demo-provider tests pass; release remains `unreleased`.
 
 ## 2026-07-23 — Linux normalized usage-record persistence
