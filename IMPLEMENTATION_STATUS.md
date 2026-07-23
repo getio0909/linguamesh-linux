@@ -10,8 +10,8 @@ TBX or cross-client behavior.
   modal selector lists validated local libraries, loads one back into the request editor, and
   deletes by stable ID. Saving uses the same Core validation path and never stores credentials,
   endpoints, or provider metadata.
-- Localization revision `4ce8e60d06dbc8777c92a70860d83bee5ffb2f25` adds nine canonical Linux keys
-  (489 messages), regenerated PO/MO resources, and synchronized pseudo-locales. Focus probes,
+- Localization revision `c4173bf52a5f44ebcf387de2d5dc6fcccc07338e` adds twelve canonical Linux keys
+  (492 messages), regenerated PO/MO resources, and synchronized pseudo-locales. Focus probes,
   localized action refresh, storage-availability gating, and worker event handling cover the new
   controls.
 - `bash tools/sync-l10n.sh --check`, `cargo fmt --all --check`, `cargo test --features

@@ -2961,3 +2961,21 @@ msgstr "Optional PEM client certificate and private key identity"
 msgctxt "tooltip.provider_client_certificate_identity"
 msgid "Kept in memory for the connection and stored in Secret Service only when remembered"
 msgstr "Kept in memory for the connection and stored in Secret Service only when remembered"
+
+#. Placeholder for the allowed stable identifier characters of a glossary library.
+#, fuzzy
+msgctxt "placeholder.glossary_id"
+msgid "letters, numbers, '.', '_' or '-'"
+msgstr "letters, numbers, '.', '_' or '-'"
+
+#. Accessible tooltip for the stable glossary library identifier field.
+#, fuzzy
+msgctxt "tooltip.glossary_id"
+msgid "Use 1-128 ASCII letters, numbers, '.', '_' or '-' for the glossary library ID."
+msgstr "Use 1-128 ASCII letters, numbers, '.', '_' or '-' for the glossary library ID."
+
+#. Empty-state message shown when no reusable glossary libraries are stored.
+#, fuzzy
+msgctxt "status.glossary_libraries_empty"
+msgid "No local glossary libraries are stored."
+msgstr "No local glossary libraries are stored."

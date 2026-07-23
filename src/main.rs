@@ -3687,10 +3687,16 @@ fn show_save_glossary_dialog(
     id_entry.set_max_length(128);
     id_entry.set_hexpand(true);
     id_entry.set_focusable(true);
-    id_entry.set_placeholder_text(Some("letters, numbers, '.', '_' or '-'"));
-    id_entry.set_tooltip_text(Some(
+    id_entry.set_placeholder_text(Some(&localization::text(
+        locale,
+        "placeholder.glossary_id",
+        "letters, numbers, '.', '_' or '-'",
+    )));
+    id_entry.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.glossary_id",
         "Use 1-128 ASCII letters, numbers, '.', '_' or '-' for the glossary library ID.",
-    ));
+    )));
     id_label.set_mnemonic_widget(Some(&id_entry));
     id_row.append(&id_label);
     id_row.append(&id_entry);
@@ -3764,7 +3770,11 @@ fn show_glossary_libraries_dialog(
     list.set_selection_mode(gtk::SelectionMode::None);
     list.set_vexpand(true);
     if glossaries.is_empty() {
-        let empty = gtk::Label::new(Some("No local glossary libraries are stored."));
+        let empty = gtk::Label::new(Some(&localization::text(
+            locale,
+            "status.glossary_libraries_empty",
+            "No local glossary libraries are stored.",
+        )));
         empty.set_xalign(0.0);
         empty.add_css_class("dim-label");
         list.append(&empty);
