@@ -10,7 +10,7 @@ or human acceptance evidence.
   when native/protocol discovery returns an empty list or typed `ModelUnavailable` (including a 404).
   Authentication, network, and timeout failures remain typed errors. A manual-only fake server and
   end-to-end translation test cover the fallback without storing credentials.
-- Linux `4997d14d621ecdad5f562059be15b30c9a69c67a` exposes the optional manual model field for every provider preset, forwards a
+- Linux `871c2da4e5f41cfb8197c7688ee0dd9f11b245fe` exposes the optional manual model field for every provider preset, forwards a
   non-empty value into session and saved-profile connection tests, and retains mandatory validation
   only for catalog entries that require manual deployment/model identifiers.
 - Local Core Clippy and all-workspace tests passed; Linux GUI/all-target checks, 161 demo-provider
