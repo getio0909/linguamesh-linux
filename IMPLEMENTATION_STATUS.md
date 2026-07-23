@@ -1,6 +1,6 @@
 # Implementation Status
 
-## 2026-07-23 — Linux GTK glossary-library selector
+## 2026-07-23 — Linux GTK glossary-library selector and localization
 
 Assumption: the existing request-level glossary editor is the source of truth; a bounded GTK
 selector is the smallest Linux UI slice that makes Core schema 33 libraries usable without adding
@@ -10,13 +10,17 @@ TBX or cross-client behavior.
   modal selector lists validated local libraries, loads one back into the request editor, and
   deletes by stable ID. Saving uses the same Core validation path and never stores credentials,
   endpoints, or provider metadata.
-- Focus probes, localized action refresh, storage-availability gating, and worker event handling
-  cover the new controls. `cargo fmt --all --check`, `cargo test --features demo-provider --lib
-  --locked -- --nocapture` (`160 passed; 0 failed; 3 ignored`), strict Clippy, and `git diff
-  --check` pass locally.
-- The GTK display-backed selector test remains CI-authoritative on the pinned Native workflow;
-  TBX import, other clients, manual accessibility review, signing, rollback, and stable release
-  evidence remain open. Release stays `unreleased`.
+- Localization revision `4ce8e60d06dbc8777c92a70860d83bee5ffb2f25` adds nine canonical Linux keys
+  (489 messages), regenerated PO/MO resources, and synchronized pseudo-locales. Focus probes,
+  localized action refresh, storage-availability gating, and worker event handling cover the new
+  controls.
+- `bash tools/sync-l10n.sh --check`, `cargo fmt --all --check`, `cargo test --features
+  demo-provider --lib --locked -- --nocapture` (`160 passed; 0 failed; 3 ignored`), strict Clippy,
+  Flatpak metadata validation, and `git diff --check` pass locally. Linux implementation is
+  `6407cabb6b3842c8972d89c88f1a2cdaab17179c`; final packaging head is `e13c0dfd2710ef124209c4ed49eddff055574a8a`.
+- A display-backed selector fixture remains Native-CI authoritative; TBX import, other clients,
+  manual accessibility review, signing, rollback, and stable release evidence remain open.
+  Release stays `unreleased`.
 
 ## 2026-07-23 — Linux persistent glossary-library slice
 

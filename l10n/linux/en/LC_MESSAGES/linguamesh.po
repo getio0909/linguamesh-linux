@@ -1214,6 +1214,26 @@ msgctxt "action.export_glossary"
 msgid "Export glossary"
 msgstr "Export glossary"
 
+#. Opens the bounded local glossary-library selector in the Linux text workspace.
+msgctxt "action.glossary_libraries"
+msgid "Glossary libraries"
+msgstr "Glossary libraries"
+
+#. Saves the validated request glossary as a reusable local library on Linux.
+msgctxt "action.save_glossary"
+msgid "Save glossary library"
+msgstr "Save glossary library"
+
+#. Loads a selected reusable glossary library into the Linux request editor.
+msgctxt "action.use_glossary"
+msgid "Use"
+msgstr "Use"
+
+#. Deletes a selected reusable glossary library by its stable ID.
+msgctxt "action.delete_glossary"
+msgid "Delete"
+msgstr "Delete"
+
 #. Accessible tooltip for importing a glossary CSV.
 msgctxt "tooltip.import_glossary"
 msgid "Load glossary rules from a UTF-8 CSV file"
@@ -1224,6 +1244,16 @@ msgctxt "tooltip.export_glossary"
 msgid "Save the current glossary rules as a UTF-8 CSV file"
 msgstr "Save the current glossary rules as a UTF-8 CSV file"
 
+#. Accessible tooltip for inspecting, loading, and deleting local glossary libraries.
+msgctxt "tooltip.glossary_libraries"
+msgid "Inspect, select, and delete reusable local glossary libraries"
+msgstr "Inspect, select, and delete reusable local glossary libraries"
+
+#. Accessible tooltip for saving the current validated glossary library.
+msgctxt "tooltip.save_glossary"
+msgid "Save the current validated glossary as a reusable local library"
+msgstr "Save the current validated glossary as a reusable local library"
+
 #. Native file dialog title for importing a glossary CSV.
 msgctxt "dialog.open_glossary"
 msgid "Import glossary"
@@ -1233,6 +1263,21 @@ msgstr "Import glossary"
 msgctxt "dialog.export_glossary"
 msgid "Export glossary"
 msgstr "Export glossary"
+
+#. Modal dialog title for listing and selecting local glossary libraries.
+msgctxt "dialog.glossary_libraries"
+msgid "Glossary libraries"
+msgstr "Glossary libraries"
+
+#. Modal dialog title for naming a reusable local glossary library.
+msgctxt "dialog.save_glossary"
+msgid "Save glossary library"
+msgstr "Save glossary library"
+
+#. Label for the stable identifier field used when saving a local glossary library.
+msgctxt "label.glossary_id"
+msgid "Glossary library ID"
+msgstr "Glossary library ID"
 
 #. Native file chooser filter for glossary CSV files.
 msgctxt "file.filter.csv"
