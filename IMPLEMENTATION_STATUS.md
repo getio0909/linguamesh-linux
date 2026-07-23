@@ -20,6 +20,10 @@ remain separate evidence boundaries.
   library tests (3 documented environment-gated ignores), localization audits, synchronization,
   Flatpak metadata validation, and diff checks passed. The display-backed fixture remains Native-CI
   authoritative because this host lacks the matching GTK/GDK/Graphene linker runtime.
+- Packaging/status head `4a211ce038098f91bf21b4a59b086e82084787ce` pins the tested Flatpak input
+  and records the remote evidence. Push Native/Flatpak/Foundation runs
+  `30033584939`/`30033584833`/`30033584837` and PR Native/Flatpak/Foundation runs
+  `30033590597`/`30033590542`/`30033587548` all passed, including the real GTK writer fixture.
 
 This strengthens unreleased Linux Scenario 18 crash-durability evidence without claiming physical
 power-loss simulation, alternate SQLite or GIO VFS behavior, other clients, signing, rollback, or
