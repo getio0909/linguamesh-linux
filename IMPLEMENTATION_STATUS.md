@@ -1,5 +1,21 @@
 # Implementation Status
 
+## 2026-07-23 — Linux regional-locale and script translation presets
+
+Assumption: the existing translation-preset selector is the smallest complete Linux surface for
+Core's bounded regional-locale and script preferences; other-client parity and human translation
+review remain open.
+
+- Core `53eee86ce0862bcb0b86f86da5e91257b07fe6d7` adds validated `english_us` and
+  `chinese_simplified` presets with `en-US`/`Latn` and `zh-CN`/`Hans` preferences. Linux
+  `745ee36ce0f14664f44aa209a7613f6f9588d318` exposes both choices in the GTK translation-preset
+  selector and preserves them through ordinary and document requests.
+- Localization `1de68c9568b5c380845089efc9282ff6edd04bc1` adds the two catalog-backed labels to
+  the 494-message bundle. Local Linux tests passed `160 passed; 0 failed; 3 ignored`, with format,
+  localization sync, and strict compile checks passing before the packaging pin update.
+- The release remains `unreleased`; cross-client parity, qualified human accessibility review,
+  signing, rollback, and stable-release authorization remain open.
+
 ## 2026-07-23 — Linux GTK glossary-library selector and localization
 
 Assumption: the existing request-level glossary editor is the source of truth; a bounded GTK
@@ -10,8 +26,8 @@ TBX or cross-client behavior.
   modal selector lists validated local libraries, loads one back into the request editor, and
   deletes by stable ID. Saving uses the same Core validation path and never stores credentials,
   endpoints, or provider metadata.
-- Localization revision `c4173bf52a5f44ebcf387de2d5dc6fcccc07338e` adds twelve canonical Linux keys
-  (492 messages), regenerated PO/MO resources, and synchronized pseudo-locales. Focus probes,
+- Localization revision `1de68c9568b5c380845089efc9282ff6edd04bc1` adds the canonical Linux keys
+  (494 messages), regenerated PO/MO resources, and synchronized pseudo-locales. Focus probes,
   localized action refresh, storage-availability gating, and worker event handling cover the new
   controls.
 - `bash tools/sync-l10n.sh --check`, `cargo fmt --all --check`, `cargo test --features

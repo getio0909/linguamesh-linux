@@ -129,9 +129,10 @@ provider/model identifiers, quality mode, translation preset, and glossary rules
 cancels the active document segment and leaves the source unchanged; Incognito mode intentionally
 rejects new document jobs because their progress must be persisted. Subtitle timestamps and cue IDs
 remain unchanged; cue text is translated without automatic timing or line-length rewriting. Core
-The text workspace also provides localized `General`, `Technical`, and `Marketing` translation
-presets. Each preset is a bounded request-level preference; document jobs persist and reuse the
-selected preset across pause, retry, and restart.
+The text workspace also provides localized `General`, `Technical`, `Marketing`, `English (United
+States)`, and `Chinese (Simplified, Mainland China)` translation presets. The regional presets
+carry bounded `en-US`/`Latn` and `zh-CN`/`Hans` preferences. Each preset is a bounded request-level
+preference; document jobs persist and reuse the selected preset across pause, retry, and restart.
 
 reports cue-level warnings when the configured line-length or reading-speed guidance is exceeded;
 the Linux UI shows cue numbers without source text. CSV

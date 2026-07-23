@@ -82,9 +82,10 @@ follow-up calls. Document jobs persist the selected mode in schema 17 and reuse 
 after pause, retry, or restart. Schema 18 persists the selected translation preset with the same
 bounded, non-secret validation.
 
-The same workspace exposes localized `General`, `Technical`, and `Marketing` translation presets.
-The reducer stores the selected Core `TranslationPreset` and attaches it to ordinary text and
-document requests;
+The same workspace exposes localized `General`, `Technical`, `Marketing`, `English (United States)`,
+and `Chinese (Simplified, Mainland China)` translation presets. The last two carry bounded
+`en-US`/`Latn` and `zh-CN`/`Hans` regional-locale and script preferences. The reducer stores the
+selected Core `TranslationPreset` and attaches it to ordinary text and document requests;
 compatibility negotiation requires `translation_presets_v1`. Presets are bounded request metadata,
 not executable instructions or credentials, and document jobs persist and reuse the selected preset
 through schema 18 after pause, retry, or restart.
