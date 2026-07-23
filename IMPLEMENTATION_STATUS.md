@@ -1,5 +1,23 @@
 # Implementation Status
 
+## 2026-07-23 — Linux client-certificate HTTPS transport
+
+Assumption: a temporary local mutual-TLS endpoint is the smallest reproducible Linux evidence
+that the session-only client-certificate identity reaches the real provider transport; live
+enterprise endpoints and cross-client certificate handling remain separate qualification gates.
+
+- Runtime/test commit `4b5a3f2ec0e65060d104068be6a6f31446007ee4` adds an ignored worker regression and
+  a Python HTTPS fixture. The fixture generates a private temporary CA, requires a client
+  certificate during the TLS handshake, and serves `/v1/models`; the worker supplies only a
+  session SecretRef identity plus the bounded trust bundle. `bash tools/run-client-certificate-interop-test.sh`
+  passed exactly once (`1 passed; 0 failed`) locally, and all generated key material was removed.
+- Packaging/docs commit `7b69933e1b0b92e1ee2136e01b6d39fa765ec761` pins Flatpak to the tested runtime
+  and documents the fixture. Native CI now invokes the same runner; no provider credential or
+  production certificate is stored.
+- This is Linux rustls wiring and server-side client-authentication evidence only. It does not claim
+  enterprise-provider interoperability, human review, other-client parity, signing, rollback, or
+  stable-release authorization; release remains `unreleased`.
+
 ## 2026-07-23 — Linux session proxy authentication transport
 
 Assumption: a local HTTP proxy fixture is the smallest reproducible Linux evidence that a
