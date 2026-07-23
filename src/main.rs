@@ -10380,6 +10380,7 @@ mod tests {
             60,
             None,
             None,
+            None,
             Some("model-a".to_owned()),
         )
         .expect("candidate A profile");
@@ -10399,6 +10400,7 @@ mod tests {
             30,
             10,
             60,
+            None,
             None,
             None,
             Some("model-b".to_owned()),
@@ -13575,6 +13577,7 @@ mod tests {
             60,
             None,
             None,
+            None,
             Some("fake-translator".to_owned()),
         )
         .expect("first restored profile");
@@ -13595,6 +13598,7 @@ mod tests {
             30,
             10,
             60,
+            None,
             None,
             None,
             Some("fake-slow-translator".to_owned()),
