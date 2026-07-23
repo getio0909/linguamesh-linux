@@ -46,8 +46,10 @@ The GTK provider form consumes the pinned Core provider catalog for adapter and 
 compatibility. It supports optional bounded, non-secret profile notes, custom request headers,
 organization/project IDs, region, account identifiers, and an optional HTTP/HTTPS/SOCKS5 proxy URL.
 The proxy is validated without embedded credentials and applied by Core's transport. A bounded total
-provider request timeout (1–600 seconds, default 30) and connection-establishment timeout (1–120
-seconds, default 10) are saved with the profile and applied independently by Core's transport.
+provider request timeout (1–600 seconds, default 30), connection-establishment timeout (1–120
+seconds, default 10), and streaming idle timeout (1–300 seconds, default 60) are saved with the
+profile and applied independently by Core's transport. The streaming idle budget resets after each
+received response chunk.
 Saved profiles restore these values;
 custom headers reject authorization, credential-shaped, and built-in metadata names, while the
 application layer forwards safe headers to Chat Completions, Responses, and Azure Chat without

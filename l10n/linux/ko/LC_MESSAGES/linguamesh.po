@@ -2810,6 +2810,18 @@ msgctxt "tooltip.provider_connection_timeout"
 msgid "Provider connection timeout in seconds, from 1 to 120"
 msgstr "Provider connection timeout in seconds, from 1 to 120"
 
+#. Label for the provider streaming idle timeout in seconds in the Linux provider form.
+#, fuzzy
+msgctxt "label.provider_streaming_idle_timeout"
+msgid "Streaming idle timeout (seconds)"
+msgstr "Streaming idle timeout (seconds)"
+
+#. Tooltip for the provider streaming idle timeout in the Linux provider form.
+#, fuzzy
+msgctxt "tooltip.provider_streaming_idle_timeout"
+msgid "Provider streaming idle timeout in seconds, from 1 to 300"
+msgstr "Provider streaming idle timeout in seconds, from 1 to 300"
+
 #. Placeholder for optional custom request headers in the Linux provider form.
 #, fuzzy
 msgctxt "placeholder.provider_custom_headers"
