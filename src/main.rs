@@ -11609,6 +11609,121 @@ mod tests {
         }
     }
 
+    // 通过本地回环服务验证需要不同路径和模型策略的原生预设。
+    #[derive(Clone, Copy)]
+    enum NativeProtocolPreset {
+        Gemini,
+        Azure,
+    }
+
+    // 为 GTK 流程提供无外部凭据的协议回环服务。
+    struct NativeProtocolFakeProvider {
+        endpoint: String,
+        kind: NativeProtocolPreset,
+        shutdown: Option<oneshot::Sender<()>>,
+        thread: Option<JoinHandle<()>>,
+    }
+
+    impl NativeProtocolFakeProvider {
+        fn start(kind: NativeProtocolPreset) -> Self {
+            let (ready_sender, ready_receiver) = mpsc::sync_channel(1);
+            let (shutdown, shutdown_receiver) = oneshot::channel();
+            let thread = std::thread::spawn(move || {
+                let runtime = Builder::new_multi_thread()
+                    .worker_threads(2)
+                    .enable_all()
+                    .build()
+                    .expect("native protocol provider runtime");
+                runtime.block_on(async move {
+                    match kind {
+                        NativeProtocolPreset::Gemini => {
+                            let server = FakeProviderServer::start_gemini()
+                                .await
+                                .expect("Gemini provider");
+                            ready_sender
+                                .send(server.gemini_base_url())
+                                .expect("Gemini endpoint");
+                            let _ = shutdown_receiver.await;
+                            server.shutdown().await;
+                        }
+                        NativeProtocolPreset::Azure => {
+                            let server = FakeProviderServer::start_azure()
+                                .await
+                                .expect("Azure provider");
+                            ready_sender
+                                .send(server.azure_base_url())
+                                .expect("Azure endpoint");
+                            let _ = shutdown_receiver.await;
+                            server.shutdown().await;
+                        }
+                    }
+                });
+            });
+            let endpoint = ready_receiver
+                .recv_timeout(Duration::from_secs(5))
+                .expect("native protocol provider startup");
+            Self {
+                endpoint,
+                kind,
+                shutdown: Some(shutdown),
+                thread: Some(thread),
+            }
+        }
+
+        fn preset_index(&self) -> u32 {
+            match self.kind {
+                NativeProtocolPreset::Gemini => 3,
+                NativeProtocolPreset::Azure => 4,
+            }
+        }
+
+        fn provider_name(&self) -> &'static str {
+            match self.kind {
+                NativeProtocolPreset::Gemini => "Native Gemini provider",
+                NativeProtocolPreset::Azure => "Native Azure provider",
+            }
+        }
+
+        fn model_id(&self) -> &'static str {
+            match self.kind {
+                NativeProtocolPreset::Gemini => "gemini-2.0-flash",
+                NativeProtocolPreset::Azure => "fake-deployment",
+            }
+        }
+
+        fn credential(&self) -> Option<&'static str> {
+            match self.kind {
+                NativeProtocolPreset::Gemini => None,
+                NativeProtocolPreset::Azure => Some("azure-test-key"),
+            }
+        }
+
+        fn adapter_type(&self) -> &'static str {
+            match self.kind {
+                NativeProtocolPreset::Gemini => GEMINI_ADAPTER_TYPE,
+                NativeProtocolPreset::Azure => AZURE_ADAPTER_TYPE,
+            }
+        }
+
+        fn expected_output(&self) -> &'static str {
+            match self.kind {
+                NativeProtocolPreset::Gemini => "你好，Gemini！",
+                NativeProtocolPreset::Azure => "你好，Azure！",
+            }
+        }
+    }
+
+    impl Drop for NativeProtocolFakeProvider {
+        fn drop(&mut self) {
+            if let Some(shutdown) = self.shutdown.take() {
+                let _ = shutdown.send(());
+            }
+            if let Some(thread) = self.thread.take() {
+                thread.join().expect("native protocol provider shutdown");
+            }
+        }
+    }
+
     fn assert_labeled_control(control: &gtk::Widget) {
         assert!(gtk::test_accessible_has_relation(
             control,
@@ -11673,6 +11788,87 @@ mod tests {
         drop(locale);
         drop(state);
         drop(worker);
+    }
+
+    // 验证 Gemini 与 Azure 预设的生产 GTK 连接、模型选择和流式翻译路径。
+    fn run_gtk_native_protocol_preset_flow(
+        application: &adw::Application,
+        kind: NativeProtocolPreset,
+    ) {
+        let external = NativeProtocolFakeProvider::start(kind);
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn());
+        let (window, bindings, theme, locale) = create_window(application);
+        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
+        connect_action_handlers(&bindings, &state, &worker);
+        start_event_pump(&bindings, &state, &worker);
+        let context = glib::MainContext::default();
+        window.present();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().worker_ready()
+        });
+
+        bindings
+            .provider_preset
+            .set_selected(external.preset_index());
+        bindings.provider_name.set_text(external.provider_name());
+        bindings.provider_endpoint.set_text(&external.endpoint);
+        if let Some(credential) = external.credential() {
+            bindings.provider_credential.set_text(credential);
+        }
+        if matches!(kind, NativeProtocolPreset::Azure) {
+            bindings.manual_model.set_text(external.model_id());
+        }
+        bindings.connect.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            let state = state.borrow();
+            state.status() == AppStatus::Ready
+                && state.active_provider().is_some()
+                && !state.models().is_empty()
+        });
+
+        bindings.model.set_selected(1);
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().selected_model() == Some(external.model_id())
+        });
+        let active = state
+            .borrow()
+            .active_provider()
+            .cloned()
+            .expect("active provider");
+        assert_eq!(active.adapter_type(), external.adapter_type());
+        assert_eq!(state.borrow().selected_model(), Some(external.model_id()));
+
+        bindings.source.set_text("Hello");
+        bindings.translate.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Completed
+        });
+        assert_eq!(state.borrow().output(), external.expected_output());
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        drop(window);
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
+    }
+
+    // 单个串行测试覆盖两个协议预设，避免并行 GTK 初始化和回环端口竞争。
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_provider_protocol_presets_use_native_transports() {
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.ProtocolPresetsTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK protocol preset test application");
+        run_gtk_native_protocol_preset_flow(&application, NativeProtocolPreset::Gemini);
+        run_gtk_native_protocol_preset_flow(&application, NativeProtocolPreset::Azure);
     }
 
     // 单个原生流程覆盖真实控件生命周期和恢复表单，避免拆分后并行初始化 GTK。

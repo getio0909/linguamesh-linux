@@ -116,8 +116,10 @@ GPU execution remains outside this prerelease evidence. Azure OpenAI uses Core's
 `azure_openai_chat` adapter: the resource endpoint is validated before the session secret is
 resolved, the deployment name is supplied manually as the selected model, API version `2024-10-21`
 is pinned, and the credential is sent only as the `api-key` header. Azure deployment enumeration is
-not attempted; the GTK form exposes all six presets and restores the selected preset for saved
-profiles.
+not attempted. The serialized GTK protocol-preset fixture drives both Gemini and Azure through the
+production Connect, model-selection, and streamed Translate handlers; this proves local request
+shaping and session-secret clearing, not live provider account or quota interoperability. The GTK
+form exposes all six presets and restores the selected preset for saved profiles.
 
 OpenAI Responses uses Core's `openai_responses` adapter with the shared `/v1/models` discovery
 endpoint and `/v1/responses` translation endpoint. The client sends the credential only through

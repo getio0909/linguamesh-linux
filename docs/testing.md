@@ -45,6 +45,13 @@ request is made, and streams the deterministic `你好，Azure！` response thro
 This proves request shaping and secret isolation only; live Azure account, quota, and deployment
 availability remain unverified.
 
+The dedicated ignored GTK fixture `gtk_provider_protocol_presets_use_native_transports` now drives
+both production preset rows through the real Connect, model-selection, and Translate handlers. It
+discovers and translates `gemini-2.0-flash` through the loopback Gemini `/v1beta/` path, then uses
+the Azure `fake-deployment` manual model and `api-key` session credential through the resource
+endpoint. Native CI runs the fixture serialized under Xvfb and DBus; it remains deterministic
+protocol evidence rather than live-provider account or quota evidence.
+
 The OpenAI Responses fixture uses the shared `/v1/models` discovery route and `/v1/responses` with
 the session Bearer credential. The worker verifies one model-list request, one typed-SSE translation
 request, ignores `response.created`, streams `response.output_text.delta`, and completes on
