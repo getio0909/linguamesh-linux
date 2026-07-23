@@ -26,7 +26,7 @@ confirmation, or rollback.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `7a9da3f467c5dec539dd8f7850b90b54ae712331`; compared with the prior
+functional revision is `2f91f31b5baf8c22adba9d8e31b10af7bf6fe4a5`; compared with the prior
 alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW`, adds streamed
 protected-span and request-level glossary restoration, and rejects suspicious OOXML compression
 ratios and unsupported macro/signature parts before XML inspection. Core now advertises the bounded
@@ -117,9 +117,11 @@ GPU execution remains outside this prerelease evidence. Azure OpenAI uses Core's
 resolved, the deployment name is supplied manually as the selected model, API version `2024-10-21`
 is pinned, and the credential is sent only as the `api-key` header. Azure deployment enumeration is
 not attempted. The serialized GTK protocol-preset fixture drives both Gemini and Azure through the
-production Connect, model-selection, and streamed Translate handlers; this proves local request
-shaping and session-secret clearing, not live provider account or quota interoperability. The GTK
-form exposes all six presets and restores the selected preset for saved profiles.
+production Connect, model-selection, and streamed Translate handlers. Anthropic is also driven
+through the production fixture with its manual model and `/v1/messages` stream, proving native
+request shaping and session-secret clearing without claiming live provider account or quota
+interoperability. The GTK form exposes all six presets and restores the selected preset for saved
+profiles.
 
 OpenAI Responses uses Core's `openai_responses` adapter with the shared `/v1/models` discovery
 endpoint and `/v1/responses` translation endpoint. The client sends the credential only through

@@ -11612,6 +11612,7 @@ mod tests {
     // 通过本地回环服务验证需要不同路径和模型策略的原生预设。
     #[derive(Clone, Copy)]
     enum NativeProtocolPreset {
+        Anthropic,
         Gemini,
         Azure,
     }
@@ -11636,6 +11637,16 @@ mod tests {
                     .expect("native protocol provider runtime");
                 runtime.block_on(async move {
                     match kind {
+                        NativeProtocolPreset::Anthropic => {
+                            let server = FakeProviderServer::start_anthropic()
+                                .await
+                                .expect("Anthropic provider");
+                            ready_sender
+                                .send(server.base_url())
+                                .expect("Anthropic endpoint");
+                            let _ = shutdown_receiver.await;
+                            server.shutdown().await;
+                        }
                         NativeProtocolPreset::Gemini => {
                             let server = FakeProviderServer::start_gemini()
                                 .await
@@ -11672,6 +11683,7 @@ mod tests {
 
         fn preset_index(&self) -> u32 {
             match self.kind {
+                NativeProtocolPreset::Anthropic => 2,
                 NativeProtocolPreset::Gemini => 3,
                 NativeProtocolPreset::Azure => 4,
             }
@@ -11679,6 +11691,7 @@ mod tests {
 
         fn provider_name(&self) -> &'static str {
             match self.kind {
+                NativeProtocolPreset::Anthropic => "Native Anthropic provider",
                 NativeProtocolPreset::Gemini => "Native Gemini provider",
                 NativeProtocolPreset::Azure => "Native Azure provider",
             }
@@ -11686,6 +11699,7 @@ mod tests {
 
         fn model_id(&self) -> &'static str {
             match self.kind {
+                NativeProtocolPreset::Anthropic => "claude-test",
                 NativeProtocolPreset::Gemini => "gemini-2.0-flash",
                 NativeProtocolPreset::Azure => "fake-deployment",
             }
@@ -11693,6 +11707,7 @@ mod tests {
 
         fn credential(&self) -> Option<&'static str> {
             match self.kind {
+                NativeProtocolPreset::Anthropic => Some("anthropic-test-key"),
                 NativeProtocolPreset::Gemini => None,
                 NativeProtocolPreset::Azure => Some("azure-test-key"),
             }
@@ -11700,6 +11715,7 @@ mod tests {
 
         fn adapter_type(&self) -> &'static str {
             match self.kind {
+                NativeProtocolPreset::Anthropic => ANTHROPIC_ADAPTER_TYPE,
                 NativeProtocolPreset::Gemini => GEMINI_ADAPTER_TYPE,
                 NativeProtocolPreset::Azure => AZURE_ADAPTER_TYPE,
             }
@@ -11707,6 +11723,7 @@ mod tests {
 
         fn expected_output(&self) -> &'static str {
             match self.kind {
+                NativeProtocolPreset::Anthropic => "你好，Anthropic！",
                 NativeProtocolPreset::Gemini => "你好，Gemini！",
                 NativeProtocolPreset::Azure => "你好，Azure！",
             }
@@ -11790,7 +11807,7 @@ mod tests {
         drop(worker);
     }
 
-    // 验证 Gemini 与 Azure 预设的生产 GTK 连接、模型选择和流式翻译路径。
+    // 验证 Anthropic、Gemini 与 Azure 预设的生产 GTK 连接、模型选择和流式翻译路径。
     fn run_gtk_native_protocol_preset_flow(
         application: &adw::Application,
         kind: NativeProtocolPreset,
@@ -11816,7 +11833,10 @@ mod tests {
         if let Some(credential) = external.credential() {
             bindings.provider_credential.set_text(credential);
         }
-        if matches!(kind, NativeProtocolPreset::Azure) {
+        if matches!(
+            kind,
+            NativeProtocolPreset::Anthropic | NativeProtocolPreset::Azure
+        ) {
             bindings.manual_model.set_text(external.model_id());
         }
         bindings.connect.emit_clicked();
@@ -11855,7 +11875,7 @@ mod tests {
         drop(worker);
     }
 
-    // 单个串行测试覆盖两个协议预设，避免并行 GTK 初始化和回环端口竞争。
+    // 单个串行测试覆盖三个协议预设，避免并行 GTK 初始化和回环端口竞争。
     #[ignore = "run in dedicated serialized GTK fixture"]
     #[test]
     fn gtk_provider_protocol_presets_use_native_transports() {
@@ -11867,6 +11887,7 @@ mod tests {
         application
             .register(None::<&gtk::gio::Cancellable>)
             .expect("register GTK protocol preset test application");
+        run_gtk_native_protocol_preset_flow(&application, NativeProtocolPreset::Anthropic);
         run_gtk_native_protocol_preset_flow(&application, NativeProtocolPreset::Gemini);
         run_gtk_native_protocol_preset_flow(&application, NativeProtocolPreset::Azure);
     }

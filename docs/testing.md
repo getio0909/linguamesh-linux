@@ -46,11 +46,13 @@ This proves request shaping and secret isolation only; live Azure account, quota
 availability remain unverified.
 
 The dedicated ignored GTK fixture `gtk_provider_protocol_presets_use_native_transports` now drives
-both production preset rows through the real Connect, model-selection, and Translate handlers. It
-discovers and translates `gemini-2.0-flash` through the loopback Gemini `/v1beta/` path, then uses
-the Azure `fake-deployment` manual model and `api-key` session credential through the resource
-endpoint. Native CI runs the fixture serialized under Xvfb and DBus; it remains deterministic
-protocol evidence rather than live-provider account or quota evidence.
+the Anthropic, Gemini, and Azure production preset rows through the real Connect, model-selection,
+and Translate handlers. Anthropic uses the manual `claude-test` model, `x-api-key` session
+credential, and `/v1/messages` SSE; Gemini discovers and translates `gemini-2.0-flash` through the
+loopback `/v1beta/` path; Azure uses the `fake-deployment` manual model and `api-key` session
+credential through the resource endpoint. Native CI runs the fixture serialized under Xvfb and
+DBus; it remains deterministic protocol evidence rather than live-provider account or quota
+evidence.
 
 The OpenAI Responses fixture uses the shared `/v1/models` discovery route and `/v1/responses` with
 the session Bearer credential. The worker verifies one model-list request, one typed-SSE translation

@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-23 — GTK Anthropic Messages preset transport evidence
+
+Assumption: Linux is the active client scope; a deterministic loopback Messages service is the
+smallest complete evidence for the production Anthropic preset, while live account, quota, model,
+and external-network interoperability remain unverified.
+
+- The ignored production GTK fixture `gtk_provider_protocol_presets_use_native_transports` now
+  drives Anthropic through Connect, manual `claude-test` selection, and streamed Translate. The
+  Core testkit revision `2f91f31b5baf8c22adba9d8e31b10af7bf6fe4a5` supplies `/v1/messages`, checks
+  the one-shot `x-api-key`, emits usage and `message_stop`, and returns deterministic
+  `你好，Anthropic！` output.
+- The fixture keeps the credential field empty immediately after capture and does not issue
+  inference before deliberate model selection. Native CI will run Anthropic, Gemini, and Azure in
+  one serialized Xvfb/DBus process; release remains `unreleased`.
+
 ## 2026-07-23 — GTK Gemini and Azure preset transport evidence
 
 Assumption: Linux is the active client scope; deterministic loopback providers are sufficient to
