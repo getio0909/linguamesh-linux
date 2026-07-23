@@ -317,7 +317,7 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 Its functional source must match approved revision
-`7a9da3f467c5dec539dd8f7850b90b54ae712331`. This revision carries bounded document lease
+`e48d1040a992b2fd3daaa27af2ae6bd700b25fc5`. This revision carries bounded document lease
 consumption smoke, POSIX-descriptor document consumption, and the AddressSanitizer gate, plus the
 protocol decoder fuzz gate and bounded FileLease lifecycle,
 including Linux's portal-read lease checks, and the explicit request-level
@@ -329,9 +329,9 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 7a9da3f467c5dec539dd8f7850b90b54ae712331^{commit}
+git -C ../linguamesh-core cat-file -e e48d1040a992b2fd3daaa27af2ae6bd700b25fc5^{commit}
 git -C ../linguamesh-core diff --quiet \
-  7a9da3f467c5dec539dd8f7850b90b54ae712331..HEAD -- \
+  e48d1040a992b2fd3daaa27af2ae6bd700b25fc5..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -479,6 +479,11 @@ translation-memory counts remain unchanged. A Linux-side
 Incognito toggle, authenticated connection, model selection, and Translate action. It verifies the
 standard request creates one history and one translation-memory entry, the identical Incognito
 request reaches the loopback provider again, and both persisted counts remain at one.
+
+The worker regressions also verify normalized usage persistence for provider-reported completions
+and local translation-memory estimates, including policy gating, Incognito, restart visibility, and
+deletion cleanup. Persisted records contain no source/output text, endpoint, credential, or pricing
+data.
 Scenario 5 regression authenticates and saves distinct providers A and B with independent models,
 then uses one Connect action per remembered switch and proves each next translation reaches only
 the newly confirmed provider. It rejects B with A's credential without changing the active B/model
@@ -659,7 +664,7 @@ python3 tools/create-native-evidence.py \
   --cargo-lock Cargo.lock \
   --output-dir native-evidence \
   --linux-revision "$(git rev-parse HEAD)" \
-  --core-revision "7a9da3f467c5dec539dd8f7850b90b54ae712331" \
+  --core-revision "e48d1040a992b2fd3daaa27af2ae6bd700b25fc5" \
   --localization-revision "bba90a89089c954bdfe1dcda19c210e6ea230b9e"
 (cd native-evidence && sha256sum -c SHA256SUMS)
 ```

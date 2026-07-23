@@ -9,7 +9,7 @@ use linguamesh_domain::{
     CompatibilityRequirements, CoreCompatibility, ErrorKind, Glossary, ModelDescriptor,
     RetryPolicy, RoutingCandidate, RoutingContext, RoutingDecision, RoutingProfile, SecretValue,
     TranslationError, TranslationEvent, TranslationPreset, TranslationPrivacyMode,
-    TranslationQualityMode, TranslationRequest, deserialize_routing_profile,
+    TranslationQualityMode, TranslationRequest, UsageRecord, deserialize_routing_profile,
     serialize_routing_profile,
 };
 use linguamesh_engine::{CancellationHandle, TranslationOperation, core_compatibility};
@@ -1993,6 +1993,10 @@ async fn run_worker(
                     }
                     let terminal = event.is_terminal();
                     let completed = matches!(&event, TranslationEvent::Completed { .. });
+                    let completed_usage = match &event {
+                        TranslationEvent::Completed { usage, .. } => usage.as_ref(),
+                        _ => None,
+                    };
                     if terminal
                         && completed
                         && !active_translation.request.is_incognito()
@@ -2001,9 +2005,10 @@ async fn run_worker(
                         let history_event = match storage.translation_history_enabled() {
                             Ok(false) => None,
                             Ok(true) => Some(
-                                match storage.record_translation_history(
+                                match storage.record_translation_history_with_usage(
                                     &active_translation.request,
                                     &active_translation.output,
+                                    completed_usage,
                                 ) {
                                     Ok(()) => match storage.translation_history_count() {
                                         Ok(count) => {
@@ -4185,12 +4190,18 @@ async fn run_worker(
                 {
                     match storage.lookup_translation_memory(&request) {
                         Ok(Some(entry)) => {
+                            let usage = UsageRecord::locally_estimated(
+                                &request.source_text,
+                                &entry.translated_text,
+                            );
                             if !request.is_incognito()
                                 && storage.translation_history_enabled().unwrap_or(false)
                             {
-                                match storage
-                                    .record_translation_history(&request, &entry.translated_text)
-                                {
+                                match storage.record_translation_history_with_usage(
+                                    &request,
+                                    &entry.translated_text,
+                                    Some(&usage),
+                                ) {
                                     Ok(()) => match storage.translation_history_count() {
                                         Ok(count) => {
                                             if events
@@ -4232,12 +4243,7 @@ async fn run_worker(
                                 || events
                                     .send(WorkerEvent::Translation(TranslationEvent::Completed {
                                         sequence: 2,
-                                        usage: Some(
-                                            linguamesh_domain::UsageRecord::locally_estimated(
-                                                &request.source_text,
-                                                &entry.translated_text,
-                                            ),
-                                        ),
+                                        usage: Some(usage),
                                     }))
                                     .is_err()
                             {
@@ -6865,6 +6871,13 @@ mod tests {
             storage.translation_history_count().expect("history count"),
             1
         );
+        assert_eq!(storage.usage_record_count().expect("usage count"), 1);
+        assert_eq!(
+            storage.usage_records(10).expect("usage records")[0]
+                .provider_id
+                .as_deref(),
+            Some("history-provider")
+        );
     }
 
     #[test]
@@ -6920,6 +6933,7 @@ mod tests {
             1
         );
         assert_eq!(storage.translation_memory_count().expect("memory count"), 1);
+        assert_eq!(storage.usage_record_count().expect("usage count"), 1);
     }
 
     #[test]
@@ -6970,6 +6984,8 @@ mod tests {
             _ => panic!("unexpected deletion event"),
         }
         shutdown(&worker);
+        let storage = Storage::open(database.path()).expect("history storage");
+        assert_eq!(storage.usage_record_count().expect("usage count"), 0);
     }
 
     #[allow(clippy::too_many_lines)]
@@ -8935,6 +8951,7 @@ mod tests {
         let storage = Storage::open(database.path()).expect("history storage");
         assert!(storage.translation_history_enabled().expect("policy"));
         assert_eq!(storage.translation_history_count().expect("count"), 2);
+        assert_eq!(storage.usage_record_count().expect("usage count"), 2);
     }
 
     #[test]

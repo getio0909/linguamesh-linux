@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-23 — Linux normalized usage-record persistence
+
+Assumption: usage metadata is safe to retain only as bounded, non-secret accounting metadata; the
+history policy and Incognito mode are the persistence controls, and no provider pricing is inferred.
+
+- Linux now passes completed usage metadata to Core schema 32, which persists a normalized record
+  atomically with translation history. Provider identities are reduced to a safe stable ID; source
+  text, translated text, endpoints, and credentials are never stored.
+- Translation-memory hits persist a local estimate, while Incognito and disabled-history requests
+  persist neither history nor usage. History trimming, deletion, and clear operations remove usage
+  rows with their owning history entries.
+- Worker regressions cover provider-reported and locally estimated usage, policy gating, Incognito,
+  restart visibility, and cleanup. Pricing remains intentionally unimplemented; release remains
+  `unreleased`.
+
 ## 2026-07-23 — Linux PR gate result for status head `90a2753`
 
 Assumption: the completed workflow jobs are authoritative for this documentation head; GitHub's

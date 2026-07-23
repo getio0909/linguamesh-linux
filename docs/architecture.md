@@ -26,7 +26,7 @@ confirmation, or rollback.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `2f91f313025b189df237294485fd47bafc1f1f53`; compared with the prior
+functional revision is `e48d1040a992b2fd3daaa27af2ae6bd700b25fc5`; compared with the prior
 alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW`, adds streamed
 protected-span and request-level glossary restoration, and rejects suspicious OOXML compression
 ratios and unsupported macro/signature parts before XML inspection. Core now advertises the bounded
@@ -89,10 +89,14 @@ compatibility negotiation requires `translation_presets_v1`. Presets are bounded
 not executable instructions or credentials, and document jobs persist and reuse the selected preset
 through schema 18 after pause, retry, or restart.
 
-Completed ordinary text requests may carry Core's optional `UsageRecord`. Linux stores the record
-only in the in-memory reducer and renders a localized output line with a provider-reported,
-locally estimated, or unknown source label. The current engine path emits a bounded local estimate;
-provider wire parsing and pricing remain outside this slice. Core's ABI 1 command now also projects
+Completed ordinary text requests may carry Core's optional `UsageRecord`. Linux persists normalized
+usage metadata through Core schema 32 in the same transaction as translation history and renders a
+localized output line with a provider-reported, locally estimated, or unknown source label. The
+record contains only bounded token counts, source, model ID, and a sanitized provider ID; source
+text, translated text, endpoints, and credentials are excluded. Translation-memory hits use a
+local estimate, while provider wire parsing and pricing remain outside this slice. Incognito and
+disabled-history requests write neither history nor usage, and history trimming, deletion, and
+clear-history remove corresponding usage rows. Core's ABI 1 command now also projects
 bounded non-secret organization, project, and custom-header metadata for native clients; Linux's
 direct Rust path continues to use its typed application contract.
 
