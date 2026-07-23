@@ -12,7 +12,10 @@ review remain open.
   selector and preserves them through ordinary and document requests.
 - Localization `1de68c9568b5c380845089efc9282ff6edd04bc1` adds the two catalog-backed labels to
   the 494-message bundle. Local Linux tests passed `160 passed; 0 failed; 3 ignored`, with format,
-  localization sync, and strict compile checks passing before the packaging pin update.
+  localization sync, strict Clippy, Flatpak metadata, and diff checks passing. Push
+  Native/Flatpak/Foundation runs `30000751775`/`30000751755`/`30000751799` and PR runs
+  `30000748043`/`30000747816`/`30000747915` all completed successfully for the final packaging
+  and status head.
 - The release remains `unreleased`; cross-client parity, qualified human accessibility review,
   signing, rollback, and stable-release authorization remain open.
 
