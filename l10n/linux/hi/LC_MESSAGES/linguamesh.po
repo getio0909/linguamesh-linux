@@ -2991,3 +2991,21 @@ msgstr "English (United States)"
 msgctxt "translation.preset.chinese_simplified"
 msgid "Chinese (Simplified, Mainland China)"
 msgstr "Chinese (Simplified, Mainland China)"
+
+#. Source label shown beside a model discovered from a provider endpoint.
+#, fuzzy
+msgctxt "model.source.discovered"
+msgid "Discovered"
+msgstr "Discovered"
+
+#. Source label shown beside a model supplied by the bundled provider catalog.
+#, fuzzy
+msgctxt "model.source.catalog"
+msgid "Catalog"
+msgstr "Catalog"
+
+#. Source label shown beside a model entered manually by the user.
+#, fuzzy
+msgctxt "model.source.manual"
+msgid "Manual"
+msgstr "Manual"

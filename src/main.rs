@@ -6,10 +6,11 @@ use linguamesh_document::{
 };
 use linguamesh_domain::{
     ErrorKind, FileLease, Glossary, GlossaryEntry, MAX_GLOSSARY_CSV_BYTES, MAX_GLOSSARY_TBX_BYTES,
-    MAX_ROUTING_IDENTIFIER_BYTES, MAX_ROUTING_PROFILE_JSON_BYTES, OperationId, ProviderProfileId,
-    RoutingCandidate, RoutingConstraints, RoutingMode, RoutingPreference, RoutingProfile,
-    SecretRef, SecretRefNamespace, SecretValue, TranslationError, TranslationEvent,
-    TranslationPreset, TranslationPrivacyMode, TranslationQualityMode, UsageRecord, UsageSource,
+    MAX_ROUTING_IDENTIFIER_BYTES, MAX_ROUTING_PROFILE_JSON_BYTES, ModelDescriptor, ModelSource,
+    OperationId, ProviderProfileId, RoutingCandidate, RoutingConstraints, RoutingMode,
+    RoutingPreference, RoutingProfile, SecretRef, SecretRefNamespace, SecretValue,
+    TranslationError, TranslationEvent, TranslationPreset, TranslationPrivacyMode,
+    TranslationQualityMode, UsageRecord, UsageSource,
 };
 use linguamesh_engine::core_compatibility;
 use linguamesh_linux::file_import;
@@ -512,6 +513,25 @@ fn provider_model_tooltip(locale: UiLocale, preset_index: u32) -> String {
             "Enter a model ID manually...",
         )
     }
+}
+
+// 为模型下拉框提供可本地化的来源标签，避免用户无法区分发现、目录和手动模型。
+fn localized_model_source(locale: UiLocale, source: ModelSource) -> String {
+    let (key, fallback) = match source {
+        ModelSource::Discovered => ("model.source.discovered", "Discovered"),
+        ModelSource::Catalog => ("model.source.catalog", "Catalog"),
+        ModelSource::Manual => ("model.source.manual", "Manual"),
+    };
+    localization::text(locale, key, fallback)
+}
+
+// 保留核心模型显示名称，同时明确标出该条目的可信来源。
+fn model_descriptor_label(locale: UiLocale, model: &ModelDescriptor) -> String {
+    format!(
+        "{} ({})",
+        model.display_name,
+        localized_model_source(locale, model.source)
+    )
 }
 
 struct EditorBindings {
@@ -8497,13 +8517,15 @@ fn apply_worker_event(
             saved_profile,
         } => {
             let profile_was_saved = saved_profile.is_some();
-            let model_placeholder = localization::text(
-                state.borrow().locale(),
-                "option.model.select",
-                "Select a model...",
-            );
+            let locale = state.borrow().locale();
+            let model_placeholder =
+                localization::text(locale, "option.model.select", "Select a model...");
             let mut labels = vec![model_placeholder];
-            labels.extend(models.iter().map(|model| model.display_name.clone()));
+            labels.extend(
+                models
+                    .iter()
+                    .map(|model| model_descriptor_label(locale, model)),
+            );
             let label_refs = labels.iter().map(String::as_str).collect::<Vec<_>>();
             let selected = {
                 let mut state = state.borrow_mut();
@@ -10266,9 +10288,9 @@ mod tests {
         document_translation_report, endpoint_matches_preset_default, export_write_strategy,
         fallback_confirmation_needed, generate_custom_provider_id, load_source_file,
         localized_document_job_state, localized_document_warnings, localized_provider_default_name,
-        localized_template, normalized_candidate_ids_for_mode, output_metrics_label,
-        preset_requires_manual_model, provider_preset_config, provider_preset_index,
-        quality_mode_for_selection, quality_mode_selection, refresh_ui,
+        localized_template, model_descriptor_label, normalized_candidate_ids_for_mode,
+        output_metrics_label, preset_requires_manual_model, provider_preset_config,
+        provider_preset_index, quality_mode_for_selection, quality_mode_selection, refresh_ui,
         routing_constraints_from_controls, routing_constraints_from_text_values,
         routing_identifier_list_from_text, routing_optional_limit_from_text,
         routing_preference_for_selection, routing_preference_selection,
@@ -10285,8 +10307,8 @@ mod tests {
         DocumentFormat, DocumentJob, DocumentJobState, DocumentWarning, DocumentWarningKind,
     };
     use linguamesh_domain::{
-        RoutingConstraints, RoutingMode, RoutingPreference, TranslationPreset,
-        TranslationQualityMode, UsageRecord,
+        ModelDescriptor, ModelSource, RoutingConstraints, RoutingMode, RoutingPreference,
+        TranslationPreset, TranslationQualityMode, UsageRecord,
     };
     use linguamesh_storage::{DocumentJobSnapshot, Storage};
     use linguamesh_testkit::FakeProviderServer;
@@ -11800,6 +11822,38 @@ mod tests {
             "https://api.example.test/v1beta/",
             3
         ));
+    }
+
+    #[test]
+    fn model_descriptor_labels_identify_their_source() {
+        let discovered = ModelDescriptor {
+            id: "discovered-model".into(),
+            display_name: "Discovered model".into(),
+            source: ModelSource::Discovered,
+        };
+        let catalog = ModelDescriptor {
+            id: "catalog-model".into(),
+            display_name: "Catalog model".into(),
+            source: ModelSource::Catalog,
+        };
+        let manual = ModelDescriptor {
+            id: "manual-model".into(),
+            display_name: "Manual model".into(),
+            source: ModelSource::Manual,
+        };
+
+        assert_eq!(
+            model_descriptor_label(UiLocale::English, &discovered),
+            "Discovered model (Discovered)"
+        );
+        assert_eq!(
+            model_descriptor_label(UiLocale::English, &catalog),
+            "Catalog model (Catalog)"
+        );
+        assert_eq!(
+            model_descriptor_label(UiLocale::SimplifiedChinese, &manual),
+            "Manual model (手动)"
+        );
     }
 
     #[test]
