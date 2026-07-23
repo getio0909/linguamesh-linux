@@ -440,8 +440,10 @@ storage-unavailable fallback, runtime persistence degradation that retains the c
 and diagnostics that omit content, endpoints, IDs, model IDs, and secret references.
 
 The current `demo-provider` run reports `147 passed; 3 ignored` (the ignored cases require an
-external OCR fixture, a third-party Ollama daemon, or a private storage-fault mount). Its worker
-tests validate the exact Core
+external OCR fixture, a third-party Ollama daemon, or a private storage-fault mount). The dedicated
+`tools/run-ocr-test.sh` and `tools/run-storage-fault-test.sh` runners each pass one exact test on a
+host with the required tools and mount namespace; the third-party Ollama runner remains opt-in and
+requires an installed model. Its worker tests validate the exact Core
 compatibility contract including `long_text_chunking_v1`, prove that fake-service readiness does not auto-connect, require explicit
 Connect and model selection, exercise real loopback HTTP/SSE streaming, consume an authenticated
 session secret through the bounded typed host-secret broker, and fail closed for unavailable

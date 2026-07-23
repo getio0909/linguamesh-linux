@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-23 — Linux optional OCR and storage-fault runner refresh
+
+Assumption: the explicit OCR fixture and controlled ENOSPC mount runner are reproducible Linux
+prerelease evidence; neither emulates physical power loss, alternate SQLite VFS behavior, or live
+provider account interoperability.
+
+- `bash tools/run-ocr-test.sh` passed exactly one image-only PDF OCR fixture (`1 passed`) with the
+  installed `pdftoppm` and `tesseract` tools. OCR remains opt-in, bounded, and page-marked text
+  output only; it is not a pixel-identical PDF reconstruction claim.
+- `bash tools/run-storage-fault-test.sh` passed exactly one private-mount ENOSPC regression
+  (`1 passed`), covering session-only degradation and rejection of false persistent commits.
+- The ordinary no-default suite remains `83 passed; 1 ignored` because the OCR unit test is
+  intentionally environment-gated. The dedicated runner results are the authoritative evidence for
+  the optional OCR and storage-fault boundaries. Release remains `unreleased`.
+
 ## 2026-07-23 — Linux GTK candidate-chain and fallback-consent evidence audit
 
 Assumption: the existing routing-profile editor is the authoritative Linux UI for user-approved
