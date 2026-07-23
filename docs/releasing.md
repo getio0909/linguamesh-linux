@@ -82,7 +82,7 @@ future release gate below.
 
 The current Linux gate consumes Core `8623b2c8829e4d9cf7299c74440dcfabb4e320db` and l10n
 `c2526bfb3f6ff57895bdc3eeed743e26c8783613` (506 catalog messages). The reviewed Flatpak source
-pin is Linux `e9406d56e1345be765c01ecfe2600e8e0d10dde9`; the current packaging pin is the same
+pin is Linux `896cd2352aef73a86ca80d7d92e2b5c7850af7d7`; the current packaging pin is the same
 commit. Local exports now synchronize the temporary file and parent directory before the atomic
 move, then synchronize the parent again after finalization; a serialized child-process
 interruption fixture also verifies that the final destination is absent while the synced temporary
