@@ -7990,7 +7990,8 @@ fn apply_worker_event(
         }
         WorkerEvent::GlossariesListed { .. }
         | WorkerEvent::GlossarySaved(_)
-        | WorkerEvent::GlossaryDeleted { .. } => {}
+        | WorkerEvent::GlossaryDeleted { .. }
+        | WorkerEvent::DocumentJobSegment { .. } => {}
         WorkerEvent::RoutingProfilesListed { profiles } => {
             let routing_worker = worker.command_handle();
             show_routing_profiles_dialog(bindings, state, &routing_worker, profiles);
@@ -8103,7 +8104,6 @@ fn apply_worker_event(
                 }
             }
         }
-        WorkerEvent::DocumentJobSegment { .. } => {}
         WorkerEvent::DemoProviderReady { endpoint } => {
             let should_use_demo = {
                 let state = state.borrow();
