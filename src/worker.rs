@@ -87,6 +87,8 @@ pub enum WorkerCommand {
         secret: Option<SecretValue>,
         /// 只允许消费一次的会话级自定义请求头秘密。
         secret_custom_headers: Option<SecretValue>,
+        /// 只允许消费一次的会话级代理认证秘密。
+        proxy_authentication: Option<SecretValue>,
         /// 用户明确选择的持久化行为。
         persistence: PersistenceIntent,
     },
@@ -98,6 +100,8 @@ pub enum WorkerCommand {
         secret: Option<SecretValue>,
         /// 只允许消费一次的会话级自定义请求头秘密。
         secret_custom_headers: Option<SecretValue>,
+        /// 只允许消费一次的会话级代理认证秘密。
+        proxy_authentication: Option<SecretValue>,
     },
     /// 明确选择当前提供商已经发现的模型。
     SelectModel {
@@ -669,6 +673,7 @@ enum QueuedCommand {
         profile: ProviderProfile,
         secret: Option<SecretValue>,
         secret_custom_headers: Option<SecretValue>,
+        proxy_authentication: Option<SecretValue>,
         persistence: PersistenceIntent,
         cancellation: CancellationToken,
     },
@@ -676,6 +681,7 @@ enum QueuedCommand {
         profile: ProviderProfile,
         secret: Option<SecretValue>,
         secret_custom_headers: Option<SecretValue>,
+        proxy_authentication: Option<SecretValue>,
     },
     SelectModel {
         profile_id: ProviderProfileId,
@@ -875,6 +881,7 @@ impl CoreWorker {
                 profile,
                 secret,
                 secret_custom_headers,
+                proxy_authentication,
                 persistence,
             } => {
                 let cancellation = self.shutdown_cancellation.child_token();
@@ -886,6 +893,7 @@ impl CoreWorker {
                     profile,
                     secret,
                     secret_custom_headers,
+                    proxy_authentication,
                     persistence,
                     cancellation,
                 });
@@ -898,12 +906,14 @@ impl CoreWorker {
                 profile,
                 secret,
                 secret_custom_headers,
+                proxy_authentication,
             } => self
                 .commands
                 .try_send(QueuedCommand::TestConnection {
                     profile,
                     secret,
                     secret_custom_headers,
+                    proxy_authentication,
                 })
                 .map_err(|_| WorkerSendError),
             WorkerCommand::SelectModel {
@@ -2545,6 +2555,7 @@ async fn run_worker(
                 profile,
                 secret,
                 secret_custom_headers,
+                proxy_authentication,
             }) => {
                 let profile_id = profile.id().clone();
                 let cancellation = shutdown_cancellation.child_token();
@@ -2558,6 +2569,7 @@ async fn run_worker(
                     &profile,
                     secret,
                     secret_custom_headers,
+                    proxy_authentication,
                     &cancellation,
                     &mut secret_requests,
                 )
@@ -2590,6 +2602,7 @@ async fn run_worker(
                 profile,
                 secret,
                 secret_custom_headers,
+                proxy_authentication,
                 persistence,
                 cancellation,
             }) => {
@@ -2605,6 +2618,7 @@ async fn run_worker(
                             &profile,
                             secret,
                             secret_custom_headers,
+                            proxy_authentication,
                             &cancellation,
                             &mut secret_requests,
                         )
@@ -4930,10 +4944,14 @@ fn delete_saved_profile(
         })?
         .clone();
     let mut secret_refs = Vec::new();
-    for secret_ref in [profile.secret_ref(), profile.secret_custom_headers_ref()]
-        .into_iter()
-        .flatten()
-        .filter(|secret_ref| secret_ref.is_persistent())
+    for secret_ref in [
+        profile.secret_ref(),
+        profile.secret_custom_headers_ref(),
+        profile.proxy_auth_ref(),
+    ]
+    .into_iter()
+    .flatten()
+    .filter(|secret_ref| secret_ref.is_persistent())
     {
         if !secret_refs.contains(secret_ref) {
             secret_refs.push(secret_ref.clone());
@@ -4990,6 +5008,7 @@ async fn connect_candidate(
     profile: &ProviderProfile,
     mut session_secret: Option<SecretValue>,
     mut session_secret_custom_headers: Option<SecretValue>,
+    mut session_proxy_authentication: Option<SecretValue>,
     cancellation: &CancellationToken,
     requests: &mut HostSecretRequests,
 ) -> Result<Vec<ModelDescriptor>, TranslationError> {
@@ -5003,6 +5022,12 @@ async fn connect_candidate(
         return Err(TranslationError::new(
             ErrorKind::InvalidConfiguration,
             "Session custom headers require an explicit session secret reference.",
+        ));
+    }
+    if session_proxy_authentication.is_some() && profile.proxy_auth_ref().is_none() {
+        return Err(TranslationError::new(
+            ErrorKind::InvalidConfiguration,
+            "Session proxy credentials require an explicit session secret reference.",
         ));
     }
 
@@ -5023,11 +5048,14 @@ async fn connect_candidate(
                 let required_ref = request.required().secret_ref.clone();
                 let response = if profile.secret_ref() == Some(&required_ref)
                     || profile.secret_custom_headers_ref() == Some(&required_ref)
+                    || profile.proxy_auth_ref() == Some(&required_ref)
                 {
                     let secret = if profile.secret_ref() == Some(&required_ref) {
                         session_secret.take()
-                    } else {
+                    } else if profile.secret_custom_headers_ref() == Some(&required_ref) {
                         session_secret_custom_headers.take()
+                    } else {
+                        session_proxy_authentication.take()
                     };
                     if let Some(secret) = secret {
                         request.provide_secret(secret)
@@ -5101,8 +5129,16 @@ async fn connect_fallback_candidate(
         )
     })?;
     let mut manager = ProviderManager::new(secret_broker);
-    let models =
-        connect_candidate(&mut manager, &profile, None, None, cancellation, requests).await?;
+    let models = connect_candidate(
+        &mut manager,
+        &profile,
+        None,
+        None,
+        None,
+        cancellation,
+        requests,
+    )
+    .await?;
     if !models.iter().any(|candidate| candidate.id == model) {
         manager.disconnect();
         return Err(TranslationError::new(
@@ -5142,8 +5178,16 @@ async fn connect_routing_candidate(
             )
         })?;
     let mut manager = ProviderManager::new(secret_broker);
-    let models =
-        connect_candidate(&mut manager, &profile, None, None, cancellation, requests).await?;
+    let models = connect_candidate(
+        &mut manager,
+        &profile,
+        None,
+        None,
+        None,
+        cancellation,
+        requests,
+    )
+    .await?;
     if !models.iter().any(|model| model.id == candidate.model_id) {
         manager.disconnect();
         return Err(TranslationError::new(
@@ -6540,6 +6584,7 @@ mod tests {
                 profile,
                 secret,
                 secret_custom_headers: None,
+                proxy_authentication: None,
                 persistence,
             })
             .expect("connect command");
@@ -6577,6 +6622,7 @@ mod tests {
                 profile,
                 secret,
                 secret_custom_headers: None,
+                proxy_authentication: None,
             })
             .expect("connection test command");
         match worker
@@ -9201,6 +9247,7 @@ mod tests {
                 profile,
                 secret: None,
                 secret_custom_headers: Some(SecretValue::new("not-json")),
+                proxy_authentication: None,
                 persistence: PersistenceIntent::SessionOnly,
             })
             .expect("session header connection command");
@@ -10155,6 +10202,7 @@ mod tests {
                 profile: profile("cancelled-provider", &delayed.endpoint, None, None),
                 secret: None,
                 secret_custom_headers: None,
+                proxy_authentication: None,
                 persistence: PersistenceIntent::Persistent,
             })
             .expect("candidate connection");
@@ -10196,6 +10244,7 @@ mod tests {
                 profile: profile("cancelled-provider", &endpoint, None, None),
                 secret: None,
                 secret_custom_headers: None,
+                proxy_authentication: None,
                 persistence: PersistenceIntent::Persistent,
                 cancellation,
             })
@@ -10841,6 +10890,7 @@ mod tests {
                 profile: candidate,
                 secret: None,
                 secret_custom_headers: None,
+                proxy_authentication: None,
                 persistence: PersistenceIntent::SessionOnly,
             })
             .expect("connect command");
@@ -10871,6 +10921,7 @@ mod tests {
                 profile: profile("shutdown-provider", &external.endpoint, None, None),
                 secret: None,
                 secret_custom_headers: None,
+                proxy_authentication: None,
                 persistence: PersistenceIntent::SessionOnly,
             })
             .expect("connect command");
@@ -10906,6 +10957,7 @@ mod tests {
                     profile: profile(profile_id, &external.endpoint, None, None),
                     secret: None,
                     secret_custom_headers: None,
+                    proxy_authentication: None,
                     persistence: PersistenceIntent::SessionOnly,
                 })
                 .expect("connect command");
@@ -10945,6 +10997,7 @@ mod tests {
                 profile: profile("full-queue-provider", &external.endpoint, None, None),
                 secret: None,
                 secret_custom_headers: None,
+                proxy_authentication: None,
                 persistence: PersistenceIntent::SessionOnly,
             })
             .expect("connect command");

@@ -134,6 +134,7 @@ struct UiBindings {
     provider_region: gtk::Entry,
     provider_account_identifier: gtk::Entry,
     provider_proxy: gtk::Entry,
+    provider_proxy_credentials: gtk::PasswordEntry,
     provider_request_timeout: gtk::SpinButton,
     provider_connection_timeout: gtk::SpinButton,
     provider_streaming_idle_timeout: gtk::SpinButton,
@@ -762,6 +763,7 @@ fn create_window(
         provider_region,
         provider_account_identifier,
         provider_proxy,
+        provider_proxy_credentials,
         provider_request_timeout,
         provider_connection_timeout,
         provider_streaming_idle_timeout,
@@ -1061,6 +1063,7 @@ fn create_window(
         provider_region,
         provider_account_identifier,
         provider_proxy,
+        provider_proxy_credentials,
         provider_request_timeout,
         provider_connection_timeout,
         provider_streaming_idle_timeout,
@@ -1187,6 +1190,10 @@ fn create_window(
                 .upcast::<gtk::Widget>(),
             bindings.provider_proxy.clone().upcast::<gtk::Widget>(),
             bindings
+                .provider_proxy_credentials
+                .clone()
+                .upcast::<gtk::Widget>(),
+            bindings
                 .provider_request_timeout
                 .clone()
                 .upcast::<gtk::Widget>(),
@@ -1281,6 +1288,13 @@ fn install_keyboard_focus_probe(
         (
             "provider_proxy",
             bindings.provider_proxy.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_proxy_credentials",
+            bindings
+                .provider_proxy_credentials
+                .clone()
+                .upcast::<gtk::Widget>(),
         ),
         (
             "provider_request_timeout",
@@ -1649,6 +1663,7 @@ fn create_provider_session() -> (
     gtk::Entry,
     gtk::Entry,
     gtk::Entry,
+    gtk::PasswordEntry,
     gtk::SpinButton,
     gtk::SpinButton,
     gtk::SpinButton,
@@ -1822,6 +1837,20 @@ fn create_provider_session() -> (
         "tooltip.provider_proxy",
         "Optional HTTP, HTTPS, SOCKS5, or SOCKS5H proxy without embedded credentials",
     )));
+    let provider_proxy_credentials = gtk::PasswordEntry::builder()
+        .show_peek_icon(true)
+        .hexpand(true)
+        .build();
+    provider_proxy_credentials.set_placeholder_text(Some(&localization::text(
+        locale,
+        "placeholder.provider_proxy_credentials",
+        "Optional username:password for the proxy",
+    )));
+    provider_proxy_credentials.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_proxy_credentials",
+        "Stored in Secret Service when remembered and never embedded in the proxy URL",
+    )));
     let provider_request_timeout = gtk::SpinButton::with_range(1.0, 600.0, 1.0);
     provider_request_timeout.set_value(30.0);
     provider_request_timeout.set_digits(0);
@@ -1980,6 +2009,14 @@ fn create_provider_session() -> (
     fields.append(&labeled_control(
         &localized_mnemonic(
             locale,
+            "label.provider_proxy_credentials",
+            "Proxy credentials",
+        ),
+        provider_proxy_credentials.upcast_ref::<gtk::Widget>(),
+    ));
+    fields.append(&labeled_control(
+        &localized_mnemonic(
+            locale,
             "label.provider_request_timeout",
             "Request timeout (seconds)",
         ),
@@ -2054,6 +2091,7 @@ fn create_provider_session() -> (
         provider_region,
         provider_account_identifier,
         provider_proxy,
+        provider_proxy_credentials,
         provider_request_timeout,
         provider_connection_timeout,
         provider_streaming_idle_timeout,
@@ -2793,6 +2831,7 @@ fn show_saved_profile_in_form(bindings: &UiBindings, profile: &ProviderProfile) 
         .manual_model_row
         .set_visible(preset_requires_manual_model(preset_index));
     bindings.provider_credential.set_text("");
+    bindings.provider_proxy_credentials.set_text("");
     // 保存的秘密请求头只保留引用，不把 Secret Service 内容回填到表单。
     bindings.provider_secret_custom_headers.set_text("");
     bindings.remember_profile.set_active(true);
@@ -2829,6 +2868,7 @@ fn show_new_profile_in_form(
     bindings.manual_model.set_text("");
     bindings.manual_model_row.set_visible(false);
     bindings.provider_credential.set_text("");
+    bindings.provider_proxy_credentials.set_text("");
     bindings.provider_secret_custom_headers.set_text("");
     bindings.remember_profile.set_active(false);
     Ok(())
@@ -3804,6 +3844,12 @@ fn connect_action_handlers(
         let account_identifier = (!account_text.is_empty()).then_some(account_text);
         let proxy_text = test_bindings.provider_proxy.text().trim().to_owned();
         let proxy_url = (!proxy_text.is_empty()).then_some(proxy_text);
+        let proxy_credentials_text = test_bindings.provider_proxy_credentials.text();
+        let has_proxy_credentials = !proxy_credentials_text.is_empty();
+        let session_proxy_authentication =
+            has_proxy_credentials.then(|| SecretValue::new(proxy_credentials_text.as_str()));
+        test_bindings.provider_proxy_credentials.set_text("");
+        drop(proxy_credentials_text);
         let request_timeout_secs =
             match provider_request_timeout_secs(&test_bindings.provider_request_timeout) {
                 Ok(value) => value,
@@ -3894,32 +3940,39 @@ fn connect_action_handlers(
             refresh_ui(&test_bindings, &state);
             return;
         }
-        let (profile_id, saved_secret_ref, saved_secret_custom_headers_ref, selected_model) =
-            match state.selected_saved_profile() {
-                Some(saved) => (
-                    saved.id().clone(),
-                    saved.secret_ref().cloned(),
-                    saved.secret_custom_headers_ref().cloned(),
-                    if preset_requires_manual_model(preset_index) {
-                        Some(manual_model.clone())
-                    } else {
-                        saved.selected_model().map(str::to_owned)
-                    },
-                ),
-                None => match ensure_draft_profile_id(&test_bindings, &state) {
-                    Ok(profile_id) => (
-                        profile_id,
-                        None,
-                        None,
-                        preset_requires_manual_model(preset_index).then_some(manual_model.clone()),
-                    ),
-                    Err(error) => {
-                        state.record_client_error(error.to_string());
-                        refresh_ui(&test_bindings, &state);
-                        return;
-                    }
+        let (
+            profile_id,
+            saved_secret_ref,
+            saved_secret_custom_headers_ref,
+            saved_proxy_auth_ref,
+            selected_model,
+        ) = match state.selected_saved_profile() {
+            Some(saved) => (
+                saved.id().clone(),
+                saved.secret_ref().cloned(),
+                saved.secret_custom_headers_ref().cloned(),
+                saved.proxy_auth_ref().cloned(),
+                if preset_requires_manual_model(preset_index) {
+                    Some(manual_model.clone())
+                } else {
+                    saved.selected_model().map(str::to_owned)
                 },
-            };
+            ),
+            None => match ensure_draft_profile_id(&test_bindings, &state) {
+                Ok(profile_id) => (
+                    profile_id,
+                    None,
+                    None,
+                    None,
+                    preset_requires_manual_model(preset_index).then_some(manual_model.clone()),
+                ),
+                Err(error) => {
+                    state.record_client_error(error.to_string());
+                    refresh_ui(&test_bindings, &state);
+                    return;
+                }
+            },
+        };
         let secret_ref = if has_credential {
             Some(SecretRef::new(SecretRefNamespace::Session))
         } else {
@@ -3929,6 +3982,11 @@ fn connect_action_handlers(
             Some(SecretRef::new(SecretRefNamespace::Session))
         } else {
             saved_secret_custom_headers_ref
+        };
+        let proxy_auth_ref = if has_proxy_credentials {
+            Some(SecretRef::new(SecretRefNamespace::Session))
+        } else {
+            saved_proxy_auth_ref
         };
         let profile = match custom_provider_profile(
             profile_id,
@@ -3957,11 +4015,14 @@ fn connect_action_handlers(
                 return;
             }
         };
-        let profile = profile.with_secret_custom_headers_ref(secret_custom_headers_ref);
+        let profile = profile
+            .with_secret_custom_headers_ref(secret_custom_headers_ref)
+            .with_proxy_auth_ref(proxy_auth_ref);
         if let Err(error) = test_worker.try_send(WorkerCommand::TestConnection {
             profile,
             secret: session_secret,
             secret_custom_headers: session_secret_custom_headers,
+            proxy_authentication: session_proxy_authentication,
         }) {
             state.record_client_error(error.to_string());
         }
@@ -3997,6 +4058,12 @@ fn connect_action_handlers(
         let account_identifier = (!account_text.is_empty()).then_some(account_text);
         let proxy_text = connect_bindings.provider_proxy.text().trim().to_owned();
         let proxy_url = (!proxy_text.is_empty()).then_some(proxy_text);
+        let proxy_credentials_text = connect_bindings.provider_proxy_credentials.text();
+        let has_proxy_credentials = !proxy_credentials_text.is_empty();
+        let session_proxy_authentication =
+            has_proxy_credentials.then(|| SecretValue::new(proxy_credentials_text.as_str()));
+        connect_bindings.provider_proxy_credentials.set_text("");
+        drop(proxy_credentials_text);
         let request_timeout_secs =
             match provider_request_timeout_secs(&connect_bindings.provider_request_timeout) {
                 Ok(value) => value,
@@ -4096,6 +4163,7 @@ fn connect_action_handlers(
             profile_id,
             saved_secret_ref,
             saved_secret_custom_headers_ref,
+            saved_proxy_auth_ref,
             enabled,
             selected_model,
         ) = match state.selected_saved_profile() {
@@ -4103,6 +4171,7 @@ fn connect_action_handlers(
                 Ok(saved.id().clone()),
                 saved.secret_ref().cloned(),
                 saved.secret_custom_headers_ref().cloned(),
+                saved.proxy_auth_ref().cloned(),
                 saved.enabled(),
                 if preset_requires_manual_model(preset_index) {
                     Some(manual_model.clone())
@@ -4112,6 +4181,7 @@ fn connect_action_handlers(
             ),
             None => (
                 ensure_draft_profile_id(&connect_bindings, &state),
+                None,
                 None,
                 None,
                 true,
@@ -4163,6 +4233,24 @@ fn connect_action_handlers(
         } else {
             None
         };
+        let persistent_proxy_auth_ref = if remember_profile && has_proxy_credentials {
+            let secret_ref = saved_proxy_auth_ref
+                .clone()
+                .filter(SecretRef::is_persistent)
+                .unwrap_or_else(|| SecretRef::new(SecretRefNamespace::SecretService));
+            if let Some(secret) = session_proxy_authentication.as_ref()
+                && let Err(error) = secret_service::store_secret(&secret_ref, secret)
+            {
+                state.provider_failed(error);
+                refresh_ui(&connect_bindings, &state);
+                drop(state);
+                show_secret_storage_session_fallback(&connect_bindings, &connect_state);
+                return;
+            }
+            Some(secret_ref)
+        } else {
+            None
+        };
         let secret_custom_headers_ref =
             if let Some(secret_ref) = persistent_secret_custom_headers_ref {
                 Some(secret_ref)
@@ -4171,6 +4259,13 @@ fn connect_action_handlers(
             } else {
                 saved_secret_custom_headers_ref
             };
+        let proxy_auth_ref = if let Some(secret_ref) = persistent_proxy_auth_ref {
+            Some(secret_ref)
+        } else if has_proxy_credentials {
+            Some(SecretRef::new(SecretRefNamespace::Session))
+        } else {
+            saved_proxy_auth_ref
+        };
         let profile = match custom_provider_profile(
             profile_id,
             display_name,
@@ -4201,6 +4296,7 @@ fn connect_action_handlers(
             profile
                 .with_enabled(enabled)
                 .with_secret_custom_headers_ref(secret_custom_headers_ref)
+                .with_proxy_auth_ref(proxy_auth_ref)
         }) {
             Ok(profile) => profile,
             Err(error) => {
@@ -4215,6 +4311,7 @@ fn connect_action_handlers(
                     profile,
                     secret: session_secret,
                     secret_custom_headers: session_secret_custom_headers,
+                    proxy_authentication: session_proxy_authentication,
                     persistence: if remember_profile {
                         PersistenceIntent::Persistent
                     } else {
@@ -8816,6 +8913,28 @@ fn refresh_localized_widgets(bindings: &UiBindings, locale: UiLocale) {
             locale,
             "tooltip.provider_proxy",
             "Optional HTTP, HTTPS, SOCKS5, or SOCKS5H proxy without embedded credentials",
+        )));
+    set_labeled_control_label(
+        bindings.provider_proxy_credentials.upcast_ref(),
+        &localized_mnemonic(
+            locale,
+            "label.provider_proxy_credentials",
+            "Proxy credentials",
+        ),
+    );
+    bindings
+        .provider_proxy_credentials
+        .set_placeholder_text(Some(&localization::text(
+            locale,
+            "placeholder.provider_proxy_credentials",
+            "Optional username:password for the proxy",
+        )));
+    bindings
+        .provider_proxy_credentials
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.provider_proxy_credentials",
+            "Stored in Secret Service when remembered and never embedded in the proxy URL",
         )));
     set_labeled_control_label(
         bindings.provider_request_timeout.upcast_ref(),

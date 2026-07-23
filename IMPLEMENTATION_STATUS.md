@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-23 — Linux proxy authentication SecretRef settings
+
+Assumption: Linux is the only client in scope for this slice; other native clients and live
+provider interoperability remain follow-up work. Proxy credentials must never be embedded in the
+proxy URL or persisted as a credential value.
+
+- The GTK provider form adds a password-style proxy credential field, clears it after capture,
+  restores only the reference-bearing profile state, and supports session-only or explicit
+  Secret Service persistence through the existing host secret service.
+- Core schema 30 and the shared provider adapters accept the same reference-only contract and
+  apply proxy Basic authentication without exposing credentials in SQLite, URLs, diagnostics, or
+  logs. Localization source revision 58 supplies the three Linux strings and regenerated resources.
+- Local Core workspace tests, Linux workspace checks, and l10n `make check` pass. Remote CI and
+  Linux packaging evidence for the exact commits remain pending; release stays `unreleased`.
+
 ## 2026-07-23 — Linux provider custom trusted certificate settings
 
 Assumption: an optional bounded PEM certificate bundle is the smallest Linux-first TLS slice. It

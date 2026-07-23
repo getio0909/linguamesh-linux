@@ -20,7 +20,7 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `7a9da3f467c5dec539dd8f7850b90b54ae712331`, which adds bounded
+reviewed Core functional revision `cee5bd8abc5b35a50640c484bc4fbeedeb426745`, which adds bounded
 FileLease lifecycle validation and strict
 routing-profile validation, schema-15 routing-profile persistence, schema-16 document-job
 routing-profile persistence, and schema-17 document quality-mode persistence on top of the existing
@@ -45,6 +45,8 @@ retrying a candidate.
 The GTK provider form consumes the pinned Core provider catalog for adapter and model-listing
 compatibility. It supports optional bounded, non-secret profile notes, custom request headers,
 organization/project IDs, region, account identifiers, and an optional HTTP/HTTPS/SOCKS5 proxy URL.
+Proxy authentication is entered separately as a bounded `username:password` value, kept in the
+session or Secret Service by explicit user choice, and never embedded in the proxy URL.
 The proxy is validated without embedded credentials and applied by Core's transport. A bounded total
 provider request timeout (1–600 seconds, default 30), connection-establishment timeout (1–120
 seconds, default 10), and streaming idle timeout (1–300 seconds, default 60) are saved with the
