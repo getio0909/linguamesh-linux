@@ -1,5 +1,24 @@
 # Implementation Status
 
+## 2026-07-23 — Linux mTLS hostname verification
+
+Assumption: a server certificate signed by the trusted test CA but carrying a wrong SAN is the
+smallest reproducible evidence that hostname verification remains enabled; enterprise-provider
+interoperability and cross-client certificate handling remain separate qualification gates.
+
+- Linux runtime/test commit `ec6c9971e0271e5eddc89bdc64121761a9cb46df` adds a third ignored
+  worker regression and extends the temporary HTTPS runner. The trusted endpoint succeeds, the
+  unrelated-CA endpoint is rejected, and the wrong-SAN endpoint is rejected with a network error;
+  the surfaced diagnostics contain no secret name. The exact local runner passed once for all three
+  cases (`1 passed; 0 failed` each), and the library suite passed `166 passed; 0 failed; 6 ignored`.
+- Source-pin correction commit `9fc633feeca328b356b8f98eead03e29d28d0d46` aligns the Flatpak
+  source and release documentation with the tested runtime after the first stale-pin validation
+  failure. Its push Native/Flatpak/Foundation runs `30050382741`/`30050382624`/`30050382686`
+  and PR Native/Flatpak/Foundation runs `30050385469`/`30050385504`/`30050385454` all passed.
+- No provider credential or production certificate is stored. Release remains `unreleased`; this
+  does not claim enterprise interoperability, interactive prompt approval, human review,
+  cross-client parity, signing, rollback, or stable-release authorization.
+
 ## 2026-07-23 — Linux mTLS trust-bundle rejection
 
 Assumption: a second local HTTPS endpoint signed by an unrelated CA is the smallest
