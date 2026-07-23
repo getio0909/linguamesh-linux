@@ -2798,6 +2798,18 @@ msgctxt "tooltip.provider_request_timeout"
 msgid "Total provider request timeout in seconds, from 1 to 600"
 msgstr "Total provider request timeout in seconds, from 1 to 600"
 
+#. Label for the provider connection timeout in seconds in the Linux provider form.
+#, fuzzy
+msgctxt "label.provider_connection_timeout"
+msgid "Connection timeout (seconds)"
+msgstr "Connection timeout (seconds)"
+
+#. Tooltip for the provider connection timeout in the Linux provider form.
+#, fuzzy
+msgctxt "tooltip.provider_connection_timeout"
+msgid "Provider connection timeout in seconds, from 1 to 120"
+msgstr "Provider connection timeout in seconds, from 1 to 120"
+
 #. Placeholder for optional custom request headers in the Linux provider form.
 #, fuzzy
 msgctxt "placeholder.provider_custom_headers"

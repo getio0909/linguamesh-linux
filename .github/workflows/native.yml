@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 30
     # 固定已审查的 LinguaMesh Core 提交。
     env:
-      CORE_REVISION: 7e78cb0086d85eb5c218d8863b7f11f506bae016
+      CORE_REVISION: e9a569f8bb6d66db4fdb1c9bd1d6834e93d10f39
     steps:
       - name: Check out Linux client
         # 固定 actions/checkout v7.0.0。
@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           repository: ${{ github.repository_owner }}/linguamesh-l10n
-          ref: 65bf0c8772f75649b2be2e2f9cea610772657c93
+          ref: 46ca70b2863fa951b417eda7ce5848e152c46605
           path: linguamesh-l10n
           persist-credentials: false
       - name: Install native development headers
@@ -322,7 +322,7 @@ jobs:
       - name: Run Linux performance baseline
         working-directory: linguamesh-linux
         env:
-          L10N_REVISION: 65bf0c8772f75649b2be2e2f9cea610772657c93
+          L10N_REVISION: 46ca70b2863fa951b417eda7ce5848e152c46605
         run: bash tools/run-performance-baseline.sh native-evidence
       - name: Create native checksum and SBOM evidence
         working-directory: linguamesh-linux
@@ -336,13 +336,13 @@ jobs:
           --output-dir native-evidence
           --linux-revision "$(git rev-parse HEAD)"
           --core-revision "$CORE_REVISION"
-          --localization-revision "65bf0c8772f75649b2be2e2f9cea610772657c93"
+          --localization-revision "46ca70b2863fa951b417eda7ce5848e152c46605"
           && git archive --format=tar.gz
           --prefix="linguamesh-linux-${GITHUB_SHA}/" "$GITHUB_SHA"
           > native-evidence/linguamesh-linux-source.tar.gz
           && (cd native-evidence && sha256sum linguamesh-linux-source.tar.gz >> SHA256SUMS)
           && printf 'Linux native CI evidence\nLinux revision: %s\nCore revision: %s\nLocalization revision: %s\nPerformance baseline: LINUX-PERFORMANCE-BASELINE.tsv\nArtifact status: unsigned release-mode prerelease evidence\n'
-          "$GITHUB_SHA" "$CORE_REVISION" "65bf0c8772f75649b2be2e2f9cea610772657c93"
+          "$GITHUB_SHA" "$CORE_REVISION" "46ca70b2863fa951b417eda7ce5848e152c46605"
           > native-evidence/BUILD-INFO.txt
       - name: Verify native checksum and SBOM evidence
         working-directory: linguamesh-linux

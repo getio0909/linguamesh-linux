@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-23 — Linux provider connection timeout settings
+
+Assumption: this slice adds only the bounded connection-establishment timeout (1–120 seconds,
+default 10); streaming-idle timeout and TLS policy remain separate follow-up work.
+
+- Linux adds a localized integer control, restores it with saved profiles, defaults new profiles to
+  10 seconds, and validates it before Test connection or Connect.
+- Core schema 27 persists the timeout and applies it independently of the total request timeout to
+  OpenAI Chat/Responses/Azure, Anthropic, Gemini, and Ollama. l10n source revision 55 supplies the
+  469-message bundle; exact pins and remote gate IDs will be recorded after the commits land.
+- Local Core workspace tests (domain 50, storage 44, application 15), Linux demo-provider tests
+  (`159 passed; 3 ignored`), strict Clippy, l10n checks, localization audits, and diff checks pass.
+  Release remains unreleased pending remote gates and the documented cross-client, human-review,
+  signing, rollback, and stable-release boundaries.
+
 ## 2026-07-23 — Linux provider request timeout settings
 
 Assumption: this slice implements only the bounded total request timeout. Separate connection

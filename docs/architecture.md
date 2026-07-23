@@ -216,10 +216,11 @@ custom headers, Secret Service-backed secret custom headers, and the organizatio
 OpenAI-compatible Chat/Responses requests;
 authorization, credential-shaped, and built-in metadata headers are rejected before persistence.
 The validated HTTP/HTTPS/SOCKS5 proxy URL is persisted as non-secret profile metadata and applied
-to every Core provider transport without changing provider request logic. Core schema 26 also
-persists a bounded total provider request timeout from 1 to 600 seconds and applies it to the
-OpenAI Chat/Responses/Azure, Anthropic, Gemini, and Ollama transports. Connection timeout,
-streaming-idle timeout, and TLS policy fields are not implemented in this slice.
+to every Core provider transport without changing provider request logic. Core schema 26 persists
+a bounded total provider request timeout from 1 to 600 seconds, and schema 27 persists a bounded
+connection-establishment timeout from 1 to 120 seconds (default 10); both are applied independently
+to the OpenAI Chat/Responses/Azure, Anthropic, Gemini, and Ollama transports. Streaming-idle timeout
+and TLS policy fields are not implemented in this slice.
 Other adapters ignore the OpenAI-specific metadata,
 **Remove saved profile**,
 model selection, source and target locales, source and streamed output editors, native **Open text

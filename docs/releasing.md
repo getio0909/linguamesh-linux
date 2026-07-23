@@ -80,8 +80,9 @@ future release gate below.
 
 The current Linux gate consumes Core `7e78cb0086d85eb5c218d8863b7f11f506bae016` (schema 26) and l10n
 `65bf0c8772f75649b2be2e2f9cea610772657c93` (467 catalog messages). The profile contract includes
-a bounded total provider request timeout of 1–600 seconds; connection, streaming-idle, and TLS
-policy fields remain open. Normalized usage labels
+a bounded total provider request timeout of 1–600 seconds and a bounded connection-establishment
+timeout of 1–120 seconds (default 10); streaming-idle and TLS policy fields remain open. Normalized
+usage labels
 distinguish provider-reported, locally estimated, and unknown counts without pricing assumptions;
 provider billing equivalence and stable ABI projection remain open. Request-level glossary rules, bounded CSV,
 interchange are implemented in the Linux slice; persistent glossary libraries and TBX import

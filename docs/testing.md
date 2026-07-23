@@ -26,8 +26,9 @@ contract round-trips a credential-free proxy URL through Core schema 25; unsuppo
 paths, query strings, and embedded proxy credentials are rejected before any host-secret request,
 and the selected transport applies the proxy to provider HTTP requests.
 The same contract round-trips a bounded total request timeout (1–600 seconds, default 30) through
-Core schema 26, rejects out-of-range values before any host-secret request, and applies the value
-to every currently supported provider transport. Connection, streaming-idle, and TLS-specific
+Core schema 26 and a bounded connection-establishment timeout (1–120 seconds, default 10) through
+schema 27. Both reject out-of-range values before any host-secret request and are applied
+independently to every currently supported provider transport. Streaming-idle and TLS-specific
 timeout coverage remains open.
 
 The same provider fixture covers the Google Gemini preset through the `/v1beta/` Generate Content
