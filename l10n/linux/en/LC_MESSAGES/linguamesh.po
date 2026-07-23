@@ -1056,6 +1056,11 @@ msgctxt "action.copy_output"
 msgid "Copy translation"
 msgstr "Copy translation"
 
+#. Action that clears the Linux text workspace source, output, and request diagnostics.
+msgctxt "action.clear_workspace"
+msgid "Clear workspace"
+msgstr "Clear workspace"
+
 #. Action that exports the current translated output to a user-selected file.
 msgctxt "action.export_output"
 msgid "Export translation"
@@ -1065,6 +1070,11 @@ msgstr "Export translation"
 msgctxt "tooltip.copy_output"
 msgid "Copy the translated output to the system clipboard"
 msgstr "Copy the translated output to the system clipboard"
+
+#. Tooltip explaining that clear removes the Linux text workspace content and request diagnostics.
+msgctxt "tooltip.clear_workspace"
+msgid "Clear the source text, translated output, and request diagnostics"
+msgstr "Clear the source text, translated output, and request diagnostics"
 
 #. Tooltip explaining that export writes translated output to a new file.
 msgctxt "tooltip.export_output"

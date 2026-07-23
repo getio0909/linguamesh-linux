@@ -161,9 +161,11 @@ uncertain reading order without including source content in diagnostics.
 
 After a translation completes, **Copy translation** places the output on the system clipboard through
 the native GTK display clipboard, while **Export translation** opens a native GTK save dialog and
-writes the output asynchronously as UTF-8. Both actions remain disabled without output; export reports
-a localized success notice and refuses to overwrite the imported source file. Clipboard contents are
-never persisted or logged.
+writes the output asynchronously as UTF-8. **Clear workspace** is a local, network-free action that
+removes the source text, translated output, request diagnostics, and transient file notices while
+preserving provider, locale, glossary, and history settings. Both output actions remain disabled
+without output; export reports a localized success notice and refuses to overwrite the imported source
+file. Clipboard contents are never persisted or logged.
 
 The credential field is optional. Its value is copied into Core's secret-aware `SecretValue`, the
 widget is cleared immediately, and the temporary GTK string is dropped. Without Remember, a
@@ -260,7 +262,7 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`0ee87720a8613d3dc130dfb379ab4dc7bc1e1f62` and validated with `msgfmt`; the 502-message bundle
+`99e0e04d200a03b2de79a8dd4a8d018847519ea2` and validated with `msgfmt`; the 504-message bundle
 adds Linux routing-profile persistence/editor, profile-ID validation and duplicate protection, ordinary-text selection labels, routing preference/privacy/document constraints, provider/model allowlists and denylists, quality/request-size limits, translation quality-mode and translation-preset labels, and source/output character plus approximate-token metrics. The locale selector
 exposes all twelve official BCP 47 packs plus the generated `en-XA` accented and `ar-XB` RTL
  pseudo-locales. It switches runtime action, workspace-widget,

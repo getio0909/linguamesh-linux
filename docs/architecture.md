@@ -91,9 +91,11 @@ follow-up calls. Document jobs persist the selected mode in schema 17 and reuse 
 after pause, retry, or restart. Schema 18 persists the selected translation preset with the same
 bounded, non-secret validation.
 
-The same workspace exposes a native **Copy translation** action that sends only the current output
-buffer to GTK's system clipboard; it is disabled when output is empty, and clipboard contents never
-enter Core storage, diagnostics, or notifications. It also exposes localized `General`, `Technical`, `Marketing`, `English (United States)`,
+The same workspace exposes native **Copy translation** and **Clear workspace** actions. Copy sends only
+the current output buffer to GTK's system clipboard; it is disabled when output is empty, and clipboard
+contents never enter Core storage, diagnostics, or notifications. Clear removes source/output text,
+request diagnostics, and transient file notices locally without sending a worker command or changing
+provider, locale, glossary, or history settings. It also exposes localized `General`, `Technical`, `Marketing`, `English (United States)`,
 and `Chinese (Simplified, Mainland China)` translation presets. The last two carry bounded
 `en-US`/`Latn` and `zh-CN`/`Hans` regional-locale and script preferences. The reducer stores the
 selected Core `TranslationPreset` and attaches it to ordinary text and document requests;
