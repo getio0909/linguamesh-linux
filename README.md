@@ -213,6 +213,10 @@ manual Model ID before Connect; Gemini uses the HTTPS `/v1beta/` Generate Conten
 model discovery; Azure OpenAI uses the resource endpoint, sends the session credential in the
 `api-key` header, pins API version `2024-10-21`, and requires the deployment name as a manual model
 value. Azure model discovery is intentionally manual, so the client never enumerates deployments.
+Every preset also exposes an optional manual model field. Native or protocol-compatible discovery
+remains first; when its listing endpoint is unavailable or returns no models, Core retains the
+validated selected model as a localized `Manual` entry. Authentication, network, and timeout errors
+remain typed failures and do not silently fall back.
 OpenAI Responses uses `/v1/models` discovery and typed SSE events from `/v1/responses`, including
 `response.output_text.delta` and `response.completed`; its credential is sent only as Bearer
 authentication. Custom endpoint edits remain preserved when switching presets.
@@ -263,7 +267,7 @@ same official and pseudo packs; document-job row metadata and lifecycle states, 
 Core compatibility, and profile-storage error sentences now use the same catalog; arbitrary backend
 diagnostic detail remains an explicit English fallback. Completed ordinary text output also shows
 localized usage metadata with a provider-reported, locally estimated, or unknown source label;
-provider parsing, pricing, and stable ABI projection remain future work.
+provider billing semantics, pricing, and stable ABI projection remain future work.
 
 The connected model selector appends a localized provenance label to each entry, identifying whether
 the model was **Discovered**, provided by the **Catalog**, or entered **Manually**. This presentation

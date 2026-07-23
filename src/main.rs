@@ -389,6 +389,11 @@ fn preset_requires_manual_model(index: u32) -> bool {
     })
 }
 
+// 所有协议都允许用户在模型发现不可用时提供最后一级手动模型。
+fn manual_model_field_visible() -> bool {
+    true
+}
+
 // 根据预设显示与协议匹配的端点提示。
 fn provider_endpoint_tooltip(locale: UiLocale, preset_index: u32) -> String {
     if preset_index == 1 {
@@ -2009,7 +2014,7 @@ fn create_provider_session() -> (
         &localized_mnemonic(locale, "field.model", "Model"),
         manual_model.upcast_ref::<gtk::Widget>(),
     );
-    manual_model_row.set_visible(false);
+    manual_model_row.set_visible(manual_model_field_visible());
     let provider_credential = gtk::PasswordEntry::builder()
         .show_peek_icon(true)
         .hexpand(true)
@@ -2977,7 +2982,7 @@ fn show_saved_profile_in_form(bindings: &UiBindings, profile: &ProviderProfile) 
         .set_text(profile.selected_model().unwrap_or_default());
     bindings
         .manual_model_row
-        .set_visible(preset_requires_manual_model(preset_index));
+        .set_visible(manual_model_field_visible());
     bindings.provider_credential.set_text("");
     bindings.provider_proxy_credentials.set_text("");
     bindings.provider_client_certificate_identity.set_text("");
@@ -3016,7 +3021,9 @@ fn show_new_profile_in_form(
     bindings.provider_client_certificate_identity.set_text("");
     bindings.provider_custom_headers.set_text("");
     bindings.manual_model.set_text("");
-    bindings.manual_model_row.set_visible(false);
+    bindings
+        .manual_model_row
+        .set_visible(manual_model_field_visible());
     bindings.provider_credential.set_text("");
     bindings.provider_proxy_credentials.set_text("");
     bindings.provider_secret_custom_headers.set_text("");
@@ -3318,10 +3325,10 @@ fn connect_provider_preset_handler(bindings: &UiBindings) {
                 .set_tooltip_text(Some(&provider_endpoint_tooltip(locale, selected)));
             preset_bindings
                 .manual_model_row
-                .set_visible(preset_requires_manual_model(selected));
+                .set_visible(manual_model_field_visible());
             preset_bindings
                 .manual_model
-                .set_sensitive(preset_requires_manual_model(selected));
+                .set_sensitive(manual_model_field_visible());
             preset_bindings
                 .manual_model
                 .set_tooltip_text(Some(&provider_model_tooltip(locale, selected)));
@@ -4376,7 +4383,7 @@ fn connect_action_handlers(
                 saved.secret_custom_headers_ref().cloned(),
                 saved.proxy_auth_ref().cloned(),
                 saved.client_certificate_identity_ref().cloned(),
-                if preset_requires_manual_model(preset_index) {
+                if !manual_model.is_empty() {
                     Some(manual_model.clone())
                 } else {
                     saved.selected_model().map(str::to_owned)
@@ -4389,7 +4396,7 @@ fn connect_action_handlers(
                     None,
                     None,
                     None,
-                    preset_requires_manual_model(preset_index).then_some(manual_model.clone()),
+                    (!manual_model.is_empty()).then_some(manual_model.clone()),
                 ),
                 Err(error) => {
                     state.record_client_error(error.to_string());
@@ -4616,7 +4623,7 @@ fn connect_action_handlers(
                 saved.proxy_auth_ref().cloned(),
                 saved.client_certificate_identity_ref().cloned(),
                 saved.enabled(),
-                if preset_requires_manual_model(preset_index) {
+                if !manual_model.is_empty() {
                     Some(manual_model.clone())
                 } else {
                     saved.selected_model().map(str::to_owned)
@@ -4629,7 +4636,7 @@ fn connect_action_handlers(
                 None,
                 None,
                 true,
-                preset_requires_manual_model(preset_index).then_some(manual_model.clone()),
+                (!manual_model.is_empty()).then_some(manual_model.clone()),
             ),
         };
         let profile_id = match profile_id {
@@ -10204,13 +10211,10 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         .set_sensitive(provider_controls_enabled);
     bindings
         .manual_model_row
-        .set_visible(preset_requires_manual_model(
-            bindings.provider_preset.selected(),
-        ));
-    bindings.manual_model.set_sensitive(
-        provider_controls_enabled
-            && preset_requires_manual_model(bindings.provider_preset.selected()),
-    );
+        .set_visible(manual_model_field_visible());
+    bindings
+        .manual_model
+        .set_sensitive(provider_controls_enabled);
     bindings
         .provider_credential
         .set_sensitive(provider_controls_enabled);
@@ -14281,6 +14285,7 @@ mod tests {
             bindings.provider_name.text().as_str(),
             "本地 OpenAI 兼容提供商"
         );
+        assert!(bindings.manual_model_row.is_visible());
         bindings.provider_preset.set_selected(2);
         spin_main_context_until(&context, Duration::from_secs(1), || {
             bindings.manual_model_row.is_visible()

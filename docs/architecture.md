@@ -100,7 +100,7 @@ usage metadata through Core schema 32 in the same transaction as translation his
 localized output line with a provider-reported, locally estimated, or unknown source label. The
 record contains only bounded token counts, source, model ID, and a sanitized provider ID; source
 text, translated text, endpoints, and credentials are excluded. Translation-memory hits use a
-local estimate, while provider wire parsing and pricing remain outside this slice. Incognito and
+local estimate, while provider billing semantics and pricing remain outside this slice. Incognito and
 disabled-history requests write neither history nor usage, and history trimming, deletion, and
 clear-history remove corresponding usage rows. Core's ABI 1 command now also projects
 bounded non-secret organization, project, and custom-header metadata for native clients; Linux's
@@ -137,6 +137,11 @@ OpenAI Responses uses Core's `openai_responses` adapter with the shared `/v1/mod
 endpoint and `/v1/responses` translation endpoint. The client sends the credential only through
 the Bearer header and consumes typed SSE events, including `response.output_text.delta` and
 `response.completed`; metadata events are not treated as translated text.
+
+All GTK presets expose an optional manual model field. Core uses provider-native or
+protocol-compatible model discovery first, then keeps a validated selected model as a `Manual`
+entry when discovery returns no models or a typed `ModelUnavailable` response. Authentication,
+network, and timeout failures are not converted into a manual-model success.
 
 The Linux text workspace accepts an in-memory request-level glossary field. Core validates duplicate
 rules and credential-shaped terms, selects only locale-matching entries, protects immutable names,
