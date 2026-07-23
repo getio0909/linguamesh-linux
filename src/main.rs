@@ -152,6 +152,7 @@ struct UiBindings {
     connect: gtk::Button,
     test_connection: gtk::Button,
     active_provider: gtk::Label,
+    provider_health: gtk::Label,
     model: gtk::DropDown,
     source_locale: gtk::DropDown,
     target_locale: gtk::DropDown,
@@ -817,6 +818,7 @@ fn create_window(
         connect,
         test_connection,
         active_provider,
+        provider_health,
         provider_title,
         provider_note,
     ) = create_provider_session();
@@ -1120,6 +1122,7 @@ fn create_window(
         connect,
         test_connection,
         active_provider,
+        provider_health,
         model,
         source_locale,
         target_locale,
@@ -1740,6 +1743,7 @@ fn create_provider_session() -> (
     gtk::Label,
     gtk::Label,
     gtk::Label,
+    gtk::Label,
 ) {
     let locale = UiLocale::default();
     let section = gtk::Box::new(gtk::Orientation::Vertical, 6);
@@ -2161,6 +2165,12 @@ fn create_provider_session() -> (
     active_provider.set_xalign(0.0);
     active_provider.set_wrap(true);
     section.append(&active_provider);
+    let provider_health = gtk::Label::new(None);
+    provider_health.set_xalign(0.0);
+    provider_health.set_wrap(true);
+    provider_health.add_css_class("dim-label");
+    provider_health.set_visible(false);
+    section.append(&provider_health);
     (
         section,
         saved_profile,
@@ -2189,6 +2199,7 @@ fn create_provider_session() -> (
         connect,
         test_connection,
         active_provider,
+        provider_health,
         title,
         note,
     )
@@ -8794,6 +8805,81 @@ fn refresh_active_provider_label(bindings: &UiBindings, state: &AppState) {
     }
 }
 
+// 将健康检查失败类别映射到现有的本地化错误类别。
+fn localized_provider_health_category(locale: UiLocale, kind: ErrorKind) -> String {
+    let (key, fallback) = match kind {
+        ErrorKind::Cancelled => ("error.category.cancellation", "Cancellation"),
+        ErrorKind::InvalidEndpoint => ("error.category.invalid_endpoint", "Invalid endpoint"),
+        ErrorKind::Network => ("error.category.network", "Network"),
+        ErrorKind::Timeout => ("error.category.timeout", "Timeout"),
+        ErrorKind::Authentication => ("error.category.authentication", "Authentication"),
+        ErrorKind::ModelUnavailable => ("error.category.model_unavailable", "Model unavailable"),
+        ErrorKind::MalformedResponse => ("error.category.malformed_response", "Malformed response"),
+        ErrorKind::Persistence => ("error.category.persistence", "Persistence"),
+        ErrorKind::ProtocolIncompatible => (
+            "error.category.protocol_incompatible",
+            "Protocol incompatible",
+        ),
+        ErrorKind::InvalidConfiguration => (
+            "error.category.invalid_configuration",
+            "Invalid configuration",
+        ),
+        ErrorKind::UnsupportedCapability => (
+            "error.category.unsupported_capability",
+            "Unsupported capability",
+        ),
+        ErrorKind::SecretUnavailable => ("error.category.secret_unavailable", "Secret unavailable"),
+        ErrorKind::SecureStorageUnavailable => (
+            "error.category.secure_storage_unavailable",
+            "Secure storage unavailable",
+        ),
+        ErrorKind::Internal => ("error.category.internal", "Internal"),
+    };
+    localization::text(locale, key, fallback)
+}
+
+// 将持久化的 Unix 秒转换为不含本地敏感数据的稳定 UTC 时间文本。
+fn provider_health_timestamp(timestamp: i64) -> String {
+    glib::DateTime::from_unix_utc(timestamp)
+        .and_then(|date_time| date_time.format_iso8601())
+        .map_or_else(|_| timestamp.to_string(), |value| value.to_string())
+}
+
+// 刷新当前选中配置的非秘密健康状态展示。
+fn refresh_provider_health_label(bindings: &UiBindings, state: &AppState) {
+    let profile = state
+        .selected_saved_profile()
+        .or_else(|| state.active_provider());
+    let Some(profile) = profile else {
+        bindings.provider_health.set_label("");
+        bindings.provider_health.set_visible(false);
+        return;
+    };
+    let health = if let Some(category) = profile.last_failure_category() {
+        let category = localized_provider_health_category(state.locale(), category);
+        localized_template(
+            state.locale(),
+            "provider.health.failure",
+            "Last provider health check failed: {category}",
+            [("{category}", category.as_str())].as_slice(),
+        )
+    } else if let Some(timestamp) = profile.last_successful_health_check() {
+        let timestamp = provider_health_timestamp(timestamp);
+        localized_template(
+            state.locale(),
+            "provider.health.success",
+            "Last provider health check: {timestamp}",
+            [("{timestamp}", timestamp.as_str())].as_slice(),
+        )
+    } else {
+        bindings.provider_health.set_label("");
+        bindings.provider_health.set_visible(false);
+        return;
+    };
+    bindings.provider_health.set_label(&health);
+    bindings.provider_health.set_visible(true);
+}
+
 #[allow(clippy::too_many_lines)]
 fn refresh_onboarding(bindings: &UiBindings, state: &AppState) {
     let onboarding_phase = state.onboarding_stage();
@@ -10100,6 +10186,7 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     let document_job_available = bindings.document_job_id.borrow().is_some();
     refresh_onboarding(bindings, state);
     refresh_active_provider_label(bindings, state);
+    refresh_provider_health_label(bindings, state);
     bindings
         .provider_name
         .set_sensitive(provider_controls_enabled);
@@ -10303,9 +10390,10 @@ mod tests {
         document_translation_report, endpoint_matches_preset_default, export_write_strategy,
         fallback_confirmation_needed, generate_custom_provider_id, load_source_file,
         localized_document_job_state, localized_document_warnings, localized_provider_default_name,
-        localized_template, model_descriptor_label, normalized_candidate_ids_for_mode,
-        output_metrics_label, preset_requires_manual_model, provider_preset_config,
-        provider_preset_index, quality_mode_for_selection, quality_mode_selection, refresh_ui,
+        localized_provider_health_category, localized_template, model_descriptor_label,
+        normalized_candidate_ids_for_mode, output_metrics_label, preset_requires_manual_model,
+        provider_health_timestamp, provider_preset_config, provider_preset_index,
+        quality_mode_for_selection, quality_mode_selection, refresh_ui,
         routing_constraints_from_controls, routing_constraints_from_text_values,
         routing_identifier_list_from_text, routing_optional_limit_from_text,
         routing_preference_for_selection, routing_preference_selection,
@@ -10362,6 +10450,15 @@ mod tests {
         assert!(!valid_routing_profile_id("routing profile"));
         assert!(!valid_routing_profile_id("配置"));
         assert!(!valid_routing_profile_id(&"a".repeat(129)));
+    }
+
+    #[test]
+    fn provider_health_helpers_are_stable_and_localized() {
+        assert_eq!(provider_health_timestamp(0), "1970-01-01T00:00:00Z");
+        assert_eq!(
+            localized_provider_health_category(UiLocale::English, ErrorKind::Authentication),
+            "Authentication"
+        );
     }
 
     #[test]

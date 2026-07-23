@@ -3007,3 +3007,15 @@ msgstr "目录"
 msgctxt "model.source.manual"
 msgid "Manual"
 msgstr "手动"
+
+#. Last successful provider health-check timestamp shown in the Linux Provider Hub.
+#, fuzzy, python-brace-format
+msgctxt "provider.health.success"
+msgid "Last provider health check: {timestamp}"
+msgstr "上次提供商健康检查：{timestamp}"
+
+#. Normalized provider health failure category shown in the Linux Provider Hub.
+#, fuzzy, python-brace-format
+msgctxt "provider.health.failure"
+msgid "Last provider health check failed: {category}"
+msgstr "上次提供商健康检查失败：{category}"
