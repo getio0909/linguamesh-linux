@@ -2449,3 +2449,18 @@ msgstr "Optional PEM certificate bundle; TLS verification remains enabled"
 msgctxt "tooltip.provider_trusted_certificates_pem"
 msgid "Optional trusted certificate PEM bundle; system roots remain trusted and TLS verification stays enabled"
 msgstr "Optional trusted certificate PEM bundle; system roots remain trusted and TLS verification stays enabled"
+
+#. Label for an optional PEM client certificate identity.
+msgctxt "label.provider_client_certificate_identity"
+msgid "Client certificate identity (PEM)"
+msgstr "Client certificate identity (PEM)"
+
+#. Placeholder for an optional PEM client certificate and private key identity.
+msgctxt "placeholder.provider_client_certificate_identity"
+msgid "Optional PEM client certificate and private key identity"
+msgstr "Optional PEM client certificate and private key identity"
+
+#. Tooltip for the optional PEM client certificate identity.
+msgctxt "tooltip.provider_client_certificate_identity"
+msgid "Kept in memory for the connection and stored in Secret Service only when remembered"
+msgstr "Kept in memory for the connection and stored in Secret Service only when remembered"

@@ -20,7 +20,7 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `cee5bd8abc5b35a50640c484bc4fbeedeb426745`, which adds bounded
+reviewed Core functional revision `3013f10cdbbecc0b9081b0e3a30a45a3e95ec5b5`, which adds bounded
 FileLease lifecycle validation and strict
 routing-profile validation, schema-15 routing-profile persistence, schema-16 document-job
 routing-profile persistence, and schema-17 document quality-mode persistence on top of the existing
@@ -52,7 +52,10 @@ provider request timeout (1–600 seconds, default 30), connection-establishment
 seconds, default 10), and streaming idle timeout (1–300 seconds, default 60) are saved with the
 profile and applied independently by Core's transport. The streaming idle budget resets after each
 received response chunk. An optional bounded PEM trust bundle augments system roots while TLS
-verification remains enabled; private keys and malformed bundles are rejected.
+verification remains enabled; private keys and malformed bundles are rejected. An optional
+combined PEM client certificate/private-key identity is entered through a masked field, resolved
+through a persistent or session SecretRef, and applied by Core rustls without disabling
+verification. The identity is cleared from the form immediately and never stored in SQLite.
 Saved profiles restore these values;
 custom headers reject authorization, credential-shaped, and built-in metadata names, while the
 application layer forwards safe headers to Chat Completions, Responses, and Azure Chat without

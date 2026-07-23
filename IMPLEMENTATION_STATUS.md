@@ -1,5 +1,21 @@
 # Implementation Status
 
+## 2026-07-23 — Linux client-certificate identity settings
+
+Assumption: Linux is the active client scope and enterprise mutual-TLS credentials must be
+reference-only; the smallest complete UI accepts one combined PEM certificate/private-key identity.
+
+- The GTK provider form adds a masked client-certificate identity field, clears it immediately
+  after capture, restores only its `SecretRef`, and stores the value in Secret Service only when
+  the user explicitly remembers the profile. Session-only profiles keep the identity in memory.
+- Core `3013f10cdbbecc0b9081b0e3a30a45a3e95ec5b5` (schema 31) validates and stores only the
+  identity reference; all built-in provider adapters apply the one-shot identity through reqwest
+  rustls while retaining system roots and TLS verification. l10n `552d87e88a8df42055b1ac76e4dfbaadca92e291`
+  supplies source revision 59 and the 480-message generated bundle.
+- Local validation is in progress: Core workspace tests and Linux demo-provider checks already
+  compile with the new field; final GUI/Clippy/Flatpak evidence and remote CI will be recorded
+  against the pushed Linux implementation head. Release stays `unreleased`.
+
 ## 2026-07-23 — Linux proxy authentication SecretRef settings
 
 Assumption: Linux is the only client in scope for this slice; other native clients and live

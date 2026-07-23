@@ -139,6 +139,7 @@ struct UiBindings {
     provider_connection_timeout: gtk::SpinButton,
     provider_streaming_idle_timeout: gtk::SpinButton,
     provider_trusted_certificates_pem: gtk::Entry,
+    provider_client_certificate_identity: gtk::PasswordEntry,
     provider_custom_headers: gtk::Entry,
     provider_secret_custom_headers: gtk::PasswordEntry,
     manual_model_row: gtk::Box,
@@ -768,6 +769,7 @@ fn create_window(
         provider_connection_timeout,
         provider_streaming_idle_timeout,
         provider_trusted_certificates_pem,
+        provider_client_certificate_identity,
         provider_custom_headers,
         provider_secret_custom_headers,
         manual_model_row,
@@ -1068,6 +1070,7 @@ fn create_window(
         provider_connection_timeout,
         provider_streaming_idle_timeout,
         provider_trusted_certificates_pem,
+        provider_client_certificate_identity,
         provider_custom_headers,
         provider_secret_custom_headers,
         manual_model_row,
@@ -1321,6 +1324,13 @@ fn install_keyboard_focus_probe(
             "provider_trusted_certificates_pem",
             bindings
                 .provider_trusted_certificates_pem
+                .clone()
+                .upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_client_certificate_identity",
+            bindings
+                .provider_client_certificate_identity
                 .clone()
                 .upcast::<gtk::Widget>(),
         ),
@@ -1668,6 +1678,7 @@ fn create_provider_session() -> (
     gtk::SpinButton,
     gtk::SpinButton,
     gtk::Entry,
+    gtk::PasswordEntry,
     gtk::Entry,
     gtk::PasswordEntry,
     gtk::Box,
@@ -1893,6 +1904,20 @@ fn create_provider_session() -> (
         "tooltip.provider_trusted_certificates_pem",
         "Optional trusted certificate PEM bundle; system roots remain trusted and TLS verification stays enabled",
     )));
+    let provider_client_certificate_identity = gtk::PasswordEntry::builder()
+        .show_peek_icon(true)
+        .hexpand(true)
+        .build();
+    provider_client_certificate_identity.set_placeholder_text(Some(&localization::text(
+        locale,
+        "placeholder.provider_client_certificate_identity",
+        "Optional PEM client certificate and private key identity",
+    )));
+    provider_client_certificate_identity.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_client_certificate_identity",
+        "Kept in memory for the connection and stored in Secret Service only when remembered",
+    )));
     let provider_custom_headers = gtk::Entry::new();
     provider_custom_headers.set_hexpand(true);
     provider_custom_headers.set_placeholder_text(Some(&localization::text(
@@ -2049,6 +2074,14 @@ fn create_provider_session() -> (
     fields.append(&labeled_control(
         &localized_mnemonic(
             locale,
+            "label.provider_client_certificate_identity",
+            "Client certificate identity (PEM)",
+        ),
+        provider_client_certificate_identity.upcast_ref::<gtk::Widget>(),
+    ));
+    fields.append(&labeled_control(
+        &localized_mnemonic(
+            locale,
             "label.provider_custom_headers",
             "Custom headers (non-secret JSON)",
         ),
@@ -2096,6 +2129,7 @@ fn create_provider_session() -> (
         provider_connection_timeout,
         provider_streaming_idle_timeout,
         provider_trusted_certificates_pem,
+        provider_client_certificate_identity,
         provider_custom_headers,
         provider_secret_custom_headers,
         manual_model_row,
@@ -2832,6 +2866,7 @@ fn show_saved_profile_in_form(bindings: &UiBindings, profile: &ProviderProfile) 
         .set_visible(preset_requires_manual_model(preset_index));
     bindings.provider_credential.set_text("");
     bindings.provider_proxy_credentials.set_text("");
+    bindings.provider_client_certificate_identity.set_text("");
     // 保存的秘密请求头只保留引用，不把 Secret Service 内容回填到表单。
     bindings.provider_secret_custom_headers.set_text("");
     bindings.remember_profile.set_active(true);
@@ -2864,6 +2899,7 @@ fn show_new_profile_in_form(
     bindings.provider_connection_timeout.set_value(10.0);
     bindings.provider_streaming_idle_timeout.set_value(60.0);
     bindings.provider_trusted_certificates_pem.set_text("");
+    bindings.provider_client_certificate_identity.set_text("");
     bindings.provider_custom_headers.set_text("");
     bindings.manual_model.set_text("");
     bindings.manual_model_row.set_visible(false);
@@ -2892,6 +2928,7 @@ fn custom_provider_profile(
     connection_timeout_secs: u32,
     streaming_idle_timeout_secs: u32,
     trusted_certificates_pem: Option<String>,
+    client_certificate_identity_ref: Option<SecretRef>,
     custom_headers: Option<String>,
     selected_model: Option<String>,
 ) -> Result<ProviderProfile, TranslationError> {
@@ -2913,6 +2950,7 @@ fn custom_provider_profile(
     .and_then(|profile| profile.with_connection_timeout_secs(connection_timeout_secs))
     .and_then(|profile| profile.with_streaming_idle_timeout_secs(streaming_idle_timeout_secs))
     .and_then(|profile| profile.with_trusted_certificates_pem(trusted_certificates_pem))
+    .map(|profile| profile.with_client_certificate_identity_ref(client_certificate_identity_ref))
     .and_then(|profile| profile.with_custom_headers(custom_headers))
     .and_then(|profile| profile.with_selected_model(selected_model))
     .map_err(|error| {
@@ -3883,6 +3921,15 @@ fn connect_action_handlers(
         };
         let trusted_certificates_pem =
             provider_trusted_certificates_pem(&test_bindings.provider_trusted_certificates_pem);
+        let client_certificate_identity_text =
+            test_bindings.provider_client_certificate_identity.text();
+        let has_client_certificate_identity = !client_certificate_identity_text.is_empty();
+        let session_client_certificate_identity = has_client_certificate_identity
+            .then(|| SecretValue::new(client_certificate_identity_text.as_str()));
+        test_bindings
+            .provider_client_certificate_identity
+            .set_text("");
+        drop(client_certificate_identity_text);
         let custom_headers_text = test_bindings
             .provider_custom_headers
             .text()
@@ -3945,6 +3992,7 @@ fn connect_action_handlers(
             saved_secret_ref,
             saved_secret_custom_headers_ref,
             saved_proxy_auth_ref,
+            saved_client_certificate_identity_ref,
             selected_model,
         ) = match state.selected_saved_profile() {
             Some(saved) => (
@@ -3952,6 +4000,7 @@ fn connect_action_handlers(
                 saved.secret_ref().cloned(),
                 saved.secret_custom_headers_ref().cloned(),
                 saved.proxy_auth_ref().cloned(),
+                saved.client_certificate_identity_ref().cloned(),
                 if preset_requires_manual_model(preset_index) {
                     Some(manual_model.clone())
                 } else {
@@ -3961,6 +4010,7 @@ fn connect_action_handlers(
             None => match ensure_draft_profile_id(&test_bindings, &state) {
                 Ok(profile_id) => (
                     profile_id,
+                    None,
                     None,
                     None,
                     None,
@@ -3988,6 +4038,11 @@ fn connect_action_handlers(
         } else {
             saved_proxy_auth_ref
         };
+        let client_certificate_identity_ref = if has_client_certificate_identity {
+            Some(SecretRef::new(SecretRefNamespace::Session))
+        } else {
+            saved_client_certificate_identity_ref
+        };
         let profile = match custom_provider_profile(
             profile_id,
             display_name,
@@ -4005,6 +4060,7 @@ fn connect_action_handlers(
             connection_timeout_secs,
             streaming_idle_timeout_secs,
             trusted_certificates_pem,
+            client_certificate_identity_ref,
             custom_headers,
             selected_model,
         ) {
@@ -4023,6 +4079,7 @@ fn connect_action_handlers(
             secret: session_secret,
             secret_custom_headers: session_secret_custom_headers,
             proxy_authentication: session_proxy_authentication,
+            client_certificate_identity: session_client_certificate_identity,
         }) {
             state.record_client_error(error.to_string());
         }
@@ -4097,6 +4154,15 @@ fn connect_action_handlers(
         };
         let trusted_certificates_pem =
             provider_trusted_certificates_pem(&connect_bindings.provider_trusted_certificates_pem);
+        let client_certificate_identity_text =
+            connect_bindings.provider_client_certificate_identity.text();
+        let has_client_certificate_identity = !client_certificate_identity_text.is_empty();
+        let session_client_certificate_identity = has_client_certificate_identity
+            .then(|| SecretValue::new(client_certificate_identity_text.as_str()));
+        connect_bindings
+            .provider_client_certificate_identity
+            .set_text("");
+        drop(client_certificate_identity_text);
         let custom_headers_text = connect_bindings
             .provider_custom_headers
             .text()
@@ -4164,6 +4230,7 @@ fn connect_action_handlers(
             saved_secret_ref,
             saved_secret_custom_headers_ref,
             saved_proxy_auth_ref,
+            saved_client_certificate_identity_ref,
             enabled,
             selected_model,
         ) = match state.selected_saved_profile() {
@@ -4172,6 +4239,7 @@ fn connect_action_handlers(
                 saved.secret_ref().cloned(),
                 saved.secret_custom_headers_ref().cloned(),
                 saved.proxy_auth_ref().cloned(),
+                saved.client_certificate_identity_ref().cloned(),
                 saved.enabled(),
                 if preset_requires_manual_model(preset_index) {
                     Some(manual_model.clone())
@@ -4181,6 +4249,7 @@ fn connect_action_handlers(
             ),
             None => (
                 ensure_draft_profile_id(&connect_bindings, &state),
+                None,
                 None,
                 None,
                 None,
@@ -4251,6 +4320,25 @@ fn connect_action_handlers(
         } else {
             None
         };
+        let persistent_client_certificate_identity_ref =
+            if remember_profile && has_client_certificate_identity {
+                let secret_ref = saved_client_certificate_identity_ref
+                    .clone()
+                    .filter(SecretRef::is_persistent)
+                    .unwrap_or_else(|| SecretRef::new(SecretRefNamespace::SecretService));
+                if let Some(secret) = session_client_certificate_identity.as_ref()
+                    && let Err(error) = secret_service::store_secret(&secret_ref, secret)
+                {
+                    state.provider_failed(error);
+                    refresh_ui(&connect_bindings, &state);
+                    drop(state);
+                    show_secret_storage_session_fallback(&connect_bindings, &connect_state);
+                    return;
+                }
+                Some(secret_ref)
+            } else {
+                None
+            };
         let secret_custom_headers_ref =
             if let Some(secret_ref) = persistent_secret_custom_headers_ref {
                 Some(secret_ref)
@@ -4266,6 +4354,14 @@ fn connect_action_handlers(
         } else {
             saved_proxy_auth_ref
         };
+        let client_certificate_identity_ref =
+            if let Some(secret_ref) = persistent_client_certificate_identity_ref {
+                Some(secret_ref)
+            } else if has_client_certificate_identity {
+                Some(SecretRef::new(SecretRefNamespace::Session))
+            } else {
+                saved_client_certificate_identity_ref
+            };
         let profile = match custom_provider_profile(
             profile_id,
             display_name,
@@ -4289,6 +4385,7 @@ fn connect_action_handlers(
             connection_timeout_secs,
             streaming_idle_timeout_secs,
             trusted_certificates_pem,
+            client_certificate_identity_ref,
             custom_headers,
             selected_model,
         )
@@ -4312,6 +4409,7 @@ fn connect_action_handlers(
                     secret: session_secret,
                     secret_custom_headers: session_secret_custom_headers,
                     proxy_authentication: session_proxy_authentication,
+                    client_certificate_identity: session_client_certificate_identity,
                     persistence: if remember_profile {
                         PersistenceIntent::Persistent
                     } else {
