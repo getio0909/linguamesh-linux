@@ -13,8 +13,10 @@ while Android, Windows, macOS, stable release, and human/physical evidence remai
   the worker fixture. Flatpak packaging `4784764b50b4362833e26a1e88b3792a811ae768` pins both
   Core and Linux inputs to these health-aware revisions.
 - Local Core workspace tests passed; Linux `cargo test --lib --all-features` passed 163 tests with
-  12 documented environment-gated ignores. Remote Linux Native/Flatpak/Foundation gates for the
-  new head are still running; release remains `unreleased` until they finish and broader project
+  12 documented environment-gated ignores. Final-head push Native/Flatpak/Foundation runs
+  `30010795356`/`30010795221`/`30010795318` and PR Native/Flatpak/Foundation runs
+  `30010798544`/`30010798478`/`30010798760` passed, including the full GTK/portal/accessibility,
+  release-evidence, and performance steps. Release remains `unreleased` until broader project
   acceptance conditions exist.
 
 ## 2026-07-23 — Linux model provenance labels
