@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-23 — Linux provider streaming idle timeout settings
+
+Assumption: a bounded streaming idle timeout of 1–300 seconds (default 60) is the smallest
+complete follow-up to connection timeout; the budget resets after each received response chunk,
+while TLS policy remains separate.
+
+- Core `b247155ad429639fdb65d3b063c3efc580ce46a4` adds schema 28 persistence, range validation,
+  and typed per-chunk timeout handling across OpenAI Chat/Responses/Azure, Anthropic, Gemini, and
+  Ollama. l10n `2e223f9a416f4b461b72224f12c31cbf7981dae3` supplies the 471-message bundle. Linux
+  `53d7bb5` includes the GTK control, saved-profile restore/default behavior, exact source pins,
+  and release documentation.
+- Local Core workspace checks, Linux tests and strict Clippy, l10n `make check`, synchronization,
+  Flatpak metadata, and diff checks passed. Remote gate evidence is recorded after the current
+  push/PR runs settle. Release remains `unreleased`.
+
 ## 2026-07-23 — Linux provider connection timeout settings
 
 Assumption: this slice adds only the bounded connection-establishment timeout (1–120 seconds,
