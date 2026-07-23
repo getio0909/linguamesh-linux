@@ -13,10 +13,14 @@ interoperability.
 - The new serialized Xvfb/DBus Native workflow step keeps both protocol flows in one process and
   proves the GTK credential field is cleared immediately after capture. No provider inference is
   issued before deliberate model selection.
-- Local formatting, GUI source check, strict Clippy, and core-library tests (`83 passed; 1 ignored`)
-  passed. The full GTK test binary remains host-limited by missing GTK linker symbols; remote
-  Native, Flatpak, and Foundation gates are authoritative for the ignored fixture. Release remains
-  `unreleased`.
+- Implementation head `8006f7a37b81db7c547be717b72860ee610ca7d7` adds the fixture and docs; final
+  packaging/status head `5f1634c615f9e1a7ca3de8e37a99e4efc1f02b9e` repins the Flatpak source
+  exactly to the fixture source. Local formatting, GUI source check, strict Clippy, core-library
+  tests (`83 passed; 1 ignored`), and diff checks passed. The full GTK test binary remains
+  host-limited by missing GTK linker symbols; `xvfb-run` is unavailable locally. Final push
+  Native/Flatpak/Foundation runs `29981441794`/`29981441765`/`29981441767` and PR runs
+  `29981443146`/`29981443162`/`29981443177` all passed, including the serialized fixture. Release
+  remains `unreleased`.
 
 ## 2026-07-23 — GTK one-click provider switch evidence
 
