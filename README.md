@@ -20,7 +20,7 @@ typed errors, switches appearance, records locale preference, and exposes redact
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `2a3534faa9a2531cbbc6cc06d325ad7c82c69394`, which adds bounded
+reviewed Core functional revision `dffa07eca2b006279f99673edff5bd0ae1b24a0f`, which adds bounded
 FileLease lifecycle validation and strict
 routing-profile validation, schema-15 routing-profile persistence, schema-16 document-job
 routing-profile persistence, and schema-17 document quality-mode persistence on top of the existing
@@ -250,7 +250,7 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`bba90a89089c954bdfe1dcda19c210e6ea230b9e` and validated with `msgfmt`; the 465-message bundle
+`d8d9084cdf0448039ad0aa7612e8725c6c875036` and validated with `msgfmt`; the 494-message bundle
 adds Linux routing-profile persistence/editor, profile-ID validation and duplicate protection, ordinary-text selection labels, routing preference/privacy/document constraints, provider/model allowlists and denylists, quality/request-size limits, translation quality-mode and translation-preset labels, and source/output character plus approximate-token metrics. The locale selector
 exposes all twelve official BCP 47 packs plus the generated `en-XA` accented and `ar-XB` RTL
 pseudo-locales. It switches runtime action, workspace-widget,
@@ -311,9 +311,10 @@ Long source text is split at paragraph, sentence, or whitespace boundaries using
 16 KiB byte estimate when no tokenizer is available; opaque protected markers remain whole and
 chunks stream sequentially with cancellation preserved.
 
-The glossary controls also support bounded UTF-8 CSV interchange. **Import glossary** reads a
-4 MiB-or-smaller CSV through the native file dialog, validates the fixed schema and up to 256
-rules in Core, and keeps the imported rules request-scoped in memory. **Export glossary** writes
+The glossary controls support bounded UTF-8 CSV and TBX interchange. **Import glossary** reads a
+4 MiB-or-smaller file through the native file dialog, accepts the fixed CSV schema or restricted
+TBX language sets, validates up to 256 rules in Core, and keeps imported rules request-scoped in
+memory. **Export glossary** writes
 the deterministic Core CSV schema to a user-selected file without persisting credentials or
 glossary content in provider profiles or SQLite.
 

@@ -1,5 +1,22 @@
 # Implementation Status
 
+## 2026-07-23 — Linux bounded TBX glossary import
+
+Assumption: Linux is the active client priority; the GTK client adopts Core's restricted TBX
+contract while Android, Windows, and macOS remain unchanged and cross-client parity is unverified.
+
+- Core `dffa07eca2b006279f99673edff5bd0ae1b24a0f` adds bounded UTF-8 TBX parsing with first-source
+  language mapping, target-language expansion, locale/note preservation, XML entity handling, and
+  fail-closed DTD, malformed, missing-term, conflict, credential-shape, size, and entry limits.
+- The GTK glossary chooser now accepts CSV/TBX MIME types and suffixes, applies the 4 MiB partial
+  read bound, and dispatches `.tbx` by filename to Core. l10n `d8d9084cdf0448039ad0aa7612e8725c6c875036`
+  supplies the revision-62 chooser/error copy and synchronized PO/MO resources.
+- Local validation passed Flatpak metadata, all three localization audits, `cargo fmt --all --check`,
+  strict all-feature Clippy, and `cargo test --features demo-provider --lib --locked -- --nocapture`
+  (`160 passed; 0 failed; 3 ignored`). Release remains `unreleased`; display-backed chooser,
+  manual accessibility, physical VFS/power-loss, signing, rollback, and other-client evidence remain
+  open.
+
 ## 2026-07-23 — Linux regional-locale and script translation presets
 
 Assumption: the existing translation-preset selector is the smallest complete Linux surface for

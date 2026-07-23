@@ -106,8 +106,10 @@ The worker fixture `glossary_library_commands_persist_and_delete_across_worker_r
 Core schema 33 through the Linux command path. It saves a validated library, lists it, deletes it,
 and confirms the normalized term rows are gone. The GTK workspace actions now provide the
 production save/list/load/delete path; a display-backed selector fixture remains Native-CI
-authoritative because this host lacks the pinned GTK test runtime. TBX import and cross-client
-library parity are not claimed.
+authoritative because this host lacks the pinned GTK test runtime. The production glossary chooser
+now accepts `.csv` and `.tbx` files, applies the same 4 MiB partial-read bound, and dispatches TBX
+files to Core's restricted parser; Core tests cover entity decoding, DTD rejection, missing terms,
+and malformed/oversized input. Cross-client library parity is not claimed.
 
 The serialized GTK fixture `gtk_interrupted_document_job_restores_and_resumes` creates a persisted
 two-segment text job, drives the production Translate and Pause controls after the first segment is
@@ -805,7 +807,7 @@ contrast, motion, and text-scaling behavior; manual visual review remains requir
 releases.
 
 The GitHub Actions native workflow pins Core revision
-`53eee86ce0862bcb0b86f86da5e91257b07fe6d7`, installs the headers plus D-Bus, Xvfb, test-only
+`dffa07eca2b006279f99673edff5bd0ae1b24a0f`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
 namespace test through the unprivileged path.

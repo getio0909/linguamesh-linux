@@ -1502,17 +1502,17 @@ msgctxt "label.glossary_id"
 msgid "Glossary library ID"
 msgstr "Glossary library ID"
 
-#. Native file chooser filter for glossary CSV files.
+#. Native file chooser filter for glossary CSV and TBX files.
 #, fuzzy
 msgctxt "file.filter.csv"
-msgid "CSV glossary files"
-msgstr "CSV 詞彙表檔案"
+msgid "CSV and TBX glossary files"
+msgstr "CSV 和 TBX 詞彙表檔案"
 
-#. Safe error shown when a glossary CSV cannot be read or validated.
+#. Safe error shown when a glossary CSV or TBX cannot be read or validated.
 #, fuzzy
 msgctxt "error.glossary_import"
-msgid "The glossary CSV could not be imported."
-msgstr "無法匯入詞彙表 CSV。"
+msgid "The glossary file could not be imported."
+msgstr "無法匯入詞彙表檔案。"
 
 #. Native file chooser filter for routing profile JSON files.
 #, fuzzy

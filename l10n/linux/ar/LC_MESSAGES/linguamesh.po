@@ -1512,17 +1512,17 @@ msgctxt "label.glossary_id"
 msgid "Glossary library ID"
 msgstr "Glossary library ID"
 
-#. Native file chooser filter for glossary CSV files.
+#. Native file chooser filter for glossary CSV and TBX files.
 #, fuzzy
 msgctxt "file.filter.csv"
-msgid "CSV glossary files"
-msgstr "CSV glossary files"
+msgid "CSV and TBX glossary files"
+msgstr "CSV and TBX glossary files"
 
-#. Safe error shown when a glossary CSV cannot be read or validated.
+#. Safe error shown when a glossary CSV or TBX cannot be read or validated.
 #, fuzzy
 msgctxt "error.glossary_import"
-msgid "The glossary CSV could not be imported."
-msgstr "The glossary CSV could not be imported."
+msgid "The glossary file could not be imported."
+msgstr "The glossary file could not be imported."
 
 #. Native file chooser filter for routing profile JSON files.
 #, fuzzy

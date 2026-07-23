@@ -78,17 +78,18 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `60bd3d5c9c79358f80c47da391141342e9cf5712` (schema 29) and l10n
-`d315efe808e05ce2fb0ee24c0247076298d57947` (474 catalog messages). The profile contract includes
+The current Linux gate consumes Core `dffa07eca2b006279f99673edff5bd0ae1b24a0f` and l10n
+`d8d9084cdf0448039ad0aa7612e8725c6c875036` (494 catalog messages). The profile contract includes
 a bounded total provider request timeout of 1–600 seconds, a bounded connection-establishment
 timeout of 1–120 seconds (default 10), and a bounded streaming-idle timeout of 1–300 seconds
 (default 60). Optional PEM trust bundles augment system roots without disabling TLS verification;
 malformed bundles are rejected before transport construction. Normalized
 usage labels
 distinguish provider-reported, locally estimated, and unknown counts without pricing assumptions;
-provider billing equivalence and stable ABI projection remain open. Request-level glossary rules, bounded CSV,
-interchange are implemented in the Linux slice; persistent glossary libraries and TBX import
-remain outside the release claim.
+provider billing equivalence and stable ABI projection remain open. Request-level glossary rules,
+bounded CSV/TBX interchange, and persistent glossary libraries are implemented in the Linux slice;
+cross-client parity, live provider accounts, physical VFS/power-loss behavior, signing, rollback,
+and stable-release authorization remain outside the release claim.
 
 The Linux document slice now persists bounded TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF jobs, translates pending prose segments
 sequentially, and restores completed or cancelled snapshots into the editor. Validated non-secret

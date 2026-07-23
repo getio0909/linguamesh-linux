@@ -5,7 +5,7 @@ use linguamesh_document::{
     DocumentJobState, DocumentSegmentKind, DocumentWarning, DocumentWarningKind,
 };
 use linguamesh_domain::{
-    ErrorKind, FileLease, Glossary, GlossaryEntry, MAX_GLOSSARY_CSV_BYTES,
+    ErrorKind, FileLease, Glossary, GlossaryEntry, MAX_GLOSSARY_CSV_BYTES, MAX_GLOSSARY_TBX_BYTES,
     MAX_ROUTING_IDENTIFIER_BYTES, MAX_ROUTING_PROFILE_JSON_BYTES, OperationId, ProviderProfileId,
     RoutingCandidate, RoutingConstraints, RoutingMode, RoutingPreference, RoutingProfile,
     SecretRef, SecretRefNamespace, SecretValue, TranslationError, TranslationEvent,
@@ -2695,7 +2695,7 @@ fn current_document_options(
                 localization::text(
                     state.locale(),
                     "error.glossary_import",
-                    "The glossary CSV could not be imported.",
+                    "The glossary file could not be imported.",
                 ),
             )
         })
@@ -5130,14 +5130,17 @@ fn begin_source_file_open(
     );
 }
 
-// 通过 GTK 原生文件对话框选择受限的 UTF-8 词汇表 CSV 文件。
+// 通过 GTK 原生文件对话框选择受限的 UTF-8 词汇表 CSV 或 TBX 文件。
 fn begin_glossary_import(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
     let locale = state.borrow().locale();
-    let filter_name = localization::text(locale, "file.filter.csv", "CSV glossary files");
+    let filter_name = localization::text(locale, "file.filter.csv", "CSV and TBX glossary files");
     let filter = gtk::FileFilter::new();
     filter.set_name(Some(&filter_name));
     filter.add_mime_type("text/csv");
+    filter.add_mime_type("application/xml");
+    filter.add_mime_type("text/xml");
     filter.add_suffix("csv");
+    filter.add_suffix("tbx");
     let filters = gtk::gio::ListStore::new::<gtk::FileFilter>();
     filters.append(&filter);
     let dialog_title = localization::text(locale, "dialog.open_glossary", "Import glossary");
@@ -5161,18 +5164,28 @@ fn begin_glossary_import(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
                 &localization::text(
                     import_state.borrow().locale(),
                     "error.glossary_import",
-                    "The glossary CSV could not be imported.",
+                    "The glossary file could not be imported.",
                 ),
             ),
         },
     );
 }
 
-// 将词汇表 CSV 读取限制在领域层上限内，并只把安全的错误文本反馈给界面。
-#[allow(clippy::single_match_else)]
+// 将词汇表 CSV 或 TBX 读取限制在领域层上限内，并只把安全的错误文本反馈给界面。
+#[allow(clippy::single_match_else, clippy::too_many_lines)]
 fn load_glossary_file(file: &gtk::gio::File, bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
     let bytes_read = Rc::new(Cell::new(0_usize));
     let too_large = Rc::new(Cell::new(false));
+    let is_tbx = file.basename().is_some_and(|name| {
+        name.to_string_lossy()
+            .to_ascii_lowercase()
+            .ends_with(".tbx")
+    });
+    let max_bytes = if is_tbx {
+        MAX_GLOSSARY_TBX_BYTES
+    } else {
+        MAX_GLOSSARY_CSV_BYTES
+    };
     let read_bytes = Rc::clone(&bytes_read);
     let read_too_large = Rc::clone(&too_large);
     let load_bindings = bindings.clone();
@@ -5181,7 +5194,7 @@ fn load_glossary_file(file: &gtk::gio::File, bindings: &UiBindings, state: &Rc<R
         None::<&gtk::gio::Cancellable>,
         move |chunk| {
             let next = read_bytes.get().saturating_add(chunk.len());
-            if next > MAX_GLOSSARY_CSV_BYTES {
+            if next > max_bytes {
                 read_too_large.set(true);
                 false
             } else {
@@ -5196,7 +5209,7 @@ fn load_glossary_file(file: &gtk::gio::File, bindings: &UiBindings, state: &Rc<R
                     &localization::text(
                         load_state.borrow().locale(),
                         "error.glossary_import",
-                        "The glossary CSV could not be imported.",
+                        "The glossary file could not be imported.",
                     ),
                 );
                 return;
@@ -5211,20 +5224,25 @@ fn load_glossary_file(file: &gtk::gio::File, bindings: &UiBindings, state: &Rc<R
                             &localization::text(
                                 load_state.borrow().locale(),
                                 "error.glossary_import",
-                                "The glossary CSV could not be imported.",
+                                "The glossary file could not be imported.",
                             ),
                         );
                         return;
                     };
-                    match Glossary::from_csv(text) {
+                    let imported = if is_tbx {
+                        Glossary::from_tbx(text).map_err(|_| ())
+                    } else {
+                        Glossary::from_csv(text).map_err(|_| ())
+                    };
+                    match imported {
                         Ok(glossary) => glossary,
-                        Err(_) => {
+                        Err(()) => {
                             show_file_import_error(
                                 &load_bindings,
                                 &localization::text(
                                     load_state.borrow().locale(),
                                     "error.glossary_import",
-                                    "The glossary CSV could not be imported.",
+                                    "The glossary file could not be imported.",
                                 ),
                             );
                             return;
@@ -5237,7 +5255,7 @@ fn load_glossary_file(file: &gtk::gio::File, bindings: &UiBindings, state: &Rc<R
                         &localization::text(
                             load_state.borrow().locale(),
                             "error.glossary_import",
-                            "The glossary CSV could not be imported.",
+                            "The glossary file could not be imported.",
                         ),
                     );
                     return;
