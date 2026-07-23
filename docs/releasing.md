@@ -36,8 +36,10 @@ the saved provider/model pairs included in a profile. Manual mode persists exact
 provider/model pair; Ordered and Automatic preserve the selected chain. Adjacent up/down controls and row drag-and-drop
 set their Ordered-mode sequence and expose catalog-backed accessible labels. Existing profiles can
 be edited and saved through the same stable ID. New profiles use Core-compatible 1–128 byte ASCII
-IDs, and edit mode locks the existing ID so release references do not drift. This is configuration-surface evidence only
-and does not satisfy the complete candidate-management release gate.
+IDs, and edit mode locks the existing ID so release references do not drift. The automated Linux
+candidate-management boundary is covered by the serialized GTK lifecycle fixture and worker routing
+tests; this remains prerelease evidence until visual, translated-copy, end-user Orca, cross-client,
+signing, rollback, and stable-release review is complete.
 The serialized GTK lifecycle regression now proves edit-mode ID locking plus candidate deselection,
 save, worker list, and editor reload persistence. This remains prerelease test evidence until the
 required visual, translated-copy, and end-user Orca review is recorded.

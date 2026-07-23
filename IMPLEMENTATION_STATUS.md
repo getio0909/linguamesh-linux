@@ -29,6 +29,25 @@ This strengthens unreleased Linux Scenario 18 crash-durability evidence without 
 power-loss simulation, alternate SQLite or GIO VFS behavior, other clients, signing, rollback, or
 stable-release authorization.
 
+## 2026-07-23 — Linux routing candidate-management evidence reconciliation
+
+Assumption: the automated Linux candidate-management slice is complete for the tested GTK and
+worker boundaries; visual, translated-copy, end-user Orca, and distributable-release review remain
+separate qualification gates.
+
+- The current Linux head `d52ab2f7bd339f360a26497d5a42bb7184b742e9` contains the candidate editor
+  lineage `c0cdee8b729a6800904f67535430221feb55f78e` (drag ordering),
+  `a4dd4aa644335a3b6539db4d40473423c6292c71` (same-ID edit/save), and
+  `5c49a3a18c448542bc9cf055cd81b4a0b5f01e15` (serialized GTK lifecycle coverage).
+- The worker fallback chain and approval boundary are covered by
+  `0e2ae25c321cef243275d1322f2b8271f0602d06` and
+  `af200122e4862f6230d89268f5292f16438449bb`; Manual keeps one candidate, Ordered/Automatic
+  preserve the selected chain, and fallback remains explicit and one-shot.
+- Push Native/Flatpak/Foundation `30034083462`/`30034083390`/`30034083610` and PR
+  Native/Flatpak/Foundation `30034086699`/`30034087655`/`30034086738` passed, including the
+  routing candidate and fallback GTK fixtures. This is unreleased Linux evidence; human visual,
+  translated-copy, end-user Orca, cross-client, signing, rollback, and stable-release gates remain.
+
 ## 2026-07-23 — Linux localized language swap action
 
 Assumption: Linux remains the active implementation priority; the swap action is a local,
