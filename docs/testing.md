@@ -87,6 +87,12 @@ authentication error without the canary or HTTP status details. Native CI invoke
 under the same DBus/Xvfb serialization; the fixture is prerelease Scenario 8/Provider Hub evidence
 and does not claim live-provider or human visual/Orca review.
 
+The serialized GTK fixture `gtk_provider_health_label_tracks_selected_saved_profile_state` drives
+the Provider Hub health label through its hidden, successful-timestamp, normalized-failure, and
+cleared states using only non-secret saved-profile metadata. It confirms that the selected saved
+profile controls the label and that clearing the selection hides it again. Native CI runs this
+exact test under DBus/Xvfb; it does not claim live-provider, visual, or human accessibility review.
+
 The serialized GTK fixture `gtk_cancel_translation_preserves_partial_output` selects the slow
 loopback model, starts a real streamed translation, clicks the production **Stop translation**
 button after the first delta, and verifies that the partial output remains visible while the

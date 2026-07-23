@@ -173,6 +173,14 @@ jobs:
           env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
           tests::gtk_connection_test_reports_models_and_redacts_credential
           -- --exact --ignored --test-threads=1
+      - name: Run provider health GTK lifecycle fixture
+        working-directory: linguamesh-linux
+        run: >-
+          dbus-run-session -- xvfb-run --auto-servernum
+          --server-args="-screen 0 1280x800x24"
+          env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
+          tests::gtk_provider_health_label_tracks_selected_saved_profile_state
+          -- --exact --ignored --test-threads=1
       - name: Run GTK provider-switch lifecycle fixture
         working-directory: linguamesh-linux
         run: >-

@@ -10381,15 +10381,16 @@ mod tests {
         DEFAULT_PROVIDER_NAME, DEFAULT_RESPONSES_ENDPOINT, DEFAULT_RESPONSES_PROVIDER_NAME,
         ErrorKind, ExportWriteStrategy, GEMINI_ADAPTER_TYPE, GEMINI_PROVIDER_PRESET_ID,
         OLLAMA_ADAPTER_TYPE, OLLAMA_PROVIDER_PRESET_ID, OPENAI_ADAPTER_TYPE, OnboardingStage,
-        ProviderProfileId, RESPONSES_ADAPTER_TYPE, RESPONSES_PROVIDER_PRESET_ID, RoutingCandidate,
-        RoutingConstraintTextValues, RoutingDecisionSummary, RoutingProfile, RoutingProfileRecord,
-        SecretRef, SecretRefNamespace, SecretValue, TranslationError, UiLocale, WorkerCommand,
-        WorkerEvent, about_details, apply_worker_event, collision_safe_destination,
-        collision_safe_output_path, connect_action_handlers, connect_selection_handlers,
-        create_window, custom_provider_profile, destination_matches_source, document_format_label,
-        document_translation_report, endpoint_matches_preset_default, export_write_strategy,
-        fallback_confirmation_needed, generate_custom_provider_id, load_source_file,
-        localized_document_job_state, localized_document_warnings, localized_provider_default_name,
+        ProviderProfile, ProviderProfileId, RESPONSES_ADAPTER_TYPE, RESPONSES_PROVIDER_PRESET_ID,
+        RoutingCandidate, RoutingConstraintTextValues, RoutingDecisionSummary, RoutingProfile,
+        RoutingProfileRecord, SecretRef, SecretRefNamespace, SecretValue, TranslationError,
+        UiLocale, WorkerCommand, WorkerEvent, about_details, apply_worker_event,
+        collision_safe_destination, collision_safe_output_path, connect_action_handlers,
+        connect_selection_handlers, create_window, custom_provider_profile,
+        destination_matches_source, document_format_label, document_translation_report,
+        endpoint_matches_preset_default, export_write_strategy, fallback_confirmation_needed,
+        generate_custom_provider_id, load_source_file, localized_document_job_state,
+        localized_document_warnings, localized_provider_default_name,
         localized_provider_health_category, localized_template, model_descriptor_label,
         normalized_candidate_ids_for_mode, output_metrics_label, preset_requires_manual_model,
         provider_health_timestamp, provider_preset_config, provider_preset_index,
@@ -10459,6 +10460,87 @@ mod tests {
             localized_provider_health_category(UiLocale::English, ErrorKind::Authentication),
             "Authentication"
         );
+    }
+
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_provider_health_label_tracks_selected_saved_profile_state() {
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.ProviderHealthTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK provider health test application");
+
+        let profile_id = ProviderProfileId::parse("health-profile").expect("health profile ID");
+        let success_profile = ProviderProfile::new(
+            profile_id,
+            "Health profile",
+            CUSTOM_PROVIDER_PRESET_ID,
+            OPENAI_ADAPTER_TYPE,
+            "http://127.0.0.1:1",
+            None,
+        )
+        .expect("health profile")
+        .with_last_successful_health_check(Some(1_750_000_000))
+        .expect("valid health timestamp");
+        let state = Rc::new(RefCell::new(AppState::default()));
+        state
+            .borrow_mut()
+            .restore_saved_profile(success_profile.clone())
+            .expect("restore health profile");
+        let (window, bindings, _, _) = create_window(&application);
+        window.present();
+
+        refresh_ui(&bindings, &state.borrow());
+        let expected_success = localized_template(
+            UiLocale::English,
+            "provider.health.success",
+            "Last provider health check: {timestamp}",
+            &[("{timestamp}", "2025-06-15T15:06:40Z")],
+        );
+        assert!(bindings.provider_health.is_visible());
+        assert_eq!(bindings.provider_health.label(), expected_success);
+
+        let failure_profile = success_profile
+            .with_last_successful_health_check(None)
+            .expect("clear health timestamp")
+            .with_last_failure_category(Some(ErrorKind::Authentication));
+        state
+            .borrow_mut()
+            .update_saved_profile_health(failure_profile.clone())
+            .expect("update failed health");
+        refresh_ui(&bindings, &state.borrow());
+        let expected_failure = localized_template(
+            UiLocale::English,
+            "provider.health.failure",
+            "Last provider health check failed: {category}",
+            &[("{category}", "Authentication")],
+        );
+        assert!(bindings.provider_health.is_visible());
+        assert_eq!(bindings.provider_health.label(), expected_failure);
+
+        let no_health_profile = failure_profile.with_last_failure_category(None);
+        state
+            .borrow_mut()
+            .update_saved_profile_health(no_health_profile)
+            .expect("clear failed health");
+        refresh_ui(&bindings, &state.borrow());
+        assert!(!bindings.provider_health.is_visible());
+        assert_eq!(bindings.provider_health.label(), "");
+
+        state
+            .borrow_mut()
+            .select_saved_profile(None)
+            .expect("clear selected profile");
+        refresh_ui(&bindings, &state.borrow());
+        assert!(!bindings.provider_health.is_visible());
+        assert_eq!(bindings.provider_health.label(), "");
+
+        window.close();
+        application.quit();
     }
 
     #[test]
