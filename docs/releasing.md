@@ -80,7 +80,7 @@ future release gate below.
 
 The current Linux gate consumes Core `8623b2c8829e4d9cf7299c74440dcfabb4e320db` and l10n
 `c2526bfb3f6ff57895bdc3eeed743e26c8783613` (506 catalog messages). The reviewed Flatpak source
-pin is Linux `a7ac73d6fe8707519dd02698c26ebf8ca78a4246`; the current packaging pin is the same
+pin is Linux `d6c1c51c3707bf367d4b6b1a06e9cf8faa37ebc5`; the current packaging pin is the same
 commit. The Provider Hub displays the
 selected saved profile's last health-check timestamp or normalized failure category using the
 same catalog; raw provider diagnostics and credentials remain excluded. The profile contract includes
