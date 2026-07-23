@@ -80,8 +80,8 @@ future release gate below.
 
 The current Linux gate consumes Core `460728d79b0e2373445c3d8994793d069b8057b9` and l10n
 `7c2cb9fd71835ea0f9c6605d82dac87c0df012f0` (497 catalog messages). The reviewed Flatpak source
-pin is Linux `00186c29fc4e3e6682114ee29cd587d31610a1d6`; the functional release pin remains the
-packaging commit `73051b70028359c56654e1260621ada77def67e9`. The profile contract includes
+pin is Linux `303cf3d8857dd5a4bd5a8d6b10d49d0b8097b08f`; the functional release pin remains the
+packaging commit `e2cf532ceeebca86881dbc49c76c8b036dad89b0`. The profile contract includes
 a bounded total provider request timeout of 1–600 seconds, a bounded connection-establishment
 timeout of 1–120 seconds (default 10), and a bounded streaming-idle timeout of 1–300 seconds
 (default 60). Optional PEM trust bundles augment system roots without disabling TLS verification;
