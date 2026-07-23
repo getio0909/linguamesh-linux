@@ -272,6 +272,9 @@ jobs:
       - name: Run runtime storage write-fault test
         working-directory: linguamesh-linux
         run: bash tools/run-storage-fault-test.sh
+      - name: Run client-certificate HTTPS fixture
+        working-directory: linguamesh-linux
+        run: bash tools/run-client-certificate-interop-test.sh
       - name: Run Secret Service integration fixture
         working-directory: linguamesh-linux
         run: bash tools/run-secret-service-test.sh

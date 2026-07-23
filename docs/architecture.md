@@ -266,6 +266,11 @@ independently to the OpenAI Chat/Responses/Azure, Anthropic, Gemini, and Ollama 
 streaming idle budget resets after each received response chunk. Schema 29 persists an optional
 bounded PEM trust bundle that augments system roots; malformed bundles and private-key material are
 rejected, and TLS verification is never disabled.
+
+The optional client-certificate identity is a combined PEM value resolved once through the host
+secret broker. The Linux test-only HTTPS fixture requires that identity during a real rustls
+handshake and returns model discovery only after client authentication succeeds; generated test
+keys remain in a private temporary directory and are never part of profile storage or diagnostics.
 Other adapters ignore the OpenAI-specific metadata,
 **Remove saved profile**,
 model selection, source and target locales, source and streamed output editors, native **Open text

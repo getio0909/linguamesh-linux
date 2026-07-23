@@ -93,8 +93,12 @@ same catalog; raw provider diagnostics and credentials remain excluded. The prof
 a bounded total provider request timeout of 1–600 seconds, a bounded connection-establishment
 timeout of 1–120 seconds (default 10), and a bounded streaming-idle timeout of 1–300 seconds
 (default 60). Optional PEM trust bundles augment system roots without disabling TLS verification;
-malformed bundles are rejected before transport construction. Normalized
-usage labels
+malformed bundles are rejected before transport construction. The environment-gated Linux
+client-certificate fixture creates a temporary CA and mutual-TLS
+endpoint, and Native CI runs the worker's real `/v1/models` discovery against it. This validates
+certificate wiring and server-side client authentication only; generated keys are deleted after the
+test, and no enterprise endpoint, signed artifact, or stable release is implied. Normalized usage
+labels
 distinguish provider-reported, locally estimated, and unknown counts without pricing assumptions;
 provider billing equivalence and stable ABI projection remain open. Request-level glossary rules,
 bounded CSV/TBX interchange, and persistent glossary libraries are implemented in the Linux slice;
