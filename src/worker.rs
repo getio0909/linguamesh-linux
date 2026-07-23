@@ -9673,12 +9673,22 @@ mod tests {
             Some(SecretRef::new(SecretRefNamespace::SecretService)),
             None,
         )
-        .with_secret_custom_headers_ref(Some(SecretRef::new(SecretRefNamespace::SecretService)));
+        .with_secret_custom_headers_ref(Some(SecretRef::new(SecretRefNamespace::SecretService)))
+        .with_proxy_auth_ref(Some(SecretRef::new(SecretRefNamespace::SecretService)))
+        .with_client_certificate_identity_ref(Some(SecretRef::new(
+            SecretRefNamespace::SecretService,
+        )));
         let saved = profile_without_secret(&persistent).expect("persistent profile");
         assert!(saved.secret_ref().is_some_and(SecretRef::is_persistent));
         assert!(
             saved
                 .secret_custom_headers_ref()
+                .is_some_and(SecretRef::is_persistent)
+        );
+        assert!(saved.proxy_auth_ref().is_some_and(SecretRef::is_persistent));
+        assert!(
+            saved
+                .client_certificate_identity_ref()
                 .is_some_and(SecretRef::is_persistent)
         );
 
@@ -9692,9 +9702,15 @@ mod tests {
         assert!(saved.secret_ref().is_none());
 
         let session_headers = profile("session-headers-ref", "http://127.0.0.1:1/v1/", None, None)
-            .with_secret_custom_headers_ref(Some(SecretRef::new(SecretRefNamespace::Session)));
-        let saved = profile_without_secret(&session_headers).expect("session headers profile");
+            .with_secret_custom_headers_ref(Some(SecretRef::new(SecretRefNamespace::Session)))
+            .with_proxy_auth_ref(Some(SecretRef::new(SecretRefNamespace::Session)))
+            .with_client_certificate_identity_ref(Some(SecretRef::new(
+                SecretRefNamespace::Session,
+            )));
+        let saved = profile_without_secret(&session_headers).expect("session secret profile");
         assert!(saved.secret_custom_headers_ref().is_none());
+        assert!(saved.proxy_auth_ref().is_none());
+        assert!(saved.client_certificate_identity_ref().is_none());
     }
 
     #[test]

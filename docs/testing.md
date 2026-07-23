@@ -564,7 +564,10 @@ an authenticated loopback provider under Xvfb. It proves CRUD, persistent restor
 handling, cleanup, and SecretRef-only persistence without touching a developer keyring. The GTK
 flow also enters a bounded secret custom-header JSON value, verifies that a second persistent
 SecretRef is created and that both sensitive fields clear immediately, scans SQLite artifacts for
-both canaries, and deletes both Secret Service items during cleanup.
+both canaries, and deletes both Secret Service items during cleanup. The worker persistence
+regression additionally proves that proxy-authentication and client-certificate SecretRefs are
+retained only when persistent and that all three session-only SecretRefs are removed before a
+profile can reach SQLite.
 
 The prompted-flow runner starts a separate Python Secret Service fixture four times. It returns a
 non-root prompt path from `CreateItem` and `Delete`, then exercises both completion outcomes: an
