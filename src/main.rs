@@ -137,6 +137,7 @@ struct UiBindings {
     provider_request_timeout: gtk::SpinButton,
     provider_connection_timeout: gtk::SpinButton,
     provider_streaming_idle_timeout: gtk::SpinButton,
+    provider_trusted_certificates_pem: gtk::Entry,
     provider_custom_headers: gtk::Entry,
     provider_secret_custom_headers: gtk::PasswordEntry,
     manual_model_row: gtk::Box,
@@ -764,6 +765,7 @@ fn create_window(
         provider_request_timeout,
         provider_connection_timeout,
         provider_streaming_idle_timeout,
+        provider_trusted_certificates_pem,
         provider_custom_headers,
         provider_secret_custom_headers,
         manual_model_row,
@@ -1062,6 +1064,7 @@ fn create_window(
         provider_request_timeout,
         provider_connection_timeout,
         provider_streaming_idle_timeout,
+        provider_trusted_certificates_pem,
         provider_custom_headers,
         provider_secret_custom_headers,
         manual_model_row,
@@ -1196,6 +1199,10 @@ fn create_window(
                 .clone()
                 .upcast::<gtk::Widget>(),
             bindings
+                .provider_trusted_certificates_pem
+                .clone()
+                .upcast::<gtk::Widget>(),
+            bindings
                 .provider_custom_headers
                 .clone()
                 .upcast::<gtk::Widget>(),
@@ -1293,6 +1300,13 @@ fn install_keyboard_focus_probe(
             "provider_streaming_idle_timeout",
             bindings
                 .provider_streaming_idle_timeout
+                .clone()
+                .upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_trusted_certificates_pem",
+            bindings
+                .provider_trusted_certificates_pem
                 .clone()
                 .upcast::<gtk::Widget>(),
         ),
@@ -1639,6 +1653,7 @@ fn create_provider_session() -> (
     gtk::SpinButton,
     gtk::SpinButton,
     gtk::Entry,
+    gtk::Entry,
     gtk::PasswordEntry,
     gtk::Box,
     gtk::Entry,
@@ -1837,6 +1852,18 @@ fn create_provider_session() -> (
         "tooltip.provider_streaming_idle_timeout",
         "Provider streaming idle timeout in seconds, from 1 to 300",
     )));
+    let provider_trusted_certificates_pem = gtk::Entry::new();
+    provider_trusted_certificates_pem.set_hexpand(true);
+    provider_trusted_certificates_pem.set_placeholder_text(Some(&localization::text(
+        locale,
+        "placeholder.provider_trusted_certificates_pem",
+        "Optional PEM certificate bundle; TLS verification remains enabled",
+    )));
+    provider_trusted_certificates_pem.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_trusted_certificates_pem",
+        "Optional trusted certificate PEM bundle; system roots remain trusted and TLS verification stays enabled",
+    )));
     let provider_custom_headers = gtk::Entry::new();
     provider_custom_headers.set_hexpand(true);
     provider_custom_headers.set_placeholder_text(Some(&localization::text(
@@ -1977,6 +2004,14 @@ fn create_provider_session() -> (
     fields.append(&labeled_control(
         &localized_mnemonic(
             locale,
+            "label.provider_trusted_certificates_pem",
+            "Trusted certificates (PEM)",
+        ),
+        provider_trusted_certificates_pem.upcast_ref::<gtk::Widget>(),
+    ));
+    fields.append(&labeled_control(
+        &localized_mnemonic(
+            locale,
             "label.provider_custom_headers",
             "Custom headers (non-secret JSON)",
         ),
@@ -2022,6 +2057,7 @@ fn create_provider_session() -> (
         provider_request_timeout,
         provider_connection_timeout,
         provider_streaming_idle_timeout,
+        provider_trusted_certificates_pem,
         provider_custom_headers,
         provider_secret_custom_headers,
         manual_model_row,
@@ -2745,6 +2781,9 @@ fn show_saved_profile_in_form(bindings: &UiBindings, profile: &ProviderProfile) 
         .provider_streaming_idle_timeout
         .set_value(f64::from(profile.streaming_idle_timeout_secs()));
     bindings
+        .provider_trusted_certificates_pem
+        .set_text(profile.trusted_certificates_pem().unwrap_or_default());
+    bindings
         .provider_custom_headers
         .set_text(profile.custom_headers().unwrap_or_default());
     bindings
@@ -2785,6 +2824,7 @@ fn show_new_profile_in_form(
     bindings.provider_request_timeout.set_value(30.0);
     bindings.provider_connection_timeout.set_value(10.0);
     bindings.provider_streaming_idle_timeout.set_value(60.0);
+    bindings.provider_trusted_certificates_pem.set_text("");
     bindings.provider_custom_headers.set_text("");
     bindings.manual_model.set_text("");
     bindings.manual_model_row.set_visible(false);
@@ -2811,6 +2851,7 @@ fn custom_provider_profile(
     request_timeout_secs: u32,
     connection_timeout_secs: u32,
     streaming_idle_timeout_secs: u32,
+    trusted_certificates_pem: Option<String>,
     custom_headers: Option<String>,
     selected_model: Option<String>,
 ) -> Result<ProviderProfile, TranslationError> {
@@ -2831,6 +2872,7 @@ fn custom_provider_profile(
     .and_then(|profile| profile.with_request_timeout_secs(request_timeout_secs))
     .and_then(|profile| profile.with_connection_timeout_secs(connection_timeout_secs))
     .and_then(|profile| profile.with_streaming_idle_timeout_secs(streaming_idle_timeout_secs))
+    .and_then(|profile| profile.with_trusted_certificates_pem(trusted_certificates_pem))
     .and_then(|profile| profile.with_custom_headers(custom_headers))
     .and_then(|profile| profile.with_selected_model(selected_model))
     .map_err(|error| {
@@ -2870,6 +2912,11 @@ fn provider_streaming_idle_timeout_secs(
             "The provider streaming idle timeout must be a positive whole number of seconds.",
         )
     })
+}
+
+fn provider_trusted_certificates_pem(entry: &gtk::Entry) -> Option<String> {
+    let value = entry.text().trim().to_owned();
+    (!value.is_empty()).then_some(value)
 }
 
 fn editor_panel(label: &str, editor: &gtk::TextView) -> (gtk::Box, gtk::Label, gtk::Label) {
@@ -3788,6 +3835,8 @@ fn connect_action_handlers(
                 return;
             }
         };
+        let trusted_certificates_pem =
+            provider_trusted_certificates_pem(&test_bindings.provider_trusted_certificates_pem);
         let custom_headers_text = test_bindings
             .provider_custom_headers
             .text()
@@ -3897,6 +3946,7 @@ fn connect_action_handlers(
             request_timeout_secs,
             connection_timeout_secs,
             streaming_idle_timeout_secs,
+            trusted_certificates_pem,
             custom_headers,
             selected_model,
         ) {
@@ -3978,6 +4028,8 @@ fn connect_action_handlers(
                 return;
             }
         };
+        let trusted_certificates_pem =
+            provider_trusted_certificates_pem(&connect_bindings.provider_trusted_certificates_pem);
         let custom_headers_text = connect_bindings
             .provider_custom_headers
             .text()
@@ -4141,6 +4193,7 @@ fn connect_action_handlers(
             request_timeout_secs,
             connection_timeout_secs,
             streaming_idle_timeout_secs,
+            trusted_certificates_pem,
             custom_headers,
             selected_model,
         )
@@ -8810,6 +8863,28 @@ fn refresh_localized_widgets(bindings: &UiBindings, locale: UiLocale) {
             "Provider streaming idle timeout in seconds, from 1 to 300",
         )));
     set_labeled_control_label(
+        bindings.provider_trusted_certificates_pem.upcast_ref(),
+        &localized_mnemonic(
+            locale,
+            "label.provider_trusted_certificates_pem",
+            "Trusted certificates (PEM)",
+        ),
+    );
+    bindings
+        .provider_trusted_certificates_pem
+        .set_placeholder_text(Some(&localization::text(
+            locale,
+            "placeholder.provider_trusted_certificates_pem",
+            "Optional PEM certificate bundle; TLS verification remains enabled",
+        )));
+    bindings
+        .provider_trusted_certificates_pem
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.provider_trusted_certificates_pem",
+            "Optional trusted certificate PEM bundle; system roots remain trusted and TLS verification stays enabled",
+        )));
+    set_labeled_control_label(
         bindings.provider_custom_headers.upcast_ref(),
         &localized_mnemonic(
             locale,
@@ -10087,6 +10162,7 @@ mod tests {
             10,
             60,
             None,
+            None,
             Some("model-a".to_owned()),
         )
         .expect("candidate A profile");
@@ -10106,6 +10182,7 @@ mod tests {
             30,
             10,
             60,
+            None,
             None,
             Some("model-b".to_owned()),
         )
@@ -13280,6 +13357,7 @@ mod tests {
             10,
             60,
             None,
+            None,
             Some("fake-translator".to_owned()),
         )
         .expect("first restored profile");
@@ -13300,6 +13378,7 @@ mod tests {
             30,
             10,
             60,
+            None,
             None,
             Some("fake-slow-translator".to_owned()),
         )

@@ -2855,3 +2855,21 @@ msgstr "Optional JSON object of secret request headers"
 msgctxt "tooltip.provider_secret_custom_headers"
 msgid "Optional bounded secret headers; stored in Secret Service when remembered and otherwise kept for this session"
 msgstr "Optional bounded secret headers; stored in Secret Service when remembered and otherwise kept for this session"
+
+#. Label for an optional PEM certificate bundle that augments system trust without disabling TLS verification.
+#, fuzzy
+msgctxt "label.provider_trusted_certificates_pem"
+msgid "Trusted certificates (PEM)"
+msgstr "Trusted certificates (PEM)"
+
+#. Placeholder for a custom trusted certificate PEM bundle.
+#, fuzzy
+msgctxt "placeholder.provider_trusted_certificates_pem"
+msgid "Optional PEM certificate bundle; TLS verification remains enabled"
+msgstr "Optional PEM certificate bundle; TLS verification remains enabled"
+
+#. Tooltip for the optional custom trusted certificate PEM bundle.
+#, fuzzy
+msgctxt "tooltip.provider_trusted_certificates_pem"
+msgid "Optional trusted certificate PEM bundle; system roots remain trusted and TLS verification stays enabled"
+msgstr "Optional trusted certificate PEM bundle; system roots remain trusted and TLS verification stays enabled"

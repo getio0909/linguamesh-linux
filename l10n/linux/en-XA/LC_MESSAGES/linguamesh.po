@@ -2853,3 +2853,21 @@ msgstr "［Øþŧïøñåŀ ĴŠØÑ øƀĵëçŧ øƒ šëçŕëŧ ŕëǫûëš
 msgctxt "tooltip.provider_secret_custom_headers"
 msgid "Optional bounded secret headers; stored in Secret Service when remembered and otherwise kept for this session"
 msgstr "［Øþŧïøñåŀ ƀøûñðëð šëçŕëŧ ħëåðëŕš; šŧøŕëð ïñ Šëçŕëŧ Šëŕṽïçë ŵħëñ ŕëṁëṁƀëŕëð åñð øŧħëŕŵïšë ķëþŧ ƒøŕ ŧħïš šëššïøñ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~］"
+
+#. Label for an optional PEM certificate bundle that augments system trust without disabling TLS verification.
+#, fuzzy
+msgctxt "label.provider_trusted_certificates_pem"
+msgid "Trusted certificates (PEM)"
+msgstr "［Ŧŕûšŧëð çëŕŧïƒïçåŧëš (ÞËṀ)~~~~~~~~］"
+
+#. Placeholder for a custom trusted certificate PEM bundle.
+#, fuzzy
+msgctxt "placeholder.provider_trusted_certificates_pem"
+msgid "Optional PEM certificate bundle; TLS verification remains enabled"
+msgstr "［Øþŧïøñåŀ ÞËṀ çëŕŧïƒïçåŧë ƀûñðŀë; ŦĿŠ ṽëŕïƒïçåŧïøñ ŕëṁåïñš ëñåƀŀëð~~~~~~~~~~~~~~~~~~~~~］"
+
+#. Tooltip for the optional custom trusted certificate PEM bundle.
+#, fuzzy
+msgctxt "tooltip.provider_trusted_certificates_pem"
+msgid "Optional trusted certificate PEM bundle; system roots remain trusted and TLS verification stays enabled"
+msgstr "［Øþŧïøñåŀ ŧŕûšŧëð çëŕŧïƒïçåŧë ÞËṀ ƀûñðŀë; šÿšŧëṁ ŕøøŧš ŕëṁåïñ ŧŕûšŧëð åñð ŦĿŠ ṽëŕïƒïçåŧïøñ šŧåÿš ëñåƀŀëð~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~］"
