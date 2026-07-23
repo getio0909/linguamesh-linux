@@ -8580,9 +8580,6 @@ fn apply_worker_event(
                 }
             }
         }
-        WorkerEvent::ProfileHealthPersistenceFailed { error, .. } => {
-            state.borrow_mut().record_operation_failure(error);
-        }
         WorkerEvent::ConnectionTestRejected { error, .. } => {
             bindings.connection_test_notice.set(false);
             bindings.connection_test_model_count.set(None);
@@ -8678,7 +8675,9 @@ fn apply_worker_event(
         WorkerEvent::RoutingFallbackSelected { .. } | WorkerEvent::FallbackSelected { .. } => {
             bindings.fallback_notice.set(true);
         }
-        WorkerEvent::OperationFailed(error) | WorkerEvent::TranslationRejected(error) => {
+        WorkerEvent::ProfileHealthPersistenceFailed { error, .. }
+        | WorkerEvent::OperationFailed(error)
+        | WorkerEvent::TranslationRejected(error) => {
             state.borrow_mut().record_operation_failure(error);
         }
         WorkerEvent::ProviderRejected { profile, error } => {

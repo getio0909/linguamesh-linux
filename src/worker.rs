@@ -6975,8 +6975,10 @@ mod tests {
             {
                 WorkerEvent::ProfileHealthUpdated { .. } => {}
                 WorkerEvent::ConnectionTested { model_count, .. } => return Ok(model_count),
-                WorkerEvent::ConnectionTestRejected { error, .. } => return Err(error),
-                WorkerEvent::ProfileHealthPersistenceFailed { error, .. } => return Err(error),
+                WorkerEvent::ConnectionTestRejected { error, .. }
+                | WorkerEvent::ProfileHealthPersistenceFailed { error, .. } => {
+                    return Err(error);
+                }
                 _ => panic!("unexpected connection test event"),
             }
         }
