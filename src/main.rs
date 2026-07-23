@@ -1637,6 +1637,7 @@ fn create_provider_session() -> (
     gtk::Entry,
     gtk::SpinButton,
     gtk::SpinButton,
+    gtk::SpinButton,
     gtk::Entry,
     gtk::PasswordEntry,
     gtk::Box,
