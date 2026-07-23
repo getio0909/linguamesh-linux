@@ -8,7 +8,7 @@ reference-only; the smallest complete UI accepts one combined PEM certificate/pr
 - The GTK provider form adds a masked client-certificate identity field, clears it immediately
   after capture, restores only its `SecretRef`, and stores the value in Secret Service only when
   the user explicitly remembers the profile. Session-only profiles keep the identity in memory.
-- Core `3013f10cdbbecc0b9081b0e3a30a45a3e95ec5b5` (schema 31) validates and stores only the
+- Core `3013f107c747007f4afaf991bd6fbad812796550` (schema 31) validates and stores only the
   identity reference; all built-in provider adapters apply the one-shot identity through reqwest
   rustls while retaining system roots and TLS verification. l10n `552d87e88a8df42055b1ac76e4dfbaadca92e291`
   supplies source revision 59 and the 480-message generated bundle.
