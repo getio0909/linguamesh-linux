@@ -1,5 +1,30 @@
 # Implementation Status
 
+## 2026-07-23 — Linux process-interruption export regression
+
+Assumption: a process-kill fixture is the smallest reproducible evidence for the export
+boundary; physical power-loss, filesystem-specific recovery, and alternate GIO/VFS behavior
+remain separate qualification gates.
+
+- Runtime commit `361ac7ba9d6a18c26de4487ab424d6500fbbeafd` adds a test-only barrier immediately
+  after the same-directory temporary export is closed and synchronized, before the final
+  non-overwriting move. A child test process is terminated at that barrier and the parent
+  verifies that the final destination is absent while the synced `.linguamesh-export-*` bytes
+  remain intact.
+- Local `cargo fmt --all -- --check`, locked all-target/all-feature check, test-target check,
+  strict Clippy, and 163 demo-provider library tests (3 documented environment-gated ignores)
+  passed. The focused GTK binary test is compile-checked but cannot link on this host because
+  the installed GTK/GDK/Graphene runtime lacks symbols required by the pinned gtk-rs version.
+- Packaging/docs commit `16b25991777ba586737bf31eb1ae2e4260563a4e` pins the Flatpak input to the
+  runtime commit and documents the process-interruption boundary. Push Native/Flatpak/Foundation
+  runs `30036385861`/`30036385766`/`30036385853` and PR Native/Flatpak/Foundation runs
+  `30036389272`/`30036389273`/`30036389204` all passed; Native explicitly completed the
+  `Run GTK interrupted export writer fixture` step.
+
+This strengthens unreleased Linux Scenario 18 crash-durability evidence without claiming physical
+power-loss simulation, alternate VFS guarantees, signed artifacts, rollback authorization, or
+stable-release approval.
+
 ## 2026-07-23 — Linux local-export durability barriers
 
 Assumption: Linux local exports must make a bounded best effort to persist both file bytes and
