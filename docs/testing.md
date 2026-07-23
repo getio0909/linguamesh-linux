@@ -174,6 +174,10 @@ third-party daemon and an installed model, execute:
 LINGUAMESH_OLLAMA_MODEL=smollm:135m bash tools/run-ollama-interop-test.sh
 ```
 
+The 2026-07-23 Linux refresh used the pinned Docker image `ollama/ollama:0.11.10` with a
+host-network temporary daemon and `smollm:135m`; `running_third_party_ollama_provider_translates_without_secret`
+passed exactly once without a credential. The daemon and model store were removed after the run.
+
 Set `LINGUAMESH_OLLAMA_PULL=1` only in an isolated environment when the named model should be
 pulled through Ollama's `/api/pull`; the script then exercises real `/api/tags` discovery and
 `/api/chat` translation through the Linux worker. The default test suite keeps this regression

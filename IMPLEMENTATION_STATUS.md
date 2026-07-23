@@ -1,5 +1,19 @@
 # Implementation Status
 
+## 2026-07-23 — Linux third-party Ollama interoperability refresh
+
+Assumption: a pinned Docker Ollama daemon with a small local model is sufficient for a repeatable
+third-party native `/api` interoperability checkpoint; it does not claim live provider account,
+quota, GPU, or distribution behavior.
+
+- A temporary host-network Docker daemon `ollama/ollama:0.11.10` pulled
+  `smollm:135m` and served real `/api/tags` and `/api/chat` requests. The opt-in
+  `running_third_party_ollama_provider_translates_without_secret` regression passed exactly once
+  (`1 passed; 0 failed`) without a credential.
+- The container and its model store were removed after the test. This is deterministic third-party
+  daemon evidence only; live provider account behavior, human review, other clients, signing,
+  rollback, and stable-release authorization remain open. Release remains `unreleased`.
+
 ## 2026-07-23 — Linux optional OCR and storage-fault runner refresh
 
 Assumption: the explicit OCR fixture and controlled ENOSPC mount runner are reproducible Linux
