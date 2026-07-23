@@ -14,6 +14,9 @@ history policy and Incognito mode are the persistence controls, and no provider 
 - Worker regressions cover provider-reported and locally estimated usage, policy gating, Incognito,
   restart visibility, and cleanup. Pricing remains intentionally unimplemented; release remains
   `unreleased`.
+- Core CI/Fuzz/Native SDK `29992377731`/`29992376984`/`29992377385` passed. Linux push
+  Native/Flatpak/Foundation `29992795496`/`29992795837`/`29992795547` and PR
+  `29992800736`/`29992800675`/`29992800292` passed for the pinned implementation.
 
 ## 2026-07-23 — Linux PR gate result for status head `90a2753`
 
