@@ -12,8 +12,12 @@ and external-network interoperability remain unverified.
   the one-shot `x-api-key`, emits usage and `message_stop`, and returns deterministic
   `你好，Anthropic！` output.
 - The fixture keeps the credential field empty immediately after capture and does not issue
-  inference before deliberate model selection. Native CI will run Anthropic, Gemini, and Azure in
-  one serialized Xvfb/DBus process; release remains `unreleased`.
+  inference before deliberate model selection. Linux implementation `2f12c7482a4d0376bbdd7ea86fd7f25557fea75f`
+  adds the GTK flow, final packaging pin is `0a77a14d35fad42d66c812398827b2ca50edb51c`, and the
+  current status head is this commit. Push Native/Flatpak/Foundation `29983065597`/
+  `29983065439`/`29983065493` and PR Native/Flatpak/Foundation `29983067229`/`29983067261`/
+  `29983067222` all passed; the protocol-preset fixture reported `1 passed`. Release remains
+  `unreleased`.
 
 ## 2026-07-23 — GTK Gemini and Azure preset transport evidence
 
