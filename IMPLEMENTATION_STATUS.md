@@ -1,5 +1,26 @@
 # Implementation Status
 
+## 2026-07-23 — Linux Provider Hub health status
+
+Assumption: Linux remains the active client priority; this UI slice exposes only persisted,
+non-secret health metadata and does not claim Android, Windows, macOS, stable-release, or human
+acceptance evidence.
+
+- Linux `8a913b263475bec70639c55550bdf9717ded4012` adds a dim Provider Hub label that follows the
+  selected saved profile (or active profile), renders the last successful check as a UTC ISO-8601
+  timestamp, and renders normalized failure categories through existing localized error-category
+  keys. The label hides when no health result exists; raw provider error text and credentials never
+  enter the UI.
+- Localization `74f773774bdf01ca5d2ab61ce199dbd76cdadb04` adds the success/failure templates across
+  all 12 packs and regenerates 499-message PO/MO resources. The Flatpak source manifest now pins
+  the Linux implementation above and Core `460728d79b0e2373445c3d8994793d069b8057b9`.
+- Local Linux formatting, strict all-feature Clippy, GUI cargo check, 163 all-feature library tests
+  (12 documented environment-gated ignores), localization synchronization and audits, Flatpak
+  metadata validation, and diff checks passed. The host cannot link GTK/GDK/Graphene test binaries;
+  Native CI remains authoritative for display-backed UI and packaging gates.
+
+## 2026-07-23 — Linux provider health persistence
+
 ## 2026-07-23 — Linux provider health persistence
 
 Assumption: Linux remains the active client priority; health metadata is non-secret local state,

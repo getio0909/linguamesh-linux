@@ -10,7 +10,9 @@ session-only. A derived provider-setup guide moves from startup through configur
 and model selection, reports an unavailable worker without remaining stuck at startup, then
 identifies the provider stable ID/model that will receive the next request. Saved
 copies can be removed without interrupting an already connected session. The client also displays
-typed errors, switches appearance, records locale preference, and exposes redacted diagnostics.
+typed errors, switches appearance, records locale preference, exposes redacted diagnostics, and
+shows the selected saved profile's last provider health check as a localized UTC timestamp or
+normalized failure category without exposing provider error text or credentials.
 
 ## Project authority
 
@@ -250,7 +252,7 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`7c2cb9fd71835ea0f9c6605d82dac87c0df012f0` and validated with `msgfmt`; the 497-message bundle
+`74f773774bdf01ca5d2ab61ce199dbd76cdadb04` and validated with `msgfmt`; the 499-message bundle
 adds Linux routing-profile persistence/editor, profile-ID validation and duplicate protection, ordinary-text selection labels, routing preference/privacy/document constraints, provider/model allowlists and denylists, quality/request-size limits, translation quality-mode and translation-preset labels, and source/output character plus approximate-token metrics. The locale selector
 exposes all twelve official BCP 47 packs plus the generated `en-XA` accented and `ar-XB` RTL
 pseudo-locales. It switches runtime action, workspace-widget,
