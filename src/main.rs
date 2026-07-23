@@ -67,6 +67,15 @@ const DEFAULT_GEMINI_ENDPOINT: &str = "https://generativelanguage.googleapis.com
 const DEFAULT_AZURE_ENDPOINT: &str = "https://resource.openai.azure.com/";
 const DEFAULT_RESPONSES_ENDPOINT: &str = "https://api.openai.com/v1/";
 
+// 在支持的中英文互译组合之间交换源语言和目标语言。
+fn swap_locale_selection(source_index: u32, target_index: u32) -> Option<(u32, u32)> {
+    match (source_index, target_index) {
+        (1, 0) => Some((2, 1)),
+        (2, 1) => Some((1, 0)),
+        _ => None,
+    }
+}
+
 // 返回核心目录中与 Linux 下拉框位置对应的稳定预设标识。
 fn catalog_preset_id(index: u32) -> &'static str {
     match index {
@@ -156,6 +165,7 @@ struct UiBindings {
     model: gtk::DropDown,
     source_locale: gtk::DropDown,
     target_locale: gtk::DropDown,
+    swap_locales: gtk::Button,
     quality_mode: gtk::DropDown,
     translation_preset: gtk::DropDown,
     glossary: gtk::Entry,
@@ -835,6 +845,7 @@ fn create_window(
         model,
         source_locale,
         target_locale,
+        swap_locales,
         quality_mode,
         translation_preset,
         glossary,
@@ -1163,6 +1174,7 @@ fn create_window(
         model,
         source_locale,
         target_locale,
+        swap_locales,
         quality_mode,
         translation_preset,
         glossary,
@@ -1452,6 +1464,10 @@ fn install_keyboard_focus_probe(
         (
             "target_locale",
             bindings.target_locale.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "swap_locales",
+            bindings.swap_locales.clone().upcast::<gtk::Widget>(),
         ),
         (
             "glossary",
@@ -2306,6 +2322,7 @@ fn create_controls() -> (
     gtk::DropDown,
     gtk::DropDown,
     gtk::DropDown,
+    gtk::Button,
     gtk::DropDown,
     gtk::DropDown,
     gtk::Entry,
@@ -2356,6 +2373,19 @@ fn create_controls() -> (
             .map(String::as_str)
             .collect::<Vec<_>>(),
     );
+    let swap_locales = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.swap_languages",
+        "Swap languages",
+    ));
+    swap_locales.set_focusable(true);
+    swap_locales.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.swap_languages",
+        "Swap the source and target languages",
+    )));
+    let swap_label = localization::text(locale, "action.swap_languages", "Swap languages");
+    swap_locales.update_property(&[gtk::accessible::Property::Label(&swap_label)]);
     let quality_labels = quality_mode_labels(locale);
     let quality_mode = gtk::DropDown::from_strings(
         &quality_labels
@@ -2613,6 +2643,7 @@ fn create_controls() -> (
     ] {
         controls.append(&labeled_control(&label, control));
     }
+    controls.append(&swap_locales);
     controls.append(&import_glossary);
     controls.append(&export_glossary);
     controls.append(&glossary_libraries);
@@ -2632,6 +2663,7 @@ fn create_controls() -> (
         model,
         source_locale,
         target_locale,
+        swap_locales,
         quality_mode,
         translation_preset,
         glossary,
@@ -3407,6 +3439,20 @@ fn connect_selection_handlers(
             preset_state.borrow_mut().set_translation_preset(preset);
             refresh_ui(&preset_bindings, &preset_state.borrow());
         });
+
+    let swap_bindings = bindings.clone();
+    let swap_state = Rc::clone(state);
+    bindings.swap_locales.connect_clicked(move |_| {
+        let Some((source_index, target_index)) = swap_locale_selection(
+            swap_bindings.source_locale.selected(),
+            swap_bindings.target_locale.selected(),
+        ) else {
+            return;
+        };
+        swap_bindings.source_locale.set_selected(source_index);
+        swap_bindings.target_locale.set_selected(target_index);
+        refresh_ui(&swap_bindings, &swap_state.borrow());
+    });
 
     let model_bindings = bindings.clone();
     let model_state = Rc::clone(state);
@@ -9167,6 +9213,12 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
         "tooltip.clear_workspace",
         "Clear the source text, translated output, and request diagnostics",
     );
+    let swap_languages = localization::text(locale, "action.swap_languages", "Swap languages");
+    let swap_languages_tooltip = localization::text(
+        locale,
+        "tooltip.swap_languages",
+        "Swap the source and target languages",
+    );
     let stop = localization::text(locale, "accessibility.stop_translation", "Stop translation");
     let pause = localization::text(locale, "action.pause_document", "Pause document");
     let resume = localization::text(locale, "action.resume_document", "Resume document");
@@ -9273,6 +9325,15 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     bindings
         .clear_workspace
         .update_property(&[gtk::accessible::Property::Label(&clear_workspace)]);
+    bindings
+        .swap_locales
+        .set_label(&format!("_{swap_languages}"));
+    bindings
+        .swap_locales
+        .set_tooltip_text(Some(&swap_languages_tooltip));
+    bindings
+        .swap_locales
+        .update_property(&[gtk::accessible::Property::Label(&swap_languages)]);
     bindings.export_output.set_label(&format!("_{export}"));
     bindings
         .export_output
@@ -10488,6 +10549,14 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         .set_sensitive(state.worker_ready() && !blocked && !state.models().is_empty());
     bindings.source_locale.set_sensitive(!blocked);
     bindings.target_locale.set_sensitive(!blocked);
+    bindings.swap_locales.set_sensitive(
+        !blocked
+            && swap_locale_selection(
+                bindings.source_locale.selected(),
+                bindings.target_locale.selected(),
+            )
+            .is_some(),
+    );
     if bindings.quality_mode.selected() != quality_mode_selection(state.quality_mode()) {
         bindings
             .quality_mode
@@ -10532,10 +10601,10 @@ mod tests {
         routing_preference_for_selection, routing_preference_selection,
         routing_profile_id_conflicts, show_about_dialog, show_document_jobs_dialog,
         show_fallback_approval_dialog, show_new_profile_in_form, show_routing_profiles_dialog,
-        show_secret_storage_session_fallback, start_event_pump, text_metrics_label,
-        translation_output_name, translation_preset_for_selection, translation_preset_selection,
-        usage_label, valid_routing_profile_id, validate_provider_preset_catalog,
-        write_new_file_async,
+        show_secret_storage_session_fallback, start_event_pump, swap_locale_selection,
+        text_metrics_label, translation_output_name, translation_preset_for_selection,
+        translation_preset_selection, usage_label, valid_routing_profile_id,
+        validate_provider_preset_catalog, write_new_file_async,
     };
     use adw::prelude::*;
     use gtk::glib;
@@ -10583,6 +10652,14 @@ mod tests {
         assert!(!valid_routing_profile_id("routing profile"));
         assert!(!valid_routing_profile_id("配置"));
         assert!(!valid_routing_profile_id(&"a".repeat(129)));
+    }
+
+    #[test]
+    fn swap_locale_selection_only_supports_known_bidirectional_pair() {
+        assert_eq!(swap_locale_selection(1, 0), Some((2, 1)));
+        assert_eq!(swap_locale_selection(2, 1), Some((1, 0)));
+        assert_eq!(swap_locale_selection(0, 0), None);
+        assert_eq!(swap_locale_selection(1, 2), None);
     }
 
     #[test]
@@ -14132,6 +14209,8 @@ mod tests {
             Some("_清空工作区")
         );
         assert!(!bindings.clear_workspace.is_sensitive());
+        assert_eq!(bindings.swap_locales.label().as_deref(), Some("_交换语言"));
+        assert!(!bindings.swap_locales.is_sensitive());
         assert_eq!(bindings.export_output.label().as_deref(), Some("_导出翻译"));
         assert!(!bindings.export_output.is_sensitive());
         assert_eq!(
@@ -14199,6 +14278,17 @@ mod tests {
             .and_then(|model| model.downcast::<gtk::StringList>().ok())
             .expect("target language labels");
         assert_eq!(target_language_model.string(0).as_deref(), Some("简体中文"));
+        bindings.source_locale.set_selected(1);
+        refresh_ui(&bindings, &state.borrow());
+        assert!(bindings.swap_locales.is_sensitive());
+        bindings.swap_locales.emit_clicked();
+        assert_eq!(bindings.source_locale.selected(), 2);
+        assert_eq!(bindings.target_locale.selected(), 1);
+        bindings.swap_locales.emit_clicked();
+        assert_eq!(bindings.source_locale.selected(), 1);
+        assert_eq!(bindings.target_locale.selected(), 0);
+        state.borrow_mut().set_locale(UiLocale::SimplifiedChinese);
+        refresh_ui(&bindings, &state.borrow());
         let theme_model = bindings
             .theme
             .model()
@@ -14287,6 +14377,7 @@ mod tests {
             &bindings.translate,
             &bindings.copy_output,
             &bindings.clear_workspace,
+            &bindings.swap_locales,
             &bindings.retry_translation,
             &bindings.export_output,
             &bindings.open_output,
