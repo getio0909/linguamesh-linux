@@ -5681,6 +5681,22 @@ fn export_write_strategy(destination: &gtk::gio::File) -> ExportWriteStrategy {
     }
 }
 
+// 将本地导出文件及其父目录同步到文件系统，缩小崩溃或断电后出现半成品的窗口。
+fn sync_local_export(path: &Path) -> bool {
+    let file_synced = fs::File::open(path)
+        .and_then(|file| file.sync_all())
+        .is_ok();
+    let parent_synced = path.parent().is_some_and(sync_local_export_directory);
+    file_synced && parent_synced
+}
+
+// 同步目录元数据，使临时文件写入和最终重命名的目录项具有明确的耐久性边界。
+fn sync_local_export_directory(path: &Path) -> bool {
+    fs::File::open(path)
+        .and_then(|directory| directory.sync_all())
+        .is_ok()
+}
+
 // 将 GIO 目标转换为不会覆盖已有本地文件的确定性路径。
 fn collision_safe_destination(destination: &gtk::gio::File) -> Option<gtk::gio::File> {
     destination.path().map_or_else(
@@ -5696,6 +5712,7 @@ fn write_contents_to_new_file_async(
     callback: impl FnOnce(bool) + 'static,
 ) {
     let destination = destination.clone();
+    let destination_for_sync = destination.clone();
     destination.create_async(
         gtk::gio::FileCreateFlags::NONE,
         glib::Priority::DEFAULT,
@@ -5712,7 +5729,12 @@ fn write_contents_to_new_file_async(
                         close_stream.close_async(
                             glib::Priority::DEFAULT,
                             None::<&gtk::gio::Cancellable>,
-                            move |close_result| callback(write_succeeded && close_result.is_ok()),
+                            move |close_result| {
+                                let durable = destination_for_sync
+                                    .path()
+                                    .is_none_or(|path| sync_local_export(&path));
+                                callback(write_succeeded && close_result.is_ok() && durable);
+                            },
                         );
                     }
                 },
@@ -5740,6 +5762,7 @@ fn write_new_file_async(
         write_contents_to_new_file_async(destination, contents, callback);
         return;
     };
+    let parent_path = parent.to_path_buf();
     let temporary_path = parent.join(format!(
         ".linguamesh-export-{}.tmp",
         glib::uuid_string_random()
@@ -5765,7 +5788,7 @@ fn write_new_file_async(
             None::<&gtk::gio::Cancellable>,
             None,
             move |move_result| {
-                if move_result.is_ok() {
+                if move_result.is_ok() && sync_local_export_directory(&parent_path) {
                     callback(true);
                     return;
                 }
