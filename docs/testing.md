@@ -430,7 +430,7 @@ The `cargo-deny` policy is also enforced by the Native workflow. Advisory, licen
 violations fail the gate; duplicate dependency versions are warnings while the GTK/Adwaita graph
 is converged incrementally.
 
-The current no-default suite reports `81 passed; 1 ignored`. It covers the text-import decoder, request-level glossary,
+The current no-default suite reports `83 passed; 1 ignored`. It covers the text-import decoder, request-level glossary,
 and explicit Incognito privacy policy in addition to the disconnected initial state, atomic
 sorted restoration of multiple profiles without activation, duplicate/missing/default/session-ref
 snapshot rejection, form-only selection, exact pending deletion, connected-row removal that keeps
@@ -443,7 +443,7 @@ Ready identity, pending-model confirmation that cannot claim Ready, worker-unava
 storage-unavailable fallback, runtime persistence degradation that retains the confirmed session,
 and diagnostics that omit content, endpoints, IDs, model IDs, and secret references.
 
-The current `demo-provider` run reports `147 passed; 3 ignored` (the ignored cases require an
+The current `demo-provider` run reports `159 passed; 3 ignored` (the ignored cases require an
 external OCR fixture, a third-party Ollama daemon, or a private storage-fault mount). The dedicated
 `tools/run-ocr-test.sh` and `tools/run-storage-fault-test.sh` runners each pass one exact test on a
 host with the required tools and mount namespace; the third-party Ollama runner remains opt-in and

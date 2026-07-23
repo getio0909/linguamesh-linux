@@ -1,5 +1,17 @@
 # Implementation Status
 
+## 2026-07-23 — Linux demo-provider regression rerun
+
+Assumption: the current Linux implementation head is the authoritative local target for this
+portable regression; environment-gated GUI, OCR, storage-fault, and third-party-daemon fixtures
+remain separately reported and are not inferred from this suite.
+
+- `cargo test --features demo-provider --lib --locked -- --nocapture` passed all 162 tests that
+  can run without the external fixtures: `159 passed; 0 failed; 3 ignored`. The ignored tests are
+  the explicit OCR, third-party Ollama, and private storage-fault runners.
+- This rerun confirms the current PR head has no portable demo-provider regression. Release stays
+  `unreleased`; no stable or cross-client evidence is claimed.
+
 ## 2026-07-23 — Linux third-party Ollama interoperability refresh
 
 Assumption: a pinned Docker Ollama daemon with a small local model is sufficient for a repeatable
