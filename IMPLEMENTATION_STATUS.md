@@ -1,5 +1,18 @@
 # Implementation Status
 
+## 2026-07-23 — Linux PR documentation-head gate refresh
+
+Assumption: the documentation-only head `18c019f49965a9e758a0b292748dd38adeafb0e7` is the
+current review target; completed workflow steps are evidence even while GitHub's Flatpak check
+aggregation is still pending.
+
+- PR Native run `29990141179` completed successfully. Its Rust/GTK validation job finished at
+  `2026-07-23T08:11:23Z`.
+- PR Flatpak run `29990141186` completed its build, checksum, SBOM, sandbox-smoke, and cleanup
+  steps successfully, but the check run still reports `in_progress` at documentation time.
+- PR Foundation run `29990141145` completed successfully. The PR remains Draft/Open and
+  `UNSTABLE/MERGEABLE`; no merge or release promotion is inferred from pending check aggregation.
+
 ## 2026-07-23 — Linux PR gate finalization record
 
 Assumption: the workflow results below are authoritative for the documentation-only head; a
