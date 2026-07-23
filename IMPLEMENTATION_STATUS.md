@@ -11,12 +11,16 @@ proxy URL or persisted as a credential value.
   Secret Service persistence through the existing host secret service.
 - Core `cee5bd8abc5b35a50640c484bc4fbeedeb426745` (schema 30) and the shared provider adapters
   accept the same reference-only contract; l10n `f0b1c507d73f540f298a534303d0e6e63d44e87b`
-  supplies source revision 58 and regenerated resources. Linux runtime `14d8657` wires the GTK
-  form, worker, and host-secret persistence path. They
+  supplies source revision 58 and regenerated resources. Linux runtime/packaging
+  `3264b93b1da7b49ea6fc636729f7a178eef1b436` wires the GTK form, worker, host-secret persistence
+  path, localization sync, and final Flatpak pin. They
   apply proxy Basic authentication without exposing credentials in SQLite, URLs, diagnostics, or
   logs.
-- Local Core workspace tests, Linux workspace checks, and l10n `make check` pass. Remote CI and
-  Linux packaging evidence for the exact commits remain pending; release stays `unreleased`.
+- Local Core workspace tests/Clippy, Linux demo-provider tests (162 with 3 environment-dependent
+  ignores), GUI `cargo check`, strict Clippy, l10n `make check`/audits/sync, and Flatpak metadata
+  validation pass. Linux push Native/Flatpak/Foundation `29975524486`/`29975524483`/`29975524491`
+  and PR Native/Flatpak/Foundation `29975526119`/`29975526053`/`29975526074` pass for the exact
+  implementation head; release stays `unreleased`.
 
 ## 2026-07-23 — Linux provider custom trusted certificate settings
 
