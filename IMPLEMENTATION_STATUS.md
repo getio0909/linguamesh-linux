@@ -12,8 +12,12 @@ enterprise endpoints and cross-client certificate handling remain separate quali
   session SecretRef identity plus the bounded trust bundle. `bash tools/run-client-certificate-interop-test.sh`
   passed exactly once (`1 passed; 0 failed`) locally, and all generated key material was removed.
 - Packaging/docs commit `7b69933e1b0b92e1ee2136e01b6d39fa765ec761` pins Flatpak to the tested runtime
-  and documents the fixture. Native CI now invokes the same runner; no provider credential or
-  production certificate is stored.
+  and documents the fixture. Certificate-hardening commit `e9406d56e1345be765c01ecfe2600e8e0d10dde9`
+  adds explicit CA, server-authentication, and client-authentication extensions after the first
+  remote Native runs rejected the handshake. The corrected head passed push Native/Flatpak/Foundation
+  `30047090436`/`30047090114`/`30047090789` and PR Native/Flatpak/Foundation
+  `30047093336`/`30047093253`/`30047093305`; Native completed the same fixture in CI. No provider
+  credential or production certificate is stored.
 - This is Linux rustls wiring and server-side client-authentication evidence only. It does not claim
   enterprise-provider interoperability, human review, other-client parity, signing, rollback, or
   stable-release authorization; release remains `unreleased`.
