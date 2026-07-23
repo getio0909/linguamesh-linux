@@ -4383,10 +4383,10 @@ fn connect_action_handlers(
                 saved.secret_custom_headers_ref().cloned(),
                 saved.proxy_auth_ref().cloned(),
                 saved.client_certificate_identity_ref().cloned(),
-                if !manual_model.is_empty() {
-                    Some(manual_model.clone())
-                } else {
+                if manual_model.is_empty() {
                     saved.selected_model().map(str::to_owned)
+                } else {
+                    Some(manual_model.clone())
                 },
             ),
             None => match ensure_draft_profile_id(&test_bindings, &state) {
@@ -4623,10 +4623,10 @@ fn connect_action_handlers(
                 saved.proxy_auth_ref().cloned(),
                 saved.client_certificate_identity_ref().cloned(),
                 saved.enabled(),
-                if !manual_model.is_empty() {
-                    Some(manual_model.clone())
-                } else {
+                if manual_model.is_empty() {
                     saved.selected_model().map(str::to_owned)
+                } else {
+                    Some(manual_model.clone())
                 },
             ),
             None => (
