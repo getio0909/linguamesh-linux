@@ -82,7 +82,7 @@ future release gate below.
 
 The current Linux gate consumes Core `8623b2c8829e4d9cf7299c74440dcfabb4e320db` and l10n
 `c2526bfb3f6ff57895bdc3eeed743e26c8783613` (506 catalog messages). The reviewed Flatpak source
-pin is Linux `4b5a3f2ec0e65060d104068be6a6f31446007ee4`; the current packaging pin is the same
+pin is Linux `e9406d56e1345be765c01ecfe2600e8e0d10dde9`; the current packaging pin is the same
 commit. Local exports now synchronize the temporary file and parent directory before the atomic
 move, then synchronize the parent again after finalization; a serialized child-process
 interruption fixture also verifies that the final destination is absent while the synced temporary
@@ -94,10 +94,11 @@ a bounded total provider request timeout of 1–600 seconds, a bounded connectio
 timeout of 1–120 seconds (default 10), and a bounded streaming-idle timeout of 1–300 seconds
 (default 60). Optional PEM trust bundles augment system roots without disabling TLS verification;
 malformed bundles are rejected before transport construction. The environment-gated Linux
-client-certificate fixture creates a temporary CA and mutual-TLS
-endpoint, and Native CI runs the worker's real `/v1/models` discovery against it. This validates
-certificate wiring and server-side client authentication only; generated keys are deleted after the
-test, and no enterprise endpoint, signed artifact, or stable release is implied. Normalized usage
+client-certificate fixtures create trusted and untrusted temporary CAs and mutual-TLS endpoints,
+and Native CI runs the worker's real `/v1/models` discovery against both. This validates
+certificate wiring, server-side client authentication, and enforcement of the configured trust
+bundle only; generated keys are deleted after the tests, and no enterprise endpoint, signed artifact,
+or stable release is implied. Normalized usage
 labels
 distinguish provider-reported, locally estimated, and unknown counts without pricing assumptions;
 provider billing equivalence and stable ABI projection remain open. Request-level glossary rules,

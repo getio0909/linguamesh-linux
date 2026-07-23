@@ -5,12 +5,17 @@ script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repository_dir="$(CDPATH= cd -- "$script_dir/.." && pwd)"
 fixture_dir="$(mktemp -d /tmp/linguamesh-client-certificate.XXXXXX)"
 server_pid=""
+untrusted_server_pid=""
 
 cleanup() {
   local exit_status=$?
   if [[ -n "$server_pid" ]]; then
     kill "$server_pid" >/dev/null 2>&1 || true
     wait "$server_pid" >/dev/null 2>&1 || true
+  fi
+  if [[ -n "$untrusted_server_pid" ]]; then
+    kill "$untrusted_server_pid" >/dev/null 2>&1 || true
+    wait "$untrusted_server_pid" >/dev/null 2>&1 || true
   fi
   if [[ "$fixture_dir" == /tmp/linguamesh-client-certificate.* ]]; then
     rm -rf -- "$fixture_dir"
@@ -50,6 +55,17 @@ openssl x509 -req -days 1 -in client.csr -CA ca.pem -CAkey ca.key -CAserial ca.s
   -out client.pem -extfile client.ext >/dev/null 2>&1
 cat client.pem client.key > client-identity.pem
 
+openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+  -keyout untrusted-ca.key -out untrusted-ca.pem -subj '/CN=LinguaMesh untrusted test CA' \
+  -addext 'basicConstraints=critical,CA:TRUE' \
+  -addext 'keyUsage=critical,keyCertSign,cRLSign' >/dev/null 2>&1
+openssl req -newkey rsa:2048 -nodes \
+  -keyout untrusted-server.key -out untrusted-server.csr -subj '/CN=127.0.0.1' >/dev/null 2>&1
+cp server.ext untrusted-server.ext
+openssl x509 -req -days 1 -in untrusted-server.csr \
+  -CA untrusted-ca.pem -CAkey untrusted-ca.key -CAcreateserial \
+  -out untrusted-server.pem -extfile untrusted-server.ext >/dev/null 2>&1
+
 port_file="$fixture_dir/port"
 python3 "$repository_dir/tools/client-certificate-http-fixture.py" \
   --certificate "$fixture_dir/server.pem" \
@@ -73,11 +89,40 @@ if [[ ! -s "$port_file" ]]; then
 fi
 
 endpoint="https://127.0.0.1:$(<"$port_file")/v1/"
-printf '%s\n' 'Running the client-certificate HTTPS interoperability test.'
+untrusted_port_file="$fixture_dir/untrusted-port"
+python3 "$repository_dir/tools/client-certificate-http-fixture.py" \
+  --certificate "$fixture_dir/untrusted-server.pem" \
+  --private-key "$fixture_dir/untrusted-server.key" \
+  --client-ca "$fixture_dir/ca.pem" \
+  --port-file "$untrusted_port_file" &
+untrusted_server_pid=$!
+for _ in {1..100}; do
+  if [[ -s "$untrusted_port_file" ]]; then
+    break
+  fi
+  if ! kill -0 "$untrusted_server_pid" >/dev/null 2>&1; then
+    printf '%s\n' 'The untrusted client-certificate HTTPS fixture exited before publishing its port.' >&2
+    exit 1
+  fi
+  sleep 0.05
+done
+if [[ ! -s "$untrusted_port_file" ]]; then
+  printf '%s\n' 'Timed out waiting for the untrusted client-certificate HTTPS fixture.' >&2
+  exit 1
+fi
+
+untrusted_endpoint="https://127.0.0.1:$(<"$untrusted_port_file")/v1/"
+printf '%s\n' 'Running the client-certificate HTTPS interoperability tests.'
 cd "$repository_dir"
 LINGUAMESH_CLIENT_CERT_ENDPOINT="$endpoint" \
 LINGUAMESH_CLIENT_CERT_IDENTITY_PATH="$fixture_dir/client-identity.pem" \
 LINGUAMESH_CLIENT_CERT_CA_PATH="$fixture_dir/ca.pem" \
   cargo test --features demo-provider --locked \
   worker::tests::running_client_certificate_provider_connects \
+  -- --ignored --exact --nocapture
+LINGUAMESH_CLIENT_CERT_UNTRUSTED_ENDPOINT="$untrusted_endpoint" \
+LINGUAMESH_CLIENT_CERT_IDENTITY_PATH="$fixture_dir/client-identity.pem" \
+LINGUAMESH_CLIENT_CERT_CA_PATH="$fixture_dir/ca.pem" \
+  cargo test --features demo-provider --locked \
+  worker::tests::running_client_certificate_provider_rejects_untrusted_server \
   -- --ignored --exact --nocapture
