@@ -9742,6 +9742,78 @@ mod tests {
     }
 
     #[test]
+    fn session_proxy_authentication_reaches_core_validation() {
+        let external = ExternalFakeProvider::start(FakeMode::Standard);
+        let (worker, _) = started_worker();
+        let profile = profile(
+            "session-proxy-auth-validation",
+            &external.endpoint,
+            None,
+            None,
+        )
+        .with_proxy_url(Some("http://127.0.0.1:1".to_owned()))
+        .expect("proxy URL")
+        .with_proxy_auth_ref(Some(SecretRef::new(SecretRefNamespace::Session)));
+        worker
+            .try_send(WorkerCommand::Connect {
+                profile,
+                secret: None,
+                secret_custom_headers: None,
+                proxy_authentication: Some(SecretValue::new("invalid-proxy-auth-canary")),
+                client_certificate_identity: None,
+                persistence: PersistenceIntent::SessionOnly,
+            })
+            .expect("session proxy authentication command");
+        let result = worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("session proxy authentication result");
+        assert!(matches!(
+            result,
+            WorkerEvent::ProviderRejected { error, .. }
+                if error.kind == ErrorKind::InvalidConfiguration
+                    && !error.message.contains("invalid-proxy-auth-canary")
+        ));
+        shutdown(&worker);
+    }
+
+    #[test]
+    fn session_client_certificate_identity_reaches_core_validation() {
+        let external = ExternalFakeProvider::start(FakeMode::Standard);
+        let (worker, _) = started_worker();
+        let profile = profile(
+            "session-client-certificate-validation",
+            &external.endpoint,
+            None,
+            None,
+        )
+        .with_client_certificate_identity_ref(Some(SecretRef::new(SecretRefNamespace::Session)));
+        worker
+            .try_send(WorkerCommand::Connect {
+                profile,
+                secret: None,
+                secret_custom_headers: None,
+                proxy_authentication: None,
+                client_certificate_identity: Some(SecretValue::new(
+                    "invalid-client-certificate-canary",
+                )),
+                persistence: PersistenceIntent::SessionOnly,
+            })
+            .expect("session client certificate command");
+        let result = worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("session client certificate result");
+        assert!(matches!(
+            result,
+            WorkerEvent::ProviderRejected { error, .. }
+                if error.kind == ErrorKind::InvalidConfiguration
+                    && !error.message.contains("invalid-client-certificate-canary")
+        ));
+        shutdown(&worker);
+    }
+
+    #[test]
     fn loopback_openai_compatible_provider_translates_without_secret() {
         let external = ExternalFakeProvider::start(FakeMode::Standard);
         let (worker, _) = started_worker();
