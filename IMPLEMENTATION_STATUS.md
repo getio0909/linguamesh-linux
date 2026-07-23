@@ -1,5 +1,25 @@
 # Implementation Status
 
+## 2026-07-23 — Linux manual model discovery fallback
+
+Assumption: Linux remains the active client priority; this slice preserves an explicitly validated
+manual model when discovery is unavailable and does not claim Android, Windows, macOS, stable-release,
+or human acceptance evidence.
+
+- Core `7d0f61ee528d32a5671c65d3c253c12368cf40c4` keeps a selected model as a `Manual` descriptor
+  when native/protocol discovery returns an empty list or typed `ModelUnavailable` (including a 404).
+  Authentication, network, and timeout failures remain typed errors. A manual-only fake server and
+  end-to-end translation test cover the fallback without storing credentials.
+- Linux `4997d14d621ecdad5f562059be15b30c9a69c67a` exposes the optional manual model field for every provider preset, forwards a
+  non-empty value into session and saved-profile connection tests, and retains mandatory validation
+  only for catalog entries that require manual deployment/model identifiers.
+- Local Core Clippy and all-workspace tests passed; Linux GUI/all-target checks, 161 demo-provider
+  library tests (3 documented ignores), localization audits, Flatpak metadata validation, and diff
+  checks passed. The exact GTK binary remains compile-verified but host linking lacks GTK/GDK/Graphene
+  symbols; Native CI is authoritative for display-backed execution.
+- Release remains `unreleased`; cross-client parity, human review, signing, rollback, and stable
+  release authorization remain open.
+
 ## 2026-07-23 — Linux Provider Hub health label GTK lifecycle
 
 Assumption: Linux remains the active client priority; this regression exercises only persisted,
