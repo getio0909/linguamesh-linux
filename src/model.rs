@@ -1194,6 +1194,22 @@ impl AppState {
         self.source_text = source_text.into();
     }
 
+    /// 清空文本工作区内容并回到可继续编辑的空闲状态，不改变提供商与界面设置。
+    pub fn clear_workspace(&mut self) {
+        self.source_text.clear();
+        self.output.clear();
+        self.partial_output = false;
+        self.usage = None;
+        self.error = None;
+        self.last_sequence = None;
+        self.routing_decision = None;
+        self.status = if self.active_provider.is_some() {
+            AppStatus::Ready
+        } else {
+            AppStatus::Disconnected
+        };
+    }
+
     /// 更新可选源语言标签。
     pub fn set_source_locale(&mut self, source_locale: Option<String>) {
         self.source_locale = source_locale;
@@ -2473,6 +2489,23 @@ mod tests {
         assert_eq!(request.target_locale, "zh-CN");
         assert_eq!(request.model_id, "fake-translator");
         assert!(!state.can_retry_translation());
+    }
+
+    #[test]
+    fn clear_workspace_removes_text_result_and_request_diagnostics() {
+        let mut state = connected_state();
+        state.record_operation_failure(TranslationError::new(
+            ErrorKind::Network,
+            "The provider could not be reached.",
+        ));
+        state.set_document_output("partial");
+        state.clear_workspace();
+        assert_eq!(state.source_text(), "");
+        assert_eq!(state.output(), "");
+        assert!(!state.has_partial_output());
+        assert!(state.usage().is_none());
+        assert!(state.error_text().is_none());
+        assert_eq!(state.status(), AppStatus::Ready);
     }
 
     #[test]

@@ -189,6 +189,7 @@ struct UiBindings {
     translate: gtk::Button,
     retry_translation: gtk::Button,
     copy_output: gtk::Button,
+    clear_workspace: gtk::Button,
     export_output: gtk::Button,
     open_output: gtk::Button,
     open_source: gtk::Button,
@@ -998,6 +999,20 @@ fn create_window(
     let copy_output_label =
         localization::text(display_locale, "action.copy_output", "Copy translation");
     copy_output.update_property(&[gtk::accessible::Property::Label(&copy_output_label)]);
+    let clear_workspace = gtk::Button::with_mnemonic(&localized_mnemonic(
+        display_locale,
+        "action.clear_workspace",
+        "Clear workspace",
+    ));
+    clear_workspace.set_focusable(true);
+    clear_workspace.set_tooltip_text(Some(&localization::text(
+        display_locale,
+        "tooltip.clear_workspace",
+        "Clear the source text, translated output, and request diagnostics",
+    )));
+    let clear_workspace_label =
+        localization::text(display_locale, "action.clear_workspace", "Clear workspace");
+    clear_workspace.update_property(&[gtk::accessible::Property::Label(&clear_workspace_label)]);
     let export_output = gtk::Button::with_mnemonic(&localized_mnemonic(
         display_locale,
         "action.export_output",
@@ -1053,6 +1068,7 @@ fn create_window(
     action_row.append(&translate);
     action_row.append(&retry_translation);
     action_row.append(&copy_output);
+    action_row.append(&clear_workspace);
     action_row.append(&export_output);
     action_row.append(&open_output);
     action_row.append(&pause_document);
@@ -1180,6 +1196,7 @@ fn create_window(
         translate,
         retry_translation,
         copy_output,
+        clear_workspace,
         export_output,
         open_output,
         open_source,
@@ -1507,6 +1524,10 @@ fn install_keyboard_focus_probe(
         (
             "copy_output",
             bindings.copy_output.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "clear_workspace",
+            bindings.clear_workspace.clone().upcast::<gtk::Widget>(),
         ),
         (
             "export_output",
@@ -5009,6 +5030,43 @@ fn connect_action_handlers(
             .display()
             .clipboard()
             .set_text(&output);
+    });
+
+    let clear_bindings = bindings.clone();
+    let clear_state = Rc::clone(state);
+    bindings.clear_workspace.connect_clicked(move |_| {
+        let can_clear = {
+            let state = clear_state.borrow();
+            state.pending_profile_deletion().is_none()
+                && state.pending_model_selection().is_none()
+                && !clear_bindings.ocr_pending.get()
+                && !matches!(
+                    state.status(),
+                    AppStatus::Connecting | AppStatus::Translating | AppStatus::Cancelling
+                )
+                && clear_bindings.document_job_id.borrow().is_none()
+        };
+        if !can_clear {
+            return;
+        }
+        clear_state.borrow_mut().clear_workspace();
+        clear_bindings.source.set_text("");
+        clear_bindings.output.set_text("");
+        clear_bindings.source_uri.borrow_mut().take();
+        clear_bindings.output_uri.borrow_mut().take();
+        clear_bindings.document_warnings.borrow_mut().clear();
+        clear_bindings.document_progress.set(None);
+        clear_bindings.document_job_state.set(None);
+        clear_bindings.export_notice.set(false);
+        clear_bindings.report_export_notice.set(false);
+        clear_bindings.fallback_notice.set(false);
+        clear_bindings.connection_test_notice.set(false);
+        clear_bindings.connection_test_model_count.set(None);
+        clear_bindings
+            .connection_test_profile_id
+            .borrow_mut()
+            .take();
+        refresh_ui(&clear_bindings, &clear_state.borrow());
     });
 
     let pause_bindings = bindings.clone();
@@ -9103,6 +9161,12 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
         "tooltip.copy_output",
         "Copy the translated output to the system clipboard",
     );
+    let clear_workspace = localization::text(locale, "action.clear_workspace", "Clear workspace");
+    let clear_workspace_tooltip = localization::text(
+        locale,
+        "tooltip.clear_workspace",
+        "Clear the source text, translated output, and request diagnostics",
+    );
     let stop = localization::text(locale, "accessibility.stop_translation", "Stop translation");
     let pause = localization::text(locale, "action.pause_document", "Pause document");
     let resume = localization::text(locale, "action.resume_document", "Resume document");
@@ -9200,6 +9264,15 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     bindings
         .copy_output
         .update_property(&[gtk::accessible::Property::Label(&copy_output)]);
+    bindings
+        .clear_workspace
+        .set_label(&format!("_{clear_workspace}"));
+    bindings
+        .clear_workspace
+        .set_tooltip_text(Some(&clear_workspace_tooltip));
+    bindings
+        .clear_workspace
+        .update_property(&[gtk::accessible::Property::Label(&clear_workspace)]);
     bindings.export_output.set_label(&format!("_{export}"));
     bindings
         .export_output
@@ -10334,6 +10407,10 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     bindings
         .copy_output
         .set_sensitive(!state.output().is_empty() && !blocked);
+    let source_has_text = !text_buffer_contents(&bindings.source).is_empty();
+    bindings.clear_workspace.set_sensitive(
+        !blocked && !document_job_available && (source_has_text || !state.output().is_empty()),
+    );
     bindings
         .open_output
         .set_sensitive(bindings.output_uri.borrow().is_some() && !blocked);
@@ -14050,6 +14127,11 @@ mod tests {
         assert_eq!(bindings.translate.label().as_deref(), Some("_翻译"));
         assert_eq!(bindings.copy_output.label().as_deref(), Some("_复制译文"));
         assert!(!bindings.copy_output.is_sensitive());
+        assert_eq!(
+            bindings.clear_workspace.label().as_deref(),
+            Some("_清空工作区")
+        );
+        assert!(!bindings.clear_workspace.is_sensitive());
         assert_eq!(bindings.export_output.label().as_deref(), Some("_导出翻译"));
         assert!(!bindings.export_output.is_sensitive());
         assert_eq!(
@@ -14204,6 +14286,7 @@ mod tests {
             &bindings.open_source,
             &bindings.translate,
             &bindings.copy_output,
+            &bindings.clear_workspace,
             &bindings.retry_translation,
             &bindings.export_output,
             &bindings.open_output,
@@ -14650,6 +14733,23 @@ mod tests {
         });
         assert_eq!(state.borrow().output(), "你好，LinguaMesh！");
         assert!(!bindings.retry_translation.is_sensitive());
+        assert!(bindings.clear_workspace.is_sensitive());
+        bindings.clear_workspace.emit_clicked();
+        assert_eq!(state.borrow().source_text(), "");
+        assert_eq!(state.borrow().output(), "");
+        assert_eq!(
+            bindings
+                .source
+                .text(
+                    &bindings.source.start_iter(),
+                    &bindings.source.end_iter(),
+                    true,
+                )
+                .as_str(),
+            ""
+        );
+        assert!(!bindings.clear_workspace.is_sensitive());
+        assert_eq!(state.borrow().status(), AppStatus::Ready);
         apply_worker_event(&bindings, &state, &worker, WorkerEvent::Stopped);
         refresh_ui(&bindings, &state.borrow());
         assert!(state.borrow().worker_unavailable());
