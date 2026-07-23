@@ -1,5 +1,30 @@
 # Implementation Status
 
+## 2026-07-23 — Linux all-SecretRef persistence filtering
+
+Assumption: a worker-level persistence regression is the smallest reproducible evidence that
+session-only secret references cannot reach SQLite; the GTK Secret Service fixture remains the
+runtime integration boundary.
+
+- Runtime test commit `bb6bc5bef572eb19d7c066e24a2d48546bf4fb08` extends the profile filter test
+  across the primary credential, secret custom headers, proxy authentication, and client
+  certificate identity SecretRefs. Persistent references are retained, while all three
+  session-only references are removed before persistence.
+- Packaging/docs commit `9dc863eeb9fc5825c7354863c59bb21bf4447381` pins the Flatpak source to the
+  tested runtime and documents the expanded persistence boundary. Local formatting, locked
+  all-target/all-feature checks, test-target checks, strict Clippy, 163 demo-provider library
+  tests (3 documented environment-gated ignores), localization synchronization, Flatpak metadata,
+  and diff checks passed. The focused GTK binary remains compile-checked but cannot link on this
+  host because the installed GTK/GDK/Graphene runtime lacks symbols required by the pinned gtk-rs
+  version.
+- Push Native/Flatpak/Foundation runs `30040675056`/`30040674974`/`30040675116` and PR
+  Native/Flatpak/Foundation runs `30040679787`/`30040679862`/`30040679848` all passed. Native
+  explicitly completed the existing real GTK Secret Service integration fixture.
+
+This strengthens unreleased Linux secure-onboarding evidence without claiming interactive prompt
+approval, human visual review, other-client parity, signed artifacts, rollback authorization, or
+stable-release approval.
+
 ## 2026-07-23 — Linux Secret Service custom-header onboarding
 
 Assumption: the existing authenticated loopback and private Secret Service fixture is the
