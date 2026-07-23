@@ -1,5 +1,22 @@
 # Implementation Status
 
+## 2026-07-23 — Linux provider custom trusted certificate settings
+
+Assumption: an optional bounded PEM certificate bundle is the smallest Linux-first TLS slice. It
+augments system roots, never disables certificate verification, and rejects private-key material or
+malformed/control-heavy input before a provider client is built.
+
+- Core `60bd3d5c9c79358f80c47da391141342e9cf5712` adds schema 29 persistence, validation, and
+  reqwest root-certificate wiring for OpenAI Chat/Responses/Azure, Anthropic, Gemini, and Ollama.
+- l10n `d315efe808e05ce2fb0ee24c0247076298d57947` adds the Linux label, placeholder, and tooltip;
+  generated resources report 474 messages and pass `make check`.
+- Linux `b5709c84dfe1bca4766c395dfd7313bc689b7bde` exposes the PEM field, saved-profile restore,
+  connection/test forwarding, and updated Flatpak/source pins.
+- Local evidence: `cargo test --no-default-features --lib` (83 passed, 1 ignored), `cargo clippy
+  --all-targets --all-features -- -D warnings`, localization sync `--write/--check`, and Flatpak
+  metadata validation passed. Full GTK test linking remains host-limited by missing GTK symbols;
+  remote Ubuntu gates are required for final native/release evidence.
+
 ## 2026-07-23 — Linux provider streaming idle timeout settings
 
 Assumption: a bounded streaming idle timeout of 1–300 seconds (default 60) is the smallest

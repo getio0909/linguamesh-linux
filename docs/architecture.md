@@ -221,7 +221,9 @@ a bounded total provider request timeout from 1 to 600 seconds, schema 27 persis
 connection-establishment timeout from 1 to 120 seconds (default 10), and schema 28 persists a
 bounded streaming idle timeout from 1 to 300 seconds (default 60). All three are applied
 independently to the OpenAI Chat/Responses/Azure, Anthropic, Gemini, and Ollama transports; the
-streaming idle budget resets after each received response chunk. TLS policy fields remain open.
+streaming idle budget resets after each received response chunk. Schema 29 persists an optional
+bounded PEM trust bundle that augments system roots; malformed bundles and private-key material are
+rejected, and TLS verification is never disabled.
 Other adapters ignore the OpenAI-specific metadata,
 **Remove saved profile**,
 model selection, source and target locales, source and streamed output editors, native **Open text

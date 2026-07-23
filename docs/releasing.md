@@ -78,11 +78,12 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `b247155ad429639fdb65d3b063c3efc580ce46a4` (schema 28) and l10n
-`2e223f9a416f4b461b72224f12c31cbf7981dae3` (471 catalog messages). The profile contract includes
+The current Linux gate consumes Core `60bd3d5c9c79358f80c47da391141342e9cf5712` (schema 29) and l10n
+`d315efe808e05ce2fb0ee24c0247076298d57947` (474 catalog messages). The profile contract includes
 a bounded total provider request timeout of 1–600 seconds, a bounded connection-establishment
 timeout of 1–120 seconds (default 10), and a bounded streaming-idle timeout of 1–300 seconds
-(default 60). TLS policy fields remain open. Normalized
+(default 60). Optional PEM trust bundles augment system roots without disabling TLS verification;
+malformed bundles are rejected before transport construction. Normalized
 usage labels
 distinguish provider-reported, locally estimated, and unknown counts without pricing assumptions;
 provider billing equivalence and stable ABI projection remain open. Request-level glossary rules, bounded CSV,

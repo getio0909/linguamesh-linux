@@ -49,7 +49,8 @@ The proxy is validated without embedded credentials and applied by Core's transp
 provider request timeout (1–600 seconds, default 30), connection-establishment timeout (1–120
 seconds, default 10), and streaming idle timeout (1–300 seconds, default 60) are saved with the
 profile and applied independently by Core's transport. The streaming idle budget resets after each
-received response chunk.
+received response chunk. An optional bounded PEM trust bundle augments system roots while TLS
+verification remains enabled; private keys and malformed bundles are rejected.
 Saved profiles restore these values;
 custom headers reject authorization, credential-shaped, and built-in metadata names, while the
 application layer forwards safe headers to Chat Completions, Responses, and Azure Chat without

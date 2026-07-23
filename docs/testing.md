@@ -30,7 +30,8 @@ Core schema 26, a bounded connection-establishment timeout (1–120 seconds, def
 schema 27, and a bounded streaming idle timeout (1–300 seconds, default 60) through schema 28.
 All reject out-of-range values before any host-secret request and are applied independently to every
 currently supported provider transport. A stalled-body fixture verifies that streaming idle timeout
-returns a typed timeout error; TLS-specific policy coverage remains open.
+returns a typed timeout error. Core rejects malformed or private-key PEM bundles before constructing
+the client; Linux form tests cover the persisted optional trust-bundle field.
 
 The same provider fixture covers the Google Gemini preset through the `/v1beta/` Generate Content
 contract: `models` discovery filters entries that support `generateContent`, and the streaming
