@@ -33,16 +33,18 @@ currently supported provider transport. A stalled-body fixture verifies that str
 returns a typed timeout error. Core rejects malformed or private-key PEM bundles before constructing
 the client; Linux form tests cover the persisted optional trust-bundle field.
 
-The environment-gated `running_client_certificate_provider_connects` and
-`running_client_certificate_provider_rejects_untrusted_server` regressions exercise real HTTPS
+The environment-gated `running_client_certificate_provider_connects`,
+`running_client_certificate_provider_rejects_untrusted_server`, and
+`running_client_certificate_provider_rejects_hostname_mismatch` regressions exercise real HTTPS
 model-discovery requests against `tools/client-certificate-http-fixture.py`. Run them with
 `bash tools/run-client-certificate-interop-test.sh`; the runner creates temporary trusted and
-untrusted CAs, server certificates, and a client identity, requires the client certificate during
-the TLS handshake, and deletes all material after both tests. The worker supplies the identity
-through a session SecretRef and the trusted CA through the bounded trust-bundle field. The first
-test proves successful Linux rustls client-authentication wiring; the second proves that a server
-certificate outside the configured trust bundle is rejected. Neither test persists a key or claims
-live enterprise interoperability.
+untrusted CAs, server certificates, a wrong-SAN server certificate, and a client identity,
+requires the client certificate during the TLS handshake, and deletes all material after all three
+tests. The worker supplies the identity through a session SecretRef and the trusted CA through the
+bounded trust-bundle field. The first test proves successful Linux rustls client-authentication
+wiring; the second proves that a server certificate outside the configured trust bundle is rejected;
+the third proves hostname verification rejects a wrong SAN even when the signing CA is trusted.
+Neither test persists a key or claims live enterprise interoperability.
 
 The same provider fixture covers the Google Gemini preset through the `/v1beta/` Generate Content
 contract: `models` discovery filters entries that support `generateContent`, and the streaming

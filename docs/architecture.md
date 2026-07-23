@@ -269,9 +269,10 @@ rejected, and TLS verification is never disabled.
 
 The optional client-certificate identity is a combined PEM value resolved once through the host
 secret broker. The Linux test-only HTTPS fixture requires that identity during a real rustls
-handshake and returns model discovery only after client authentication succeeds; a companion
-untrusted-server fixture proves the configured trust bundle is enforced. Generated test keys remain
-in a private temporary directory and are never part of profile storage or diagnostics.
+handshake and returns model discovery only after client authentication succeeds; companion
+untrusted-server and wrong-SAN fixtures prove that both the configured trust bundle and hostname
+verification remain enforced. Generated test keys remain in a private temporary directory and are
+never part of profile storage or diagnostics.
 Other adapters ignore the OpenAI-specific metadata,
 **Remove saved profile**,
 model selection, source and target locales, source and streamed output editors, native **Open text

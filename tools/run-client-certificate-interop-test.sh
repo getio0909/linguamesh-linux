@@ -6,6 +6,7 @@ repository_dir="$(CDPATH= cd -- "$script_dir/.." && pwd)"
 fixture_dir="$(mktemp -d /tmp/linguamesh-client-certificate.XXXXXX)"
 server_pid=""
 untrusted_server_pid=""
+hostname_server_pid=""
 
 cleanup() {
   local exit_status=$?
@@ -16,6 +17,10 @@ cleanup() {
   if [[ -n "$untrusted_server_pid" ]]; then
     kill "$untrusted_server_pid" >/dev/null 2>&1 || true
     wait "$untrusted_server_pid" >/dev/null 2>&1 || true
+  fi
+  if [[ -n "$hostname_server_pid" ]]; then
+    kill "$hostname_server_pid" >/dev/null 2>&1 || true
+    wait "$hostname_server_pid" >/dev/null 2>&1 || true
   fi
   if [[ "$fixture_dir" == /tmp/linguamesh-client-certificate.* ]]; then
     rm -rf -- "$fixture_dir"
@@ -66,6 +71,17 @@ openssl x509 -req -days 1 -in untrusted-server.csr \
   -CA untrusted-ca.pem -CAkey untrusted-ca.key -CAcreateserial \
   -out untrusted-server.pem -extfile untrusted-server.ext >/dev/null 2>&1
 
+openssl req -newkey rsa:2048 -nodes \
+  -keyout hostname-server.key -out hostname-server.csr -subj '/CN=wrong.linguamesh.test' >/dev/null 2>&1
+printf '%s\n' \
+  'basicConstraints=critical,CA:FALSE' \
+  'keyUsage=critical,digitalSignature,keyEncipherment' \
+  'extendedKeyUsage=serverAuth' \
+  'subjectAltName=DNS:wrong.linguamesh.test' > hostname-server.ext
+openssl x509 -req -days 1 -in hostname-server.csr \
+  -CA ca.pem -CAkey ca.key -CAserial ca.srl \
+  -out hostname-server.pem -extfile hostname-server.ext >/dev/null 2>&1
+
 port_file="$fixture_dir/port"
 python3 "$repository_dir/tools/client-certificate-http-fixture.py" \
   --certificate "$fixture_dir/server.pem" \
@@ -112,6 +128,29 @@ if [[ ! -s "$untrusted_port_file" ]]; then
 fi
 
 untrusted_endpoint="https://127.0.0.1:$(<"$untrusted_port_file")/v1/"
+hostname_port_file="$fixture_dir/hostname-port"
+python3 "$repository_dir/tools/client-certificate-http-fixture.py" \
+  --certificate "$fixture_dir/hostname-server.pem" \
+  --private-key "$fixture_dir/hostname-server.key" \
+  --client-ca "$fixture_dir/ca.pem" \
+  --port-file "$hostname_port_file" &
+hostname_server_pid=$!
+for _ in {1..100}; do
+  if [[ -s "$hostname_port_file" ]]; then
+    break
+  fi
+  if ! kill -0 "$hostname_server_pid" >/dev/null 2>&1; then
+    printf '%s\n' 'The hostname-mismatch HTTPS fixture exited before publishing its port.' >&2
+    exit 1
+  fi
+  sleep 0.05
+done
+if [[ ! -s "$hostname_port_file" ]]; then
+  printf '%s\n' 'Timed out waiting for the hostname-mismatch HTTPS fixture.' >&2
+  exit 1
+fi
+
+hostname_endpoint="https://127.0.0.1:$(<"$hostname_port_file")/v1/"
 printf '%s\n' 'Running the client-certificate HTTPS interoperability tests.'
 cd "$repository_dir"
 LINGUAMESH_CLIENT_CERT_ENDPOINT="$endpoint" \
@@ -125,4 +164,10 @@ LINGUAMESH_CLIENT_CERT_IDENTITY_PATH="$fixture_dir/client-identity.pem" \
 LINGUAMESH_CLIENT_CERT_CA_PATH="$fixture_dir/ca.pem" \
   cargo test --features demo-provider --locked \
   worker::tests::running_client_certificate_provider_rejects_untrusted_server \
+  -- --ignored --exact --nocapture
+LINGUAMESH_CLIENT_CERT_HOSTNAME_ENDPOINT="$hostname_endpoint" \
+LINGUAMESH_CLIENT_CERT_IDENTITY_PATH="$fixture_dir/client-identity.pem" \
+LINGUAMESH_CLIENT_CERT_CA_PATH="$fixture_dir/ca.pem" \
+  cargo test --features demo-provider --locked \
+  worker::tests::running_client_certificate_provider_rejects_hostname_mismatch \
   -- --ignored --exact --nocapture
