@@ -9778,6 +9778,77 @@ mod tests {
     }
 
     #[test]
+    fn session_proxy_authentication_reaches_local_proxy() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).expect("proxy listener");
+        let proxy_address = listener.local_addr().expect("proxy address");
+        let proxy_thread = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("proxy connection");
+            stream
+                .set_read_timeout(Some(Duration::from_secs(5)))
+                .expect("proxy read timeout");
+            let mut request = Vec::new();
+            let mut chunk = [0_u8; 4096];
+            loop {
+                let read = stream.read(&mut chunk).expect("proxy request");
+                assert!(read > 0);
+                request.extend_from_slice(&chunk[..read]);
+                if request.windows(4).any(|window| window == b"\r\n\r\n") {
+                    break;
+                }
+            }
+            let request = String::from_utf8_lossy(&request);
+            assert!(request.starts_with("GET http://127.0.0.1:9/v1/models HTTP/1.1"));
+            assert!(request.lines().any(|line| {
+                let Some((name, value)) = line.split_once(':') else {
+                    return false;
+                };
+                name.eq_ignore_ascii_case("proxy-authorization")
+                    && value.trim() == "Basic cHJveHktdXNlcjpwcm94eS1zZWNyZXQ="
+            }));
+            stream
+                .write_all(
+                    b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 32\r\nConnection: close\r\n\r\n{\"data\":[{\"id\":\"proxy-model\"}]}\n",
+                )
+                .expect("proxy response");
+        });
+        let (worker, _) = started_worker();
+        let profile = profile(
+            "session-proxy-auth-transport",
+            "http://127.0.0.1:9/v1/",
+            None,
+            None,
+        )
+        .with_proxy_url(Some(format!("http://{proxy_address}")))
+        .expect("proxy URL")
+        .with_proxy_auth_ref(Some(SecretRef::new(SecretRefNamespace::Session)));
+        worker
+            .try_send(WorkerCommand::Connect {
+                profile,
+                secret: None,
+                secret_custom_headers: None,
+                proxy_authentication: Some(SecretValue::new("proxy-user:proxy-secret")),
+                client_certificate_identity: None,
+                persistence: PersistenceIntent::SessionOnly,
+            })
+            .expect("session proxy authentication command");
+        let result = worker
+            .events
+            .recv_timeout(Duration::from_secs(5))
+            .expect("session proxy authentication result");
+        match result {
+            WorkerEvent::Connected { models, .. } => {
+                assert!(models.iter().any(|model| model.id == "proxy-model"));
+            }
+            WorkerEvent::ProviderRejected { error, .. } => {
+                panic!("proxy provider rejected request: {}", error.message);
+            }
+            _ => panic!("unexpected proxy event"),
+        }
+        proxy_thread.join().expect("proxy thread");
+        shutdown(&worker);
+    }
+
+    #[test]
     fn session_client_certificate_identity_reaches_core_validation() {
         let external = ExternalFakeProvider::start(FakeMode::Standard);
         let (worker, _) = started_worker();
