@@ -1,5 +1,28 @@
 # Implementation Status
 
+## 2026-07-23 — Linux mTLS client-authentication rejection
+
+Assumption: a temporary endpoint that trusts a different client CA is the smallest
+reproducible evidence that the Linux worker does not silently authenticate with an
+untrusted client certificate; enterprise-provider interoperability and cross-client
+certificate handling remain separate qualification gates.
+
+- Linux runtime/test commit `7513d983011fdd81374cfb879b23647aef388f7e` adds a fourth ignored
+  worker regression. The session-only client certificate succeeds against the trusted
+  endpoint, while an endpoint with a different client-CA trust chain rejects the identity at
+  the TLS handshake; diagnostics remain a network error without the secret name.
+- The exact local runner passed once for all four cases (`1 passed; 0 failed` each): trusted
+  endpoint, unrelated server CA, trusted CA with wrong SAN, and untrusted client CA. The
+  library suite passed `166 passed; 0 failed; 7 ignored`; formatting, locked checks, strict
+  Clippy, localization synchronization, Flatpak metadata, and diff checks also passed.
+- Source-pin correction commit `deffb80df01cb9f6c76a8b46e0ad725080e07ea6` aligns the Flatpak
+  source and release documentation with the tested runtime after the stale-pin validation
+  failure. Its push Native/Flatpak/Foundation runs `30051807943`/`30051807946`/`30051807944`
+  and PR Native/Flatpak/Foundation runs `30051810997`/`30051811154`/`30051811003` all passed.
+- No provider credential or production certificate is stored. Release remains `unreleased`;
+  this does not claim enterprise interoperability, interactive prompt approval, human review,
+  cross-client parity, signing, rollback, or stable-release authorization.
+
 ## 2026-07-23 — Linux mTLS hostname verification
 
 Assumption: a server certificate signed by the trusted test CA but carrying a wrong SAN is the
