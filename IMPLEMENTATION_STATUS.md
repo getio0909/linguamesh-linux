@@ -7,13 +7,15 @@ default 10); streaming-idle timeout and TLS policy remain separate follow-up wor
 
 - Linux adds a localized integer control, restores it with saved profiles, defaults new profiles to
   10 seconds, and validates it before Test connection or Connect.
-- Core schema 27 persists the timeout and applies it independently of the total request timeout to
-  OpenAI Chat/Responses/Azure, Anthropic, Gemini, and Ollama. l10n source revision 55 supplies the
-  469-message bundle; exact pins and remote gate IDs will be recorded after the commits land.
+- Core `e9a569f8bb6d66db4fdb1c9bd1d6834e93d10f39` schema 27 persists the timeout and applies it
+  independently of the total request timeout to OpenAI Chat/Responses/Azure, Anthropic, Gemini,
+  and Ollama. l10n `46ca70b2863fa951b417eda7ce5848e152c46605` source revision 55 supplies the
+  469-message bundle; Core CI/Fuzz/Native SDK `29969609373`/`29969609372`/`29969609379` passed.
 - Local Core workspace tests (domain 50, storage 44, application 15), Linux demo-provider tests
   (`159 passed; 3 ignored`), strict Clippy, l10n checks, localization audits, and diff checks pass.
-  Release remains unreleased pending remote gates and the documented cross-client, human-review,
-  signing, rollback, and stable-release boundaries.
+  Linux push Native/Flatpak/Foundation `29969721769`/`29969721764`/`29969721796` and PR
+  `29969720587`/`29969720599`/`29969720634` passed. Release remains unreleased pending the
+  documented cross-client, human-review, signing, rollback, and stable-release boundaries.
 
 ## 2026-07-23 — Linux provider request timeout settings
 
