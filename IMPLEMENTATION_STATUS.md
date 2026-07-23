@@ -1,5 +1,19 @@
 # Implementation Status
 
+## 2026-07-23 — Linux PR gate finalization record
+
+Assumption: the workflow results below are authoritative for the documentation-only head; a
+temporary Flathub fetch failure is recorded as an infrastructure retry, not hidden as a source
+failure.
+
+- Push Native/Flatpak/Foundation gates passed as `29989088159`, rerun `29989088223`, and
+  `29989088163`. PR Native/Foundation passed as `29989286385` and `29989286425`.
+- PR Flatpak workflow `29989286410` completed every build, checksum, SBOM, sandbox-smoke, and
+  cleanup step successfully. GitHub's check-run aggregation briefly lagged behind that completed
+  workflow; no merge or release action is inferred from the lag.
+- Central coordination commit `101f5b7f5f13654e5f1e4eecb779baabc7310caf` passed run
+  `29989857847`; release remains `unreleased`.
+
 ## 2026-07-23 — Linux demo-provider regression rerun
 
 Assumption: the current Linux implementation head is the authoritative local target for this
