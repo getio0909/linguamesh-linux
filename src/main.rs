@@ -10429,9 +10429,10 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         localization::text(state.locale(), "status.label", "Status")
     );
     bindings.status.set_label(&status_text);
-    bindings
-        .status
-        .update_property(&[gtk::accessible::Property::Label(&status_text)]);
+    bindings.status.update_property(&[
+        gtk::accessible::Property::Label(&status_text),
+        gtk::accessible::Property::Description(&status_text),
+    ]);
     if let Some((completed, total)) = bindings.document_progress.get() {
         let progress_label = localized_template(
             state.locale(),
@@ -10471,9 +10472,10 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     let has_error = error_text.is_some();
     let error_label = error_text.as_deref().unwrap_or_default();
     bindings.error.set_label(error_label);
-    bindings
-        .error
-        .update_property(&[gtk::accessible::Property::Label(error_label)]);
+    bindings.error.update_property(&[
+        gtk::accessible::Property::Label(error_label),
+        gtk::accessible::Property::Description(error_label),
+    ]);
     bindings.error.set_visible(has_error);
     if has_error {
         bindings.error.reset_state(gtk::AccessibleState::Hidden);
