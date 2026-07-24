@@ -14,6 +14,9 @@ quota qualification, or stable-release readiness.
 - The daemon, model volume, and container were removed after the test. A separate Docker-bridge
   attempt returned HTTP 500 because its proxy route to `registry.ollama.ai` timed out; that attempt
   is recorded as a diagnostic failure, not as evidence.
+- Push Native/Flatpak/Foundation `30131056593`/`30131056609`/`30131056607` and PR
+  Native/Flatpak/Foundation `30131058620`/`30131058622`/`30131058633` all passed for the hosted
+  packaging and validation matrix; the external model pull remains an opt-in local fixture.
 - Release remains `unreleased`; GPU, quota, human/physical review, other clients, signing,
   rollback, and stable-release evidence remain open.
 
