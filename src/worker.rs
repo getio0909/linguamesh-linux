@@ -11590,6 +11590,47 @@ mod tests {
     }
 
     #[test]
+    fn published_storage_does_not_follow_replaced_database_sidecars() {
+        for suffix in ["-wal", "-shm"] {
+            let database = TestDatabase::new();
+            fs::create_dir(&database.directory).expect("database directory");
+            fs::set_permissions(&database.directory, fs::Permissions::from_mode(0o700))
+                .expect("database directory permissions");
+            let (mut storage, _, _) =
+                open_profile_storage(database.path()).expect("published profile storage");
+            storage
+                .save_and_activate_provider(&profile(
+                    "published-sidecar-initial",
+                    "http://127.0.0.1:1",
+                    None,
+                    Some("fake-translator"),
+                ))
+                .expect("initial profile");
+
+            let sidecar = PathBuf::from(format!("{}{}", database.path().display(), suffix));
+            let replacement = database
+                .directory
+                .join(format!("sidecar-replacement-{suffix}"));
+            fs::write(&replacement, b"REPLACED_SIDECAR").expect("replacement sidecar");
+            if sidecar.exists() {
+                fs::remove_file(&sidecar).expect("remove sidecar");
+            }
+            fs::rename(&replacement, &sidecar).expect("replace sidecar");
+
+            let result = storage.save_and_activate_provider(&profile(
+                "published-sidecar-follow-up",
+                "http://127.0.0.1:1",
+                None,
+                Some("fake-translator"),
+            ));
+            assert!(
+                result.is_err()
+                    || fs::read(&sidecar).expect("sidecar bytes") == b"REPLACED_SIDECAR"
+            );
+        }
+    }
+
+    #[test]
     fn replaced_parent_is_rejected_between_preflight_and_descriptor_open() {
         let database = TestDatabase::new();
         fs::create_dir(&database.directory).expect("database directory");

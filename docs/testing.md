@@ -543,7 +543,10 @@ hard-linked aliases for both sidecars before Core opens the database, while
 identity is rejected after Core open. The `published_storage_does_not_follow_replaced_database_path`
 regression then replaces the visible database pathname after storage publication and verifies that
 existing storage continues using the original descriptor-bound inode without modifying replacement
-bytes. It also verifies that a completed standard translation is recorded in bounded
+bytes. The `published_storage_does_not_follow_replaced_database_sidecars` regression applies the
+same post-publish check to both SQLite sidecar pathnames; it proves no-follow behavior for the
+published connection, not active replacement rejection or physical durability. It also verifies
+that a completed standard translation is recorded in bounded
 history, an Incognito completion bypasses both translation-memory lookup and persistence, and the
 startup count/clear command path uses the same database. The focused
 `incognito_translation_bypasses_existing_memory_and_persists_nothing` regression first stores a
@@ -1011,7 +1014,8 @@ again after Core open and again immediately before the hydrated storage is publi
 suite also replaces the validated parent with a distinct private directory and rejects the
 device/inode change. The post-publish replacement regression proves an already-published connection
 does not follow the visible pathname, but does not claim active replacement rejection, broader
-same-UID filesystem/VFS variants, or power-loss recovery.
+same-UID filesystem/VFS variants, or power-loss recovery. The sidecar no-follow regression adds
+the same bounded evidence for replaced `-wal`/`-shm` pathnames without closing those release gates.
 Remaining evidence is deliberately explicit: human screen-reader listening and translated-copy/
 RTL/visual review; physical compositor, GPU-backed Wayland, and broader X11/desktop coverage;
 prompted interactive Secret Service approval; broader filesystem/VFS and power-loss races; signed

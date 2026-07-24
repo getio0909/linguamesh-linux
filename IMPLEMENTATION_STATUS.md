@@ -1,5 +1,19 @@
 # Implementation Status
 
+## 2026-07-24 — Linux post-publish SQLite sidecar no-follow regression
+
+Assumption: an already-published descriptor-bound profile connection must not write through a
+visible `-wal` or `-shm` pathname that is replaced after publication; this does not claim active
+replacement rejection, physical power-loss recovery, or arbitrary VFS behavior.
+
+- Added `published_storage_does_not_follow_replaced_database_sidecars`, which replaces each
+  sidecar pathname after a profile write and requires either a fail-closed write or unchanged
+  replacement bytes.
+- Local formatting, all-target checking, and strict Clippy passed. The focused GUI test binary is
+  linker-limited on this host by missing GTK/GDK/Graphene symbols; hosted Native CI is authoritative.
+- The Linux branch remains `unreleased`; broader filesystem/VFS, power-loss, manual review,
+  cross-client, signing, rollback, and stable-release gates remain open.
+
 ## 2026-07-24 — Linux preset loopback default alignment
 
 Assumption: switching provider presets must recognize every Core-accepted HTTP loopback authority
