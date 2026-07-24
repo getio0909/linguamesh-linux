@@ -10,6 +10,8 @@ user-selected output directories and unrelated temporary files remain outside th
   connection, cancellation, and OCR work, reports the number of removed items, and never traverses
   unrelated names. The focused `temporary_cleanup_removes_only_linguamesh_owned_items` regression
   removes two owned fixtures while preserving an unrelated file.
+- Linux implementation commit `1547485795e75c8b1a0fcffb16ef1b72f0374496` contains the bounded
+  action and generated catalog resources; the Flatpak source pin is updated to this exact commit.
 - Added five Linux catalog messages in l10n commit
   `7fd210692bb269ef52f7453bfeb2b0f0759b1d4c`; the 511-message generated bundle passed l10n
   schema/lint/tests/generation/build/foundation validation. Linux sync and all three localization
