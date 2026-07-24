@@ -369,7 +369,7 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 The current synchronized checkout must be Core revision
-`b1596ca8ffbdc809817b92fec29523a8b31576aa`, an ABI 1 handle-lifetime-hardening descendant of runtime baseline
+`900b0a90113b75dd0f49e535900b9af8e75ef0f3`, an ABI 1 handle-lifetime-hardening descendant of runtime baseline
 `8623b2c8829e4d9cf7299c74440dcfabb4e320db`. The baseline carries bounded document lease
 consumption smoke, POSIX-descriptor document consumption, and the AddressSanitizer gate, plus the
 protocol decoder fuzz gate and bounded FileLease lifecycle,
@@ -382,9 +382,9 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e b1596ca8ffbdc809817b92fec29523a8b31576aa^{commit}
+git -C ../linguamesh-core cat-file -e 900b0a90113b75dd0f49e535900b9af8e75ef0f3^{commit}
 git -C ../linguamesh-core diff --quiet \
-  b1596ca8ffbdc809817b92fec29523a8b31576aa..HEAD -- \
+  900b0a90113b75dd0f49e535900b9af8e75ef0f3..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -725,7 +725,7 @@ python3 tools/create-native-evidence.py \
   --cargo-lock Cargo.lock \
   --output-dir native-evidence \
   --linux-revision "$(git rev-parse HEAD)" \
-  --core-revision "b1596ca8ffbdc809817b92fec29523a8b31576aa" \
+  --core-revision "900b0a90113b75dd0f49e535900b9af8e75ef0f3" \
   --localization-revision "c2526bfb3f6ff57895bdc3eeed743e26c8783613"
 (cd native-evidence && sha256sum -c SHA256SUMS)
 ```
@@ -859,7 +859,7 @@ contrast, motion, and text-scaling behavior; manual visual review remains requir
 releases.
 
 The GitHub Actions native workflow pins Core revision
-`b1596ca8ffbdc809817b92fec29523a8b31576aa` and localization revision
+`900b0a90113b75dd0f49e535900b9af8e75ef0f3` and localization revision
 `c2526bfb3f6ff57895bdc3eeed743e26c8783613`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local

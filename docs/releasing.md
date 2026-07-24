@@ -80,7 +80,7 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `b1596ca8ffbdc809817b92fec29523a8b31576aa`, which includes
+The current Linux gate consumes Core `900b0a90113b75dd0f49e535900b9af8e75ef0f3`, which includes
 ABI 1 opaque engine-handle lifetime hardening, and l10n
 `c2526bfb3f6ff57895bdc3eeed743e26c8783613` (506 catalog messages). The reviewed Flatpak source
 pin is Linux `c03c7e2065c1a0f74f6326d9e5071ee3cbde6299`; the current packaging pin is this
