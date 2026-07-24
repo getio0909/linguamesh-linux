@@ -1130,10 +1130,19 @@ fn create_window(
     action_row.append(&resume_document);
     action_row.append(&retry_document);
     action_row.append(&stop);
-    let status = gtk::Label::new(None);
+    let initial_status_text = format!(
+        "{}: {}",
+        localization::text(display_locale, "status.label", "Status"),
+        localized_status_label(display_locale, AppStatus::Disconnected)
+    );
+    let status = gtk::Label::new(Some(&initial_status_text));
     status.set_accessible_role(gtk::AccessibleRole::Status);
     status.set_xalign(0.0);
     status.set_hexpand(true);
+    status.update_property(&[
+        gtk::accessible::Property::Label(&initial_status_text),
+        gtk::accessible::Property::Description(&initial_status_text),
+    ]);
     action_row.append(&status);
     let progress = gtk::ProgressBar::new();
     progress.set_accessible_role(gtk::AccessibleRole::ProgressBar);
@@ -1152,11 +1161,15 @@ fn create_window(
     action_row.append(&partial);
     root.append(&action_row);
 
-    let error = gtk::Label::new(None);
+    let error = gtk::Label::new(Some(""));
     error.set_accessible_role(gtk::AccessibleRole::Alert);
     error.set_xalign(0.0);
     error.set_wrap(true);
     error.add_css_class("error");
+    error.update_property(&[
+        gtk::accessible::Property::Label(""),
+        gtk::accessible::Property::Description(""),
+    ]);
     root.append(&error);
     let locale_note = gtk::Label::new(None);
     locale_note.set_xalign(0.0);
