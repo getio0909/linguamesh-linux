@@ -32,6 +32,7 @@ use linguamesh_storage::{
 use std::cell::{Cell, RefCell};
 use std::fs;
 use std::io::Write;
+use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::OnceLock;
@@ -7102,6 +7103,30 @@ fn load_routing_profile_editor(
     }
 }
 
+// 根据已验证的 HTTP 端点识别 Core 同样认可的回环地址。
+fn is_loopback_http_endpoint(endpoint: &str) -> bool {
+    let Some(authority) = endpoint
+        .strip_prefix("http://")
+        .and_then(|value| value.split('/').next())
+    else {
+        return false;
+    };
+    let host = if let Some(value) = authority.strip_prefix('[') {
+        let Some((host, _)) = value.split_once(']') else {
+            return false;
+        };
+        host
+    } else {
+        authority
+            .rsplit_once(':')
+            .map_or(authority, |(host, _)| host)
+    };
+    host.eq_ignore_ascii_case("localhost")
+        || host
+            .parse::<IpAddr>()
+            .is_ok_and(|address| address.is_loopback())
+}
+
 // 从用户明确保存的提供商配置生成不含端点和秘密的路由候选。
 fn routing_candidate_for_profile(
     profile: &ProviderProfile,
@@ -7113,9 +7138,7 @@ fn routing_candidate_for_profile(
         )
     })?;
     let endpoint = profile.base_endpoint();
-    let local = endpoint.starts_with("http://127.0.0.1")
-        || endpoint.starts_with("http://localhost")
-        || endpoint.starts_with("http://[::1]");
+    let local = is_loopback_http_endpoint(endpoint);
     let mut candidate = RoutingCandidate::new(profile.id().as_str(), model, local, 64 * 1024)
         .map_err(|error| {
             TranslationError::new(ErrorKind::InvalidConfiguration, error.to_string())
@@ -10931,12 +10954,12 @@ mod tests {
         connect_action_handlers, connect_selection_handlers, create_window,
         custom_provider_profile, destination_matches_source, document_format_label,
         document_translation_report, endpoint_matches_preset_default, export_write_strategy,
-        fallback_confirmation_needed, generate_custom_provider_id, load_source_file,
-        localized_document_job_state, localized_document_warnings, localized_provider_default_name,
-        localized_provider_health_category, localized_template, model_descriptor_label,
-        normalized_candidate_ids_for_mode, output_metrics_label, preset_requires_manual_model,
-        provider_health_timestamp, provider_preset_config, provider_preset_index,
-        quality_mode_for_selection, quality_mode_selection, refresh_ui,
+        fallback_confirmation_needed, generate_custom_provider_id, is_loopback_http_endpoint,
+        load_source_file, localized_document_job_state, localized_document_warnings,
+        localized_provider_default_name, localized_provider_health_category, localized_template,
+        model_descriptor_label, normalized_candidate_ids_for_mode, output_metrics_label,
+        preset_requires_manual_model, provider_health_timestamp, provider_preset_config,
+        provider_preset_index, quality_mode_for_selection, quality_mode_selection, refresh_ui,
         routing_constraints_from_controls, routing_constraints_from_text_values,
         routing_identifier_list_from_text, routing_optional_limit_from_text,
         routing_preference_for_selection, routing_preference_selection,
@@ -10984,6 +11007,17 @@ mod tests {
             child = widget.next_sibling();
         }
         descendants
+    }
+
+    #[test]
+    fn loopback_http_endpoint_classifier_matches_core_policy() {
+        assert!(is_loopback_http_endpoint("http://127.0.0.1:11434/v1/"));
+        assert!(is_loopback_http_endpoint("http://127.0.0.2:11434/v1/"));
+        assert!(is_loopback_http_endpoint("http://[::1]:11434/v1/"));
+        assert!(is_loopback_http_endpoint("http://localhost:11434/v1/"));
+        assert!(!is_loopback_http_endpoint("https://127.0.0.2:11434/v1/"));
+        assert!(!is_loopback_http_endpoint("http://192.0.2.1:11434/v1/"));
+        assert!(!is_loopback_http_endpoint("http://provider.example/v1/"));
     }
 
     #[test]
