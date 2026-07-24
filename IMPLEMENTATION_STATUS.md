@@ -16,7 +16,12 @@ VFS implementations and physical power-loss behavior remain separate evidence ga
 - Linux local validation passed localization synchronization and all three audits, Flatpak metadata,
   the exact Core source-diff/clean check, formatting, locked all-target check, strict Clippy,
   no-default tests (`85 passed; 1 ignored`), and demo-provider tests (`166 passed; 7 ignored`).
-  Linux Native, Flatpak, and Foundation push/PR gates remain pending for this pin update.
+- Linux packaging/status head `40bd1b3f8dbf6c9f8764add1cffeea8e03fe03c0` passed push Native,
+  Flatpak, and Foundation runs `30071037163`, `30071037165`, and `30071037151`, plus PR Native,
+  Flatpak, and Foundation runs `30071038957`, `30071038931`, and `30071038937`. Native completed
+  the pinned Core SDK smoke, full GTK/X11/Wayland/portal/Secret Service/accessibility matrix,
+  optional OCR, release evidence, and performance baseline; Flatpak completed the GNOME 49 build,
+  checksum/SBOM validation, and sandbox smoke.
 - This is bundled alternate-VFS evidence only; physical power-loss, custom/third-party VFS,
   cross-client, signing, rollback, and stable-release evidence remain open.
 
