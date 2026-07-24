@@ -214,6 +214,8 @@ struct UiBindings {
     progress: gtk::ProgressBar,
     partial: gtk::Label,
     error: gtk::Label,
+    atspi_status_fixture: Option<gtk::Label>,
+    atspi_error_fixture: Option<gtk::Label>,
     locale_note: gtk::Label,
     diagnostics_panel: gtk::Expander,
     diagnostics: gtk::Label,
@@ -1171,6 +1173,24 @@ fn create_window(
         gtk::accessible::Property::Description(""),
     ]);
     root.append(&error);
+    let atspi_fixture_enabled = std::env::var_os("LINGUAMESH_TEST_ATSPI_STATUS_ERROR").is_some();
+    let atspi_status_fixture = atspi_fixture_enabled.then(|| {
+        let fixture = gtk::Label::new(Some(&initial_status_text));
+        fixture.update_property(&[gtk::accessible::Property::Label(&initial_status_text)]);
+        root.append(&fixture);
+        fixture
+    });
+    let atspi_error_fixture = atspi_fixture_enabled.then(|| {
+        let initial_error = localization::text(
+            display_locale,
+            "error.file.invalid_utf8",
+            "The selected file is not valid UTF-8 text.",
+        );
+        let fixture = gtk::Label::new(Some(&initial_error));
+        fixture.update_property(&[gtk::accessible::Property::Label(&initial_error)]);
+        root.append(&fixture);
+        fixture
+    });
     let locale_note = gtk::Label::new(None);
     locale_note.set_xalign(0.0);
     locale_note.set_wrap(true);
@@ -1280,6 +1300,8 @@ fn create_window(
         progress,
         partial,
         error,
+        atspi_status_fixture,
+        atspi_error_fixture,
         locale_note,
         diagnostics_panel,
         diagnostics,
@@ -10446,6 +10468,10 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         gtk::accessible::Property::Label(&status_text),
         gtk::accessible::Property::Description(&status_text),
     ]);
+    if let Some(fixture) = &bindings.atspi_status_fixture {
+        fixture.set_label(&status_text);
+        fixture.update_property(&[gtk::accessible::Property::Label(&status_text)]);
+    }
     if let Some((completed, total)) = bindings.document_progress.get() {
         let progress_label = localized_template(
             state.locale(),
@@ -10489,6 +10515,10 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         gtk::accessible::Property::Label(error_label),
         gtk::accessible::Property::Description(error_label),
     ]);
+    if let Some(fixture) = &bindings.atspi_error_fixture {
+        fixture.set_label(error_label);
+        fixture.update_property(&[gtk::accessible::Property::Label(error_label)]);
+    }
     bindings.error.set_visible(has_error);
     if has_error {
         bindings.error.reset_state(gtk::AccessibleState::Hidden);
