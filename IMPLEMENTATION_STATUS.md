@@ -14,6 +14,16 @@ correction does not change the Linux runtime or compatibility contract.
 - Release remains `unreleased`; this correction does not add artifact, signing, rollback, or
   stable-release evidence.
 
+## 2026-07-24 — Linux Flatpak release-pin documentation alignment
+
+Assumption: the release guide must identify the exact Flatpak Linux source revision in the
+packaging manifest; the current `af680cee7fd696d859debc896c1136ba002bda89` pin is an ancestor of
+the current documentation-only head and does not change the packaged runtime.
+
+- Corrected `docs/releasing.md` from the superseded historical `c03c7e` source pin to the reviewed
+  `af680ce` pin used by `packaging/flatpak/dev.linguamesh.LinguaMesh.yml`.
+- `git diff --check` and Flatpak metadata validation passed; release remains `unreleased`.
+
 ## 2026-07-24 — Linux registered custom VFS compatibility probe
 
 Assumption: Linux may consume a host-registered SQLite VFS only when it preserves the Core
