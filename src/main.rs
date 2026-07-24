@@ -646,6 +646,28 @@ fn build_ui(
     });
     refresh_ui(&bindings, &state.borrow());
     window.present();
+    if atspi_status_error_fixture {
+        let fixture_state = Rc::clone(&state);
+        let fixture_bindings = bindings.clone();
+        let fixture_locale = initial_locale;
+        let fixture_deadline = Instant::now() + Duration::from_secs(15);
+        glib::timeout_add_local(Duration::from_millis(100), move || {
+            let worker_ready = fixture_state.borrow().worker_ready();
+            if worker_ready || Instant::now() >= fixture_deadline {
+                fixture_state
+                    .borrow_mut()
+                    .record_client_error(localization::text(
+                        fixture_locale,
+                        "error.file.invalid_utf8",
+                        "The selected file is not valid UTF-8 text.",
+                    ));
+                refresh_ui(&fixture_bindings, &fixture_state.borrow());
+                glib::ControlFlow::Break
+            } else {
+                glib::ControlFlow::Continue
+            }
+        });
+    }
     if std::env::var_os("LINGUAMESH_TEST_ORCA_ATSPI").is_some() {
         // Orca 烟测在独立窗口中请求生产 Stop 控件的真实 GTK 焦点。
         let focus_window = window.clone();
@@ -10402,10 +10424,14 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     } else {
         localized_status_label(state.locale(), state.status())
     };
-    bindings.status.set_label(&format!(
+    let status_text = format!(
         "{}: {status_label}",
         localization::text(state.locale(), "status.label", "Status")
-    ));
+    );
+    bindings.status.set_label(&status_text);
+    bindings
+        .status
+        .update_property(&[gtk::accessible::Property::Label(&status_text)]);
     if let Some((completed, total)) = bindings.document_progress.get() {
         let progress_label = localized_template(
             state.locale(),
@@ -10443,9 +10469,11 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     }
     let error_text = state.localized_error_text(state.locale());
     let has_error = error_text.is_some();
+    let error_label = error_text.as_deref().unwrap_or_default();
+    bindings.error.set_label(error_label);
     bindings
         .error
-        .set_label(error_text.as_deref().unwrap_or_default());
+        .update_property(&[gtk::accessible::Property::Label(error_label)]);
     bindings.error.set_visible(has_error);
     if has_error {
         bindings.error.reset_state(gtk::AccessibleState::Hidden);
