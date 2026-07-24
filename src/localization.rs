@@ -510,6 +510,11 @@ mod tests {
                 "warning.pdf_uncertain_order",
                 "warning.subtitle_line_length",
                 "warning.subtitle_reading_speed",
+                "action.clear_temporary_files",
+                "tooltip.clear_temporary_files",
+                "dialog.clear_temporary_files",
+                "dialog.clear_temporary_files_detail",
+                "status.temporary_files_cleared",
             ] {
                 assert!(
                     !text(locale, key, "").is_empty(),
