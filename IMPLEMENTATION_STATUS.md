@@ -1,5 +1,23 @@
 # Implementation Status
 
+## 2026-07-24 — Linux current-head Native evidence artifact verification
+
+Assumption: a downloadable CI evidence bundle can prove reproducible prerelease packaging inputs
+and checksums, but unsigned artifacts and machine-specific performance data do not authorize a
+stable release.
+
+- Native push run `30132151011` produced the unexpired artifact
+  `linguamesh-linux-native-evidence-502d107cf2f54b1d03c5cc734b67df0af5dd3c86` (artifact ID
+  `8611592743`). Its `SHA256SUMS` file verified the release-mode native binary
+  `35c1878648dc81db3f474c24a0dbfa8fcd6bd0840fafef453ff686eeaadc52e9` and source archive
+  `9191f850cbde33d21775921ad524f8e12b426e1d8a8e205c532d9b7c789b7784`.
+- The bundle contains a 234-package SPDX-2.3 SBOM and a 140-entry source archive. Its
+  `BUILD-INFO.txt` and `ROLLBACK.md` explicitly classify the contents as unsigned release-mode
+  prerelease evidence with no stable revision, signing key, or release authorization.
+- The included performance file is a machine-specific CI baseline, not a cross-machine claim.
+  Release remains `unreleased`; signing, rollback authorization, distributable promotion, and
+  stable-release evidence remain open.
+
 ## 2026-07-24 — Linux current-head third-party Ollama interoperability
 
 Assumption: a host-network temporary daemon with a pinned image and model is reproducible Linux
