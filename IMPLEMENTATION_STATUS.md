@@ -1,5 +1,28 @@
 # Implementation Status
 
+## 2026-07-24 — Linux current-head local validation matrix
+
+Assumption: local checks strengthen Linux prerelease evidence only; missing desktop services and
+physical conditions remain explicitly unverified and do not authorize a stable release.
+
+- Linux status head `fd89f6e4e4c1d52b1634426005c7ff0ccf611e56` passed localization synchronization,
+  the 466-key and 595-placeholder audits, visible-string audit, Flatpak metadata validation,
+  `cargo fmt --all -- --check`, locked offline checks, and strict Clippy for both no-default and
+  `demo-provider` targets.
+- Locked offline Linux library tests passed `85 passed; 0 failed; 1 ignored` without default
+  features and `168 passed; 0 failed; 7 ignored` with `demo-provider`. The pinned Core workspace
+  format check and locked offline workspace tests passed across all crates (244 unit tests passed,
+  plus doc-test targets).
+- Environment-gated local fixtures passed: all four client-certificate HTTPS cases (one pass each),
+  the generated image-only PDF OCR fixture (one pass), the private-mount storage write-fault
+  degradation fixture (one pass), and all four Secret Service prompt acceptance/dismissal cases
+  (one pass each). No credential or fixture secret was persisted.
+- The document-portal fixture remains unavailable locally because `fusermount3` cannot mount
+  `/run/user/1000/doc` without permission. Xvfb and Weston are also absent; display-backed GTK,
+  AT-SPI, notification, file-chooser, and Wayland checks remain hosted-CI evidence.
+- Release remains `unreleased`; physical power-loss, arbitrary third-party VFS, human/physical
+  review, other clients, signing, rollback authorization, and stable-release evidence remain open.
+
 ## 2026-07-24 — Linux current-head Native evidence artifact verification
 
 Assumption: a downloadable CI evidence bundle can prove reproducible prerelease packaging inputs
