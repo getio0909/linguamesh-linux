@@ -11,12 +11,14 @@ user-selected output directories and unrelated temporary files remain outside th
   unrelated names. The focused `temporary_cleanup_removes_only_linguamesh_owned_items` regression
   removes two owned fixtures while preserving an unrelated file.
 - Linux implementation commit `1547485795e75c8b1a0fcffb16ef1b72f0374496` contains the bounded
-  action and generated catalog resources; the Flatpak source pin is updated to this exact commit.
+  action and generated catalog resources. Localization-test completion `e15f19b66b73dd0d146af769dbfd18ca139c7c65`
+  adds the five-key source audit coverage, and the final Flatpak pin follows the consolidated status
+  commit below.
 - A first hosted Native attempt exposed a stale `L10N_REVISION` workflow pin rather than a runtime
   failure; commit `7ce5c60e423f5489f7158ca77ba9cdc3547ddd22` corrects it to the published l10n
-  revision. The final hosted checks for the corrected head passed: push Native/Flatpak/Foundation
-  `30081028602`/`30081028675`/`30081028681` and PR Native/Flatpak/Foundation
-  `30081031257`/`30081031240`/`30081031372`.
+  revision. The consolidated final pin head passed push Native/Flatpak/Foundation
+  `30082200770`/`30082200768`/`30082200795` and PR Native/Flatpak/Foundation
+  `30082204230`/`30082204209`/`30082204280`.
 - Added five Linux catalog messages in l10n commit
   `7fd210692bb269ef52f7453bfeb2b0f0759b1d4c`; the 511-message generated bundle passed l10n
   schema/lint/tests/generation/build/foundation validation. Linux sync and all three localization
