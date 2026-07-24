@@ -22,7 +22,8 @@ normalized failure category without exposing provider error text or credentials.
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core revision `b54ab4ab7ebcd3a439678ead9c0af1e6b5c5dae8`, which adds ABI 1 opaque
+reviewed Core revision `1c7440917379896a8c05d3f99a89eac4fcf073a3`, which adds the bundled
+`unix-excl` storage regression on top of ABI 1 opaque
 engine-handle lifetime hardening while retaining typed provider rate-limit handling, persisted
 provider health status, and bounded
 FileLease lifecycle validation and strict
