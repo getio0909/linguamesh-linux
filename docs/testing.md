@@ -375,7 +375,7 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 The current synchronized checkout must be Core revision
-`77c6bf426ace65c6bd960120b253e10e59a70a13`, a source-language prompt-contract descendant that
+`9e69d01cbae1ca0421923e059aa3252c4ecbe1be`, a source-language prompt-contract descendant that
 adds the explicit hint and translation-memory identity version on top of the
 non-locking `unix-none` VFS fail-closed regression on top of runtime baseline
 `8623b2c8829e4d9cf7299c74440dcfabb4e320db`. The baseline carries bounded document lease
@@ -390,12 +390,18 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 77c6bf426ace65c6bd960120b253e10e59a70a13^{commit}
+git -C ../linguamesh-core cat-file -e 9e69d01cbae1ca0421923e059aa3252c4ecbe1be^{commit}
 git -C ../linguamesh-core diff --quiet \
-  77c6bf426ace65c6bd960120b253e10e59a70a13..HEAD -- \
+  9e69d01cbae1ca0421923e059aa3252c4ecbe1be..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
+
+The same Core revision also includes a registered custom-VFS compatibility probe. It assigns a
+distinct test name to the validated `unix-excl` callbacks, runs schema migration and provider
+profile persistence/reopen through that registration, and rechecks the symlink/no-follow boundary.
+This is deterministic registration/callback evidence only; arbitrary third-party VFS behavior and
+physical power-loss recovery remain unverified.
 
 The same Core revision also includes bounded SQLite WAL replay regressions: a committed provider
 profile remains recoverable when a reader holds a snapshot while the writer disconnects, and a
@@ -735,7 +741,7 @@ python3 tools/create-native-evidence.py \
   --cargo-lock Cargo.lock \
   --output-dir native-evidence \
   --linux-revision "$(git rev-parse HEAD)" \
-  --core-revision "77c6bf426ace65c6bd960120b253e10e59a70a13" \
+  --core-revision "9e69d01cbae1ca0421923e059aa3252c4ecbe1be" \
   --localization-revision "7fd210692bb269ef52f7453bfeb2b0f0759b1d4c"
 (cd native-evidence && sha256sum -c SHA256SUMS)
 ```
@@ -869,7 +875,7 @@ contrast, motion, and text-scaling behavior; manual visual review remains requir
 releases.
 
 The GitHub Actions native workflow pins Core revision
-`77c6bf426ace65c6bd960120b253e10e59a70a13` and localization revision
+`9e69d01cbae1ca0421923e059aa3252c4ecbe1be` and localization revision
 `7fd210692bb269ef52f7453bfeb2b0f0759b1d4c`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local

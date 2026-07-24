@@ -31,7 +31,7 @@ discovery never removes a manually configured model.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `77c6bf426ace65c6bd960120b253e10e59a70a13`; compared with the prior
+functional revision is `9e69d01cbae1ca0421923e059aa3252c4ecbe1be`; compared with the prior
 pin, it adds the explicit source-language prompt hint and translation-prompt-v3 identity, while
 retaining the Linux-only non-locking `unix-none` VFS fail-closed regression and
 registry-backed ABI 1 opaque engine-handle lifetime hardening and making file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW`, adding streamed
@@ -80,6 +80,12 @@ are reachable outside the bounded command queue, so a full queue cannot prevent 
 Translation commands receive ordered Core events, preserve partial output, and terminate with a
 typed terminal result. Provider URL policy, HTTP, SSE parsing, prompts, credential use, and
 translation cancellation remain in Core.
+
+The current Linux storage checkpoint also registers a distinct test VFS name over Core's validated
+`unix-excl` callbacks, then proves schema migration, provider-profile persistence/reopen, and the
+symlink/no-follow rejection through that registration path. This validates host registration and
+callback wiring only; arbitrary third-party VFS implementations and physical power-loss behavior
+remain outside the evidence.
 
 The pinned Core also protects common URLs, email addresses, Markdown code, and placeholders before
 prompt construction. The adapter restores those spans across split streamed deltas and rejects

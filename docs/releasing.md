@@ -80,7 +80,7 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `77c6bf426ace65c6bd960120b253e10e59a70a13`, which includes
+The current Linux gate consumes Core `9e69d01cbae1ca0421923e059aa3252c4ecbe1be`, which includes
 the Linux-only non-locking `unix-none` VFS fail-closed regression and ABI 1 opaque engine-handle
 lifetime hardening, and l10n
 `7fd210692bb269ef52f7453bfeb2b0f0759b1d4c` (511 catalog messages). The reviewed Flatpak source

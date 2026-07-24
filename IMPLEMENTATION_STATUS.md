@@ -1,5 +1,22 @@
 # Implementation Status
 
+## 2026-07-24 — Linux registered custom VFS compatibility probe
+
+Assumption: Linux may consume a host-registered SQLite VFS only when it preserves the Core
+storage contract; this probe uses a test-registered alias over the already validated `unix-excl`
+callbacks and does not claim arbitrary third-party VFS or physical power-loss coverage.
+
+- Core `9e69d01cbae1ca0421923e059aa3252c4ecbe1be` adds a Linux storage regression that registers a
+  distinct custom VFS name, opens the full schema through that name, persists and reopens a provider
+  profile, and retains the symlink/no-follow rejection boundary.
+- The exact Core commit passed local Rust 1.93.0 storage/full-workspace tests, strict Clippy,
+  cargo-deny, and hosted CI/Fuzz/ASAN/Native SDK runs `30097756099`/`30097756186`/`30097756137`.
+- Linux Native and Flatpak now consume this immutable Core revision. The registration probe is
+  deterministic callback-wiring evidence; arbitrary external VFS implementations, power-loss
+  recovery, manual review, signing, rollback, and stable-release authorization remain open.
+
+Release remains `unreleased`.
+
 ## 2026-07-24 — Linux bounded temporary-file cleanup
 
 Assumption: the Linux privacy control should remove only direct children of the system temporary
