@@ -146,8 +146,9 @@ not evidence for power-loss recovery or every storage-failure path.
 Linux profile startup inspects existing SQLite `-wal` and `-shm` sidecars through the pinned parent
 descriptor and rejects symbolic-link, non-regular, or hard-linked aliases before Core opens the
 database. The parent descriptor and existing sidecar identities remain pinned through Core open;
-the sidecars are checked again afterward and changed identities fail closed. Replacement after that
-second inspection and non-default SQLite VFS behavior remain unverified release boundaries.
+the sidecars are checked again afterward and immediately before hydrated storage is published;
+changed identities fail closed. Post-publish runtime replacement and non-default SQLite VFS behavior
+remain unverified release boundaries.
 
 ## Future release gate
 

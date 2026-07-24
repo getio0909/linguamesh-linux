@@ -995,10 +995,10 @@ final-database-component replacement with a symlink, distinct regular file, or h
 descriptor-pinned `openat2`/`O_NOFOLLOW` opens; a missing final leaf is created only through an
 exclusive open. Existing SQLite `-wal`/`-shm` sidecars are checked through the pinned parent and
 hard-linked aliases are rejected before Core opens the database; existing identities are checked
-again after Core open. The preflight suite also replaces the validated parent with a distinct
-private directory and rejects the device/inode change. Replacement after the second sidecar
-inspection, broader same-UID filesystem/VFS variants, and power loss remain outside the tested
-boundary.
+again after Core open and again immediately before the hydrated storage is published. The preflight
+suite also replaces the validated parent with a distinct private directory and rejects the
+device/inode change. Post-publish runtime replacement, broader same-UID filesystem/VFS variants,
+and power loss remain outside the tested boundary.
 Remaining evidence is deliberately explicit: human screen-reader listening and translated-copy/
 RTL/visual review; physical compositor, GPU-backed Wayland, and broader X11/desktop coverage;
 prompted interactive Secret Service approval; broader filesystem/VFS and power-loss races; signed

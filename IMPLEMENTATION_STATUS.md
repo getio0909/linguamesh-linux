@@ -1,5 +1,24 @@
 # Implementation Status
 
+## 2026-07-24 — Linux final SQLite sidecar stability recheck
+
+Assumption: the startup storage boundary should reject a sidecar identity change not only after
+Core opens the descriptor but also immediately before hydrated profile storage is published; this
+does not claim protection against post-publish runtime replacement or physical power loss.
+
+- `open_profile_storage` now performs a final `-wal`/`-shm` identity check after profile and active
+  provider hydration and before returning the storage handle to the worker.
+- The deterministic `replaced_database_sidecar_is_rejected_after_final_pre_publish_check` regression
+  first passes the post-open inspection, atomically replaces each sidecar with a distinct inode, and
+  requires the final check to fail closed without following the replacement.
+- Local `cargo fmt --all -- --check`, the focused regression, demo-provider tests (`166 passed; 0
+  failed; 7 ignored`), GUI all-target check, strict Clippy, localization audits, Flatpak metadata,
+  and `git diff --check` passed. The host lacks the GTK runtime symbols needed to link the GUI test
+  binary; hosted Native Linux remains authoritative for display-backed tests.
+- Post-publish runtime replacement, broader same-UID filesystem/VFS variants, physical power loss,
+  other clients, manual review, signing, rollback authorization, and stable-release approval remain
+  open; release stays `unreleased`.
+
 ## 2026-07-24 — Linux contributor pin alignment
 
 Assumption: contributor instructions must name the same immutable Core revision consumed by the

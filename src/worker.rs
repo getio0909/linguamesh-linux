@@ -4817,6 +4817,11 @@ fn open_profile_storage(
     let active_profile_id = storage
         .active_provider_profile()?
         .map(|profile| profile.id().clone());
+    ensure_database_sidecars_unchanged(
+        &prepared.parent_fd,
+        &prepared.file_name,
+        prepared.sidecars,
+    )?;
     Ok((storage, profiles, active_profile_id))
 }
 
@@ -11507,7 +11512,7 @@ mod tests {
     }
 
     #[test]
-    fn replaced_database_sidecar_is_rejected_after_snapshot() {
+    fn replaced_database_sidecar_is_rejected_after_final_pre_publish_check() {
         for suffix in ["-wal", "-shm"] {
             let database = TestDatabase::new();
             fs::create_dir(&database.directory).expect("database directory");
@@ -11523,6 +11528,8 @@ mod tests {
             let file_name = database.path().file_name().expect("database file name");
             let identities =
                 validate_database_sidecars(&parent_fd, file_name).expect("sidecar snapshot");
+            ensure_database_sidecars_unchanged(&parent_fd, file_name, identities)
+                .expect("initial post-open sidecar inspection");
 
             let replacement = database
                 .directory
