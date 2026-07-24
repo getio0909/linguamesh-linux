@@ -113,7 +113,8 @@ and stable-release authorization remain outside the release claim.
 The Linux document slice now persists bounded TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF jobs, translates pending prose segments
 sequentially, and restores completed or cancelled snapshots into the editor. Validated non-secret
 provider/model/glossary options are persisted and reused by Resume and Retry after restart only when
-the active runtime matches. The queue listing, explicit job selection, and document-job execution
+the active runtime matches. The queue listing, explicit job selection, localized confirmation for
+deleting persisted document-job metadata, and document-job execution
 path are covered by the current Native/Flatpak validation gate; bounded concurrent document
 execution (up to four jobs with per-job cancellation isolation) is included in the Linux evidence,
 but the release remains prerelease. DOCX/PPTX/XLSX/EPUB export preserves

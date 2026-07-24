@@ -230,7 +230,10 @@ The GTK surface presents multiple persisted jobs for explicit selection. The wor
 document jobs concurrently, with per-job bounded event delivery, cancellation, pause state, and
 segment persistence isolated by job ID. A fifth start, or a duplicate start for an active job, is
 rejected with a typed configuration error without changing the persisted job snapshot. The UI still
-uses explicit selection for queue actions, and the broader release gate remains prerelease.
+uses explicit selection for queue actions. Each saved row also exposes a localized destructive
+confirmation that deletes only the persisted job and segment metadata; the worker rejects deletion
+while any document job is active, and the editor keeps its source/output buffers unchanged after a
+successful deletion. The broader release gate remains prerelease.
 
 Local exports use a same-directory temporary file and a non-overwriting move. Linux synchronizes
 the completed temporary file and its parent directory before the move, then synchronizes the parent

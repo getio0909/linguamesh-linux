@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added a localized, confirmation-gated action to delete persisted Linux document-job metadata and
+  segments while preserving the source/output buffers shown in the editor.
 - Added masked GTK onboarding for client-certificate identities, proxy authentication, bounded TLS
   settings, and reference-only Secret Service/session persistence.
 - Added bounded multi-profile routing, document translation, local-model fixtures, cancellation,

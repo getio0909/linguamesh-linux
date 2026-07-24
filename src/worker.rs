@@ -247,6 +247,11 @@ pub enum WorkerCommand {
     },
     /// 按最近更新时间读取本地文档任务。
     ListDocumentJobs,
+    /// 删除一个本地文档任务及其段快照。
+    DeleteDocumentJob {
+        /// 文档任务标识。
+        job_id: String,
+    },
     /// 从已持久化的文档任务重建二进制输出。
     ExportDocumentJob {
         /// 文档任务标识。
@@ -467,6 +472,11 @@ pub enum WorkerEvent {
         /// 按最近更新时间排列的任务快照。
         jobs: Vec<DocumentJobSnapshot>,
     },
+    /// 已删除一个本地文档任务及其段快照。
+    DocumentJobDeleted {
+        /// 被删除的文档任务标识。
+        job_id: String,
+    },
     /// 文档任务快照已写入。
     DocumentJobUpdated(DocumentJobSnapshot),
     /// 文档任务已重建为可写入文件的字节。
@@ -641,6 +651,13 @@ impl WorkerCommandHandle {
     pub fn export_document_job(&self, job_id: String) -> Result<(), WorkerSendError> {
         self.commands
             .try_send(QueuedCommand::ExportDocumentJob { job_id })
+            .map_err(|_| WorkerSendError)
+    }
+
+    /// 非阻塞请求删除一个本地文档任务及其段快照。
+    pub fn delete_document_job(&self, job_id: String) -> Result<(), WorkerSendError> {
+        self.commands
+            .try_send(QueuedCommand::DeleteDocumentJob { job_id })
             .map_err(|_| WorkerSendError)
     }
 
@@ -840,6 +857,9 @@ enum QueuedCommand {
         routing_profile_id: String,
     },
     ListDocumentJobs,
+    DeleteDocumentJob {
+        job_id: String,
+    },
     ExportDocumentJob {
         job_id: String,
     },
@@ -1157,6 +1177,10 @@ impl CoreWorker {
             WorkerCommand::ListDocumentJobs => self
                 .commands
                 .try_send(QueuedCommand::ListDocumentJobs)
+                .map_err(|_| WorkerSendError),
+            WorkerCommand::DeleteDocumentJob { job_id } => self
+                .commands
+                .try_send(QueuedCommand::DeleteDocumentJob { job_id })
                 .map_err(|_| WorkerSendError),
             WorkerCommand::ExportDocumentJob { job_id } => self
                 .commands
@@ -1879,6 +1903,7 @@ async fn run_worker(
                     | QueuedCommand::TranslateDocumentJob { .. }
                     | QueuedCommand::TranslateDocumentJobWithRouting { .. }
                     | QueuedCommand::ListDocumentJobs
+                    | QueuedCommand::DeleteDocumentJob { .. }
                     | QueuedCommand::ExportDocumentJob { .. }
                     | QueuedCommand::UpdateDocumentSegment { .. }
                     | QueuedCommand::ResumeDocumentJob { .. }
@@ -3854,6 +3879,45 @@ async fn run_worker(
                     }
                 }
             }
+            Some(QueuedCommand::DeleteDocumentJob { job_id }) => {
+                let result = storage
+                    .as_mut()
+                    .ok_or_else(|| {
+                        TranslationError::new(
+                            ErrorKind::Persistence,
+                            "Local document job storage is unavailable.",
+                        )
+                    })
+                    .and_then(|storage| storage.delete_document_job(&job_id))
+                    .and_then(|deleted| {
+                        if deleted {
+                            Ok(())
+                        } else {
+                            Err(TranslationError::new(
+                                ErrorKind::InvalidConfiguration,
+                                "The document job was not found.",
+                            ))
+                        }
+                    });
+                match result {
+                    Ok(()) => {
+                        if events
+                            .send(WorkerEvent::DocumentJobDeleted { job_id })
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                    Err(error) => {
+                        if events
+                            .send(WorkerEvent::DocumentJobActionRejected(error))
+                            .is_err()
+                        {
+                            shutting_down = true;
+                        }
+                    }
+                }
+            }
             Some(QueuedCommand::ExportDocumentJob { job_id }) => {
                 let result = storage
                     .as_ref()
@@ -4717,6 +4781,7 @@ fn reject_queued_commands_for_shutdown(
             | QueuedCommand::TranslateDocumentJob { .. }
             | QueuedCommand::TranslateDocumentJobWithRouting { .. }
             | QueuedCommand::ListDocumentJobs
+            | QueuedCommand::DeleteDocumentJob { .. }
             | QueuedCommand::ExportDocumentJob { .. }
             | QueuedCommand::UpdateDocumentSegment { .. }
             | QueuedCommand::ResumeDocumentJob { .. }
@@ -6879,6 +6944,7 @@ mod tests {
                 | WorkerEvent::DocumentJobSegment { .. }
                 | WorkerEvent::RoutingDecisionSelected { .. }
                 | WorkerEvent::DocumentJobsListed { .. }
+                | WorkerEvent::DocumentJobDeleted { .. }
                 | WorkerEvent::DocumentJobsRestored { .. } => {}
                 _ => panic!("unexpected worker shutdown event"),
             }
@@ -8036,7 +8102,7 @@ mod tests {
     }
 
     #[test]
-    fn document_job_list_returns_multiple_saved_jobs_for_queue_selection() {
+    fn document_job_list_and_delete_saved_job_for_queue_selection() {
         let database = TestDatabase::new();
         let worker = CoreWorker::spawn_with_database(database.path());
         loop {
@@ -8099,6 +8165,40 @@ mod tests {
             listed
                 .iter()
                 .all(|snapshot| snapshot.state == DocumentJobState::Pending)
+        );
+        worker
+            .try_send(WorkerCommand::DeleteDocumentJob {
+                job_id: "queue-job-a".to_owned(),
+            })
+            .expect("delete document job");
+        assert!(matches!(
+            worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("document job deleted event"),
+            WorkerEvent::DocumentJobDeleted { job_id } if job_id == "queue-job-a"
+        ));
+        worker
+            .try_send(WorkerCommand::ListDocumentJobs)
+            .expect("list document jobs after deletion");
+        let jobs_after_delete = loop {
+            if let WorkerEvent::DocumentJobsListed { jobs } = worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("document jobs list after deletion")
+            {
+                break jobs;
+            }
+        };
+        assert!(
+            jobs_after_delete
+                .iter()
+                .all(|snapshot| snapshot.job_id != "queue-job-a")
+        );
+        assert!(
+            jobs_after_delete
+                .iter()
+                .any(|snapshot| snapshot.job_id == "queue-job-b")
         );
         shutdown(&worker);
     }

@@ -409,13 +409,15 @@ restart recovery. The Linux worker tests also cover
 sequential prose-segment translation, per-segment persistence, safe reconstruction (including DOCX/PPTX/XLSX/EPUB package resources and PDF page association), structured HTML fallback for unsupported PDF encodings, and cancellation
 to a persisted cancelled snapshot. The GTK surface now exposes per-job progress and
 pause/resume/retry controls, and the worker regression
-`document_job_list_returns_multiple_saved_jobs_for_queue_selection` verifies that two pending jobs
-are listed together for explicit selection. `cancelled_document_job_can_be_retried_without_losing_pending_segments`
+`document_job_list_and_delete_saved_job_for_queue_selection` verifies that two pending jobs are listed
+together, deleting one removes its persisted snapshot while preserving the other. The GTK queue
+regression also verifies that each row exposes a focusable destructive delete action beside export.
+`cancelled_document_job_can_be_retried_without_losing_pending_segments`
 verifies that a cancelled job retains both pending segments and can be retried to completion with
 the saved provider/model options. The worker regressions
 The serialized GTK fixture `gtk_document_jobs_dialog_selects_between_multiple_jobs` drives the
-production Document jobs window with pending, paused, and cancelled snapshots, asserts all rows and
-their localized file count, then selects the paused row and verifies its job ID, state, and source
+production Document jobs window with pending, paused, and cancelled snapshots, asserts all rows, their
+localized file count, and per-row delete action, then selects the paused row and verifies its job ID, state, and source
 text are loaded without selecting another job. It reopens the queue, finds the single Resume action
 for the paused row, activates it, and verifies that the same paused job remains selected while the
 dialog closes after the command is sent. It then finds the single Retry action for the cancelled

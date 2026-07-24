@@ -7897,6 +7897,59 @@ fn show_document_jobs_dialog(
                 begin_document_report_export(&report_bindings, &report_state, &report_snapshot);
             });
             queue_actions.append(&report);
+            let delete = gtk::Button::with_mnemonic(&localized_mnemonic(
+                locale,
+                "action.delete_history_entry",
+                "Delete",
+            ));
+            delete.set_focusable(true);
+            delete.add_css_class("destructive-action");
+            let delete_bindings = bindings.clone();
+            let delete_state = Rc::clone(state);
+            let delete_worker = worker.clone();
+            let delete_dialog = dialog.clone();
+            let delete_snapshot = snapshot.clone();
+            let delete_metadata = metadata_text.clone();
+            delete.connect_clicked(move |_| {
+                let current_locale = delete_state.borrow().locale();
+                let heading =
+                    localization::text(current_locale, "action.delete_history_entry", "Delete");
+                let cancel = localization::text(current_locale, "action.cancel", "Cancel");
+                let confirm =
+                    localization::text(current_locale, "action.delete_history_entry", "Delete");
+                let confirmation = gtk::AlertDialog::builder()
+                    .message(heading)
+                    .detail(delete_metadata.clone())
+                    .modal(true)
+                    .build();
+                confirmation.set_buttons(&[cancel.as_str(), confirm.as_str()]);
+                confirmation.set_cancel_button(0);
+                confirmation.set_default_button(0);
+                let choice_state = Rc::clone(&delete_state);
+                let choice_bindings = delete_bindings.clone();
+                let choice_worker = delete_worker.clone();
+                let choice_dialog = delete_dialog.clone();
+                let job_id = delete_snapshot.job_id.clone();
+                confirmation.choose(
+                    Some(&delete_dialog),
+                    None::<&gtk::gio::Cancellable>,
+                    move |response| {
+                        if response != Ok(1) {
+                            return;
+                        }
+                        if let Err(error) = choice_worker.delete_document_job(job_id.clone()) {
+                            choice_state
+                                .borrow_mut()
+                                .record_client_error(error.to_string());
+                            refresh_ui(&choice_bindings, &choice_state.borrow());
+                        } else {
+                            choice_dialog.close();
+                        }
+                    },
+                );
+                confirmation.show(Some(&delete_dialog));
+            });
+            queue_actions.append(&delete);
             row.append(&queue_actions);
             list.append(&row);
         }
@@ -8658,6 +8711,14 @@ fn apply_worker_event(
         WorkerEvent::DocumentJobsListed { jobs } => {
             let jobs_worker = worker.command_handle();
             show_document_jobs_dialog(bindings, state, &jobs_worker, jobs);
+        }
+        WorkerEvent::DocumentJobDeleted { job_id } => {
+            if bindings.document_job_id.borrow().as_deref() == Some(job_id.as_str()) {
+                bindings.document_job_id.borrow_mut().take();
+                bindings.document_job_state.set(None);
+                bindings.document_progress.set(None);
+                bindings.document_warnings.borrow_mut().clear();
+            }
         }
         WorkerEvent::DocumentJobExported {
             source_name,
@@ -13914,6 +13975,19 @@ mod tests {
                 .tooltip_text()
                 .is_some_and(|tooltip| tooltip.contains("redacted TSV report"))
         }));
+        // 验证每个持久化任务都暴露需要确认的元数据删除动作。
+        let delete_buttons = widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .filter(|button| button.label().is_some_and(|label| label.contains("Delete")))
+            .cloned()
+            .collect::<Vec<_>>();
+        assert_eq!(delete_buttons.len(), 3);
+        assert!(
+            delete_buttons
+                .iter()
+                .all(gtk::prelude::WidgetExt::is_focusable)
+        );
         let select_buttons = widgets
             .iter()
             .filter_map(|widget| widget.downcast_ref::<gtk::Button>())

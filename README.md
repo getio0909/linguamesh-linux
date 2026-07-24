@@ -134,7 +134,11 @@ provider/model identifiers, quality mode, translation preset, and glossary rules
 **Resume** and **Retry** reuse those options only after the active provider and model match. **Stop**
 cancels the active document segment and leaves the source unchanged; Incognito mode intentionally
 rejects new document jobs because their progress must be persisted. Subtitle timestamps and cue IDs
-remain unchanged; cue text is translated without automatic timing or line-length rewriting. Core
+remain unchanged; cue text is translated without automatic timing or line-length rewriting. The
+Document jobs dialog offers explicit selection, pause/resume/retry, a localized destructive
+confirmation for deleting persisted job metadata and segments, and a redacted translation-report
+export. Deleting a saved job preserves the source/output buffers currently shown in the editor, while
+active-job deletion is rejected by the worker. Core
 The text workspace also provides localized `General`, `Technical`, `Marketing`, `English (United
 States)`, and `Chinese (Simplified, Mainland China)` translation presets. The regional presets
 carry bounded `en-US`/`Latn` and `zh-CN`/`Hans` preferences. Each preset is a bounded request-level
