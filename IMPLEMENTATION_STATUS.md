@@ -9,8 +9,12 @@ manifest; no behavior change is intended.
 - Commit `b02d3853791f06ff4b042fed430a0e4ab5947b3a` changes `.github/workflows/native.yml` from the
   stale Core `b29067b78d420c96f57d670d3dd860cba3abc703` to the approved `77c6bf...` pin.
 - Local `git diff --check` and `bash tools/validate-flatpak-metadata.sh` passed. Existing Linux
-  worker/UI validation for the unchanged runtime is recorded below; hosted Native CI is required to
-  prove the corrected checkout and remains pending after push.
+-  worker/UI validation for the unchanged runtime is recorded below. Corrected push Native/Flatpak/
+  Foundation runs `30078310878`/`30078310868`/`30078310871` and corrected PR Native/Flatpak/
+  Foundation runs `30078307212`/`30078307159`/`30078307167` all passed, including the full GTK,
+  Wayland, portal, Secret Service, accessibility, Flatpak, checksum/SBOM, and performance gates.
+- The earlier docs-only run `30077157435` remains an obsolete in-progress hosted job for superseded
+  head `7d0970c`; it is not part of the current PR head or current check set.
 - Release remains `unreleased`; this correction does not promote a stable artifact.
 
 ## 2026-07-24 — Linux persisted document-job metadata deletion
