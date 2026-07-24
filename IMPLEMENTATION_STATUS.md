@@ -18,6 +18,21 @@ connection probe.
   compositor/GPU coverage, other clients, signing, rollback, and release authorization remain
   open.
 
+## 2026-07-24 — Linux Flatpak source-pin correction for keyboard traversal
+
+Assumption: a Flatpak source pin must include every source file that changes the packaged runtime;
+documentation-only descendants may remain outside the pin when the validator proves build inputs are
+unchanged.
+
+- The first push/PR Flatpak validations `30117215386` and `30117219370` failed in the metadata
+  guard because the old pin `8713bdc23b81263e1bdbc65e8d010ce57673877a` excluded the new `src` change.
+  The failure occurred before a Flatpak build and is not a runtime regression.
+- Packaging commit `040d371` updates the manifest and release guide to pin the reviewed runtime
+  source `195664199d1884c53940a4c78f2c15bd500ad8a3`; local Flatpak metadata validation and diff
+  checks pass. New push/PR gates are required before this checkpoint is verified.
+- Release remains `unreleased`; manual accessibility review, physical desktop coverage, other
+  clients, signing, rollback, and stable-release authorization remain open.
+
 ## 2026-07-24 — Linux runtime AT-SPI status/error export fixture
 
 Assumption: runtime accessibility evidence must observe the GTK bridge's exported label content
