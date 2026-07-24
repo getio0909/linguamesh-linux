@@ -15,6 +15,11 @@ does not claim protection against post-publish runtime replacement or physical p
   failed; 7 ignored`), GUI all-target check, strict Clippy, localization audits, Flatpak metadata,
   and `git diff --check` passed. The host lacks the GTK runtime symbols needed to link the GUI test
   binary; hosted Native Linux remains authoritative for display-backed tests.
+- Implementation is at `e75317015e970a283f9a3d4ae47718b12e557e32`; the reviewed Flatpak source-pin
+  and release-documentation descendant is `d3244ff017fb7178017310065f8d7708dd41a9ea`. Hosted
+  Native Linux `30108528343`, Flatpak `30108528414`, and Repository Foundation `30108528360` all
+  passed for that final head, including the full GTK/accessibility/portal/Wayland matrix and
+  Flatpak source-pin validation.
 - Post-publish runtime replacement, broader same-UID filesystem/VFS variants, physical power loss,
   other clients, manual review, signing, rollback authorization, and stable-release approval remain
   open; release stays `unreleased`.
