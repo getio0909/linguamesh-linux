@@ -1,5 +1,18 @@
 # Implementation Status
 
+## 2026-07-24 — Linux loopback routing classification
+
+Assumption: routing locality must follow Core's accepted HTTP endpoint policy so every IPv4/IPv6
+loopback address is treated as local while HTTPS and non-loopback endpoints remain remote.
+
+- Replaced prefix matching with parsed `IpAddr::is_loopback` classification, preserving the
+  existing HTTP-only boundary and excluding provider hostnames and documentation addresses.
+- Added regression coverage for `127.0.0.2`, `[::1]`, `localhost`, HTTPS loopback, and remote hosts;
+  local formatting, GUI check, strict Clippy, full demo-provider tests, localization audits, and
+  Flatpak metadata validation passed.
+- The Flatpak source pin is updated to `307bbbae8cf3275cd6c67ece166f5beb139e63c9`; hosted Native,
+  Flatpak, and Foundation checks remain required before the central release record is updated.
+
 ## 2026-07-24 — Linux post-publish database-path replacement boundary
 
 Assumption: once profile storage is published, a later replacement of the visible database path
