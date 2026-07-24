@@ -11,7 +11,7 @@ without treating a test fixture as proof that a human screen reader listened to 
   `LINGUAMESH_TEST_ATSPI_STATUS_ERROR=1`. The fixture injects the fixed invalid-UTF-8 error through
   the production reducer, then checks localized status/error prefixes via AT-SPI name, description,
   or Text exports without printing content.
-- Flatpak/release-pin status head `21ea284660aa23302127234abade2b1ba5fe79b7` consumes the exact
+- Flatpak/release-pin status head `749ff81766d5963827110411d77bb1714eae91cc` consumes the exact
   runtime ancestor. Local formatting, GUI all-target check, Python/shell syntax, localization
   audits, Flatpak metadata, focused worker test, full demo-provider suite (`173` tests, one OCR
   fixture ignored), and diff checks passed. Hosted push Native `30114122907`, Flatpak
