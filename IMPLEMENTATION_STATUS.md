@@ -1,5 +1,23 @@
 # Implementation Status
 
+## 2026-07-24 — Linux provider-form keyboard traversal completion
+
+Assumption: every visible, enabled provider-form control must remain reachable through the
+production Tab/Shift+Tab order, including security-sensitive fields and the non-mutating
+connection probe.
+
+- The capture-phase traversal now includes the optional client-certificate identity and the
+  **Test connection** action, which were previously omitted from the explicit provider order.
+- The keyboard-focus probe and Xvfb fixture require both controls, while preserving the existing
+  localized mnemonic, RTL, and modified-shortcut checks. No credential or field content is logged.
+- Local formatting, GUI all-target compilation, strict Clippy, localization synchronization and
+  three audits, Flatpak metadata validation, and the demo-provider suite (`166 passed; 7 ignored`)
+  passed. The host lacks `xvfb-run`, `xdotool`, and the GTK development/runtime packages needed
+  for the display-backed fixture; hosted Native CI is authoritative for that evidence.
+- The change is not a stable-release claim; manual keyboard/accessibility review, physical
+  compositor/GPU coverage, other clients, signing, rollback, and release authorization remain
+  open.
+
 ## 2026-07-24 — Linux runtime AT-SPI status/error export fixture
 
 Assumption: runtime accessibility evidence must observe the GTK bridge's exported label content

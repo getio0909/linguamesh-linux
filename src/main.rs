@@ -1389,6 +1389,10 @@ fn create_window(
                 .clone()
                 .upcast::<gtk::Widget>(),
             bindings
+                .provider_client_certificate_identity
+                .clone()
+                .upcast::<gtk::Widget>(),
+            bindings
                 .provider_custom_headers
                 .clone()
                 .upcast::<gtk::Widget>(),
@@ -1398,6 +1402,7 @@ fn create_window(
                 .upcast::<gtk::Widget>(),
             bindings.manual_model.clone().upcast::<gtk::Widget>(),
             bindings.provider_credential.clone().upcast::<gtk::Widget>(),
+            bindings.test_connection.clone().upcast::<gtk::Widget>(),
             bindings.connect.clone().upcast::<gtk::Widget>(),
             bindings.remember_profile.clone().upcast::<gtk::Widget>(),
         ],
@@ -1535,6 +1540,10 @@ fn install_keyboard_focus_probe(
         (
             "remember_profile",
             bindings.remember_profile.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "test_connection",
+            bindings.test_connection.clone().upcast::<gtk::Widget>(),
         ),
         ("connect", bindings.connect.clone().upcast::<gtk::Widget>()),
         ("model", bindings.model.clone().upcast::<gtk::Widget>()),

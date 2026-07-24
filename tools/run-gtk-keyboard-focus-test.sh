@@ -127,7 +127,9 @@ XDG_CACHE_HOME="$workspace/cache" \
       provider_name
       provider_endpoint
       provider_credential
+      provider_client_certificate_identity
       provider_preset
+      test_connection
       remember_profile
       connect
       source_editor
