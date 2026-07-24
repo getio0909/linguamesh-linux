@@ -15,6 +15,9 @@ Secret Service flow on this host.
 - `bash tools/run-secret-service-test.sh` passed the persistent library restart and worker
   onboarding tests, then stopped at the expected missing `xvfb-run` command before the GTK flow;
   the complete persistent Secret Service runner is therefore not claimed locally.
+- Push Native/Flatpak/Foundation `30129891531`/`30129891513`/`30129891593` and PR
+  Native/Flatpak/Foundation `30129893976`/`30129893883`/`30129893923` all passed. Hosted Native
+  executed the display-backed security, accessibility, OCR, and release matrix for this head.
 - Release remains `unreleased`; prompted desktop approval, human accessibility, other clients,
   signing, rollback, and stable-release evidence remain open.
 
