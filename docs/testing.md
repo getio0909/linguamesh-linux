@@ -48,6 +48,11 @@ the third proves hostname verification rejects a wrong SAN even when the signing
 fourth proves a server with a different client-CA trust chain rejects the presented identity.
 None of the tests persists a key or claims live enterprise interoperability.
 
+The current Linux status-head recheck ran `bash tools/run-client-certificate-interop-test.sh` and
+passed all four HTTPS tests exactly once: trusted client authentication, untrusted-server
+rejection, hostname-mismatch rejection, and untrusted-client-CA rejection. The temporary keys,
+certificates, servers, and fixture directory were removed by the runner.
+
 The same provider fixture covers the Google Gemini preset through the `/v1beta/` Generate Content
 contract: `models` discovery filters entries that support `generateContent`, and the streaming
 path consumes fragmented SSE candidates until a `finishReason` terminal event. Credentials use the
@@ -628,6 +633,12 @@ clears Remember while the credential field remains focusable; closing the dialog
 unchanged. The production callback requests focus on that field, while the exact active-window
 focus owner remains a window-manager concern. This is UI lifecycle evidence only; physical prompt
 approval and visual review remain manual.
+
+The current Linux status-head recheck also passed `bash tools/run-secret-service-prompt-test.sh`:
+all four store/delete acceptance and dismissal tests completed exactly once. The full
+`run-secret-service-test.sh` runner passed its persistent library restart and worker onboarding
+tests before stopping at the host's missing `xvfb-run`; its display-backed Remember/clear-form flow
+is not claimed locally and remains CI-authoritative.
 
 The localization unit suite parses every official Linux MO catalog, checks action entries are
 available, and verifies unique BCP 47 tags plus Arabic RTL metadata:
