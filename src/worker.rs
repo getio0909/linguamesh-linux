@@ -7089,10 +7089,18 @@ mod tests {
         worker: &CoreWorker,
         request: TranslationRequest,
     ) -> (String, TranslationEvent) {
+        translate_request_with_deadline(worker, request, Duration::from_secs(5))
+    }
+
+    fn translate_request_with_deadline(
+        worker: &CoreWorker,
+        request: TranslationRequest,
+        wait: Duration,
+    ) -> (String, TranslationEvent) {
         worker
             .try_send(WorkerCommand::Translate(request))
             .expect("translation command");
-        let deadline = Instant::now() + Duration::from_secs(5);
+        let deadline = Instant::now() + wait;
         let mut output = String::new();
         loop {
             let now = Instant::now();
@@ -10248,7 +10256,11 @@ mod tests {
         );
         select_event(&worker, "ollama-third-party", &model)
             .expect("select third-party Ollama model");
-        let (output, terminal) = translate(&worker, &model);
+        let (output, terminal) = translate_request_with_deadline(
+            &worker,
+            TranslationRequest::new("Hello", "zh-CN", &model),
+            Duration::from_secs(30),
+        );
         assert!(
             !output.trim().is_empty(),
             "third-party Ollama output must not be empty"
