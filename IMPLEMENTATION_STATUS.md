@@ -1,5 +1,23 @@
 # Implementation Status
 
+## 2026-07-24 — Linux current-head reproducibility recheck
+
+Assumption: this host-side recheck strengthens prerelease reproducibility evidence only; it does
+not replace hosted display tests, physical conditions, human review, or stable-release approval.
+
+- Current Linux HEAD `8ab718a2174d65a6ec33a1b4bcc3d8a4c52db48b` passed
+  `cargo test --locked --offline --no-default-features --lib -- --nocapture`
+  (`85 passed; 0 failed; 1 ignored`) and
+  `cargo test --locked --offline --features demo-provider --lib -- --nocapture`
+  (`168 passed; 0 failed; 7 ignored`).
+- `bash tools/sync-l10n.sh --check`, the 466-key audit, 595-placeholder audit,
+  visible-localization audit, Flatpak metadata validation, `cargo fmt --all -- --check`, and
+  `git diff --check` all passed. The only Flatpak output was the existing non-fatal category hint.
+- No source or dependency pins changed. The local host still lacks the GTK linker/runtime needed
+  for display-backed execution; hosted Native CI remains authoritative for that boundary.
+- Release remains `unreleased`; physical power-loss, arbitrary third-party VFS, human/physical
+  review, other clients, signing, rollback authorization, and stable-release evidence remain open.
+
 ## 2026-07-24 — Linux current-head local validation matrix
 
 Assumption: local checks strengthen Linux prerelease evidence only; missing desktop services and
