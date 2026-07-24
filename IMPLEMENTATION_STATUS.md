@@ -1,5 +1,25 @@
 # Implementation Status
 
+## 2026-07-24 — Explicit source-language prompt hint pin
+
+Assumption: Core `77c6bf426ace65c6bd960120b253e10e59a70a13` preserves the Linux ABI and provider
+contracts while making an explicitly selected source locale available to every built-in provider;
+automatic detection quality and live-provider language coverage remain separate evidence gates.
+
+- Linux documentation, native report metadata, Flatpak source, and validation commands now consume
+  Core `77c6bf426ace65c6bd960120b253e10e59a70a13`, which versions the shared prompt and translation
+  memory identity as `translation-prompt-v3`.
+- Core local format/check/Clippy/tests/build/cargo-deny validation passed, and Core CI `30073841816`,
+  Fuzz/ASAN `30073841796`, and Native SDK `30073841790` all passed for this exact revision.
+- Linux local synchronization, localization audits, Flatpak metadata, toolkit-independent tests,
+  demo-provider tests, formatting, strict Clippy, demo-provider build, and cargo-deny checks passed
+  for this pin. The no-default suite reports `85 passed; 1 ignored`; the demo-provider suite reports
+  `166 passed; 7 ignored`.
+- The host still lacks `gtk4.pc` and `graphene-gobject-1.0`; the all-feature GTK build remains
+  unverified locally and is covered by the passed Native SDK workflow rather than being simulated.
+- Release remains `unreleased`; GTK host headers, live provider credentials, cross-client parity,
+  signed artifacts, rollback, and stable-release evidence remain open.
+
 ## 2026-07-24 — Linux pin for Core non-locking VFS rejection
 
 Assumption: Core `f5b818c3598d78e7cac30604577fa8057d380737` preserves the ABI 1 and Linux

@@ -27,8 +27,9 @@ Use the pinned Rust toolchain and exact commands in `docs/testing.md`. Hosts wit
 libadwaita development headers can format, lint, and test the toolkit-independent state and the
 real shared-core worker with `--features demo-provider`. Run `--all-features` only when native
 headers are present. Native CI pins the approved Core revision
-`f5b818c3598d78e7cac30604577fa8057d380737`; changing it requires a new compatibility review. This
-adds the bundled `unix-none` fail-closed storage regression on top of ABI 1 and `unix-excl`
+`77c6bf426ace65c6bd960120b253e10e59a70a13`; changing it requires a new compatibility review. This
+adds the explicit source-language prompt hint and translation-prompt-v3 identity on top of ABI 1
+and the bundled `unix-none`/`unix-excl`
 hardening while preserving the Linux runtime contract. Do not
 invent successful GTK, Flatpak,
 packaging, Wayland, or X11 results.

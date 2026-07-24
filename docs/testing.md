@@ -269,7 +269,8 @@ Quality-mode UI behavior maps the localized Fast/Balanced/Best dropdown to the C
 `TranslationQualityMode` values and keeps the selector enabled for a selected document job. The
 worker restart regression selects `Best`, persists it through a routed dispatch, and verifies the
 resumed snapshot retains `Best`. Core
-tests cover the versioned `translation-prompt-v2` directives and deterministic rejection of empty
+tests cover the versioned `translation-prompt-v3` directives, explicit source-language hints, and
+deterministic rejection of empty
 or Unicode-replacement output before `Completed`; no hidden extra provider request is introduced.
 
 Retry policy is covered at both contract boundaries. Core provider adapters parse numeric or HTTP-date
@@ -369,7 +370,8 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 The current synchronized checkout must be Core revision
-`f5b818c3598d78e7cac30604577fa8057d380737`, a Linux storage-hardening descendant that adds the
+`77c6bf426ace65c6bd960120b253e10e59a70a13`, a source-language prompt-contract descendant that
+adds the explicit hint and translation-memory identity version on top of the
 non-locking `unix-none` VFS fail-closed regression on top of runtime baseline
 `8623b2c8829e4d9cf7299c74440dcfabb4e320db`. The baseline carries bounded document lease
 consumption smoke, POSIX-descriptor document consumption, and the AddressSanitizer gate, plus the
@@ -383,9 +385,9 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e f5b818c3598d78e7cac30604577fa8057d380737^{commit}
+git -C ../linguamesh-core cat-file -e 77c6bf426ace65c6bd960120b253e10e59a70a13^{commit}
 git -C ../linguamesh-core diff --quiet \
-  f5b818c3598d78e7cac30604577fa8057d380737..HEAD -- \
+  77c6bf426ace65c6bd960120b253e10e59a70a13..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -726,7 +728,7 @@ python3 tools/create-native-evidence.py \
   --cargo-lock Cargo.lock \
   --output-dir native-evidence \
   --linux-revision "$(git rev-parse HEAD)" \
-  --core-revision "f5b818c3598d78e7cac30604577fa8057d380737" \
+  --core-revision "77c6bf426ace65c6bd960120b253e10e59a70a13" \
   --localization-revision "c2526bfb3f6ff57895bdc3eeed743e26c8783613"
 (cd native-evidence && sha256sum -c SHA256SUMS)
 ```
@@ -860,7 +862,7 @@ contrast, motion, and text-scaling behavior; manual visual review remains requir
 releases.
 
 The GitHub Actions native workflow pins Core revision
-`f5b818c3598d78e7cac30604577fa8057d380737` and localization revision
+`77c6bf426ace65c6bd960120b253e10e59a70a13` and localization revision
 `c2526bfb3f6ff57895bdc3eeed743e26c8783613`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local

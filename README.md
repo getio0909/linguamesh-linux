@@ -22,8 +22,9 @@ normalized failure category without exposing provider error text or credentials.
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core revision `f5b818c3598d78e7cac30604577fa8057d380737`, which adds the bundled
-`unix-none` fail-closed storage regression on top of the existing `unix-excl` and ABI 1
+reviewed Core revision `77c6bf426ace65c6bd960120b253e10e59a70a13`, which adds the explicit
+source-language prompt hint and translation-prompt-v3 identity on top of the bundled `unix-none`
+fail-closed storage regression, existing `unix-excl`, and ABI 1
 engine-handle lifetime hardening while retaining typed provider rate-limit handling, persisted
 provider health status, and bounded
 FileLease lifecycle validation and strict

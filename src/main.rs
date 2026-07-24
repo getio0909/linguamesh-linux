@@ -6048,7 +6048,7 @@ fn document_translation_report(snapshot: &DocumentJobSnapshot, core_version: &st
         ("core_version", core_version.to_owned()),
         (
             "prompt_template_version",
-            "translation-prompt-v1".to_owned(),
+            "translation-prompt-v3".to_owned(),
         ),
         ("state", state),
         ("segment_total", snapshot.job.segments.len().to_string()),
