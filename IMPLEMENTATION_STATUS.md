@@ -1,5 +1,21 @@
 # Implementation Status
 
+## 2026-07-24 — Linux environment-gated fixture recheck
+
+Assumption: the dedicated OCR and private-mount storage-fault runners provide reproducible
+Linux prerelease evidence only; they do not claim physical power-loss recovery, arbitrary VFS
+behavior, or live-provider qualification.
+
+- On Linux head `759a828f4db4efcd17dfc6b4e25aa3a35e57b1ac`,
+  `bash tools/run-storage-fault-test.sh` passed exactly one private-mount runtime write-fault
+  regression (`1 passed; 0 failed; 0 ignored`). The test entered a private mount namespace and
+  verified session-only degradation without false persistent commits.
+- `bash tools/run-ocr-test.sh` passed exactly one generated image-only PDF fixture
+  (`1 passed; 0 failed; 0 ignored`) using the installed ImageMagick, Poppler, and Tesseract
+  tools. The bounded OCR path recovered the expected page text.
+- Release remains `unreleased`; physical power-loss, broader VFS, human/physical accessibility,
+  cross-client, signing, rollback, and stable-release evidence remain open.
+
 ## 2026-07-24 — Linux post-publish SQLite sidecar no-follow regression
 
 Assumption: an already-published descriptor-bound profile connection must not write through a
