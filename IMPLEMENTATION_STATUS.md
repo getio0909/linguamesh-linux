@@ -6,7 +6,9 @@ Assumption: a host-network temporary daemon with a pinned image and model is rep
 prerelease evidence for native Ollama transport only; it does not claim GPU execution, provider
 quota qualification, or stable-release readiness.
 
-- On status head `6a931c2cecef3ac90806fd9e4df1b33063af6a6a`, the pinned Docker image
+- The current documentation/status head is `9b6fa11caae336e846519ece632f7f78b60c520e`; the
+  runtime test was executed against its unchanged Ollama-compatible ancestor
+  `6a931c2cecef3ac90806fd9e4df1b33063af6a6a`. The pinned Docker image
   `ollama/ollama:0.11.10` served a temporary host-network daemon with `smollm:135m` in an isolated
   model volume. The real `running_third_party_ollama_provider_translates_without_secret` worker
   test passed exactly once (`1 passed; 0 failed; 0 ignored`) through `/api/tags` discovery and
@@ -14,8 +16,8 @@ quota qualification, or stable-release readiness.
 - The daemon, model volume, and container were removed after the test. A separate Docker-bridge
   attempt returned HTTP 500 because its proxy route to `registry.ollama.ai` timed out; that attempt
   is recorded as a diagnostic failure, not as evidence.
-- Push Native/Flatpak/Foundation `30131056593`/`30131056609`/`30131056607` and PR
-  Native/Flatpak/Foundation `30131058620`/`30131058622`/`30131058633` all passed for the hosted
+- Push Native/Flatpak/Foundation `30131478211`/`30131478214`/`30131478238` and PR
+  Native/Flatpak/Foundation `30131480664`/`30131480674`/`30131480660` all passed for the hosted
   packaging and validation matrix; the external model pull remains an opt-in local fixture.
 - Release remains `unreleased`; GPU, quota, human/physical review, other clients, signing,
   rollback, and stable-release evidence remain open.
@@ -26,8 +28,10 @@ Assumption: these isolated security fixtures strengthen Linux prerelease evidenc
 not replace live enterprise interoperability, human prompt review, or the unavailable display-backed
 Secret Service flow on this host.
 
-- On status head `084ba101b07206aebd890258b3b61967eaf5fe15`,
-  `bash tools/run-client-certificate-interop-test.sh` passed all four HTTPS tests exactly once:
+- The current documentation/status head is `9b6fa11caae336e846519ece632f7f78b60c520e`; the
+  security fixtures were executed against its unchanged runtime ancestor
+  `6a931c2cecef3ac90806fd9e4df1b33063af6a6a`. `bash tools/run-client-certificate-interop-test.sh`
+  passed all four HTTPS tests exactly once:
   trusted client authentication, untrusted server rejection, hostname-mismatch rejection, and
   untrusted client-CA rejection.
 - `bash tools/run-secret-service-prompt-test.sh` passed all four store/delete prompt acceptance
@@ -35,8 +39,8 @@ Secret Service flow on this host.
 - `bash tools/run-secret-service-test.sh` passed the persistent library restart and worker
   onboarding tests, then stopped at the expected missing `xvfb-run` command before the GTK flow;
   the complete persistent Secret Service runner is therefore not claimed locally.
-- Push Native/Flatpak/Foundation `30129891531`/`30129891513`/`30129891593` and PR
-  Native/Flatpak/Foundation `30129893976`/`30129893883`/`30129893923` all passed. Hosted Native
+- Push Native/Flatpak/Foundation `30130346330`/`30130346325`/`30130346308` and PR
+  Native/Flatpak/Foundation `30130348420`/`30130348432`/`30130348417` all passed. Hosted Native
   executed the display-backed security, accessibility, OCR, and release matrix for this head.
 - Release remains `unreleased`; prompted desktop approval, human accessibility, other clients,
   signing, rollback, and stable-release evidence remain open.
