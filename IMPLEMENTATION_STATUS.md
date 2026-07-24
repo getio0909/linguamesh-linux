@@ -9,6 +9,9 @@ replacement rejection, physical power-loss recovery, or arbitrary VFS behavior.
 - Added `published_storage_does_not_follow_replaced_database_sidecars`, which replaces each
   sidecar pathname after a profile write and requires either a fail-closed write or unchanged
   replacement bytes.
+- The first push/PR Flatpak runs `30127637300`/`30127639383` correctly rejected the stale
+  `0af3b73598841c2a9f001546f2152324998cd036` source pin before the SDK build; the packaging and
+  release-guide correction now pins this source-side test head `41a452b4453697d41d1799ad654d331fb05482ff`.
 - Local formatting, all-target checking, and strict Clippy passed. The focused GUI test binary is
   linker-limited on this host by missing GTK/GDK/Graphene symbols; hosted Native CI is authoritative.
 - The Linux branch remains `unreleased`; broader filesystem/VFS, power-loss, manual review,
