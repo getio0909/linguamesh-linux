@@ -3061,3 +3061,33 @@ msgstr "Last provider health check: {timestamp}"
 msgctxt "provider.health.failure"
 msgid "Last provider health check failed: {category}"
 msgstr "Last provider health check failed: {category}"
+
+#. Action that removes LinguaMesh-owned temporary files from the Linux system temporary directory.
+#, fuzzy
+msgctxt "action.clear_temporary_files"
+msgid "Clear temporary files"
+msgstr "Clear temporary files"
+
+#. Tooltip explaining the bounded Linux temporary-file cleanup scope.
+#, fuzzy
+msgctxt "tooltip.clear_temporary_files"
+msgid "Delete LinguaMesh temporary OCR files and abandoned export files from the system temporary directory"
+msgstr "Delete LinguaMesh temporary OCR files and abandoned export files from the system temporary directory"
+
+#. Confirmation dialog title for bounded Linux temporary-file cleanup.
+#, fuzzy
+msgctxt "dialog.clear_temporary_files"
+msgid "Clear LinguaMesh temporary files?"
+msgstr "Clear LinguaMesh temporary files?"
+
+#. Confirmation dialog detail for bounded Linux temporary-file cleanup.
+#, fuzzy
+msgctxt "dialog.clear_temporary_files_detail"
+msgid "Only LinguaMesh OCR and abandoned export items in the system temporary directory will be removed."
+msgstr "Only LinguaMesh OCR and abandoned export items in the system temporary directory will be removed."
+
+#. Status message reporting the number of Linux temporary items removed.
+#, fuzzy, python-brace-format
+msgctxt "status.temporary_files_cleared"
+msgid "Cleared {count} LinguaMesh temporary items."
+msgstr "Cleared {count} LinguaMesh temporary items."

@@ -237,7 +237,7 @@ The Linux checkpoint has a reproducible external pass using Docker image
 were removed after validation. This evidence is prerelease-only and does not cover GPU execution.
 
 The Linux checkout consumes the canonical gettext bundle from immutable l10n revision
-`c2526bfb3f6ff57895bdc3eeed743e26c8783613`. The bundle contains 506 messages, and
+`7fd210692bb269ef52f7453bfeb2b0f0759b1d4c`. The bundle contains 511 messages, and
 `bash tools/sync-l10n.sh --check` verifies every PO/MO catalog and the generated manifest before
 the native build. History/memory row metadata, document-job IDs, active-provider mode summaries,
 unavailable provider/model labels, and routing-profile actions/mode labels are asserted through
@@ -249,6 +249,11 @@ estimated, or unknown; missing counts remain unavailable rather than fabricated.
 profile tests also verify preference-index round trips and preservation of hidden Core constraints
 when visible privacy/capability controls are edited. Constraint parser tests cover comma-separated
 provider/model lists, positive numeric limits, and rejection of unsafe or empty values.
+The unit regression `temporary_cleanup_removes_only_linguamesh_owned_items` creates an isolated
+temporary root, verifies OCR directories and abandoned export files with the two supported prefixes
+are removed, and verifies an unrelated file remains. The GTK action adds native confirmation and
+is disabled while translation or OCR work is active; Native CI remains authoritative for that
+display-backed interaction.
 
 The license-notice dialog uses a read-only bundled `THIRD_PARTY_NOTICES.md` file rather than any
 networked source. The regression reads the bundled notice text and requires representative
@@ -731,7 +736,7 @@ python3 tools/create-native-evidence.py \
   --output-dir native-evidence \
   --linux-revision "$(git rev-parse HEAD)" \
   --core-revision "77c6bf426ace65c6bd960120b253e10e59a70a13" \
-  --localization-revision "c2526bfb3f6ff57895bdc3eeed743e26c8783613"
+  --localization-revision "7fd210692bb269ef52f7453bfeb2b0f0759b1d4c"
 (cd native-evidence && sha256sum -c SHA256SUMS)
 ```
 
@@ -865,7 +870,7 @@ releases.
 
 The GitHub Actions native workflow pins Core revision
 `77c6bf426ace65c6bd960120b253e10e59a70a13` and localization revision
-`c2526bfb3f6ff57895bdc3eeed743e26c8783613`, installs the headers plus D-Bus, Xvfb, test-only
+`7fd210692bb269ef52f7453bfeb2b0f0759b1d4c`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
 namespace test through the unprivileged path.

@@ -83,13 +83,16 @@ future release gate below.
 The current Linux gate consumes Core `77c6bf426ace65c6bd960120b253e10e59a70a13`, which includes
 the Linux-only non-locking `unix-none` VFS fail-closed regression and ABI 1 opaque engine-handle
 lifetime hardening, and l10n
-`c2526bfb3f6ff57895bdc3eeed743e26c8783613` (506 catalog messages). The reviewed Flatpak source
+`7fd210692bb269ef52f7453bfeb2b0f0759b1d4c` (511 catalog messages). The reviewed Flatpak source
 pin is Linux `c03c7e2065c1a0f74f6326d9e5071ee3cbde6299`; the current packaging pin is this
 ancestor of the current Linux head. Local exports now synchronize the temporary file and parent directory before the atomic
 move, then synchronize the parent again after finalization; a serialized child-process
 interruption fixture also verifies that the final destination is absent while the synced temporary
 bytes remain inspectable after SIGKILL. This is bounded process/crash-durability evidence, not
-physical power-loss or alternate-VFS validation. The Provider Hub displays the
+physical power-loss or alternate-VFS validation. The native **Clear temporary files** action is
+limited to LinguaMesh-owned OCR and abandoned export prefixes in the system temporary directory,
+requires confirmation, and has a focused isolated-root regression; it does not claim cleanup of
+user-selected output directories. The Provider Hub displays the
 selected saved profile's last health-check timestamp or normalized failure category using the
 same catalog; raw provider diagnostics and credentials remain excluded. The profile contract includes
 a bounded total provider request timeout of 1–600 seconds, a bounded connection-establishment

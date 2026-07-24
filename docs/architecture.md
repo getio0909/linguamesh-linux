@@ -203,7 +203,10 @@ persisted **Save translation memory** policy independently gates a bounded Core 
 identity includes normalized source, locales, provider/model, chunking options, glossary,
 protected-span policy, prompt-template version, and quality mode. Incognito bypasses lookup and
 write; **View translation memory** supports inspection, escaped TSV export, exact deletion, and
-clear-all.
+clear-all. **Clear temporary files** is a bounded Linux-only privacy action: after native
+confirmation it removes only direct children of the system temporary directory whose names begin
+with `linguamesh-ocr-` or `.linguamesh-export-`; it does not follow unrelated paths or run during
+active translation/OCR work.
 
 The native text-file path delegates TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF format detection and bounded UTF-8/BOM handling to
 Core's `bounded_text_document_v1` contract. It preserves the original LF/CRLF/CR line endings and

@@ -272,7 +272,7 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`c2526bfb3f6ff57895bdc3eeed743e26c8783613` and validated with `msgfmt`; the 506-message bundle
+`7fd210692bb269ef52f7453bfeb2b0f0759b1d4c` and validated with `msgfmt`; the 511-message bundle
 adds Linux routing-profile persistence/editor, profile-ID validation and duplicate protection, ordinary-text selection labels, routing preference/privacy/document constraints, provider/model allowlists and denylists, quality/request-size limits, translation quality-mode and translation-preset labels, and source/output character plus approximate-token metrics. The locale selector
 exposes all twelve official BCP 47 packs plus the generated `en-XA` accented and `ar-XB` RTL
  pseudo-locales. It switches runtime action, workspace-widget,
@@ -356,6 +356,9 @@ provider/model identity, glossary, chunking, and versioned translation policies 
 requests never read or write memory. **View translation memory** supports inspection, escaped TSV
 export, exact per-entry deletion, and **Clear translation memory** removes all entries. Both policy
 toggles are disabled while a conflicting operation or unavailable profile storage is active.
+**Clear temporary files** requires native confirmation and removes only LinguaMesh-owned OCR
+directories and abandoned export files with fixed prefixes from the system temporary directory;
+active translation and OCR operations disable the action, and unrelated files are never traversed.
 
 When a translation completes, the registered Linux application sends a desktop notification with
 localized generic copy only; source and translated content are never included in notification

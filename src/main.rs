@@ -180,6 +180,7 @@ struct UiBindings {
     memory_enabled: gtk::CheckButton,
     memory: gtk::Button,
     clear_memory: gtk::Button,
+    clear_temporary_files: gtk::Button,
     routing_profiles: gtk::Button,
     open_source_licenses: gtk::Button,
     about: gtk::Button,
@@ -253,6 +254,7 @@ struct UiBindings {
     memory_policy_guard: Rc<Cell<bool>>,
     memory_policy_pending: Rc<Cell<bool>>,
     memory_policy_notice: Rc<Cell<Option<bool>>>,
+    temporary_cleanup_notice: Rc<Cell<Option<usize>>>,
     source_drop_target: gtk::DropTarget,
 }
 
@@ -860,6 +862,7 @@ fn create_window(
         memory_enabled,
         memory,
         clear_memory,
+        clear_temporary_files,
         routing_profiles,
         open_source_licenses,
         about,
@@ -1189,6 +1192,7 @@ fn create_window(
         memory_enabled,
         memory,
         clear_memory,
+        clear_temporary_files,
         routing_profiles,
         open_source_licenses,
         about,
@@ -1262,6 +1266,7 @@ fn create_window(
         memory_policy_guard: Rc::new(Cell::new(false)),
         memory_policy_pending: Rc::new(Cell::new(false)),
         memory_policy_notice: Rc::new(Cell::new(None)),
+        temporary_cleanup_notice: Rc::new(Cell::new(None)),
         source_drop_target,
     };
     install_provider_focus_traversal(
@@ -2340,6 +2345,7 @@ fn create_controls() -> (
     gtk::Button,
     gtk::Button,
     gtk::Button,
+    gtk::Button,
     gtk::DropDown,
     gtk::DropDown,
 ) {
@@ -2547,6 +2553,18 @@ fn create_controls() -> (
         "tooltip.clear_memory",
         "Delete all locally stored translation memory entries",
     )));
+    let clear_temporary_files = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.clear_temporary_files",
+        "Clear temporary files",
+    ));
+    clear_temporary_files.set_focusable(true);
+    clear_temporary_files.add_css_class("destructive-action");
+    clear_temporary_files.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.clear_temporary_files",
+        "Delete LinguaMesh temporary OCR files and abandoned export files from the system temporary directory",
+    )));
     let routing_profiles = gtk::Button::with_mnemonic(&localized_mnemonic(
         locale,
         "action.routing_profiles",
@@ -2655,6 +2673,7 @@ fn create_controls() -> (
     controls.append(&memory_enabled);
     controls.append(&memory);
     controls.append(&clear_memory);
+    controls.append(&clear_temporary_files);
     controls.append(&routing_profiles);
     controls.append(&open_source_licenses);
     controls.append(&about);
@@ -2678,6 +2697,7 @@ fn create_controls() -> (
         memory_enabled,
         memory,
         clear_memory,
+        clear_temporary_files,
         routing_profiles,
         open_source_licenses,
         about,
@@ -4006,6 +4026,35 @@ fn fallback_confirmation_needed(enabled: bool, approved: bool) -> bool {
     enabled && !approved
 }
 
+// 仅清理系统临时目录中由 LinguaMesh 创建且具有固定前缀的孤立临时项。
+fn clear_linguamesh_temporary_files(root: &Path) -> Result<usize, std::io::Error> {
+    let mut removed = 0_usize;
+    let entries = fs::read_dir(root)?;
+    for entry in entries {
+        let entry = entry?;
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if !name.starts_with("linguamesh-ocr-") && !name.starts_with(".linguamesh-export-") {
+            continue;
+        }
+        let path = entry.path();
+        let file_type = entry.file_type()?;
+        let result = if file_type.is_dir() {
+            fs::remove_dir_all(&path)
+        } else if file_type.is_file() || file_type.is_symlink() {
+            fs::remove_file(&path)
+        } else {
+            continue;
+        };
+        match result {
+            Ok(()) => removed = removed.saturating_add(1),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error),
+        }
+    }
+    Ok(removed)
+}
+
 // 四个原生操作共享同一状态与工作线程绑定，集中注册可保持生命周期一致。
 #[allow(clippy::too_many_lines)]
 fn connect_action_handlers(
@@ -4169,6 +4218,66 @@ fn connect_action_handlers(
                 .record_client_error(error.to_string());
             refresh_ui(&clear_memory_bindings, &clear_memory_state.borrow());
         }
+    });
+
+    let temporary_bindings = bindings.clone();
+    let temporary_state = Rc::clone(state);
+    bindings.clear_temporary_files.connect_clicked(move |_| {
+        let current_state = temporary_state.borrow();
+        if !current_state.worker_ready()
+            || matches!(
+                current_state.status(),
+                AppStatus::Connecting | AppStatus::Translating | AppStatus::Cancelling
+            )
+            || temporary_bindings.ocr_pending.get()
+        {
+            return;
+        }
+        let locale = current_state.locale();
+        let dialog = gtk::AlertDialog::builder()
+            .message(localization::text(
+                locale,
+                "dialog.clear_temporary_files",
+                "Clear LinguaMesh temporary files?",
+            ))
+            .detail(localization::text(
+                locale,
+                "dialog.clear_temporary_files_detail",
+                "Only LinguaMesh OCR and abandoned export items in the system temporary directory will be removed.",
+            ))
+            .modal(true)
+            .build();
+        let cancel = localization::text(locale, "action.cancel", "Cancel");
+        let confirm = localization::text(
+            locale,
+            "action.clear_temporary_files",
+            "Clear temporary files",
+        );
+        dialog.set_buttons(&[cancel.as_str(), confirm.as_str()]);
+        dialog.set_cancel_button(0);
+        dialog.set_default_button(0);
+        let choice_bindings = temporary_bindings.clone();
+        let choice_state = Rc::clone(&temporary_state);
+        let choice_window = choice_bindings.window.clone();
+        dialog.choose(
+            Some(&choice_window),
+            None::<&gtk::gio::Cancellable>,
+            move |response| {
+                if response != Ok(1) {
+                    return;
+                }
+                match clear_linguamesh_temporary_files(&std::env::temp_dir()) {
+                    Ok(count) => choice_bindings
+                        .temporary_cleanup_notice
+                        .set(Some(count)),
+                    Err(error) => choice_state
+                        .borrow_mut()
+                        .record_client_error(error.to_string()),
+                }
+                refresh_ui(&choice_bindings, &choice_state.borrow());
+            },
+        );
+        dialog.show(Some(&temporary_bindings.window));
     });
 
     let memory_bindings = bindings.clone();
@@ -9360,6 +9469,11 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     let memory = localization::text(locale, "action.view_memory", "View translation memory");
     let clear_memory =
         localization::text(locale, "action.clear_memory", "Clear translation memory");
+    let clear_temporary_files = localization::text(
+        locale,
+        "action.clear_temporary_files",
+        "Clear temporary files",
+    );
     let routing_profiles =
         localization::text(locale, "action.routing_profiles", "Routing profiles");
     let open_source_licenses = localization::text(
@@ -9495,6 +9609,9 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     bindings.memory.set_label(&format!("_{memory}"));
     bindings.clear_memory.set_label(&format!("_{clear_memory}"));
     bindings
+        .clear_temporary_files
+        .set_label(&format!("_{clear_temporary_files}"));
+    bindings
         .routing_profiles
         .set_label(&format!("_{routing_profiles}"));
     bindings
@@ -9592,6 +9709,13 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
             locale,
             "tooltip.clear_memory",
             "Delete all locally stored translation memory entries",
+        )));
+    bindings
+        .clear_temporary_files
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.clear_temporary_files",
+            "Delete LinguaMesh temporary OCR files and abandoned export files from the system temporary directory",
         )));
     bindings
         .remove_saved_profile
@@ -10401,6 +10525,13 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             "status.memory_cleared",
             "Local translation memory was cleared.",
         )
+    } else if let Some(count) = bindings.temporary_cleanup_notice.get() {
+        localized_template(
+            state.locale(),
+            "status.temporary_files_cleared",
+            "Cleared {count} LinguaMesh temporary items.",
+            &[("{count}", &count.to_string())],
+        )
     } else if let Some(enabled) = bindings.memory_policy_notice.get() {
         if enabled {
             localization::text(
@@ -10631,6 +10762,9 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             && !bindings.memory_clear_pending.get()
             && state.translation_memory_count() > 0,
     );
+    bindings
+        .clear_temporary_files
+        .set_sensitive(state.worker_ready() && !blocked && !ocr_pending);
     bindings.memory.set_sensitive(
         state.profile_storage_available() && !blocked && state.translation_memory_count() > 0,
     );
@@ -10692,12 +10826,12 @@ mod tests {
         RoutingCandidate, RoutingConstraintTextValues, RoutingDecisionSummary, RoutingProfile,
         RoutingProfileRecord, SecretRef, SecretRefNamespace, SecretValue, TranslationError,
         UiLocale, WorkerCommand, WorkerEvent, about_details, apply_worker_event,
-        collision_safe_destination, collision_safe_output_path, connect_action_handlers,
-        connect_selection_handlers, create_window, custom_provider_profile,
-        destination_matches_source, document_format_label, document_translation_report,
-        endpoint_matches_preset_default, export_write_strategy, fallback_confirmation_needed,
-        generate_custom_provider_id, load_source_file, localized_document_job_state,
-        localized_document_warnings, localized_provider_default_name,
+        clear_linguamesh_temporary_files, collision_safe_destination, collision_safe_output_path,
+        connect_action_handlers, connect_selection_handlers, create_window,
+        custom_provider_profile, destination_matches_source, document_format_label,
+        document_translation_report, endpoint_matches_preset_default, export_write_strategy,
+        fallback_confirmation_needed, generate_custom_provider_id, load_source_file,
+        localized_document_job_state, localized_document_warnings, localized_provider_default_name,
         localized_provider_health_category, localized_template, model_descriptor_label,
         normalized_candidate_ids_for_mode, output_metrics_label, preset_requires_manual_model,
         provider_health_timestamp, provider_preset_config, provider_preset_index,
@@ -12057,6 +12191,31 @@ mod tests {
             collision_safe_output_path(&directory.join("new.txt")),
             Some(directory.join("new.txt"))
         );
+        let _ = fs::remove_dir_all(directory);
+    }
+
+    #[test]
+    fn temporary_cleanup_removes_only_linguamesh_owned_items() {
+        let directory = std::env::temp_dir().join(format!(
+            "linguamesh-linux-temporary-cleanup-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(directory.join("linguamesh-ocr-fixture")).expect("ocr directory");
+        fs::write(
+            directory.join(".linguamesh-export-fixture.tmp"),
+            b"temporary",
+        )
+        .expect("export temporary file");
+        fs::write(directory.join("keep.txt"), b"keep").expect("unrelated file");
+
+        assert_eq!(
+            clear_linguamesh_temporary_files(&directory).expect("cleanup"),
+            2
+        );
+        assert!(!directory.join("linguamesh-ocr-fixture").exists());
+        assert!(!directory.join(".linguamesh-export-fixture.tmp").exists());
+        assert!(directory.join("keep.txt").exists());
         let _ = fs::remove_dir_all(directory);
     }
 

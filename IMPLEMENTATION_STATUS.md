@@ -1,5 +1,25 @@
 # Implementation Status
 
+## 2026-07-24 — Linux bounded temporary-file cleanup
+
+Assumption: the Linux privacy control should remove only direct children of the system temporary
+directory that LinguaMesh creates with the `linguamesh-ocr-` or `.linguamesh-export-` prefix;
+user-selected output directories and unrelated temporary files remain outside this action.
+
+- Added a native-confirmed **Clear temporary files** action. It is disabled during translation,
+  connection, cancellation, and OCR work, reports the number of removed items, and never traverses
+  unrelated names. The focused `temporary_cleanup_removes_only_linguamesh_owned_items` regression
+  removes two owned fixtures while preserving an unrelated file.
+- Added five Linux catalog messages in l10n commit
+  `7fd210692bb269ef52f7453bfeb2b0f0759b1d4c`; the 511-message generated bundle passed l10n
+  schema/lint/tests/generation/build/foundation validation. Linux sync and all three localization
+  audits passed, as did Flatpak metadata and `git diff --check`.
+- Rust 1.93.0 formatting, locked all-target check, strict all-feature Clippy, no-default tests
+  (`85 passed; 1 ignored`), and demo-provider library tests (`166 passed; 7 ignored`) passed.
+  The focused GUI binary test compiled but local linking remains blocked by the host's incomplete
+  GTK runtime symbols; Native CI is required for the display-backed fixture. Release remains
+  `unreleased`.
+
 ## 2026-07-24 — Native CI Core pin alignment
 
 Assumption: the approved Linux runtime contract is Core `77c6bf426ace65c6bd960120b253e10e59a70a13`,
