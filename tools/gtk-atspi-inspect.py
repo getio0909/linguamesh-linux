@@ -49,6 +49,19 @@ def role_token(node: object) -> str:
     return normalized if normalized.startswith("ROLE_") else f"ROLE_{normalized}"
 
 
+def accessible_values(node: object) -> tuple[str, str]:
+    """Return the exported name and text without dumping arbitrary application content."""
+    try:
+        name = str(node.name)  # type: ignore[attr-defined]
+    except Exception:
+        name = ""
+    try:
+        text = str(node.queryText().getText(0, -1))  # type: ignore[attr-defined]
+    except Exception:
+        text = ""
+    return name, text
+
+
 def find_nodes(deadline: float) -> list[object]:
     """等待应用注册到 AT-SPI，并返回当前可读节点。"""
     while time.monotonic() < deadline:
@@ -152,13 +165,13 @@ def main() -> int:
             ("status", node)
             for node in nodes
             if role_token(node) == "ROLE_LABEL"
-            and str(getattr(node, "name", "")).startswith(status_prefix)
+            and any(value.startswith(status_prefix) for value in accessible_values(node))
         ]
         status_error_nodes.extend(
             ("error", node)
             for node in nodes
             if role_token(node) == "ROLE_LABEL"
-            and str(getattr(node, "name", "")).startswith(error_prefix)
+            and any(value.startswith(error_prefix) for value in accessible_values(node))
         )
         if not any(kind == "status" for kind, _ in status_error_nodes):
             wrong_roles.append(f"runtime status label ({status_prefix})")
@@ -189,7 +202,7 @@ def main() -> int:
     for node in text_nodes:
         print(f"AT-SPI text editor: {node_summary(node)}")
     for kind, node in status_error_nodes:
-        print(f"AT-SPI {kind} label: {node_summary(node)}")
+        print(f"AT-SPI {kind} label: {role_token(node)} exported")
     return 0
 
 
