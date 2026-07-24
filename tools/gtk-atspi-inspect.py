@@ -49,17 +49,21 @@ def role_token(node: object) -> str:
     return normalized if normalized.startswith("ROLE_") else f"ROLE_{normalized}"
 
 
-def accessible_values(node: object) -> tuple[str, str]:
-    """Return the exported name and text without dumping arbitrary application content."""
+def accessible_values(node: object) -> tuple[str, str, str]:
+    """Return exported name, description, and text without dumping arbitrary content."""
     try:
         name = str(node.name)  # type: ignore[attr-defined]
     except Exception:
         name = ""
     try:
+        description = str(node.description)  # type: ignore[attr-defined]
+    except Exception:
+        description = ""
+    try:
         text = str(node.queryText().getText(0, -1))  # type: ignore[attr-defined]
     except Exception:
         text = ""
-    return name, text
+    return name, description, text
 
 
 def find_nodes(deadline: float) -> list[object]:
