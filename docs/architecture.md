@@ -31,8 +31,9 @@ discovery never removes a manually configured model.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `900b0a90113b75dd0f49e535900b9af8e75ef0f3`; compared with the prior
-alpha.2 pin, it adds registry-backed ABI 1 opaque engine-handle lifetime hardening, makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW`, adds streamed
+functional revision is `f5b818c3598d78e7cac30604577fa8057d380737`; compared with the prior
+pin, it adds the Linux-only non-locking `unix-none` VFS fail-closed regression, while retaining
+registry-backed ABI 1 opaque engine-handle lifetime hardening and making file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW`, adding streamed
 protected-span and request-level glossary restoration, and rejects suspicious OOXML compression
 ratios and unsupported macro/signature parts before XML inspection. Core now advertises the bounded
 `file_lease_v1` lifecycle, engine-scoped ABI lifecycle controls, and one-shot bounded document

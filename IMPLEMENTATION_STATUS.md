@@ -1,5 +1,25 @@
 # Implementation Status
 
+## 2026-07-24 — Linux pin for Core non-locking VFS rejection
+
+Assumption: Core `f5b818c3598d78e7cac30604577fa8057d380737` preserves the ABI 1 and Linux
+application contracts while adding a Linux-only `unix-none` fail-closed storage regression; custom
+VFS implementations and physical power-loss behavior remain separate evidence gates.
+
+- Linux Native, Flatpak, documentation, and release checks now consume Core
+  `f5b818c3598d78e7cac30604577fa8057d380737`. The Core push passed CI `30070685571`,
+  Fuzz/ASAN `30070685557`, and Native SDK `30070685594`.
+- Core's `unix-none` regression rejects the bundled non-locking VFS before migrations when required
+  WAL mode is unavailable, and the rejected database remains free of schema tables. Core local
+  storage validation reports `59 passed; 0 failed`; the full workspace check, strict Clippy, tests,
+  build, and cargo-deny checks also passed.
+- Linux local validation passed localization synchronization and all three audits, Flatpak metadata,
+  the exact Core source-diff/clean check, formatting, locked all-target check, strict Clippy,
+  no-default tests (`85 passed; 1 ignored`), and demo-provider tests (`166 passed; 7 ignored`).
+  Linux Native, Flatpak, and Foundation push/PR gates remain pending for this pin update.
+- This is bundled alternate-VFS evidence only; physical power-loss, custom/third-party VFS,
+  cross-client, signing, rollback, and stable-release evidence remain open.
+
 ## 2026-07-24 — Linux bundled alternate SQLite VFS pin
 
 Assumption: Core `900b0a90113b75dd0f49e535900b9af8e75ef0f3` preserves the ABI 1 and Linux
