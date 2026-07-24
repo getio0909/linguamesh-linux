@@ -1,5 +1,18 @@
 # Implementation Status
 
+## 2026-07-24 — Native CI Core pin alignment
+
+Assumption: the approved Linux runtime contract is Core `77c6bf426ace65c6bd960120b253e10e59a70a13`,
+so Native CI must check out the same immutable revision used by Flatpak, docs, and the central release
+manifest; no behavior change is intended.
+
+- Commit `b02d3853791f06ff4b042fed430a0e4ab5947b3a` changes `.github/workflows/native.yml` from the
+  stale Core `b29067b78d420c96f57d670d3dd860cba3abc703` to the approved `77c6bf...` pin.
+- Local `git diff --check` and `bash tools/validate-flatpak-metadata.sh` passed. Existing Linux
+  worker/UI validation for the unchanged runtime is recorded below; hosted Native CI is required to
+  prove the corrected checkout and remains pending after push.
+- Release remains `unreleased`; this correction does not promote a stable artifact.
+
 ## 2026-07-24 — Linux persisted document-job metadata deletion
 
 Assumption: deleting a saved document job removes only its persisted snapshot and segment metadata;
