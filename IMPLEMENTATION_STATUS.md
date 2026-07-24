@@ -17,6 +17,18 @@ power-loss recovery or arbitrary VFS behavior.
   physical power loss, other clients, manual review, signing, rollback authorization, and stable
   release remain open.
 
+## 2026-07-24 — Linux Flatpak pin for published-storage boundary
+
+Assumption: the Flatpak source pin must consume the same reviewed Linux source head that passed the
+published-storage regression; the pin update itself changes packaging metadata only.
+
+- Updated the Flatpak Linux source pin to `808e04502b257a8793c2d62a1bea9d068190b8f4`, so the
+  validator no longer compares the packaged source against the pre-boundary `195664199d1884c53940a4c78f2c15bd500ad8a3` head.
+- Local metadata validation and diff checks remain required; the corrected push and pull-request
+  Native, Flatpak, and Foundation workflows are the hosted evidence for this pin.
+- Release remains `unreleased`; this packaging correction does not add physical power-loss, other
+  VFS, manual accessibility, signing, rollback, or stable-release evidence.
+
 ## 2026-07-24 — Linux provider-form keyboard traversal completion
 
 Assumption: every visible, enabled provider-form control must remain reachable through the
