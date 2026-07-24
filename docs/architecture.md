@@ -31,7 +31,7 @@ discovery never removes a manually configured model.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `fed6c138d398a69866512090ced3c4e062631c0d`; compared with the prior
+functional revision is `01e228ca251252de331b285e5381cbb4fe0c30da`; compared with the prior
 alpha.2 pin, it adds registry-backed ABI 1 opaque engine-handle lifetime hardening, makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW`, adds streamed
 protected-span and request-level glossary restoration, and rejects suspicious OOXML compression
 ratios and unsupported macro/signature parts before XML inspection. Core now advertises the bounded
