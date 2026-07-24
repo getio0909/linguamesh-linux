@@ -10,6 +10,8 @@ loopback address is treated as local while HTTPS and non-loopback endpoints rema
 - Added regression coverage for `127.0.0.2`, `[::1]`, `localhost`, HTTPS loopback, and remote hosts;
   local formatting, GUI check, strict Clippy, full demo-provider tests, localization audits, and
   Flatpak metadata validation passed.
+- The focused GUI test binary could not link on this host because installed GTK/GDK/Graphene
+  libraries lack symbols; hosted Native validation is the authoritative execution boundary.
 - The Flatpak source pin is updated to `307bbbae8cf3275cd6c67ece166f5beb139e63c9`; hosted Native,
   Flatpak, and Foundation checks remain required before the central release record is updated.
 
