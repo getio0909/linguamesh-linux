@@ -241,6 +241,15 @@ The Linux checkpoint has a reproducible external pass using Docker image
 `1 passed; 0 failed` through native `/api/tags` and `/api/chat`; the temporary daemon and model
 were removed after validation. This evidence is prerelease-only and does not cover GPU execution.
 
+The current Linux status-head recheck repeated the real daemon path with the pinned
+`ollama/ollama:0.11.10` image, a host-network temporary daemon, and `smollm:135m` in an isolated
+model volume. `running_third_party_ollama_provider_translates_without_secret` passed exactly once
+(`1 passed; 0 failed; 0 ignored`) through native `/api/tags` discovery and `/api/chat` streaming
+without a credential. The daemon, model volume, and container were removed afterward. A separate
+Docker-bridge attempt hit an HTTP 500 caused by a proxy timeout to `registry.ollama.ai`; it is not
+counted as evidence. GPU execution, live quota behavior, and enterprise account qualification remain
+unverified.
+
 The Linux checkout consumes the canonical gettext bundle from immutable l10n revision
 `7fd210692bb269ef52f7453bfeb2b0f0759b1d4c`. The bundle contains 511 messages, and
 `bash tools/sync-l10n.sh --check` verifies every PO/MO catalog and the generated manifest before

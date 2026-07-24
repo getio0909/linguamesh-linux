@@ -1,5 +1,22 @@
 # Implementation Status
 
+## 2026-07-24 — Linux current-head third-party Ollama interoperability
+
+Assumption: a host-network temporary daemon with a pinned image and model is reproducible Linux
+prerelease evidence for native Ollama transport only; it does not claim GPU execution, provider
+quota qualification, or stable-release readiness.
+
+- On status head `6a931c2cecef3ac90806fd9e4df1b33063af6a6a`, the pinned Docker image
+  `ollama/ollama:0.11.10` served a temporary host-network daemon with `smollm:135m` in an isolated
+  model volume. The real `running_third_party_ollama_provider_translates_without_secret` worker
+  test passed exactly once (`1 passed; 0 failed; 0 ignored`) through `/api/tags` discovery and
+  `/api/chat` streaming without a credential.
+- The daemon, model volume, and container were removed after the test. A separate Docker-bridge
+  attempt returned HTTP 500 because its proxy route to `registry.ollama.ai` timed out; that attempt
+  is recorded as a diagnostic failure, not as evidence.
+- Release remains `unreleased`; GPU, quota, human/physical review, other clients, signing,
+  rollback, and stable-release evidence remain open.
+
 ## 2026-07-24 — Linux current-head security fixture recheck
 
 Assumption: these isolated security fixtures strengthen Linux prerelease evidence only; they do
