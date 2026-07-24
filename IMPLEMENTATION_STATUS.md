@@ -1,16 +1,17 @@
 # Implementation Status
 
-## 2026-07-24 — Linux Core pin synchronization
+## 2026-07-24 — Linux Core handle-lifetime pin synchronization
 
-Assumption: Core `b29067b78d420c96f57d670d3dd860cba3abc703` is a fuzz/docs-only descendant of the
-runtime baseline `8623b2c8829e4d9cf7299c74440dcfabb4e320db`; the Linux compatibility contract is
-unchanged, while the newer immutable checkout records the valid-FFI-command fuzz evidence.
+Assumption: Core `b54ab4ab7ebcd3a439678ead9c0af1e6b5c5dae8` preserves ABI 1 wire compatibility while
+adding registry-backed opaque engine-handle lifetime hardening; the Linux compatibility contract is
+unchanged for existing clients.
 
 - Native CI, Flatpak metadata, architecture/testing/release documentation, and contributor commands
-  now use the central Core pin `b29067b78d420c96f57d670d3dd860cba3abc703`; the l10n pin remains
+  now use the central Core pin `b54ab4ab7ebcd3a439678ead9c0af1e6b5c5dae8`; the l10n pin remains
   `c2526bfb3f6ff57895bdc3eeed743e26c8783613`.
-- The Core diff was checked before editing and is confined to fuzz targets/corpus, fuzz CI, and Core
-  evidence documentation; no Linux runtime source or dependency contract was changed.
+- The Core diff was checked before editing and is confined to the FFI handle registry, stale-handle
+  regression/fuzz coverage, fuzz CI, and ABI evidence documentation; no Linux UI or dependency
+  contract was changed.
 - Local validation passed: `bash tools/sync-l10n.sh --check`, all three dependency-free
   localization audits, `bash tools/validate-flatpak-metadata.sh`, `cargo fmt --all -- --check`,
   `cargo check --features demo-provider --all-targets --locked --offline`,
@@ -21,13 +22,10 @@ unchanged, while the newer immutable checkout records the valid-FFI-command fuzz
   duplicate-version and unmatched-license warnings.
 - The native all-feature Clippy command was also attempted and remains blocked locally because the
   host lacks `gtk4.pc` and `graphene-gobject-1.0`; this is not treated as a successful GUI result.
-  Core runtime-source diff and clean-check plus `git diff --check` passed. Linux push Native,
-  Flatpak, and Foundation runs `30063061068`/`30063060960`/`30063060951` (jobs
-  `89388411327`/`89388410926`/`89388410959`) all passed. The matching Draft PR Native, Flatpak,
-  and Foundation runs `30063062941`/`30063062911`/`30063062925` (jobs
-  `89388417235`/`89388417360`/`89388417268`) also passed, including the pinned Core SDK smoke,
-  GTK/portal/Wayland/AT-SPI/Orca fixtures, Flatpak sandbox smoke, checksums, SBOM, and performance
-  evidence. Release remains `unreleased`.
+  Core runtime-source diff and clean-check plus `git diff --check` passed. The Core push runs
+  `30064410443` (CI), `30064410428` (Fuzz/ASAN), and `30064410436` (Native SDK) all passed; Fuzz
+  job `89392449201` exercised stale handles and Native Linux job `89392449213` passed the fake-
+  provider, C ABI, package, and checksum smoke tests. Release remains `unreleased`.
 
 ## 2026-07-23 — Linux mTLS client-authentication rejection
 
