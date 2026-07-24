@@ -494,7 +494,7 @@ fn endpoint_matches_preset_default(endpoint: &str, preset_index: u32) -> bool {
     let endpoint = endpoint.trim();
     if preset_index == 1 {
         endpoint == DEFAULT_OLLAMA_ENDPOINT
-            || (endpoint.starts_with("http://127.0.0.1:") && endpoint.ends_with("/api/"))
+            || (is_loopback_http_endpoint(endpoint) && endpoint.ends_with("/api/"))
     } else if preset_index == 2 {
         endpoint == DEFAULT_ANTHROPIC_ENDPOINT
     } else if preset_index == 3 {
@@ -505,7 +505,7 @@ fn endpoint_matches_preset_default(endpoint: &str, preset_index: u32) -> bool {
         endpoint == DEFAULT_RESPONSES_ENDPOINT
     } else {
         endpoint == DEFAULT_PROVIDER_ENDPOINT
-            || (endpoint.starts_with("http://127.0.0.1:") && endpoint.ends_with("/v1/"))
+            || (is_loopback_http_endpoint(endpoint) && endpoint.ends_with("/v1/"))
     }
 }
 
@@ -12723,6 +12723,19 @@ mod tests {
         assert!(!endpoint_matches_preset_default(
             "https://api.example.test/v1beta/",
             3
+        ));
+    }
+
+    #[test]
+    fn preset_defaults_accept_all_core_loopback_http_authorities() {
+        assert!(endpoint_matches_preset_default(
+            "http://127.0.0.2:11434/api/",
+            1
+        ));
+        assert!(endpoint_matches_preset_default("http://[::1]:11434/v1/", 0));
+        assert!(endpoint_matches_preset_default(
+            "http://localhost:11434/v1/",
+            0
         ));
     }
 
