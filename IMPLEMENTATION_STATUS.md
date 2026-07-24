@@ -1,5 +1,22 @@
 # Implementation Status
 
+## 2026-07-24 — Linux post-publish database-path replacement boundary
+
+Assumption: once profile storage is published, a later replacement of the visible database path
+must never redirect existing reads or writes to replacement bytes; this test does not claim physical
+power-loss recovery or arbitrary VFS behavior.
+
+- Added `published_storage_does_not_follow_replaced_database_path`, which opens storage through
+  the trusted descriptor path, moves the original database, installs replacement bytes at the old
+  pathname, writes a provider profile through the already-published storage, and verifies the
+  replacement bytes remain untouched while the original connection remains usable.
+- Targeted regression passed, followed by formatting, GUI all-target checking, strict Clippy,
+  the full demo-provider suite (`167 passed; 7 ignored`), localization synchronization and
+  466-key/595-placeholder/visible-string audits, Flatpak metadata validation, and diff checks.
+- This narrows the post-publish replacement boundary only; broader filesystem/VFS variants,
+  physical power loss, other clients, manual review, signing, rollback authorization, and stable
+  release remain open.
+
 ## 2026-07-24 — Linux provider-form keyboard traversal completion
 
 Assumption: every visible, enabled provider-form control must remain reachable through the

@@ -539,8 +539,11 @@ missing-file preflight is also rejected by the exclusive open. All require rejec
 descriptor is accepted. Existing SQLite `-wal` and `-shm` sidecars are inspected through the pinned
 parent descriptor; `hard_linked_database_sidecars_are_rejected_without_modifying_targets` rejects
 hard-linked aliases for both sidecars before Core opens the database, while
-`replaced_database_sidecar_is_rejected_after_snapshot` verifies that a changed existing sidecar
-identity is rejected after Core open. It also verifies that a completed standard translation is recorded in bounded
+`replaced_database_sidecar_is_rejected_after_final_pre_publish_check` verifies that a changed existing sidecar
+identity is rejected after Core open. The `published_storage_does_not_follow_replaced_database_path`
+regression then replaces the visible database pathname after storage publication and verifies that
+existing storage continues using the original descriptor-bound inode without modifying replacement
+bytes. It also verifies that a completed standard translation is recorded in bounded
 history, an Incognito completion bypasses both translation-memory lookup and persistence, and the
 startup count/clear command path uses the same database. The focused
 `incognito_translation_bypasses_existing_memory_and_persists_nothing` regression first stores a
@@ -1006,8 +1009,9 @@ exclusive open. Existing SQLite `-wal`/`-shm` sidecars are checked through the p
 hard-linked aliases are rejected before Core opens the database; existing identities are checked
 again after Core open and again immediately before the hydrated storage is published. The preflight
 suite also replaces the validated parent with a distinct private directory and rejects the
-device/inode change. Post-publish runtime replacement, broader same-UID filesystem/VFS variants,
-and power loss remain outside the tested boundary.
+device/inode change. The post-publish replacement regression proves an already-published connection
+does not follow the visible pathname, but does not claim active replacement rejection, broader
+same-UID filesystem/VFS variants, or power-loss recovery.
 Remaining evidence is deliberately explicit: human screen-reader listening and translated-copy/
 RTL/visual review; physical compositor, GPU-backed Wayland, and broader X11/desktop coverage;
 prompted interactive Secret Service approval; broader filesystem/VFS and power-loss races; signed

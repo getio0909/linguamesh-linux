@@ -149,8 +149,11 @@ Linux profile startup inspects existing SQLite `-wal` and `-shm` sidecars throug
 descriptor and rejects symbolic-link, non-regular, or hard-linked aliases before Core opens the
 database. The parent descriptor and existing sidecar identities remain pinned through Core open;
 the sidecars are checked again afterward and immediately before hydrated storage is published;
-changed identities fail closed. Post-publish runtime replacement and non-default SQLite VFS behavior
-remain unverified release boundaries.
+changed identities fail closed. The `published_storage_does_not_follow_replaced_database_path`
+regression replaces the visible pathname after publication and proves the existing storage connection
+continues using the original descriptor-bound inode without modifying replacement bytes. This does
+not claim active replacement rejection, non-default SQLite VFS behavior, or physical power-loss
+recovery.
 
 ## Future release gate
 

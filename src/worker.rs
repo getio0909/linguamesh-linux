@@ -6336,8 +6336,8 @@ mod tests {
     use super::{
         COMMAND_CAPACITY, CoreWorker, PersistenceIntent, QueuedCommand, RoutingCircuitBreaker,
         WorkerCommand, WorkerEvent, alternative_pdf_source_name,
-        ensure_database_sidecars_unchanged, open_database_file, pin_database_parent,
-        prepare_database_file, profile_without_secret, routing_backoff_delay,
+        ensure_database_sidecars_unchanged, open_database_file, open_profile_storage,
+        pin_database_parent, prepare_database_file, profile_without_secret, routing_backoff_delay,
         validate_core_contract, validate_database_path, validate_database_sidecars,
     };
     use crate::model::{ProviderProfile, ProviderProfileId};
@@ -11546,6 +11546,47 @@ mod tests {
                 "The profile database sidecar was replaced during open."
             );
         }
+    }
+
+    // 已发布的存储必须继续绑定原始数据库 inode，不能跟随后来替换的路径。
+    #[test]
+    fn published_storage_does_not_follow_replaced_database_path() {
+        let database = TestDatabase::new();
+        fs::create_dir(&database.directory).expect("database directory");
+        fs::set_permissions(&database.directory, fs::Permissions::from_mode(0o700))
+            .expect("database directory permissions");
+        let (mut storage, profiles, active_profile_id) =
+            open_profile_storage(database.path()).expect("published profile storage");
+        assert!(profiles.is_empty());
+        assert!(active_profile_id.is_none());
+
+        let original = database.directory.join("state-original.sqlite3");
+        fs::rename(database.path(), &original).expect("move original database");
+        let replacement = b"REPLACED_DATABASE_PATH";
+        fs::write(database.path(), replacement).expect("replacement database");
+
+        let profile = profile(
+            "published-original",
+            "http://127.0.0.1:1",
+            None,
+            Some("fake-translator"),
+        );
+        storage
+            .save_and_activate_provider(&profile)
+            .expect("write through published storage");
+        assert_eq!(
+            storage
+                .provider_profile(profile.id())
+                .expect("read through published storage")
+                .as_ref()
+                .map(ProviderProfile::id),
+            Some(profile.id())
+        );
+        assert_eq!(
+            fs::read(database.path()).expect("replacement bytes"),
+            replacement
+        );
+        assert!(Storage::open(database.path()).is_err());
     }
 
     #[test]
