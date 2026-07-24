@@ -325,7 +325,10 @@ directory. The X11 path also runs `tools/run-gtk-keyboard-focus-test.sh` under `
 Tab/Shift+Tab traversal for the tested controls; an application-window Capture-phase handler keeps
 the provider fields in an explicit order while preserving modified shortcuts. The
 `tools/run-gtk-atspi-test.sh` fixture separately reads the live tree through `python3-pyatspi` and
-checks the named Stop control plus both text-editor roles. Native CI also runs
+checks the named Stop control plus both text-editor roles. Its status/error variant injects only a
+fixed test error through the production state reducer and verifies the visible localized status and
+error labels as the `ROLE_LABEL` nodes exported by the GTK bridge; the GTK semantic unit test still
+requires `Status` and `Alert`. Native CI also runs
 `tools/run-orca-atspi-test.sh`, which starts Orca with Speech Dispatcher, inspects that named control
 through AT-SPI, and checks Orca's speech-generator debug record for the Linux application tree. These remain headless
 protocol/backend and Orca-integration gates, not claims about physical compositors, GPU rendering,

@@ -114,6 +114,14 @@ def main() -> int:
     if expected is None:
         print(f"AT-SPI fixture does not define expected names for locale: {locale}.", file=sys.stderr)
         return 2
+    status_error_fixture = os.environ.get("LINGUAMESH_TEST_ATSPI_STATUS_ERROR") == "1"
+    status_error_prefixes = {
+        "en": ("Status: Failed", "Internal:"),
+        "zh-CN": ("状态：失败", "内部错误："),
+        "ar": ("الحالة: فشل", "خطأ داخلي:"),
+        "en-XA": ("［Šŧåŧüš~~］:", "［Ïñŧëŕñåŀ~~］:"),
+        "ar-XB": ("⁧⟦Status⟧⁩:", "⁧⟦Internal⟧⁩:"),
+    }
     by_name: dict[str, list[object]] = {}
     for node in nodes:
         try:
@@ -136,6 +144,26 @@ def main() -> int:
     text_nodes = [node for node in nodes if role_token(node) in {"ROLE_TEXT", "ROLE_EDITBAR"}]
     if len(text_nodes) < 2:
         wrong_roles.append("text editors (two ROLE_TEXT/ROLE_EDITBAR nodes)")
+
+    status_error_nodes: list[tuple[str, object]] = []
+    if status_error_fixture:
+        status_prefix, error_prefix = status_error_prefixes[locale]
+        status_error_nodes = [
+            ("status", node)
+            for node in nodes
+            if role_token(node) == "ROLE_LABEL"
+            and str(getattr(node, "name", "")).startswith(status_prefix)
+        ]
+        status_error_nodes.extend(
+            ("error", node)
+            for node in nodes
+            if role_token(node) == "ROLE_LABEL"
+            and str(getattr(node, "name", "")).startswith(error_prefix)
+        )
+        if not any(kind == "status" for kind, _ in status_error_nodes):
+            wrong_roles.append(f"runtime status label ({status_prefix})")
+        if not any(kind == "error" for kind, _ in status_error_nodes):
+            wrong_roles.append(f"runtime error label ({error_prefix})")
 
     if missing or wrong_roles:
         print("AT-SPI fixture did not find the expected accessible controls.", file=sys.stderr)
@@ -160,6 +188,8 @@ def main() -> int:
         print(f"AT-SPI control: {role}: {name}")
     for node in text_nodes:
         print(f"AT-SPI text editor: {node_summary(node)}")
+    for kind, node in status_error_nodes:
+        print(f"AT-SPI {kind} label: {node_summary(node)}")
     return 0
 
 

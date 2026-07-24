@@ -8,8 +8,10 @@ Xvfb/private-D-Bus sandbox smoke. The native gate verifies the real document-por
 the real interactive `xdg-desktop-portal-gtk` FileChooser backend, the application-level GTK
 FileDialog callback, a real source-editor drag/drop gesture, and visible desktop-shell delivery to a
 real `dunst` notification daemon under Xvfb, and now exercises headless Orca AT-SPI speech-generation
-dispatch in its isolated X11 session. It still has no physical compositor/GPU rendering, signed artifact, or
-distributable release has been verified. The
+dispatch in its isolated X11 session. It also checks the runtime-exported localized status/error
+labels with a test-only fixed error injection. This does not replace human screen-reader listening.
+It still has no physical compositor/GPU rendering, signed artifact, or distributable release has
+been verified. The
 vertical slice must not be tagged or published as a product release, and no packaging claim beyond
 the recorded CI build is valid. Native CI now uploads the release-mode Linux binary together with
 SHA-256, deterministic SPDX 2.3, build-context, repository-only source-archive, machine-specific

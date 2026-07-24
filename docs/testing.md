@@ -855,6 +855,14 @@ diagnostics panel uses the catalog-backed `diagnostics.summary` template for its
 Core ABI/protocol header, localizes fixed labels and state values through the Linux diagnostics
 keys, and keeps source content, endpoints, identifiers, and secret references redacted.
 
+Native CI also runs the live-tree fixture with `LINGUAMESH_TEST_ATSPI_STATUS_ERROR=1`. This
+test-only switch records a fixed invalid-UTF-8 import error through the production state path, then
+requires the status and error `GtkLabel` nodes to be visible in AT-SPI with their localized `Failed`
+and `Internal` prefixes. GTK's bridge exports these labels as `ROLE_LABEL`, so the runtime assertion
+intentionally checks that observed role while the GTK semantic unit test remains authoritative for
+`Status` and `Alert`. The fixture does not alter ordinary startup or claim human screen-reader
+listening.
+
 `tools/run-orca-atspi-test.sh` adds the installed Orca process to a separate Xvfb/private-D-Bus
 session. `tools/orca-atspi-inspect.py` finds the production Stop push button through AT-SPI and
 confirms its focusable state; the fixture then requires Orca's debug stream to contain the Linux

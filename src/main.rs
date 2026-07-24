@@ -572,8 +572,15 @@ fn main() -> glib::ExitCode {
         .build();
     let file_dialog_fixture = std::env::var_os("LINGUAMESH_TEST_FILE_DIALOG").is_some();
     let file_drop_fixture = std::env::var_os("LINGUAMESH_TEST_FILE_DROP").is_some();
+    let atspi_status_error_fixture =
+        std::env::var_os("LINGUAMESH_TEST_ATSPI_STATUS_ERROR").is_some();
     application.connect_activate(move |application| {
-        build_ui(application, file_dialog_fixture, file_drop_fixture);
+        build_ui(
+            application,
+            file_dialog_fixture,
+            file_drop_fixture,
+            atspi_status_error_fixture,
+        );
     });
     application.run()
 }
@@ -589,7 +596,12 @@ fn test_locale_override() -> UiLocale {
         .unwrap_or(UiLocale::English)
 }
 
-fn build_ui(application: &adw::Application, file_dialog_fixture: bool, file_drop_fixture: bool) {
+fn build_ui(
+    application: &adw::Application,
+    file_dialog_fixture: bool,
+    file_drop_fixture: bool,
+    atspi_status_error_fixture: bool,
+) {
     if let Some(window) = application.active_window() {
         window.present();
         return;
@@ -619,6 +631,13 @@ fn build_ui(application: &adw::Application, file_dialog_fixture: bool, file_drop
     }
     connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
     connect_action_handlers(&bindings, &state, &worker);
+    if atspi_status_error_fixture {
+        state.borrow_mut().record_client_error(localization::text(
+            initial_locale,
+            "error.file.invalid_utf8",
+            "The selected file is not valid UTF-8 text.",
+        ));
+    }
     start_event_pump(&bindings, &state, &worker);
 
     let shutdown_worker = Rc::clone(&worker);

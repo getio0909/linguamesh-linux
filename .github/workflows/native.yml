@@ -311,6 +311,11 @@ jobs:
       - name: Run GTK AT-SPI fixture
         working-directory: linguamesh-linux
         run: bash tools/run-gtk-atspi-test.sh
+      - name: Run GTK AT-SPI status and error fixture
+        working-directory: linguamesh-linux
+        env:
+          LINGUAMESH_TEST_ATSPI_STATUS_ERROR: "1"
+        run: bash tools/run-gtk-atspi-test.sh
       - name: Run Simplified Chinese GTK AT-SPI fixture
         working-directory: linguamesh-linux
         env:
