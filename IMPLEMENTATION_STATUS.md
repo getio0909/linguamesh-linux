@@ -1,5 +1,18 @@
 # Implementation Status
 
+## 2026-07-24 — Linux preset loopback default alignment
+
+Assumption: switching provider presets must recognize every Core-accepted HTTP loopback authority
+as a local default when the endpoint path matches the preset, so custom remote endpoints are still
+preserved without special-casing only `127.0.0.1`.
+
+- Updated preset-default detection to reuse the Core-aligned loopback classifier for Ollama `/api/`
+  and OpenAI-compatible `/v1/` endpoints; added coverage for `127.0.0.2`, `[::1]`, and `localhost`.
+- Local formatting, GUI all-target checking, strict Clippy, demo-provider tests (`167 passed;
+  7 ignored`), localization audits, Flatpak metadata validation, and diff checks passed.
+- Flatpak now pins runtime code head `0af3b73598841c2a9f001546f2152324998cd036`; hosted Native,
+  Flatpak, and Foundation validation is required for this final packaging checkpoint.
+
 ## 2026-07-24 — Linux loopback routing classification
 
 Assumption: routing locality must follow Core's accepted HTTP endpoint policy so every IPv4/IPv6
