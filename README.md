@@ -22,7 +22,8 @@ normalized failure category without exposing provider error text or credentials.
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core functional revision `8623b2c8829e4d9cf7299c74440dcfabb4e320db`, which adds typed provider rate-limit handling while preserving persisted provider health status and bounded
+reviewed Core revision `b29067b78d420c96f57d670d3dd860cba3abc703`, a fuzz/docs-only descendant of
+the runtime baseline `8623b2c8829e4d9cf7299c74440dcfabb4e320db`; it retains typed provider rate-limit handling while preserving persisted provider health status and bounded
 FileLease lifecycle validation and strict
 routing-profile validation, schema-15 routing-profile persistence, schema-16 document-job
 routing-profile persistence, and schema-17 document quality-mode persistence on top of the existing

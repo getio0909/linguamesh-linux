@@ -237,7 +237,7 @@ The Linux checkpoint has a reproducible external pass using Docker image
 were removed after validation. This evidence is prerelease-only and does not cover GPU execution.
 
 The Linux checkout consumes the canonical gettext bundle from immutable l10n revision
-`bba90a89089c954bdfe1dcda19c210e6ea230b9e`. The bundle contains 465 messages, and
+`c2526bfb3f6ff57895bdc3eeed743e26c8783613`. The bundle contains 506 messages, and
 `bash tools/sync-l10n.sh --check` verifies every PO/MO catalog and the generated manifest before
 the native build. History/memory row metadata, document-job IDs, active-provider mode summaries,
 unavailable provider/model labels, and routing-profile actions/mode labels are asserted through
@@ -368,8 +368,9 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
-Its functional source must match approved revision
-`e48d1040a992b2fd3daaa27af2ae6bd700b25fc5`. This revision carries bounded document lease
+The current synchronized checkout must be Core revision
+`b29067b78d420c96f57d670d3dd860cba3abc703`, a fuzz/docs-only descendant of runtime baseline
+`8623b2c8829e4d9cf7299c74440dcfabb4e320db`. The baseline carries bounded document lease
 consumption smoke, POSIX-descriptor document consumption, and the AddressSanitizer gate, plus the
 protocol decoder fuzz gate and bounded FileLease lifecycle,
 including Linux's portal-read lease checks, and the explicit request-level
@@ -381,9 +382,9 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e e48d1040a992b2fd3daaa27af2ae6bd700b25fc5^{commit}
+git -C ../linguamesh-core cat-file -e b29067b78d420c96f57d670d3dd860cba3abc703^{commit}
 git -C ../linguamesh-core diff --quiet \
-  e48d1040a992b2fd3daaa27af2ae6bd700b25fc5..HEAD -- \
+  8623b2c8829e4d9cf7299c74440dcfabb4e320db..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -482,7 +483,7 @@ The `cargo-deny` policy is also enforced by the Native workflow. Advisory, licen
 violations fail the gate; duplicate dependency versions are warnings while the GTK/Adwaita graph
 is converged incrementally.
 
-The current no-default suite reports `83 passed; 1 ignored`. It covers the text-import decoder, request-level glossary,
+The current no-default suite reports `85 passed; 1 ignored`. It covers the text-import decoder, request-level glossary,
 and explicit Incognito privacy policy in addition to the disconnected initial state, atomic
 sorted restoration of multiple profiles without activation, duplicate/missing/default/session-ref
 snapshot rejection, form-only selection, exact pending deletion, connected-row removal that keeps
@@ -495,8 +496,9 @@ Ready identity, pending-model confirmation that cannot claim Ready, worker-unava
 storage-unavailable fallback, runtime persistence degradation that retains the confirmed session,
 and diagnostics that omit content, endpoints, IDs, model IDs, and secret references.
 
-The current `demo-provider` run reports `159 passed; 3 ignored` (the ignored cases require an
-external OCR fixture, a third-party Ollama daemon, or a private storage-fault mount). The dedicated
+The current `demo-provider` run reports `166 passed; 7 ignored` (the ignored cases require an
+external OCR fixture, four client-certificate HTTPS fixtures, a third-party Ollama daemon, or a
+private storage-fault mount). The dedicated
 `tools/run-ocr-test.sh` and `tools/run-storage-fault-test.sh` runners each pass one exact test on a
 host with the required tools and mount namespace; the third-party Ollama runner remains opt-in and
 requires an installed model. Its worker tests validate the exact Core
@@ -722,8 +724,8 @@ python3 tools/create-native-evidence.py \
   --cargo-lock Cargo.lock \
   --output-dir native-evidence \
   --linux-revision "$(git rev-parse HEAD)" \
-  --core-revision "e48d1040a992b2fd3daaa27af2ae6bd700b25fc5" \
-  --localization-revision "bba90a89089c954bdfe1dcda19c210e6ea230b9e"
+  --core-revision "b29067b78d420c96f57d670d3dd860cba3abc703" \
+  --localization-revision "c2526bfb3f6ff57895bdc3eeed743e26c8783613"
 (cd native-evidence && sha256sum -c SHA256SUMS)
 ```
 
@@ -856,8 +858,8 @@ contrast, motion, and text-scaling behavior; manual visual review remains requir
 releases.
 
 The GitHub Actions native workflow pins Core revision
-`8623b2c8829e4d9cf7299c74440dcfabb4e320db` and localization revision
-`0ee87720a8613d3dc130dfb379ab4dc7bc1e1f62`, installs the headers plus D-Bus, Xvfb, test-only
+`b29067b78d420c96f57d670d3dd860cba3abc703` and localization revision
+`c2526bfb3f6ff57895bdc3eeed743e26c8783613`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
 namespace test through the unprivileged path.

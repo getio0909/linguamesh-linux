@@ -1,5 +1,29 @@
 # Implementation Status
 
+## 2026-07-24 — Linux Core pin synchronization
+
+Assumption: Core `b29067b78d420c96f57d670d3dd860cba3abc703` is a fuzz/docs-only descendant of the
+runtime baseline `8623b2c8829e4d9cf7299c74440dcfabb4e320db`; the Linux compatibility contract is
+unchanged, while the newer immutable checkout records the valid-FFI-command fuzz evidence.
+
+- Native CI, Flatpak metadata, architecture/testing/release documentation, and contributor commands
+  now use the central Core pin `b29067b78d420c96f57d670d3dd860cba3abc703`; the l10n pin remains
+  `c2526bfb3f6ff57895bdc3eeed743e26c8783613`.
+- The Core diff was checked before editing and is confined to fuzz targets/corpus, fuzz CI, and Core
+  evidence documentation; no Linux runtime source or dependency contract was changed.
+- Local validation passed: `bash tools/sync-l10n.sh --check`, all three dependency-free
+  localization audits, `bash tools/validate-flatpak-metadata.sh`, `cargo fmt --all -- --check`,
+  `cargo check --features demo-provider --all-targets --locked --offline`,
+  `DOCS_RS=1 cargo clippy --all-targets --all-features --locked --offline -- -D warnings`,
+  `cargo test --no-default-features --locked --offline` (`85 passed; 1 ignored`), and
+  `cargo test --features demo-provider --lib --locked --offline` (`166 passed; 7 ignored`) all
+  passed. `cargo deny --manifest-path Cargo.toml --all-features check` passed with its documented
+  duplicate-version and unmatched-license warnings.
+- The native all-feature Clippy command was also attempted and remains blocked locally because the
+  host lacks `gtk4.pc` and `graphene-gobject-1.0`; this is not treated as a successful GUI result.
+  Core runtime-source diff and clean-check plus `git diff --check` passed. Remote Linux gates remain
+  required after the push; release remains `unreleased`.
+
 ## 2026-07-23 — Linux mTLS client-authentication rejection
 
 Assumption: a temporary endpoint that trusts a different client CA is the smallest
