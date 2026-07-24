@@ -1,5 +1,27 @@
 # Implementation Status
 
+## 2026-07-24 — Linux runtime AT-SPI status/error export fixture
+
+Assumption: runtime accessibility evidence must observe the GTK bridge's exported label content
+without treating a test fixture as proof that a human screen reader listened to the result.
+
+- Linux runtime/test head `8713bdc23b81263e1bdbc65e8d010ce57673877a` keeps production `Status` and
+  `Alert` semantic roles, updates their accessible label/description properties through the normal
+  UI refresh path, and adds two standard `ROLE_LABEL` nodes only when
+  `LINGUAMESH_TEST_ATSPI_STATUS_ERROR=1`. The fixture injects the fixed invalid-UTF-8 error through
+  the production reducer, then checks localized status/error prefixes via AT-SPI name, description,
+  or Text exports without printing content.
+- Flatpak/release-pin status head `21ea284660aa23302127234abade2b1ba5fe79b7` consumes the exact
+  runtime ancestor. Local formatting, GUI all-target check, Python/shell syntax, localization
+  audits, Flatpak metadata, focused worker test, full demo-provider suite (`173` tests, one OCR
+  fixture ignored), and diff checks passed. Hosted push Native `30114122907`, Flatpak
+  `30114122836`, and Foundation `30114122881` passed.
+- Prior stale-pin and bridge-export failures (`30112710630`, `30113333688`, and earlier Native
+  fixture runs) are superseded by the final evidence above. Local GUI linking remains host-limited;
+  hosted Native is authoritative. Human Orca listening, visual/RTL manual review, physical
+  compositor/GPU coverage, other clients, signing, rollback, and stable-release approval remain
+  open; release stays `unreleased`.
+
 ## 2026-07-24 — Linux final SQLite sidecar stability recheck
 
 Assumption: the startup storage boundary should reject a sidecar identity change not only after
