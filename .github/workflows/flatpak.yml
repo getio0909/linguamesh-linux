@@ -20,6 +20,9 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           persist-credentials: false
+          fetch-depth: 0
+      - name: Validate Flatpak metadata and source pins
+        run: bash tools/validate-flatpak-metadata.sh
       - name: Build Flatpak bundle
         uses: flatpak/flatpak-github-actions/flatpak-builder@401fe28a8384095fc1531b9d320b292f0ee45adb
         with:
@@ -28,5 +31,22 @@ jobs:
           cache-key: flatpak-builder-${{ github.sha }}
           upload-artifact: true
           verbose: true
+      - name: Create checksum and SBOM evidence
+        run: >-
+          python3 tools/create-flatpak-evidence.py
+          --bundle linguamesh-linux-x86_64.flatpak
+          --manifest packaging/flatpak/dev.linguamesh.LinguaMesh.yml
+          --cargo-lock Cargo.lock
+          --output-dir flatpak-evidence
+      - name: Verify Flatpak checksum and SBOM evidence
+        run: >-
+          sha256sum --check flatpak-evidence/SHA256SUMS
+          && python3 -c "import json; json.load(open('flatpak-evidence/SBOM.spdx.json', encoding='utf-8'))"
+      - name: Upload checksum and SBOM evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: linguamesh-linux-flatpak-evidence-${{ github.sha }}
+          path: flatpak-evidence/
+          if-no-files-found: error
       - name: Run Flatpak sandbox smoke
         run: bash tools/run-flatpak-smoke.sh linguamesh-linux-x86_64.flatpak

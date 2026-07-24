@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 import time
 from collections.abc import Iterator
@@ -71,7 +72,48 @@ def main() -> int:
         print("AT-SPI fixture could not enumerate the accessibility desktop.", file=sys.stderr)
         return 1
 
-    expected = {"Stop translation": {"ROLE_PUSH_BUTTON"}}
+    locale = os.environ.get("LINGUAMESH_TEST_LOCALE", "en")
+    expected_by_locale = {
+        "en": {
+            "Open text file": {"ROLE_PUSH_BUTTON"},
+            "Allow approved fallback": {"ROLE_CHECK_BOX"},
+            "Translate": {"ROLE_PUSH_BUTTON"},
+            "Retry translation": {"ROLE_PUSH_BUTTON"},
+            "Stop translation": {"ROLE_PUSH_BUTTON"},
+        },
+        "zh-CN": {
+            "打开文本文件": {"ROLE_PUSH_BUTTON"},
+            "允许使用已批准的回退": {"ROLE_CHECK_BOX"},
+            "翻译": {"ROLE_PUSH_BUTTON"},
+            "Retry translation": {"ROLE_PUSH_BUTTON"},
+            "停止翻译": {"ROLE_PUSH_BUTTON"},
+        },
+        "ar": {
+            "فتح ملف نصي": {"ROLE_PUSH_BUTTON"},
+            "Allow approved fallback": {"ROLE_CHECK_BOX"},
+            "ترجمة": {"ROLE_PUSH_BUTTON"},
+            "Retry translation": {"ROLE_PUSH_BUTTON"},
+            "إيقاف الترجمة": {"ROLE_PUSH_BUTTON"},
+        },
+        "en-XA": {
+            "［Øþëñ ŧëẋŧ ƒïŀë~~~~］": {"ROLE_PUSH_BUTTON"},
+            "［Åŀŀøŵ åþþŕøṽëð ƒåŀŀƀåçķ~~~~~~~］": {"ROLE_CHECK_BOX"},
+            "［Ŧŕåñšŀåŧë~~~］": {"ROLE_PUSH_BUTTON"},
+            "［Ŕëŧŕÿ ŧŕåñšŀåŧïøñ~~~~~］": {"ROLE_PUSH_BUTTON"},
+            "［Šŧøþ ŧŕåñšŀåŧïøñ~~~~~］": {"ROLE_PUSH_BUTTON"},
+        },
+        "ar-XB": {
+            "⁧⟦Open text file⟧⁩": {"ROLE_PUSH_BUTTON"},
+            "⁧⟦Allow approved fallback⟧⁩": {"ROLE_CHECK_BOX"},
+            "⁧⟦Translate⟧⁩": {"ROLE_PUSH_BUTTON"},
+            "⁧⟦Retry translation⟧⁩": {"ROLE_PUSH_BUTTON"},
+            "⁧⟦Stop translation⟧⁩": {"ROLE_PUSH_BUTTON"},
+        },
+    }
+    expected = expected_by_locale.get(locale)
+    if expected is None:
+        print(f"AT-SPI fixture does not define expected names for locale: {locale}.", file=sys.stderr)
+        return 2
     by_name: dict[str, list[object]] = {}
     for node in nodes:
         try:
@@ -99,7 +141,12 @@ def main() -> int:
         print("AT-SPI fixture did not find the expected accessible controls.", file=sys.stderr)
         for node in nodes:
             summary = node_summary(node)
-            if role_token(node) in {"ROLE_TEXT", "ROLE_EDITBAR", "ROLE_PUSH_BUTTON", "ROLE_LABEL"}:
+            if role_token(node) in {
+                "ROLE_TEXT",
+                "ROLE_EDITBAR",
+                "ROLE_PUSH_BUTTON",
+                "ROLE_LABEL",
+            }:
                 print(summary, file=sys.stderr)
         if missing:
             print(f"Missing accessible names: {', '.join(missing)}", file=sys.stderr)

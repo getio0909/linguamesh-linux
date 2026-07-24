@@ -132,6 +132,24 @@ msgctxt "provider.name"
 msgid "Provider name"
 msgstr "⁧⟦Provider name⟧⁩"
 
+#. Display label for the Anthropic Messages provider preset in the Linux provider form.
+#, fuzzy
+msgctxt "provider.preset.anthropic"
+msgid "Anthropic Messages"
+msgstr "⁧⟦Anthropic Messages⟧⁩"
+
+#. Display label for the OpenAI-compatible provider preset in the Linux provider form.
+#, fuzzy
+msgctxt "provider.preset.openai"
+msgid "OpenAI-compatible"
+msgstr "⁧⟦OpenAI-compatible⟧⁩"
+
+#. Display label for the native Ollama provider preset in the Linux provider form.
+#, fuzzy
+msgctxt "provider.preset.ollama"
+msgid "Ollama (native /api)"
+msgstr "⁧⟦Ollama (native /api)⟧⁩"
+
 #. Label for the provider endpoint field.
 #, fuzzy
 msgctxt "field.endpoint"
@@ -234,6 +252,12 @@ msgctxt "error.invalid_profile"
 msgid "Enter a provider name, endpoint, and model."
 msgstr "⁧⟦Enter a provider name, endpoint, and model.⟧⁩"
 
+#. Validation error shown when an Anthropic provider has no manually selected model.
+#, fuzzy
+msgctxt "error.anthropic_model_required"
+msgid "Enter an Anthropic model ID before connecting."
+msgstr "⁧⟦Enter an Anthropic model ID before connecting.⟧⁩"
+
 #. Authentication guidance that does not expose credential content.
 #, fuzzy
 msgctxt "error.authentication"
@@ -294,6 +318,12 @@ msgctxt "status.connecting"
 msgid "Connecting"
 msgstr "⁧⟦Connecting⟧⁩"
 
+#. Result shown after an explicit provider connection test succeeds.
+#, fuzzy, python-brace-format
+msgctxt "status.connection_tested"
+msgid "Connection test passed for {provider}; {model_count} models are available."
+msgstr "⁧⟦Connection test passed for {provider}; {model_count} models are available.⟧⁩"
+
 #. Status label shown while cancellation is being finalized.
 #, fuzzy
 msgctxt "status.cancelling"
@@ -323,6 +353,12 @@ msgstr "⁧⟦Status⟧⁩"
 msgctxt "status.partial_output"
 msgid "Partial output"
 msgstr "⁧⟦Partial output⟧⁩"
+
+#. Live source or translation text size summary with a clearly approximate token estimate.
+#, fuzzy, python-brace-format
+msgctxt "status.text_metrics"
+msgid "Characters: {characters} · Estimated tokens: {tokens}"
+msgstr "⁧⟦Characters: {characters} · Estimated tokens: {tokens}⟧⁩"
 
 #. Status shown while the application is starting.
 #, fuzzy
@@ -426,11 +462,35 @@ msgctxt "tooltip.endpoint"
 msgid "HTTPS or loopback HTTP OpenAI-compatible base endpoint"
 msgstr "⁧⟦HTTPS or loopback HTTP OpenAI-compatible base endpoint⟧⁩"
 
+#. Tooltip for the Linux Anthropic Messages endpoint field.
+#, fuzzy
+msgctxt "tooltip.endpoint.anthropic"
+msgid "HTTPS Anthropic Messages /v1 endpoint"
+msgstr "⁧⟦HTTPS Anthropic Messages /v1 endpoint⟧⁩"
+
+#. Tooltip for the Linux native Ollama endpoint field.
+#, fuzzy
+msgctxt "tooltip.endpoint.ollama"
+msgid "HTTPS or loopback HTTP native Ollama /api endpoint"
+msgstr "⁧⟦HTTPS or loopback HTTP native Ollama /api endpoint⟧⁩"
+
+#. Tooltip for the Linux provider protocol preset selector.
+#, fuzzy
+msgctxt "tooltip.provider_preset"
+msgid "Choose the provider protocol used for model discovery and streaming"
+msgstr "⁧⟦Choose the provider protocol used for model discovery and streaming⟧⁩"
+
 #. Tooltip for the Linux provider credential field.
 #, fuzzy
 msgctxt "tooltip.credential"
 msgid "Optional credential; it is kept in memory unless remembered through Secret Service"
 msgstr "⁧⟦Optional credential; it is kept in memory unless remembered through Secret Service⟧⁩"
+
+#. Tooltip for the Linux manually entered Anthropic model identifier.
+#, fuzzy
+msgctxt "tooltip.model.anthropic"
+msgid "Enter the Anthropic model ID before connecting; model discovery is manual for this preset"
+msgstr "⁧⟦Enter the Anthropic model ID before connecting; model discovery is manual for this preset⟧⁩"
 
 #. Label for remembering a Linux provider profile in Secret Service.
 #, fuzzy
@@ -444,11 +504,23 @@ msgctxt "tooltip.remember_profile"
 msgid "Save non-secret profile data and the credential through Secret Service"
 msgstr "⁧⟦Save non-secret profile data and the credential through Secret Service⟧⁩"
 
+#. Tooltip explaining that an explicit provider test does not change the active session.
+#, fuzzy
+msgctxt "tooltip.test_connection"
+msgid "Check the provider model endpoint without switching or saving the active profile"
+msgstr "⁧⟦Check the provider model endpoint without switching or saving the active profile⟧⁩"
+
 #. Action that validates and connects a Linux provider profile.
 #, fuzzy
 msgctxt "action.connect"
 msgid "Connect"
 msgstr "⁧⟦Connect⟧⁩"
+
+#. Action that tests a Linux provider endpoint without switching or saving the active profile.
+#, fuzzy
+msgctxt "action.test_connection"
+msgid "Test connection"
+msgstr "⁧⟦Test connection⟧⁩"
 
 #. Label for the saved Linux provider-profile selector.
 #, fuzzy
@@ -456,11 +528,23 @@ msgctxt "label.saved_profile"
 msgid "Saved profile"
 msgstr "⁧⟦Saved profile⟧⁩"
 
+#. Label for the Linux routing planner profile identifier field.
+#, fuzzy
+msgctxt "label.routing_profile_id"
+msgid "Routing profile ID"
+msgstr "⁧⟦Routing profile ID⟧⁩"
+
 #. Label for the Linux source-language selector.
 #, fuzzy
 msgctxt "label.source_language"
 msgid "Source language"
 msgstr "⁧⟦Source language⟧⁩"
+
+#. Label for the Linux provider protocol preset selector.
+#, fuzzy
+msgctxt "label.provider_preset"
+msgid "Provider preset"
+msgstr "⁧⟦Provider preset⟧⁩"
 
 #. Label for the Linux provider credential field.
 #, fuzzy
@@ -473,6 +557,12 @@ msgstr "⁧⟦Credential (optional; secure when remembered)⟧⁩"
 msgctxt "label.endpoint_loopback"
 msgid "Endpoint (loopback example)"
 msgstr "⁧⟦Endpoint (loopback example)⟧⁩"
+
+#. Placeholder for the Linux Anthropic model identifier entered before connection.
+#, fuzzy
+msgctxt "option.model.manual"
+msgid "Enter a model ID manually..."
+msgstr "⁧⟦Enter a model ID manually...⟧⁩"
 
 #. Placeholder entry shown before a Linux model is selected.
 #, fuzzy
@@ -756,6 +846,12 @@ msgctxt "error.category.network"
 msgid "Network"
 msgstr "⁧⟦Network⟧⁩"
 
+#. Error category shown before a provider rate-limit diagnostic.
+#, fuzzy
+msgctxt "error.category.rate_limited"
+msgid "Rate limited"
+msgstr "⁧⟦Rate limited⟧⁩"
+
 #. Error category shown before a timeout diagnostic.
 #, fuzzy
 msgctxt "error.category.timeout"
@@ -960,6 +1056,12 @@ msgctxt "error.storage.secure_unavailable"
 msgid "Secure credential storage is unavailable."
 msgstr "⁧⟦Secure credential storage is unavailable.⟧⁩"
 
+#. Secure-storage error shown when the user dismisses the Secret Service prompt.
+#, fuzzy
+msgctxt "error.storage.prompt_dismissed"
+msgid "The Secret Service prompt was dismissed."
+msgstr "⁧⟦The Secret Service prompt was dismissed.⟧⁩"
+
 #. Storage guidance shown when only session-only mode is available.
 #, fuzzy
 msgctxt "error.storage.session_only"
@@ -1140,17 +1242,65 @@ msgctxt "locale.name.hi"
 msgid "Hindi"
 msgstr "⁧⟦Hindi⟧⁩"
 
+#. Action that copies the current translated output to the system clipboard.
+#, fuzzy
+msgctxt "action.copy_output"
+msgid "Copy translation"
+msgstr "⁧⟦Copy translation⟧⁩"
+
+#. Action that clears the Linux text workspace source, output, and request diagnostics.
+#, fuzzy
+msgctxt "action.clear_workspace"
+msgid "Clear workspace"
+msgstr "⁧⟦Clear workspace⟧⁩"
+
+#. Action that swaps the supported Linux text workspace source and target languages.
+#, fuzzy
+msgctxt "action.swap_languages"
+msgid "Swap languages"
+msgstr "⁧⟦Swap languages⟧⁩"
+
 #. Action that exports the current translated output to a user-selected file.
 #, fuzzy
 msgctxt "action.export_output"
 msgid "Export translation"
 msgstr "⁧⟦Export translation⟧⁩"
 
+#. Tooltip explaining that copy places translated output on the system clipboard.
+#, fuzzy
+msgctxt "tooltip.copy_output"
+msgid "Copy the translated output to the system clipboard"
+msgstr "⁧⟦Copy the translated output to the system clipboard⟧⁩"
+
+#. Tooltip explaining that clear removes the Linux text workspace content and request diagnostics.
+#, fuzzy
+msgctxt "tooltip.clear_workspace"
+msgid "Clear the source text, translated output, and request diagnostics"
+msgstr "⁧⟦Clear the source text, translated output, and request diagnostics⟧⁩"
+
+#. Tooltip explaining that the language action swaps the supported source and target selections.
+#, fuzzy
+msgctxt "tooltip.swap_languages"
+msgid "Swap the source and target languages"
+msgstr "⁧⟦Swap the source and target languages⟧⁩"
+
 #. Tooltip explaining that export writes translated output to a new file.
 #, fuzzy
 msgctxt "tooltip.export_output"
 msgid "Save the translated output to a new file"
 msgstr "⁧⟦Save the translated output to a new file⟧⁩"
+
+#. Action that exports a redacted TSV report for a Linux document translation job.
+#, fuzzy
+msgctxt "action.export_report"
+msgid "Export translation report"
+msgstr "⁧⟦Export translation report⟧⁩"
+
+#. Tooltip explaining that a document report contains metadata without credentials or source text.
+#, fuzzy
+msgctxt "tooltip.export_report"
+msgid "Save a redacted TSV report for this document job"
+msgstr "⁧⟦Save a redacted TSV report for this document job⟧⁩"
 
 #. Title for the Linux translation export dialog.
 #, fuzzy
@@ -1169,6 +1319,12 @@ msgstr "⁧⟦Save⟧⁩"
 msgctxt "status.exported"
 msgid "Translation saved to the selected file."
 msgstr "⁧⟦Translation saved to the selected file.⟧⁩"
+
+#. Status shown after a redacted document translation report is written successfully.
+#, fuzzy
+msgctxt "status.report_exported"
+msgid "Translation report saved to the selected file."
+msgstr "⁧⟦Translation report saved to the selected file.⟧⁩"
 
 #. Export error shown when there is no translated output to save.
 #, fuzzy
@@ -1193,6 +1349,12 @@ msgstr "⁧⟦The translated output could not be saved.⟧⁩"
 msgctxt "profile.default_name"
 msgid "Local OpenAI-compatible provider"
 msgstr "⁧⟦Local OpenAI-compatible provider⟧⁩"
+
+#. Default display name for the Linux Anthropic Messages provider profile.
+#, fuzzy
+msgctxt "profile.default_anthropic_name"
+msgid "Anthropic Messages provider"
+msgstr "⁧⟦Anthropic Messages provider⟧⁩"
 
 #. Linux error shown when the shared Core compatibility description cannot be read.
 #, fuzzy, python-brace-format
@@ -1314,6 +1476,30 @@ msgctxt "action.export_glossary"
 msgid "Export glossary"
 msgstr "⁧⟦Export glossary⟧⁩"
 
+#. Opens the bounded local glossary-library selector in the Linux text workspace.
+#, fuzzy
+msgctxt "action.glossary_libraries"
+msgid "Glossary libraries"
+msgstr "⁧⟦Glossary libraries⟧⁩"
+
+#. Saves the validated request glossary as a reusable local library on Linux.
+#, fuzzy
+msgctxt "action.save_glossary"
+msgid "Save glossary library"
+msgstr "⁧⟦Save glossary library⟧⁩"
+
+#. Loads a selected reusable glossary library into the Linux request editor.
+#, fuzzy
+msgctxt "action.use_glossary"
+msgid "Use"
+msgstr "⁧⟦Use⟧⁩"
+
+#. Deletes a selected reusable glossary library by its stable ID.
+#, fuzzy
+msgctxt "action.delete_glossary"
+msgid "Delete"
+msgstr "⁧⟦Delete⟧⁩"
+
 #. Accessible tooltip for importing a glossary CSV.
 #, fuzzy
 msgctxt "tooltip.import_glossary"
@@ -1325,6 +1511,18 @@ msgstr "⁧⟦Load glossary rules from a UTF-8 CSV file⟧⁩"
 msgctxt "tooltip.export_glossary"
 msgid "Save the current glossary rules as a UTF-8 CSV file"
 msgstr "⁧⟦Save the current glossary rules as a UTF-8 CSV file⟧⁩"
+
+#. Accessible tooltip for inspecting, loading, and deleting local glossary libraries.
+#, fuzzy
+msgctxt "tooltip.glossary_libraries"
+msgid "Inspect, select, and delete reusable local glossary libraries"
+msgstr "⁧⟦Inspect, select, and delete reusable local glossary libraries⟧⁩"
+
+#. Accessible tooltip for saving the current validated glossary library.
+#, fuzzy
+msgctxt "tooltip.save_glossary"
+msgid "Save the current validated glossary as a reusable local library"
+msgstr "⁧⟦Save the current validated glossary as a reusable local library⟧⁩"
 
 #. Native file dialog title for importing a glossary CSV.
 #, fuzzy
@@ -1338,17 +1536,41 @@ msgctxt "dialog.export_glossary"
 msgid "Export glossary"
 msgstr "⁧⟦Export glossary⟧⁩"
 
-#. Native file chooser filter for glossary CSV files.
+#. Modal dialog title for listing and selecting local glossary libraries.
+#, fuzzy
+msgctxt "dialog.glossary_libraries"
+msgid "Glossary libraries"
+msgstr "⁧⟦Glossary libraries⟧⁩"
+
+#. Modal dialog title for naming a reusable local glossary library.
+#, fuzzy
+msgctxt "dialog.save_glossary"
+msgid "Save glossary library"
+msgstr "⁧⟦Save glossary library⟧⁩"
+
+#. Label for the stable identifier field used when saving a local glossary library.
+#, fuzzy
+msgctxt "label.glossary_id"
+msgid "Glossary library ID"
+msgstr "⁧⟦Glossary library ID⟧⁩"
+
+#. Native file chooser filter for glossary CSV and TBX files.
 #, fuzzy
 msgctxt "file.filter.csv"
-msgid "CSV glossary files"
-msgstr "⁧⟦CSV glossary files⟧⁩"
+msgid "CSV and TBX glossary files"
+msgstr "⁧⟦CSV and TBX glossary files⟧⁩"
 
-#. Safe error shown when a glossary CSV cannot be read or validated.
+#. Safe error shown when a glossary CSV or TBX cannot be read or validated.
 #, fuzzy
 msgctxt "error.glossary_import"
-msgid "The glossary CSV could not be imported."
-msgstr "⁧⟦The glossary CSV could not be imported.⟧⁩"
+msgid "The glossary file could not be imported."
+msgstr "⁧⟦The glossary file could not be imported.⟧⁩"
+
+#. Native file chooser filter for routing profile JSON files.
+#, fuzzy
+msgctxt "file.filter.json"
+msgid "JSON files"
+msgstr "⁧⟦JSON files⟧⁩"
 
 #. Safe error shown when a glossary CSV cannot be written.
 #, fuzzy
@@ -1662,11 +1884,23 @@ msgctxt "action.retry_document"
 msgid "Retry document"
 msgstr "⁧⟦Retry document⟧⁩"
 
+#. Action that retries a failed or cancelled text translation.
+#, fuzzy
+msgctxt "action.retry_translation"
+msgid "Retry translation"
+msgstr "⁧⟦Retry translation⟧⁩"
+
 #. Action that selects a persisted document job.
 #, fuzzy
 msgctxt "action.select_document_job"
 msgid "Select document job"
 msgstr "⁧⟦Select document job⟧⁩"
+
+#. Tooltip for retrying the last failed or cancelled text translation.
+#, fuzzy
+msgctxt "tooltip.retry_translation"
+msgid "Retry the last failed or cancelled text translation"
+msgstr "⁧⟦Retry the last failed or cancelled text translation⟧⁩"
 
 #. Title of the persisted document jobs dialog.
 #, fuzzy
@@ -1871,3 +2105,999 @@ msgstr "⁧⟦OCR did not find readable text.⟧⁩"
 msgctxt "error.ocr_failed"
 msgid "The optional OCR process failed."
 msgstr "⁧⟦The optional OCR process failed.⟧⁩"
+
+#. Label for the onboarding stage in the non-sensitive diagnostics panel.
+#, fuzzy
+msgctxt "diagnostics.onboarding"
+msgid "Onboarding"
+msgstr "⁧⟦Onboarding⟧⁩"
+
+#. Label for the active-provider state in the diagnostics panel.
+#, fuzzy
+msgctxt "diagnostics.provider"
+msgid "Provider"
+msgstr "⁧⟦Provider⟧⁩"
+
+#. Label for whether the active provider is saved.
+#, fuzzy
+msgctxt "diagnostics.provider_saved"
+msgid "Provider saved"
+msgstr "⁧⟦Provider saved⟧⁩"
+
+#. Label for the profile storage state in diagnostics.
+#, fuzzy
+msgctxt "diagnostics.profile_storage"
+msgid "Profile storage"
+msgstr "⁧⟦Profile storage⟧⁩"
+
+#. Label for the saved-profile count in diagnostics.
+#, fuzzy
+msgctxt "diagnostics.saved_profiles"
+msgid "Saved profiles"
+msgstr "⁧⟦Saved profiles⟧⁩"
+
+#. Label for whether a saved profile is selected.
+#, fuzzy
+msgctxt "diagnostics.saved_profile"
+msgid "Saved profile"
+msgstr "⁧⟦Saved profile⟧⁩"
+
+#. Label for the persisted active-profile marker.
+#, fuzzy
+msgctxt "diagnostics.persisted_active_profile"
+msgid "Persisted active profile"
+msgstr "⁧⟦Persisted active profile⟧⁩"
+
+#. Label for whether a saved model is present.
+#, fuzzy
+msgctxt "diagnostics.saved_model"
+msgid "Saved model"
+msgstr "⁧⟦Saved model⟧⁩"
+
+#. Label for whether a model is selected.
+#, fuzzy
+msgctxt "diagnostics.model_selected"
+msgid "Model selected"
+msgstr "⁧⟦Model selected⟧⁩"
+
+#. Label for pending model selection in diagnostics.
+#, fuzzy
+msgctxt "diagnostics.model_selection_pending"
+msgid "Model selection pending"
+msgstr "⁧⟦Model selection pending⟧⁩"
+
+#. Label for pending profile deletion in diagnostics.
+#, fuzzy
+msgctxt "diagnostics.profile_deletion_pending"
+msgid "Profile deletion pending"
+msgstr "⁧⟦Profile deletion pending⟧⁩"
+
+#. Label for the most recent ordinary-text routing decision.
+#, fuzzy
+msgctxt "diagnostics.routing_decision"
+msgid "Routing decision"
+msgstr "⁧⟦Routing decision⟧⁩"
+
+#. Non-sensitive details of the most recent routing decision.
+#, fuzzy, python-brace-format
+msgctxt "diagnostics.routing_decision_details"
+msgid "{profile} → {selected}; eligible: {eligible}; rejected: {rejected}; ranking: {ranking}; fallback: {fallback}"
+msgstr "⁧⟦{profile} → {selected}; eligible: {eligible}; rejected: {rejected}; ranking: {ranking}; fallback: {fallback}⟧⁩"
+
+#. Label for the application status in diagnostics.
+#, fuzzy
+msgctxt "diagnostics.status"
+msgid "Status"
+msgstr "⁧⟦Status⟧⁩"
+
+#. Label for the selected theme in diagnostics.
+#, fuzzy
+msgctxt "diagnostics.theme"
+msgid "Theme"
+msgstr "⁧⟦Theme⟧⁩"
+
+#. Label for the active locale in diagnostics.
+#, fuzzy
+msgctxt "diagnostics.locale"
+msgid "Locale"
+msgstr "⁧⟦Locale⟧⁩"
+
+#. Label for output byte count in diagnostics.
+#, fuzzy
+msgctxt "diagnostics.output_bytes"
+msgid "Output bytes"
+msgstr "⁧⟦Output bytes⟧⁩"
+
+#. Affirmative value in the diagnostics panel.
+#, fuzzy
+msgctxt "diagnostics.yes"
+msgid "Yes"
+msgstr "⁧⟦Yes⟧⁩"
+
+#. Negative value in the diagnostics panel.
+#, fuzzy
+msgctxt "diagnostics.no"
+msgid "No"
+msgstr "⁧⟦No⟧⁩"
+
+#. Diagnostic label for pending profile storage initialization.
+#, fuzzy
+msgctxt "diagnostics.profile_storage_pending"
+msgid "Pending"
+msgstr "⁧⟦Pending⟧⁩"
+
+#. Diagnostic label for available profile storage.
+#, fuzzy
+msgctxt "diagnostics.profile_storage_available"
+msgid "Available"
+msgstr "⁧⟦Available⟧⁩"
+
+#. Diagnostic label for unavailable profile storage.
+#, fuzzy
+msgctxt "diagnostics.profile_storage_unavailable"
+msgid "Unavailable"
+msgstr "⁧⟦Unavailable⟧⁩"
+
+#. Accessible label for the draggable file fixture button used by Linux GTK interaction tests.
+#, fuzzy
+msgctxt "fixture.drag_file"
+msgid "Drag fixture"
+msgstr "⁧⟦Drag fixture⟧⁩"
+
+#. Default display name for the built-in Linux native Ollama provider profile.
+#, fuzzy
+msgctxt "profile.default_ollama_name"
+msgid "Local Ollama provider"
+msgstr "⁧⟦Local Ollama provider⟧⁩"
+
+#. Localized metadata summary for a stored translation entry.
+#, fuzzy, python-brace-format
+msgctxt "status.translation_entry_metadata"
+msgid "{source} → {target} · {model} · {created_at}"
+msgstr "⁧⟦{source} → {target} · {model} · {created_at}⟧⁩"
+
+#. Identifies a persisted Linux document job without exposing its source path.
+#, fuzzy, python-brace-format
+msgctxt "status.document_job_id"
+msgid "Job: {id}"
+msgstr "⁧⟦Job: {id}⟧⁩"
+
+#. Active provider summary with the localized persistence mode.
+#, fuzzy, python-brace-format
+msgctxt "provider.active_with_mode"
+msgid "Active provider: {provider} ({mode})"
+msgstr "⁧⟦Active provider: {provider} ({mode})⟧⁩"
+
+#. Action that opens non-secret Linux routing planner profiles.
+#, fuzzy
+msgctxt "action.routing_profiles"
+msgid "Routing profiles"
+msgstr "⁧⟦Routing profiles⟧⁩"
+
+#. Creates the bounded Linux local-first routing planner profile.
+#, fuzzy
+msgctxt "action.create_routing_profile"
+msgid "Create local-first profile"
+msgstr "⁧⟦Create local-first profile⟧⁩"
+
+#. Imports one non-secret Linux routing planner profile from a JSON exchange file.
+#, fuzzy
+msgctxt "action.import_routing_profile"
+msgid "Import profile"
+msgstr "⁧⟦Import profile⟧⁩"
+
+#. Exports one non-secret Linux routing planner profile to a JSON exchange file.
+#, fuzzy
+msgctxt "action.export_routing_profile"
+msgid "Export"
+msgstr "⁧⟦Export⟧⁩"
+
+#. Loads one saved Linux routing planner profile into the editor.
+#, fuzzy
+msgctxt "action.edit_routing_profile"
+msgid "Edit"
+msgstr "⁧⟦Edit⟧⁩"
+
+#. Deletes one saved Linux routing planner profile.
+#, fuzzy
+msgctxt "action.delete_routing_profile"
+msgid "Delete"
+msgstr "⁧⟦Delete⟧⁩"
+
+#. Saves the current Linux routing planner profile editor values.
+#, fuzzy
+msgctxt "action.save_routing_profile"
+msgid "Save routing profile"
+msgstr "⁧⟦Save routing profile⟧⁩"
+
+#. Accessible label for moving a Linux routing candidate down in the Ordered sequence.
+#, fuzzy
+msgctxt "action.move_candidate_down"
+msgid "Move candidate down"
+msgstr "⁧⟦Move candidate down⟧⁩"
+
+#. Accessible label for moving a Linux routing candidate up in the Ordered sequence.
+#, fuzzy
+msgctxt "action.move_candidate_up"
+msgid "Move candidate up"
+msgstr "⁧⟦Move candidate up⟧⁩"
+
+#. Selects one saved Linux routing planner profile for ordinary text translation.
+#, fuzzy
+msgctxt "action.use_routing_profile"
+msgid "Use"
+msgstr "⁧⟦Use⟧⁩"
+
+#. Title of the Linux routing planner profile dialog.
+#, fuzzy
+msgctxt "dialog.routing_profiles"
+msgid "Routing profiles"
+msgstr "⁧⟦Routing profiles⟧⁩"
+
+#. Tooltip for the Linux routing planner profile action.
+#, fuzzy
+msgctxt "tooltip.routing_profiles"
+msgid "Create, inspect, and delete non-secret routing planner profiles"
+msgstr "⁧⟦Create, inspect, and delete non-secret routing planner profiles⟧⁩"
+
+#. Title of the Linux routing planner profile JSON import dialog.
+#, fuzzy
+msgctxt "dialog.open_routing_profile"
+msgid "Import routing profile"
+msgstr "⁧⟦Import routing profile⟧⁩"
+
+#. Title of the Linux routing planner profile JSON export dialog.
+#, fuzzy
+msgctxt "dialog.export_routing_profile"
+msgid "Export routing profile"
+msgstr "⁧⟦Export routing profile⟧⁩"
+
+#. Empty state for the Linux routing planner profile dialog.
+#, fuzzy
+msgctxt "status.routing_profile_empty"
+msgid "No routing profiles are saved."
+msgstr "⁧⟦No routing profiles are saved.⟧⁩"
+
+#. Metadata summary for one Linux routing planner profile.
+#, fuzzy, python-brace-format
+msgctxt "status.routing_profile_row"
+msgid "{id} · {mode} · {candidates} candidates"
+msgstr "⁧⟦{id} · {mode} · {candidates} candidates⟧⁩"
+
+#. Fixed error shown when no saved provider can become a routing candidate.
+#, fuzzy
+msgctxt "error.routing_profile_no_candidates"
+msgid "Save at least one provider profile before creating a routing profile."
+msgstr "⁧⟦Save at least one provider profile before creating a routing profile.⟧⁩"
+
+#. Fixed error shown when a Linux routing planner profile identifier violates Core bounds.
+#, fuzzy
+msgctxt "error.routing_profile_id_invalid"
+msgid "Use 1-128 ASCII letters, numbers, '.', '_' or '-' for the routing profile ID."
+msgstr "⁧⟦Use 1-128 ASCII letters, numbers, '.', '_' or '-' for the routing profile ID.⟧⁩"
+
+#. Fixed error shown when a new Linux routing planner profile reuses an existing identifier.
+#, fuzzy
+msgctxt "error.routing_profile_id_exists"
+msgid "A routing profile with this ID already exists. Edit it or choose another ID."
+msgstr "⁧⟦A routing profile with this ID already exists. Edit it or choose another ID.⟧⁩"
+
+#. Fixed error shown when a Linux routing planner profile JSON file cannot be imported.
+#, fuzzy
+msgctxt "error.routing_profile_import"
+msgid "The routing profile JSON could not be imported."
+msgstr "⁧⟦The routing profile JSON could not be imported.⟧⁩"
+
+#. Fixed error shown when a Linux routing planner profile JSON file cannot be exported.
+#, fuzzy
+msgctxt "error.routing_profile_export"
+msgid "The routing profile JSON could not be saved."
+msgstr "⁧⟦The routing profile JSON could not be saved.⟧⁩"
+
+#. Localized label for manual routing mode.
+#, fuzzy
+msgctxt "routing.mode.manual"
+msgid "Manual"
+msgstr "⁧⟦Manual⟧⁩"
+
+#. Localized label for ordered routing mode.
+#, fuzzy
+msgctxt "routing.mode.ordered"
+msgid "Ordered"
+msgstr "⁧⟦Ordered⟧⁩"
+
+#. Localized label for automatic routing mode.
+#, fuzzy
+msgctxt "routing.mode.automatic"
+msgid "Automatic"
+msgstr "⁧⟦Automatic⟧⁩"
+
+#. Label for the automatic routing preference selector.
+#, fuzzy
+msgctxt "label.routing_preference"
+msgid "Automatic preference"
+msgstr "⁧⟦Automatic preference⟧⁩"
+
+#. Checkbox label allowing remote routing candidates.
+#, fuzzy
+msgctxt "option.routing_allow_remote"
+msgid "Allow remote candidates"
+msgstr "⁧⟦Allow remote candidates⟧⁩"
+
+#. Checkbox label restricting routing to local candidates.
+#, fuzzy
+msgctxt "option.routing_local_only"
+msgid "Local candidates only"
+msgstr "⁧⟦Local candidates only⟧⁩"
+
+#. Checkbox label protecting privacy-sensitive requests from remote routing.
+#, fuzzy
+msgctxt "option.routing_privacy_sensitive"
+msgid "Protect privacy-sensitive requests"
+msgstr "⁧⟦Protect privacy-sensitive requests⟧⁩"
+
+#. Checkbox label requiring document-capable routing candidates.
+#, fuzzy
+msgctxt "option.routing_require_document"
+msgid "Require document support"
+msgstr "⁧⟦Require document support⟧⁩"
+
+#. Checkbox label requiring real streamed output from routing candidates.
+#, fuzzy
+msgctxt "option.routing_require_streaming"
+msgid "Require streamed output"
+msgstr "⁧⟦Require streamed output⟧⁩"
+
+#. Automatic routing preference for lowest estimated cost.
+#, fuzzy
+msgctxt "routing.preference.cost"
+msgid "Lowest cost"
+msgstr "⁧⟦Lowest cost⟧⁩"
+
+#. Automatic routing preference for lowest estimated latency.
+#, fuzzy
+msgctxt "routing.preference.latency"
+msgid "Lowest latency"
+msgstr "⁧⟦Lowest latency⟧⁩"
+
+#. Automatic routing preference for local candidates.
+#, fuzzy
+msgctxt "routing.preference.local"
+msgid "Local first"
+msgstr "⁧⟦Local first⟧⁩"
+
+#. Automatic routing preference with no secondary ranking preference.
+#, fuzzy
+msgctxt "routing.preference.none"
+msgid "No preference"
+msgstr "⁧⟦No preference⟧⁩"
+
+#. Label for the Linux text translation quality-mode selector.
+#, fuzzy
+msgctxt "label.quality_mode"
+msgid "Quality mode"
+msgstr "⁧⟦Quality mode⟧⁩"
+
+#. Fast quality mode uses one direct translation pass.
+#, fuzzy
+msgctxt "quality.mode.fast"
+msgid "Fast"
+msgstr "⁧⟦Fast⟧⁩"
+
+#. Balanced quality mode adds deterministic structural validation.
+#, fuzzy
+msgctxt "quality.mode.balanced"
+msgid "Balanced"
+msgstr "⁧⟦Balanced⟧⁩"
+
+#. Best quality mode requests an internal critique and revision before output.
+#, fuzzy
+msgctxt "quality.mode.best"
+msgid "Best"
+msgstr "⁧⟦Best⟧⁩"
+
+#. Explains the Linux translation quality-mode trade-offs.
+#, fuzzy
+msgctxt "tooltip.quality_mode"
+msgid "Fast uses one direct pass; Balanced adds deterministic structure checks; Best asks for an internal critique and revision."
+msgstr "⁧⟦Fast uses one direct pass; Balanced adds deterministic structure checks; Best asks for an internal critique and revision.⟧⁩"
+
+#. Automatic routing preference for highest quality tier.
+#, fuzzy
+msgctxt "routing.preference.quality"
+msgid "Quality first"
+msgstr "⁧⟦Quality first⟧⁩"
+
+#. Tooltip explaining the remote-candidate routing constraint.
+#, fuzzy
+msgctxt "tooltip.routing_allow_remote"
+msgid "Permit this profile to send content to non-local providers"
+msgstr "⁧⟦Permit this profile to send content to non-local providers⟧⁩"
+
+#. Tooltip explaining the local-only routing constraint.
+#, fuzzy
+msgctxt "tooltip.routing_local_only"
+msgid "Reject saved providers that are not local loopback endpoints"
+msgstr "⁧⟦Reject saved providers that are not local loopback endpoints⟧⁩"
+
+#. Tooltip explaining the automatic routing preference selector.
+#, fuzzy
+msgctxt "tooltip.routing_preference"
+msgid "Choose the first ranking preference used by Automatic routing"
+msgstr "⁧⟦Choose the first ranking preference used by Automatic routing⟧⁩"
+
+#. Tooltip explaining privacy-sensitive request routing.
+#, fuzzy
+msgctxt "tooltip.routing_privacy_sensitive"
+msgid "When a request is marked privacy-sensitive, reject remote candidates"
+msgstr "⁧⟦When a request is marked privacy-sensitive, reject remote candidates⟧⁩"
+
+#. Tooltip explaining the document-capability routing constraint.
+#, fuzzy
+msgctxt "tooltip.routing_require_document"
+msgid "Keep only candidates that advertise document translation"
+msgstr "⁧⟦Keep only candidates that advertise document translation⟧⁩"
+
+#. Tooltip explaining the streaming-capability routing constraint.
+#, fuzzy
+msgctxt "tooltip.routing_require_streaming"
+msgid "Reject candidates that cannot return real streamed deltas"
+msgstr "⁧⟦Reject candidates that cannot return real streamed deltas⟧⁩"
+
+#. Label for the provider allowlist routing constraint.
+#, fuzzy
+msgctxt "label.routing_provider_allowlist"
+msgid "Provider allowlist"
+msgstr "⁧⟦Provider allowlist⟧⁩"
+
+#. Label for the provider denylist routing constraint.
+#, fuzzy
+msgctxt "label.routing_provider_denylist"
+msgid "Provider denylist"
+msgstr "⁧⟦Provider denylist⟧⁩"
+
+#. Label for the model allowlist routing constraint.
+#, fuzzy
+msgctxt "label.routing_model_allowlist"
+msgid "Model allowlist"
+msgstr "⁧⟦Model allowlist⟧⁩"
+
+#. Label for the model denylist routing constraint.
+#, fuzzy
+msgctxt "label.routing_model_denylist"
+msgid "Model denylist"
+msgstr "⁧⟦Model denylist⟧⁩"
+
+#. Label for the minimum quality tier routing constraint.
+#, fuzzy
+msgctxt "label.routing_minimum_quality"
+msgid "Minimum quality tier"
+msgstr "⁧⟦Minimum quality tier⟧⁩"
+
+#. Label for the maximum request byte routing constraint.
+#, fuzzy
+msgctxt "label.routing_max_request_bytes"
+msgid "Maximum request bytes"
+msgstr "⁧⟦Maximum request bytes⟧⁩"
+
+#. Tooltip for comma-separated provider and model routing identifier lists.
+#, fuzzy
+msgctxt "tooltip.routing_identifier_list"
+msgid "Comma-separated provider or model identifiers; leave blank for no list"
+msgstr "⁧⟦Comma-separated provider or model identifiers; leave blank for no list⟧⁩"
+
+#. Tooltip for the minimum quality tier routing constraint.
+#, fuzzy
+msgctxt "tooltip.routing_minimum_quality"
+msgid "Leave blank to accept every quality tier"
+msgstr "⁧⟦Leave blank to accept every quality tier⟧⁩"
+
+#. Tooltip for the maximum request byte routing constraint.
+#, fuzzy
+msgctxt "tooltip.routing_max_request_bytes"
+msgid "Leave blank for no profile-level request size limit; otherwise use a positive byte count"
+msgstr "⁧⟦Leave blank for no profile-level request size limit; otherwise use a positive byte count⟧⁩"
+
+#. Error shown when routing list or numeric constraint input is invalid.
+#, fuzzy
+msgctxt "error.routing_constraints_invalid"
+msgid "Use comma-separated ASCII identifiers and positive numeric limits."
+msgstr "⁧⟦Use comma-separated ASCII identifiers and positive numeric limits.⟧⁩"
+
+#. Display label for the Google Gemini provider preset in the Linux provider form.
+#, fuzzy
+msgctxt "provider.preset.gemini"
+msgid "Google Gemini"
+msgstr "⁧⟦Google Gemini⟧⁩"
+
+#. Default display name for a Google Gemini provider profile.
+#, fuzzy
+msgctxt "profile.default_gemini_name"
+msgid "Google Gemini provider"
+msgstr "⁧⟦Google Gemini provider⟧⁩"
+
+#. Endpoint tooltip for the Google Gemini Generate Content provider preset.
+#, fuzzy
+msgctxt "tooltip.endpoint.gemini"
+msgid "HTTPS or loopback HTTP Gemini Generate Content /v1beta endpoint"
+msgstr "⁧⟦HTTPS or loopback HTTP Gemini Generate Content /v1beta endpoint⟧⁩"
+
+#. Display label for the Azure OpenAI provider preset in the Linux provider form.
+#, fuzzy
+msgctxt "provider.preset.azure_openai"
+msgid "Azure OpenAI"
+msgstr "⁧⟦Azure OpenAI⟧⁩"
+
+#. Default display name for an Azure OpenAI provider profile.
+#, fuzzy
+msgctxt "profile.default_azure_openai_name"
+msgid "Azure OpenAI provider"
+msgstr "⁧⟦Azure OpenAI provider⟧⁩"
+
+#. Endpoint tooltip for the Azure OpenAI Chat Completions provider preset.
+#, fuzzy
+msgctxt "tooltip.endpoint.azure_openai"
+msgid "HTTPS Azure OpenAI resource endpoint; enter the deployment name as the model"
+msgstr "⁧⟦HTTPS Azure OpenAI resource endpoint; enter the deployment name as the model⟧⁩"
+
+#. Tooltip for the Linux manually entered Azure OpenAI deployment identifier.
+#, fuzzy
+msgctxt "tooltip.model.azure_openai"
+msgid "Enter the Azure OpenAI deployment name before connecting; model discovery is manual for this preset"
+msgstr "⁧⟦Enter the Azure OpenAI deployment name before connecting; model discovery is manual for this preset⟧⁩"
+
+#. Validation error shown when an Azure OpenAI provider has no deployment name.
+#, fuzzy
+msgctxt "error.azure_openai_deployment_required"
+msgid "Enter an Azure OpenAI deployment name before connecting."
+msgstr "⁧⟦Enter an Azure OpenAI deployment name before connecting.⟧⁩"
+
+#. Display label for the OpenAI Responses provider preset in the Linux provider form.
+#, fuzzy
+msgctxt "provider.preset.openai_responses"
+msgid "OpenAI Responses"
+msgstr "⁧⟦OpenAI Responses⟧⁩"
+
+#. Default display name for an OpenAI Responses provider profile.
+#, fuzzy
+msgctxt "profile.default_openai_responses_name"
+msgid "OpenAI Responses provider"
+msgstr "⁧⟦OpenAI Responses provider⟧⁩"
+
+#. Endpoint tooltip for the OpenAI Responses provider preset.
+#, fuzzy
+msgctxt "tooltip.endpoint.openai_responses"
+msgid "HTTPS OpenAI Responses /v1 endpoint with typed streaming events"
+msgstr "⁧⟦HTTPS OpenAI Responses /v1 endpoint with typed streaming events⟧⁩"
+
+#. Tooltip for the Linux OpenAI Responses model selector.
+#, fuzzy
+msgctxt "tooltip.model.openai_responses"
+msgid "Models are discovered from the OpenAI Responses-compatible endpoint"
+msgstr "⁧⟦Models are discovered from the OpenAI Responses-compatible endpoint⟧⁩"
+
+#. Label for the Linux translation preset selector.
+#, fuzzy
+msgctxt "label.translation_preset"
+msgid "Translation preset"
+msgstr "⁧⟦Translation preset⟧⁩"
+
+#. General translation preset with no domain-specific preference.
+#, fuzzy
+msgctxt "translation.preset.general"
+msgid "General"
+msgstr "⁧⟦General⟧⁩"
+
+#. Marketing translation preset for audience-focused copy.
+#, fuzzy
+msgctxt "translation.preset.marketing"
+msgid "Marketing"
+msgstr "⁧⟦Marketing⟧⁩"
+
+#. Technical translation preset for terminology-focused content.
+#, fuzzy
+msgctxt "translation.preset.technical"
+msgid "Technical"
+msgstr "⁧⟦Technical⟧⁩"
+
+#. Tooltip explaining the bounded translation preset preferences.
+#, fuzzy
+msgctxt "tooltip.translation_preset"
+msgid "Apply a bounded domain, tone, formality, and audience preference to the next request"
+msgstr "⁧⟦Apply a bounded domain, tone, formality, and audience preference to the next request⟧⁩"
+
+#. Reports normalized token usage and identifies whether it was provider-reported or locally estimated.
+#, fuzzy, python-brace-format
+msgctxt "status.usage"
+msgid "Usage: {total_tokens} tokens ({source})"
+msgstr "⁧⟦Usage: {total_tokens} tokens ({source})⟧⁩"
+
+#. Reports that normalized token usage is unavailable and identifies the reason category.
+#, fuzzy, python-brace-format
+msgctxt "status.usage_unknown"
+msgid "Usage: unavailable ({source})"
+msgstr "⁧⟦Usage: unavailable ({source})⟧⁩"
+
+#. Source label for usage counts reported by the provider.
+#, fuzzy
+msgctxt "usage.source.provider_reported"
+msgid "provider reported"
+msgstr "⁧⟦provider reported⟧⁩"
+
+#. Source label for usage counts estimated from local text lengths.
+#, fuzzy
+msgctxt "usage.source.locally_estimated"
+msgid "locally estimated"
+msgstr "⁧⟦locally estimated⟧⁩"
+
+#. Source label for usage metadata that cannot be attributed to a provider or local estimate.
+#, fuzzy
+msgctxt "usage.source.unknown"
+msgid "unknown"
+msgstr "⁧⟦unknown⟧⁩"
+
+#. Action in the Linux settings controls that opens the bundled open-source license and third-party notices.
+#, fuzzy
+msgctxt "action.open_source_licenses"
+msgid "Open-source licenses"
+msgstr "⁧⟦Open-source licenses⟧⁩"
+
+#. Dialog title for the bundled third-party license notices.
+#, fuzzy
+msgctxt "dialog.open_source_licenses"
+msgid "Open-source licenses"
+msgstr "⁧⟦Open-source licenses⟧⁩"
+
+#. Tooltip for the open-source license notices action.
+#, fuzzy
+msgctxt "tooltip.open_source_licenses"
+msgid "Review the licenses and third-party notices included with this build"
+msgstr "⁧⟦Review the licenses and third-party notices included with this build⟧⁩"
+
+#. Action in the Linux settings controls that opens the application About dialog.
+#, fuzzy
+msgctxt "action.about"
+msgid "About LinguaMesh"
+msgstr "⁧⟦About LinguaMesh⟧⁩"
+
+#. Dialog title for application and shared-core compatibility information.
+#, fuzzy
+msgctxt "dialog.about"
+msgid "About LinguaMesh"
+msgstr "⁧⟦About LinguaMesh⟧⁩"
+
+#. Application and shared-core version details in the About dialog.
+#, fuzzy, python-brace-format
+msgctxt "dialog.about_details"
+msgid "Version: {version}\nCore: {core}\nABI: {abi}\nProtocol: {protocol}"
+msgstr "⁧⟦Version: {version}\nCore: {core}\nABI: {abi}\nProtocol: {protocol}⟧⁩"
+
+#. Tooltip for the Linux About action.
+#, fuzzy
+msgctxt "tooltip.about"
+msgid "Show application and shared-core version information"
+msgstr "⁧⟦Show application and shared-core version information⟧⁩"
+
+#. Label for the user-authored note attached to a saved provider profile.
+#, fuzzy
+msgctxt "label.provider_notes"
+msgid "Profile notes"
+msgstr "⁧⟦Profile notes⟧⁩"
+
+#. Placeholder for the optional non-secret note field in the Linux provider form.
+#, fuzzy
+msgctxt "placeholder.provider_notes"
+msgid "Optional non-secret note for this saved profile"
+msgstr "⁧⟦Optional non-secret note for this saved profile⟧⁩"
+
+#. Tooltip for the optional non-secret note field in the Linux provider form.
+#, fuzzy
+msgctxt "tooltip.provider_notes"
+msgid "Optional non-secret note for this saved profile"
+msgstr "⁧⟦Optional non-secret note for this saved profile⟧⁩"
+
+#. Label for the optional organization identifier in the Linux provider form.
+#, fuzzy
+msgctxt "label.provider_organization"
+msgid "Organization"
+msgstr "⁧⟦Organization⟧⁩"
+
+#. Label for the optional project identifier in the Linux provider form.
+#, fuzzy
+msgctxt "label.provider_project"
+msgid "Project"
+msgstr "⁧⟦Project⟧⁩"
+
+#. Placeholder for the optional organization identifier in the Linux provider form.
+#, fuzzy
+msgctxt "placeholder.provider_organization"
+msgid "Optional OpenAI organization ID"
+msgstr "⁧⟦Optional OpenAI organization ID⟧⁩"
+
+#. Placeholder for the optional project identifier in the Linux provider form.
+#, fuzzy
+msgctxt "placeholder.provider_project"
+msgid "Optional OpenAI project ID"
+msgstr "⁧⟦Optional OpenAI project ID⟧⁩"
+
+#. Tooltip for the optional organization identifier in the Linux provider form.
+#, fuzzy
+msgctxt "tooltip.provider_organization"
+msgid "Optional organization identifier sent to OpenAI-compatible endpoints"
+msgstr "⁧⟦Optional organization identifier sent to OpenAI-compatible endpoints⟧⁩"
+
+#. Tooltip for the optional project identifier in the Linux provider form.
+#, fuzzy
+msgctxt "tooltip.provider_project"
+msgid "Optional project identifier sent to OpenAI-compatible endpoints"
+msgstr "⁧⟦Optional project identifier sent to OpenAI-compatible endpoints⟧⁩"
+
+#. Label for the optional provider region or deployment geography in the Linux provider form.
+#, fuzzy
+msgctxt "label.provider_region"
+msgid "Region"
+msgstr "⁧⟦Region⟧⁩"
+
+#. Label for the optional provider account identifier in the Linux provider form.
+#, fuzzy
+msgctxt "label.provider_account_identifier"
+msgid "Account identifier"
+msgstr "⁧⟦Account identifier⟧⁩"
+
+#. Placeholder for the optional provider region in the Linux provider form.
+#, fuzzy
+msgctxt "placeholder.provider_region"
+msgid "Optional provider region or deployment geography"
+msgstr "⁧⟦Optional provider region or deployment geography⟧⁩"
+
+#. Placeholder for the optional provider account identifier in the Linux provider form.
+#, fuzzy
+msgctxt "placeholder.provider_account_identifier"
+msgid "Optional non-secret account or tenant identifier"
+msgstr "⁧⟦Optional non-secret account or tenant identifier⟧⁩"
+
+#. Tooltip for the optional provider region in the Linux provider form.
+#, fuzzy
+msgctxt "tooltip.provider_region"
+msgid "Optional non-secret region identifier used by the provider account"
+msgstr "⁧⟦Optional non-secret region identifier used by the provider account⟧⁩"
+
+#. Tooltip for the optional provider account identifier in the Linux provider form.
+#, fuzzy
+msgctxt "tooltip.provider_account_identifier"
+msgid "Optional account identifier used to distinguish provider tenants"
+msgstr "⁧⟦Optional account identifier used to distinguish provider tenants⟧⁩"
+
+#. Label for the optional proxy URL in the Linux provider form.
+#, fuzzy
+msgctxt "label.provider_proxy"
+msgid "Proxy URL"
+msgstr "⁧⟦Proxy URL⟧⁩"
+
+#. Placeholder for the optional provider proxy URL in the Linux provider form.
+#, fuzzy
+msgctxt "placeholder.provider_proxy"
+msgid "Optional proxy URL, for example http://127.0.0.1:8080"
+msgstr "⁧⟦Optional proxy URL, for example http://127.0.0.1:8080⟧⁩"
+
+#. Tooltip for the optional provider proxy URL.
+#, fuzzy
+msgctxt "tooltip.provider_proxy"
+msgid "Optional HTTP, HTTPS, SOCKS5, or SOCKS5H proxy without embedded credentials"
+msgstr "⁧⟦Optional HTTP, HTTPS, SOCKS5, or SOCKS5H proxy without embedded credentials⟧⁩"
+
+#. Label for optional proxy username and password input in the Linux provider form.
+#, fuzzy
+msgctxt "label.provider_proxy_credentials"
+msgid "Proxy credentials"
+msgstr "⁧⟦Proxy credentials⟧⁩"
+
+#. Placeholder for optional proxy username and password input.
+#, fuzzy
+msgctxt "placeholder.provider_proxy_credentials"
+msgid "Optional username:password for the proxy"
+msgstr "⁧⟦Optional username:password for the proxy⟧⁩"
+
+#. Tooltip for optional proxy authentication input.
+#, fuzzy
+msgctxt "tooltip.provider_proxy_credentials"
+msgid "Stored in Secret Service when remembered and never embedded in the proxy URL"
+msgstr "⁧⟦Stored in Secret Service when remembered and never embedded in the proxy URL⟧⁩"
+
+#. Label for optional custom request headers in the Linux provider form.
+#, fuzzy
+msgctxt "label.provider_custom_headers"
+msgid "Custom headers (non-secret JSON)"
+msgstr "⁧⟦Custom headers (non-secret JSON)⟧⁩"
+
+#. Label for the provider request timeout in seconds in the Linux provider form.
+#, fuzzy
+msgctxt "label.provider_request_timeout"
+msgid "Request timeout (seconds)"
+msgstr "⁧⟦Request timeout (seconds)⟧⁩"
+
+#. Tooltip for the provider request timeout in the Linux provider form.
+#, fuzzy
+msgctxt "tooltip.provider_request_timeout"
+msgid "Total provider request timeout in seconds, from 1 to 600"
+msgstr "⁧⟦Total provider request timeout in seconds, from 1 to 600⟧⁩"
+
+#. Label for the provider connection timeout in seconds in the Linux provider form.
+#, fuzzy
+msgctxt "label.provider_connection_timeout"
+msgid "Connection timeout (seconds)"
+msgstr "⁧⟦Connection timeout (seconds)⟧⁩"
+
+#. Tooltip for the provider connection timeout in the Linux provider form.
+#, fuzzy
+msgctxt "tooltip.provider_connection_timeout"
+msgid "Provider connection timeout in seconds, from 1 to 120"
+msgstr "⁧⟦Provider connection timeout in seconds, from 1 to 120⟧⁩"
+
+#. Label for the provider streaming idle timeout in seconds in the Linux provider form.
+#, fuzzy
+msgctxt "label.provider_streaming_idle_timeout"
+msgid "Streaming idle timeout (seconds)"
+msgstr "⁧⟦Streaming idle timeout (seconds)⟧⁩"
+
+#. Tooltip for the provider streaming idle timeout in the Linux provider form.
+#, fuzzy
+msgctxt "tooltip.provider_streaming_idle_timeout"
+msgid "Provider streaming idle timeout in seconds, from 1 to 300"
+msgstr "⁧⟦Provider streaming idle timeout in seconds, from 1 to 300⟧⁩"
+
+#. Placeholder for optional custom request headers in the Linux provider form.
+#, fuzzy
+msgctxt "placeholder.provider_custom_headers"
+msgid "Optional JSON object of non-secret request headers"
+msgstr "⁧⟦Optional JSON object of non-secret request headers⟧⁩"
+
+#. Tooltip for optional bounded non-secret custom request headers.
+#, fuzzy
+msgctxt "tooltip.provider_custom_headers"
+msgid "Optional bounded non-secret headers; authorization and credential headers are rejected"
+msgstr "⁧⟦Optional bounded non-secret headers; authorization and credential headers are rejected⟧⁩"
+
+#. Label for optional secret custom request headers in the Linux provider form.
+#, fuzzy
+msgctxt "label.provider_secret_custom_headers"
+msgid "Custom headers (secret JSON)"
+msgstr "⁧⟦Custom headers (secret JSON)⟧⁩"
+
+#. Placeholder for optional secret custom request headers in the Linux provider form.
+#, fuzzy
+msgctxt "placeholder.provider_secret_custom_headers"
+msgid "Optional JSON object of secret request headers"
+msgstr "⁧⟦Optional JSON object of secret request headers⟧⁩"
+
+#. Tooltip for optional bounded secret custom request headers.
+#, fuzzy
+msgctxt "tooltip.provider_secret_custom_headers"
+msgid "Optional bounded secret headers; stored in Secret Service when remembered and otherwise kept for this session"
+msgstr "⁧⟦Optional bounded secret headers; stored in Secret Service when remembered and otherwise kept for this session⟧⁩"
+
+#. Label for an optional PEM certificate bundle that augments system trust without disabling TLS verification.
+#, fuzzy
+msgctxt "label.provider_trusted_certificates_pem"
+msgid "Trusted certificates (PEM)"
+msgstr "⁧⟦Trusted certificates (PEM)⟧⁩"
+
+#. Placeholder for a custom trusted certificate PEM bundle.
+#, fuzzy
+msgctxt "placeholder.provider_trusted_certificates_pem"
+msgid "Optional PEM certificate bundle; TLS verification remains enabled"
+msgstr "⁧⟦Optional PEM certificate bundle; TLS verification remains enabled⟧⁩"
+
+#. Tooltip for the optional custom trusted certificate PEM bundle.
+#, fuzzy
+msgctxt "tooltip.provider_trusted_certificates_pem"
+msgid "Optional trusted certificate PEM bundle; system roots remain trusted and TLS verification stays enabled"
+msgstr "⁧⟦Optional trusted certificate PEM bundle; system roots remain trusted and TLS verification stays enabled⟧⁩"
+
+#. Label for an optional PEM client certificate identity.
+#, fuzzy
+msgctxt "label.provider_client_certificate_identity"
+msgid "Client certificate identity (PEM)"
+msgstr "⁧⟦Client certificate identity (PEM)⟧⁩"
+
+#. Placeholder for an optional PEM client certificate and private key identity.
+#, fuzzy
+msgctxt "placeholder.provider_client_certificate_identity"
+msgid "Optional PEM client certificate and private key identity"
+msgstr "⁧⟦Optional PEM client certificate and private key identity⟧⁩"
+
+#. Tooltip for the optional PEM client certificate identity.
+#, fuzzy
+msgctxt "tooltip.provider_client_certificate_identity"
+msgid "Kept in memory for the connection and stored in Secret Service only when remembered"
+msgstr "⁧⟦Kept in memory for the connection and stored in Secret Service only when remembered⟧⁩"
+
+#. Placeholder for the allowed stable identifier characters of a glossary library.
+#, fuzzy
+msgctxt "placeholder.glossary_id"
+msgid "letters, numbers, '.', '_' or '-'"
+msgstr "⁧⟦letters, numbers, '.', '_' or '-'⟧⁩"
+
+#. Accessible tooltip for the stable glossary library identifier field.
+#, fuzzy
+msgctxt "tooltip.glossary_id"
+msgid "Use 1-128 ASCII letters, numbers, '.', '_' or '-' for the glossary library ID."
+msgstr "⁧⟦Use 1-128 ASCII letters, numbers, '.', '_' or '-' for the glossary library ID.⟧⁩"
+
+#. Empty-state message shown when no reusable glossary libraries are stored.
+#, fuzzy
+msgctxt "status.glossary_libraries_empty"
+msgid "No local glossary libraries are stored."
+msgstr "⁧⟦No local glossary libraries are stored.⟧⁩"
+
+#. Translation preset that prefers United States English regional conventions and Latin script.
+#, fuzzy
+msgctxt "translation.preset.english_us"
+msgid "English (United States)"
+msgstr "⁧⟦English (United States)⟧⁩"
+
+#. Translation preset that prefers Mainland China regional conventions and Simplified Chinese script.
+#, fuzzy
+msgctxt "translation.preset.chinese_simplified"
+msgid "Chinese (Simplified, Mainland China)"
+msgstr "⁧⟦Chinese (Simplified, Mainland China)⟧⁩"
+
+#. Source label shown beside a model discovered from a provider endpoint.
+#, fuzzy
+msgctxt "model.source.discovered"
+msgid "Discovered"
+msgstr "⁧⟦Discovered⟧⁩"
+
+#. Source label shown beside a model supplied by the bundled provider catalog.
+#, fuzzy
+msgctxt "model.source.catalog"
+msgid "Catalog"
+msgstr "⁧⟦Catalog⟧⁩"
+
+#. Source label shown beside a model entered manually by the user.
+#, fuzzy
+msgctxt "model.source.manual"
+msgid "Manual"
+msgstr "⁧⟦Manual⟧⁩"
+
+#. Last successful provider health-check timestamp shown in the Linux Provider Hub.
+#, fuzzy, python-brace-format
+msgctxt "provider.health.success"
+msgid "Last provider health check: {timestamp}"
+msgstr "⁧⟦Last provider health check: {timestamp}⟧⁩"
+
+#. Normalized provider health failure category shown in the Linux Provider Hub.
+#, fuzzy, python-brace-format
+msgctxt "provider.health.failure"
+msgid "Last provider health check failed: {category}"
+msgstr "⁧⟦Last provider health check failed: {category}⟧⁩"
+
+#. Action that removes LinguaMesh-owned temporary files from the Linux system temporary directory.
+#, fuzzy
+msgctxt "action.clear_temporary_files"
+msgid "Clear temporary files"
+msgstr "⁧⟦Clear temporary files⟧⁩"
+
+#. Tooltip explaining the bounded Linux temporary-file cleanup scope.
+#, fuzzy
+msgctxt "tooltip.clear_temporary_files"
+msgid "Delete LinguaMesh temporary OCR files and abandoned export files from the system temporary directory"
+msgstr "⁧⟦Delete LinguaMesh temporary OCR files and abandoned export files from the system temporary directory⟧⁩"
+
+#. Confirmation dialog title for bounded Linux temporary-file cleanup.
+#, fuzzy
+msgctxt "dialog.clear_temporary_files"
+msgid "Clear LinguaMesh temporary files?"
+msgstr "⁧⟦Clear LinguaMesh temporary files?⟧⁩"
+
+#. Confirmation dialog detail for bounded Linux temporary-file cleanup.
+#, fuzzy
+msgctxt "dialog.clear_temporary_files_detail"
+msgid "Only LinguaMesh OCR and abandoned export items in the system temporary directory will be removed."
+msgstr "⁧⟦Only LinguaMesh OCR and abandoned export items in the system temporary directory will be removed.⟧⁩"
+
+#. Status message reporting the number of Linux temporary items removed.
+#, fuzzy, python-brace-format
+msgctxt "status.temporary_files_cleared"
+msgid "Cleared {count} LinguaMesh temporary items."
+msgstr "⁧⟦Cleared {count} LinguaMesh temporary items.⟧⁩"

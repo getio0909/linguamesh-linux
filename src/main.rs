@@ -2,28 +2,39 @@ use adw::prelude::*;
 use gtk::glib;
 use linguamesh_document::{
     DEFAULT_SUBTITLE_MAX_LINE_CHARS, DEFAULT_SUBTITLE_MAX_READING_SPEED, DocumentFormat,
-    DocumentJobState, DocumentWarning, DocumentWarningKind,
+    DocumentJobState, DocumentSegmentKind, DocumentWarning, DocumentWarningKind,
 };
 use linguamesh_domain::{
-    ErrorKind, Glossary, GlossaryEntry, MAX_GLOSSARY_CSV_BYTES, OperationId, ProviderProfileId,
-    SecretRef, SecretRefNamespace, SecretValue, TranslationError, TranslationEvent,
-    TranslationPrivacyMode,
+    ErrorKind, FileLease, Glossary, GlossaryEntry, MAX_GLOSSARY_CSV_BYTES, MAX_GLOSSARY_TBX_BYTES,
+    MAX_ROUTING_IDENTIFIER_BYTES, MAX_ROUTING_PROFILE_JSON_BYTES, ModelDescriptor, ModelSource,
+    OperationId, ProviderProfileId, RoutingCandidate, RoutingConstraints, RoutingMode,
+    RoutingPreference, RoutingProfile, SecretRef, SecretRefNamespace, SecretValue,
+    TranslationError, TranslationEvent, TranslationPreset, TranslationPrivacyMode,
+    TranslationQualityMode, UsageRecord, UsageSource,
 };
+use linguamesh_engine::core_compatibility;
 use linguamesh_linux::file_import;
 use linguamesh_linux::localization;
 use linguamesh_linux::model::{
-    AppState, AppStatus, OnboardingStage, ProfileStorageStatus, ProviderProfile, StateError,
-    ThemePreference, UiLocale,
+    AppState, AppStatus, OnboardingStage, ProfileStorageStatus, ProviderProfile,
+    RoutingDecisionSummary, StateError, ThemePreference, UiLocale, move_routing_profile_id,
+    move_routing_profile_id_before, ordered_routing_profile_ids, routing_mode_for_selection,
 };
 use linguamesh_linux::secret_service;
 use linguamesh_linux::worker::{
     CoreWorker, PersistenceIntent, WorkerCommand, WorkerCommandHandle, WorkerEvent,
 };
-use linguamesh_storage::{DocumentJobSnapshot, TranslationHistoryEntry, TranslationMemoryEntry};
+use linguamesh_provider_catalog::{ProviderCatalog, ProviderPreset};
+use linguamesh_storage::{
+    DocumentJobSnapshot, GlossaryRecord, RoutingProfileRecord, TranslationHistoryEntry,
+    TranslationMemoryEntry,
+};
 use std::cell::{Cell, RefCell};
 use std::fs;
 use std::io::Write;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::sync::OnceLock;
 use std::sync::mpsc::TryRecvError;
 use std::time::{Duration, Instant};
 
@@ -32,9 +43,87 @@ const TARGET_LOCALES: [&str; 3] = ["zh-CN", "en", "ja"];
 const MAX_EVENTS_PER_TICK: usize = 64;
 const PROFILE_ID_GENERATION_ATTEMPTS: usize = 8;
 const CUSTOM_PROVIDER_PRESET_ID: &str = "custom-openai-compatible";
+const OLLAMA_PROVIDER_PRESET_ID: &str = "ollama";
+const ANTHROPIC_PROVIDER_PRESET_ID: &str = "anthropic";
+const GEMINI_PROVIDER_PRESET_ID: &str = "gemini";
+const AZURE_PROVIDER_PRESET_ID: &str = "azure-openai";
+const RESPONSES_PROVIDER_PRESET_ID: &str = "openai-responses";
 const OPENAI_ADAPTER_TYPE: &str = "openai_chat_completions";
+const OLLAMA_ADAPTER_TYPE: &str = "ollama_chat";
+const ANTHROPIC_ADAPTER_TYPE: &str = "anthropic_messages";
+const GEMINI_ADAPTER_TYPE: &str = "gemini_generate_content";
+const AZURE_ADAPTER_TYPE: &str = "azure_openai_chat";
+const RESPONSES_ADAPTER_TYPE: &str = "openai_responses";
 const DEFAULT_PROVIDER_NAME: &str = "Local OpenAI-compatible provider";
+const DEFAULT_OLLAMA_PROVIDER_NAME: &str = "Local Ollama provider";
+const DEFAULT_ANTHROPIC_PROVIDER_NAME: &str = "Anthropic Messages provider";
+const DEFAULT_GEMINI_PROVIDER_NAME: &str = "Google Gemini provider";
+const DEFAULT_AZURE_PROVIDER_NAME: &str = "Azure OpenAI provider";
+const DEFAULT_RESPONSES_PROVIDER_NAME: &str = "OpenAI Responses provider";
 const DEFAULT_PROVIDER_ENDPOINT: &str = "http://127.0.0.1:11434/v1/";
+const DEFAULT_OLLAMA_ENDPOINT: &str = "http://127.0.0.1:11434/api/";
+const DEFAULT_ANTHROPIC_ENDPOINT: &str = "https://api.anthropic.com/v1/";
+const DEFAULT_GEMINI_ENDPOINT: &str = "https://generativelanguage.googleapis.com/v1beta/";
+const DEFAULT_AZURE_ENDPOINT: &str = "https://resource.openai.azure.com/";
+const DEFAULT_RESPONSES_ENDPOINT: &str = "https://api.openai.com/v1/";
+
+// 在支持的中英文互译组合之间交换源语言和目标语言。
+fn swap_locale_selection(source_index: u32, target_index: u32) -> Option<(u32, u32)> {
+    match (source_index, target_index) {
+        (1, 0) => Some((2, 1)),
+        (2, 1) => Some((1, 0)),
+        _ => None,
+    }
+}
+
+// 返回核心目录中与 Linux 下拉框位置对应的稳定预设标识。
+fn catalog_preset_id(index: u32) -> &'static str {
+    match index {
+        1 => OLLAMA_PROVIDER_PRESET_ID,
+        2 => ANTHROPIC_PROVIDER_PRESET_ID,
+        3 => GEMINI_PROVIDER_PRESET_ID,
+        4 => AZURE_PROVIDER_PRESET_ID,
+        5 => RESPONSES_PROVIDER_PRESET_ID,
+        _ => "generic-openai-compatible",
+    }
+}
+
+// 只缓存编译进核心的无秘密提供商目录，避免每次刷新控件时重复解析 JSON。
+fn bundled_provider_catalog() -> Option<&'static ProviderCatalog> {
+    static CATALOG: OnceLock<Option<ProviderCatalog>> = OnceLock::new();
+    CATALOG
+        .get_or_init(|| ProviderCatalog::bundled().ok())
+        .as_ref()
+}
+
+// 返回指定 Linux 预设对应的核心目录条目。
+fn catalog_preset(index: u32) -> Option<&'static ProviderPreset> {
+    let id = catalog_preset_id(index);
+    bundled_provider_catalog()?
+        .providers
+        .iter()
+        .find(|preset| preset.id == id)
+}
+
+// 检查 Linux 映射的适配器和模型发现策略是否仍与核心目录一致。
+fn validate_provider_preset_catalog() -> Result<(), String> {
+    for index in 0..6 {
+        let (_, adapter, _, _) = provider_preset_config(index);
+        let preset = catalog_preset(index).ok_or_else(|| {
+            format!(
+                "missing provider catalog preset: {}",
+                catalog_preset_id(index)
+            )
+        })?;
+        if preset.adapter != adapter {
+            return Err(format!(
+                "provider catalog adapter mismatch for {}: expected {}, received {}",
+                preset.id, adapter, preset.adapter
+            ));
+        }
+    }
+    Ok(())
+}
 
 #[derive(Clone)]
 struct UiBindings {
@@ -47,19 +136,43 @@ struct UiBindings {
     provider_title: gtk::Label,
     provider_note: gtk::Label,
     saved_profile: gtk::DropDown,
+    provider_preset: gtk::DropDown,
     provider_name: gtk::Entry,
     provider_endpoint: gtk::Entry,
+    provider_notes: gtk::Entry,
+    provider_organization: gtk::Entry,
+    provider_project: gtk::Entry,
+    provider_region: gtk::Entry,
+    provider_account_identifier: gtk::Entry,
+    provider_proxy: gtk::Entry,
+    provider_proxy_credentials: gtk::PasswordEntry,
+    provider_request_timeout: gtk::SpinButton,
+    provider_connection_timeout: gtk::SpinButton,
+    provider_streaming_idle_timeout: gtk::SpinButton,
+    provider_trusted_certificates_pem: gtk::Entry,
+    provider_client_certificate_identity: gtk::PasswordEntry,
+    provider_custom_headers: gtk::Entry,
+    provider_secret_custom_headers: gtk::PasswordEntry,
+    manual_model_row: gtk::Box,
+    manual_model: gtk::Entry,
     provider_credential: gtk::PasswordEntry,
     remember_profile: gtk::CheckButton,
     remove_saved_profile: gtk::Button,
     connect: gtk::Button,
+    test_connection: gtk::Button,
     active_provider: gtk::Label,
+    provider_health: gtk::Label,
     model: gtk::DropDown,
     source_locale: gtk::DropDown,
     target_locale: gtk::DropDown,
+    swap_locales: gtk::Button,
+    quality_mode: gtk::DropDown,
+    translation_preset: gtk::DropDown,
     glossary: gtk::Entry,
     import_glossary: gtk::Button,
     export_glossary: gtk::Button,
+    glossary_libraries: gtk::Button,
+    save_glossary: gtk::Button,
     incognito: gtk::CheckButton,
     history_enabled: gtk::CheckButton,
     history: gtk::Button,
@@ -67,6 +180,10 @@ struct UiBindings {
     memory_enabled: gtk::CheckButton,
     memory: gtk::Button,
     clear_memory: gtk::Button,
+    clear_temporary_files: gtk::Button,
+    routing_profiles: gtk::Button,
+    open_source_licenses: gtk::Button,
+    about: gtk::Button,
     fallback_enabled: gtk::CheckButton,
     fallback_profile_label: gtk::Label,
     fallback_profile: gtk::DropDown,
@@ -78,7 +195,12 @@ struct UiBindings {
     output_view: gtk::TextView,
     source_label: gtk::Label,
     output_label: gtk::Label,
+    source_metrics: gtk::Label,
+    output_metrics: gtk::Label,
     translate: gtk::Button,
+    retry_translation: gtk::Button,
+    copy_output: gtk::Button,
+    clear_workspace: gtk::Button,
     export_output: gtk::Button,
     open_output: gtk::Button,
     open_source: gtk::Button,
@@ -89,24 +211,33 @@ struct UiBindings {
     resume_document: gtk::Button,
     retry_document: gtk::Button,
     status: gtk::Label,
+    progress: gtk::ProgressBar,
     partial: gtk::Label,
     error: gtk::Label,
     locale_note: gtk::Label,
     diagnostics_panel: gtk::Expander,
     diagnostics: gtk::Label,
     profile_selection_guard: Rc<Cell<bool>>,
+    provider_preset_guard: Rc<Cell<bool>>,
+    provider_preset_previous: Rc<Cell<u32>>,
     draft_profile_id: Rc<RefCell<Option<ProviderProfileId>>>,
     source_uri: Rc<RefCell<Option<String>>>,
     output_uri: Rc<RefCell<Option<String>>>,
     fallback_profile_ids: Rc<RefCell<Vec<Option<ProviderProfileId>>>>,
+    selected_routing_profile_id: Rc<RefCell<Option<String>>>,
     document_job_id: Rc<RefCell<Option<String>>>,
     document_job_guard: Rc<Cell<bool>>,
     document_job_state: Rc<Cell<Option<DocumentJobState>>>,
     document_progress: Rc<Cell<Option<(usize, usize)>>>,
     document_warnings: Rc<RefCell<Vec<DocumentWarning>>>,
     ocr_pending: Rc<Cell<bool>>,
+    connection_test_notice: Rc<Cell<bool>>,
+    connection_test_model_count: Rc<Cell<Option<usize>>>,
+    connection_test_profile_id: Rc<RefCell<Option<String>>>,
     export_notice: Rc<Cell<bool>>,
+    report_export_notice: Rc<Cell<bool>>,
     fallback_notice: Rc<Cell<bool>>,
+    fallback_approval: Rc<Cell<bool>>,
     glossary_notice: Rc<Cell<bool>>,
     glossary_from_csv: Rc<Cell<bool>>,
     history_notice: Rc<Cell<bool>>,
@@ -123,7 +254,304 @@ struct UiBindings {
     memory_policy_guard: Rc<Cell<bool>>,
     memory_policy_pending: Rc<Cell<bool>>,
     memory_policy_notice: Rc<Cell<Option<bool>>>,
+    temporary_cleanup_notice: Rc<Cell<Option<usize>>>,
     source_drop_target: gtk::DropTarget,
+}
+
+// 将有限的原生提供商预设映射到稳定的核心适配器配置。
+fn provider_preset_config(index: u32) -> (&'static str, &'static str, &'static str, &'static str) {
+    match index {
+        1 => (
+            OLLAMA_PROVIDER_PRESET_ID,
+            OLLAMA_ADAPTER_TYPE,
+            DEFAULT_OLLAMA_PROVIDER_NAME,
+            DEFAULT_OLLAMA_ENDPOINT,
+        ),
+        2 => (
+            ANTHROPIC_PROVIDER_PRESET_ID,
+            ANTHROPIC_ADAPTER_TYPE,
+            DEFAULT_ANTHROPIC_PROVIDER_NAME,
+            DEFAULT_ANTHROPIC_ENDPOINT,
+        ),
+        3 => (
+            GEMINI_PROVIDER_PRESET_ID,
+            GEMINI_ADAPTER_TYPE,
+            DEFAULT_GEMINI_PROVIDER_NAME,
+            DEFAULT_GEMINI_ENDPOINT,
+        ),
+        4 => (
+            AZURE_PROVIDER_PRESET_ID,
+            AZURE_ADAPTER_TYPE,
+            DEFAULT_AZURE_PROVIDER_NAME,
+            DEFAULT_AZURE_ENDPOINT,
+        ),
+        5 => (
+            RESPONSES_PROVIDER_PRESET_ID,
+            RESPONSES_ADAPTER_TYPE,
+            DEFAULT_RESPONSES_PROVIDER_NAME,
+            DEFAULT_RESPONSES_ENDPOINT,
+        ),
+        _ => (
+            CUSTOM_PROVIDER_PRESET_ID,
+            OPENAI_ADAPTER_TYPE,
+            DEFAULT_PROVIDER_NAME,
+            DEFAULT_PROVIDER_ENDPOINT,
+        ),
+    }
+}
+
+// 将持久化的预设标识还原为界面下拉框索引。
+fn provider_preset_index(preset_id: &str) -> u32 {
+    match preset_id {
+        OLLAMA_PROVIDER_PRESET_ID => 1,
+        ANTHROPIC_PROVIDER_PRESET_ID => 2,
+        GEMINI_PROVIDER_PRESET_ID => 3,
+        AZURE_PROVIDER_PRESET_ID => 4,
+        RESPONSES_PROVIDER_PRESET_ID => 5,
+        _ => 0,
+    }
+}
+
+// 根据活动界面语言生成提供商预设标签。
+fn provider_preset_labels(locale: UiLocale) -> [String; 6] {
+    [
+        localization::text(locale, "provider.preset.openai", "OpenAI-compatible"),
+        localization::text(locale, "provider.preset.ollama", "Ollama (native /api)"),
+        localization::text(locale, "provider.preset.anthropic", "Anthropic Messages"),
+        localization::text(locale, "provider.preset.gemini", "Google Gemini"),
+        localization::text(locale, "provider.preset.azure_openai", "Azure OpenAI"),
+        localization::text(
+            locale,
+            "provider.preset.openai_responses",
+            "OpenAI Responses",
+        ),
+    ]
+}
+
+// 根据界面语言生成翻译质量模式标签。
+fn quality_mode_labels(locale: UiLocale) -> [String; 3] {
+    [
+        localization::text(locale, "quality.mode.fast", "Fast"),
+        localization::text(locale, "quality.mode.balanced", "Balanced"),
+        localization::text(locale, "quality.mode.best", "Best"),
+    ]
+}
+
+// 将质量模式映射到稳定的下拉框索引。
+fn quality_mode_selection(mode: TranslationQualityMode) -> u32 {
+    match mode {
+        TranslationQualityMode::Fast => 0,
+        TranslationQualityMode::Balanced => 1,
+        TranslationQualityMode::Best => 2,
+    }
+}
+
+// 将下拉框索引还原为核心质量模式。
+fn quality_mode_for_selection(selection: u32) -> TranslationQualityMode {
+    match selection {
+        0 => TranslationQualityMode::Fast,
+        2 => TranslationQualityMode::Best,
+        _ => TranslationQualityMode::Balanced,
+    }
+}
+
+// 根据界面语言生成内置翻译预设标签。
+fn translation_preset_labels(locale: UiLocale) -> [String; 5] {
+    [
+        localization::text(locale, "translation.preset.general", "General"),
+        localization::text(locale, "translation.preset.technical", "Technical"),
+        localization::text(locale, "translation.preset.marketing", "Marketing"),
+        localization::text(
+            locale,
+            "translation.preset.english_us",
+            "English (United States)",
+        ),
+        localization::text(
+            locale,
+            "translation.preset.chinese_simplified",
+            "Chinese (Simplified, Mainland China)",
+        ),
+    ]
+}
+
+// 将内置翻译预设映射到稳定的下拉框索引。
+fn translation_preset_selection(preset: &TranslationPreset) -> u32 {
+    match preset.id() {
+        "technical" => 1,
+        "marketing" => 2,
+        "english_us" => 3,
+        "chinese_simplified" => 4,
+        _ => 0,
+    }
+}
+
+// 将下拉框索引还原为经过 Core 校验的内置翻译预设。
+fn translation_preset_for_selection(selection: u32) -> TranslationPreset {
+    match selection {
+        1 => TranslationPreset::technical(),
+        2 => TranslationPreset::marketing(),
+        3 => TranslationPreset::english_us(),
+        4 => TranslationPreset::chinese_simplified(),
+        _ => TranslationPreset::general(),
+    }
+}
+
+// 判断预设是否要求用户在连接前提供手工模型或部署名。
+fn preset_requires_manual_model(index: u32) -> bool {
+    catalog_preset(index).map_or(index == 2 || index == 4, |preset| {
+        preset.model_listing == "manual"
+    })
+}
+
+// 所有协议都允许用户在模型发现不可用时提供最后一级手动模型。
+fn manual_model_field_visible() -> bool {
+    true
+}
+
+// 根据预设显示与协议匹配的端点提示。
+fn provider_endpoint_tooltip(locale: UiLocale, preset_index: u32) -> String {
+    if preset_index == 1 {
+        localization::text(
+            locale,
+            "tooltip.endpoint.ollama",
+            "HTTPS or loopback HTTP native Ollama /api endpoint",
+        )
+    } else if preset_index == 2 {
+        localization::text(
+            locale,
+            "tooltip.endpoint.anthropic",
+            "HTTPS Anthropic Messages /v1 endpoint",
+        )
+    } else if preset_index == 3 {
+        localization::text(
+            locale,
+            "tooltip.endpoint.gemini",
+            "HTTPS or loopback HTTP Gemini Generate Content /v1beta endpoint",
+        )
+    } else if preset_index == 4 {
+        localization::text(
+            locale,
+            "tooltip.endpoint.azure_openai",
+            "HTTPS Azure OpenAI resource endpoint; enter the deployment name as the model",
+        )
+    } else if preset_index == 5 {
+        localization::text(
+            locale,
+            "tooltip.endpoint.openai_responses",
+            "HTTPS OpenAI Responses /v1 endpoint with typed streaming events",
+        )
+    } else {
+        localization::text(
+            locale,
+            "tooltip.endpoint",
+            "HTTPS or loopback HTTP OpenAI-compatible base endpoint",
+        )
+    }
+}
+
+// 根据界面语言生成内置提供商的默认显示名称。
+fn localized_provider_default_name(locale: UiLocale, preset_index: u32) -> String {
+    if preset_index == 1 {
+        localization::text(
+            locale,
+            "profile.default_ollama_name",
+            DEFAULT_OLLAMA_PROVIDER_NAME,
+        )
+    } else if preset_index == 2 {
+        localization::text(
+            locale,
+            "profile.default_anthropic_name",
+            DEFAULT_ANTHROPIC_PROVIDER_NAME,
+        )
+    } else if preset_index == 3 {
+        localization::text(
+            locale,
+            "profile.default_gemini_name",
+            DEFAULT_GEMINI_PROVIDER_NAME,
+        )
+    } else if preset_index == 4 {
+        localization::text(
+            locale,
+            "profile.default_azure_openai_name",
+            DEFAULT_AZURE_PROVIDER_NAME,
+        )
+    } else if preset_index == 5 {
+        localization::text(
+            locale,
+            "profile.default_openai_responses_name",
+            DEFAULT_RESPONSES_PROVIDER_NAME,
+        )
+    } else {
+        localization::text(locale, "profile.default_name", DEFAULT_PROVIDER_NAME)
+    }
+}
+
+// 判断端点是否仍是预设提供的默认值，以避免覆盖用户自定义地址。
+fn endpoint_matches_preset_default(endpoint: &str, preset_index: u32) -> bool {
+    let endpoint = endpoint.trim();
+    if preset_index == 1 {
+        endpoint == DEFAULT_OLLAMA_ENDPOINT
+            || (endpoint.starts_with("http://127.0.0.1:") && endpoint.ends_with("/api/"))
+    } else if preset_index == 2 {
+        endpoint == DEFAULT_ANTHROPIC_ENDPOINT
+    } else if preset_index == 3 {
+        endpoint == DEFAULT_GEMINI_ENDPOINT
+    } else if preset_index == 4 {
+        endpoint == DEFAULT_AZURE_ENDPOINT
+    } else if preset_index == 5 {
+        endpoint == DEFAULT_RESPONSES_ENDPOINT
+    } else {
+        endpoint == DEFAULT_PROVIDER_ENDPOINT
+            || (endpoint.starts_with("http://127.0.0.1:") && endpoint.ends_with("/v1/"))
+    }
+}
+
+// 仅为需要手工指定模型的预设显示对应的模型提示。
+fn provider_model_tooltip(locale: UiLocale, preset_index: u32) -> String {
+    if preset_index == 2 {
+        localization::text(
+            locale,
+            "tooltip.model.anthropic",
+            "Enter the Anthropic model ID before connecting; model discovery is manual for this preset",
+        )
+    } else if preset_index == 4 {
+        localization::text(
+            locale,
+            "tooltip.model.azure_openai",
+            "Enter the Azure OpenAI deployment name before connecting; model discovery is manual for this preset",
+        )
+    } else if preset_index == 5 {
+        localization::text(
+            locale,
+            "tooltip.model.openai_responses",
+            "Models are discovered from the OpenAI Responses-compatible endpoint",
+        )
+    } else {
+        localization::text(
+            locale,
+            "option.model.manual",
+            "Enter a model ID manually...",
+        )
+    }
+}
+
+// 为模型下拉框提供可本地化的来源标签，避免用户无法区分发现、目录和手动模型。
+fn localized_model_source(locale: UiLocale, source: ModelSource) -> String {
+    let (key, fallback) = match source {
+        ModelSource::Discovered => ("model.source.discovered", "Discovered"),
+        ModelSource::Catalog => ("model.source.catalog", "Catalog"),
+        ModelSource::Manual => ("model.source.manual", "Manual"),
+    };
+    localization::text(locale, key, fallback)
+}
+
+// 保留核心模型显示名称，同时明确标出该条目的可信来源。
+fn model_descriptor_label(locale: UiLocale, model: &ModelDescriptor) -> String {
+    format!(
+        "{} ({})",
+        model.display_name,
+        localized_model_source(locale, model.source)
+    )
 }
 
 struct EditorBindings {
@@ -134,6 +562,8 @@ struct EditorBindings {
     output_view: gtk::TextView,
     source_label: gtk::Label,
     output_label: gtk::Label,
+    source_metrics: gtk::Label,
+    output_metrics: gtk::Label,
 }
 
 fn main() -> glib::ExitCode {
@@ -148,17 +578,45 @@ fn main() -> glib::ExitCode {
     application.run()
 }
 
+// 仅为隔离的辅助功能测试读取初始界面语言，普通启动始终使用英文默认值。
+fn test_locale_override() -> UiLocale {
+    let Ok(value) = std::env::var("LINGUAMESH_TEST_LOCALE") else {
+        return UiLocale::English;
+    };
+    UiLocale::ALL
+        .into_iter()
+        .find(|locale| locale.language_tag().eq_ignore_ascii_case(&value))
+        .unwrap_or(UiLocale::English)
+}
+
 fn build_ui(application: &adw::Application, file_dialog_fixture: bool, file_drop_fixture: bool) {
     if let Some(window) = application.active_window() {
         window.present();
         return;
     }
+    if let Err(error) = validate_provider_preset_catalog() {
+        eprintln!("Provider catalog validation failed: {error}");
+        return;
+    }
+    let initial_locale = test_locale_override();
     let state = Rc::new(RefCell::new(AppState::default()));
+    if std::env::var_os("LINGUAMESH_TEST_LOCALE").is_some() {
+        state.borrow_mut().set_locale(initial_locale);
+    }
     let database_path = glib::user_data_dir()
         .join("dev.linguamesh.LinguaMesh")
         .join("linguamesh.sqlite3");
     let worker = Rc::new(CoreWorker::spawn_with_database(database_path));
     let (window, bindings, theme, locale) = create_window(application);
+    if std::env::var_os("LINGUAMESH_TEST_LOCALE").is_some()
+        && let Some(index) = UiLocale::ALL
+            .iter()
+            .position(|locale| *locale == initial_locale)
+        && let Ok(index) = u32::try_from(index)
+    {
+        // 在连接选择回调前同步测试下拉框，避免触发一次额外的状态变更。
+        bindings.locale.set_selected(index);
+    }
     connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
     connect_action_handlers(&bindings, &state, &worker);
     start_event_pump(&bindings, &state, &worker);
@@ -169,6 +627,27 @@ fn build_ui(application: &adw::Application, file_dialog_fixture: bool, file_drop
     });
     refresh_ui(&bindings, &state.borrow());
     window.present();
+    if std::env::var_os("LINGUAMESH_TEST_ORCA_ATSPI").is_some() {
+        // Orca 烟测在独立窗口中请求生产 Stop 控件的真实 GTK 焦点。
+        let focus_window = window.clone();
+        let focus_control = bindings.stop.clone().upcast::<gtk::Widget>();
+        let warmup_control = bindings.provider_name.clone().upcast::<gtk::Widget>();
+        let focus_deadline = Instant::now() + Duration::from_secs(15);
+        let focus_start = Instant::now();
+        glib::timeout_add_local(Duration::from_millis(100), move || {
+            let control = if focus_start.elapsed() < Duration::from_secs(3) {
+                &warmup_control
+            } else {
+                &focus_control
+            };
+            gtk::prelude::GtkWindowExt::set_focus(&focus_window, Some(control));
+            if Instant::now() >= focus_deadline {
+                glib::ControlFlow::Break
+            } else {
+                glib::ControlFlow::Continue
+            }
+        });
+    }
     if file_dialog_fixture {
         start_file_dialog_fixture(application, bindings, &state, &worker);
     } else if file_drop_fixture {
@@ -227,7 +706,11 @@ fn start_file_drop_fixture(application: &adw::Application, bindings: UiBindings)
     let coordinates_path = std::env::var("LINGUAMESH_FILE_DROP_COORDINATES")
         .expect("LINGUAMESH_FILE_DROP_COORDINATES must be set");
     let expected = fs::read_to_string(&fixture_path).expect("read file drop fixture");
-    let drag_button = gtk::Button::with_label("Drag fixture");
+    let drag_button = gtk::Button::with_label(&localization::text(
+        UiLocale::default(),
+        "fixture.drag_file",
+        "Drag fixture",
+    ));
     drag_button.set_focusable(true);
     drag_button.set_size_request(240, 48);
     let file = gtk::gio::File::for_path(&fixture_path);
@@ -329,13 +812,32 @@ fn create_window(
     let (
         provider_session,
         saved_profile,
+        provider_preset,
         provider_name,
         provider_endpoint,
+        provider_notes,
+        provider_organization,
+        provider_project,
+        provider_region,
+        provider_account_identifier,
+        provider_proxy,
+        provider_proxy_credentials,
+        provider_request_timeout,
+        provider_connection_timeout,
+        provider_streaming_idle_timeout,
+        provider_trusted_certificates_pem,
+        provider_client_certificate_identity,
+        provider_custom_headers,
+        provider_secret_custom_headers,
+        manual_model_row,
+        manual_model,
         provider_credential,
         remember_profile,
         remove_saved_profile,
         connect,
+        test_connection,
         active_provider,
+        provider_health,
         provider_title,
         provider_note,
     ) = create_provider_session();
@@ -345,9 +847,14 @@ fn create_window(
         model,
         source_locale,
         target_locale,
+        swap_locales,
+        quality_mode,
+        translation_preset,
         glossary,
         import_glossary,
         export_glossary,
+        glossary_libraries,
+        save_glossary,
         incognito,
         history_enabled,
         history,
@@ -355,6 +862,10 @@ fn create_window(
         memory_enabled,
         memory,
         clear_memory,
+        clear_temporary_files,
+        routing_profiles,
+        open_source_licenses,
+        about,
         theme,
         locale,
     ) = create_controls();
@@ -393,6 +904,12 @@ fn create_window(
         "action.enable_fallback",
         "Allow approved fallback",
     ));
+    // 为回退同意复选框导出稳定的本地化可访问名称。
+    fallback_enabled.update_property(&[gtk::accessible::Property::Label(&localization::text(
+        display_locale,
+        "action.enable_fallback",
+        "Allow approved fallback",
+    ))]);
     fallback_enabled.set_focusable(true);
     fallback_enabled.set_tooltip_text(Some(&localization::text(
         display_locale,
@@ -410,6 +927,11 @@ fn create_window(
         "option.fallback.none",
         "No fallback",
     )]);
+    // 将回退提供商标签与下拉框建立助记符和可访问关系。
+    fallback_profile_label.set_mnemonic_widget(Some(&fallback_profile));
+    fallback_profile.update_relation(&[gtk::accessible::Relation::LabelledBy(&[
+        fallback_profile_label.upcast_ref(),
+    ])]);
     fallback_profile.set_focusable(true);
     fallback_profile.set_sensitive(false);
     fallback_profile.set_hexpand(true);
@@ -450,7 +972,7 @@ fn create_window(
     document_jobs.set_tooltip_text(Some(&localization::text(
         display_locale,
         "tooltip.document_jobs",
-        "View and select persisted document jobs",
+        "Inspect persisted document jobs and their progress",
     )));
     let translate = gtk::Button::with_mnemonic(&localized_mnemonic(
         display_locale,
@@ -459,6 +981,52 @@ fn create_window(
     ));
     translate.add_css_class("suggested-action");
     translate.set_focusable(true);
+    let retry_translation = gtk::Button::with_mnemonic(&localized_mnemonic(
+        display_locale,
+        "action.retry_translation",
+        "Retry translation",
+    ));
+    retry_translation.set_focusable(true);
+    retry_translation.set_tooltip_text(Some(&localization::text(
+        display_locale,
+        "tooltip.retry_translation",
+        "Retry the last failed or cancelled text translation",
+    )));
+    let retry_translation_label = localization::text(
+        display_locale,
+        "action.retry_translation",
+        "Retry translation",
+    );
+    retry_translation
+        .update_property(&[gtk::accessible::Property::Label(&retry_translation_label)]);
+    let copy_output = gtk::Button::with_mnemonic(&localized_mnemonic(
+        display_locale,
+        "action.copy_output",
+        "Copy translation",
+    ));
+    copy_output.set_focusable(true);
+    copy_output.set_tooltip_text(Some(&localization::text(
+        display_locale,
+        "tooltip.copy_output",
+        "Copy the translated output to the system clipboard",
+    )));
+    let copy_output_label =
+        localization::text(display_locale, "action.copy_output", "Copy translation");
+    copy_output.update_property(&[gtk::accessible::Property::Label(&copy_output_label)]);
+    let clear_workspace = gtk::Button::with_mnemonic(&localized_mnemonic(
+        display_locale,
+        "action.clear_workspace",
+        "Clear workspace",
+    ));
+    clear_workspace.set_focusable(true);
+    clear_workspace.set_tooltip_text(Some(&localization::text(
+        display_locale,
+        "tooltip.clear_workspace",
+        "Clear the source text, translated output, and request diagnostics",
+    )));
+    let clear_workspace_label =
+        localization::text(display_locale, "action.clear_workspace", "Clear workspace");
+    clear_workspace.update_property(&[gtk::accessible::Property::Label(&clear_workspace_label)]);
     let export_output = gtk::Button::with_mnemonic(&localized_mnemonic(
         display_locale,
         "action.export_output",
@@ -512,6 +1080,9 @@ fn create_window(
     action_row.append(&ocr_enabled);
     action_row.append(&document_jobs);
     action_row.append(&translate);
+    action_row.append(&retry_translation);
+    action_row.append(&copy_output);
+    action_row.append(&clear_workspace);
     action_row.append(&export_output);
     action_row.append(&open_output);
     action_row.append(&pause_document);
@@ -523,6 +1094,18 @@ fn create_window(
     status.set_xalign(0.0);
     status.set_hexpand(true);
     action_row.append(&status);
+    let progress = gtk::ProgressBar::new();
+    progress.set_accessible_role(gtk::AccessibleRole::ProgressBar);
+    progress.set_show_text(true);
+    progress.set_hexpand(true);
+    progress.set_visible(false);
+    progress.update_property(&[gtk::accessible::Property::Label(&localized_template(
+        display_locale,
+        "status.document_progress",
+        "{completed} of {total} segments translated",
+        &[("{completed}", "0"), ("{total}", "0")],
+    ))]);
+    action_row.append(&progress);
     let partial = gtk::Label::new(None);
     partial.add_css_class("dim-label");
     action_row.append(&partial);
@@ -565,19 +1148,43 @@ fn create_window(
         provider_title,
         provider_note,
         saved_profile,
+        provider_preset,
         provider_name,
         provider_endpoint,
+        provider_notes,
+        provider_organization,
+        provider_project,
+        provider_region,
+        provider_account_identifier,
+        provider_proxy,
+        provider_proxy_credentials,
+        provider_request_timeout,
+        provider_connection_timeout,
+        provider_streaming_idle_timeout,
+        provider_trusted_certificates_pem,
+        provider_client_certificate_identity,
+        provider_custom_headers,
+        provider_secret_custom_headers,
+        manual_model_row,
+        manual_model,
         provider_credential,
         remember_profile,
         remove_saved_profile,
         connect,
+        test_connection,
         active_provider,
+        provider_health,
         model,
         source_locale,
         target_locale,
+        swap_locales,
+        quality_mode,
+        translation_preset,
         glossary,
         import_glossary,
         export_glossary,
+        glossary_libraries,
+        save_glossary,
         incognito,
         history_enabled,
         history,
@@ -585,6 +1192,10 @@ fn create_window(
         memory_enabled,
         memory,
         clear_memory,
+        clear_temporary_files,
+        routing_profiles,
+        open_source_licenses,
+        about,
         fallback_enabled,
         fallback_profile_label,
         fallback_profile,
@@ -596,7 +1207,12 @@ fn create_window(
         output_view: editor_bindings.output_view,
         source_label: editor_bindings.source_label,
         output_label: editor_bindings.output_label,
+        source_metrics: editor_bindings.source_metrics,
+        output_metrics: editor_bindings.output_metrics,
         translate,
+        retry_translation,
+        copy_output,
+        clear_workspace,
         export_output,
         open_output,
         open_source,
@@ -607,24 +1223,33 @@ fn create_window(
         resume_document,
         retry_document,
         status,
+        progress,
         partial,
         error,
         locale_note,
         diagnostics_panel,
         diagnostics,
         profile_selection_guard: Rc::new(Cell::new(false)),
+        provider_preset_guard: Rc::new(Cell::new(false)),
+        provider_preset_previous: Rc::new(Cell::new(0)),
         draft_profile_id: Rc::new(RefCell::new(None)),
         source_uri: Rc::new(RefCell::new(None)),
         output_uri: Rc::new(RefCell::new(None)),
         fallback_profile_ids: Rc::new(RefCell::new(vec![None])),
+        selected_routing_profile_id: Rc::new(RefCell::new(None)),
         document_job_id: Rc::new(RefCell::new(None)),
         document_job_guard: Rc::new(Cell::new(false)),
         document_job_state: Rc::new(Cell::new(None)),
         document_progress: Rc::new(Cell::new(None)),
         document_warnings: Rc::new(RefCell::new(Vec::new())),
         ocr_pending: Rc::new(Cell::new(false)),
+        connection_test_notice: Rc::new(Cell::new(false)),
+        connection_test_model_count: Rc::new(Cell::new(None)),
+        connection_test_profile_id: Rc::new(RefCell::new(None)),
         export_notice: Rc::new(Cell::new(false)),
+        report_export_notice: Rc::new(Cell::new(false)),
         fallback_notice: Rc::new(Cell::new(false)),
+        fallback_approval: Rc::new(Cell::new(false)),
         glossary_notice: Rc::new(Cell::new(false)),
         glossary_from_csv: Rc::new(Cell::new(false)),
         history_notice: Rc::new(Cell::new(false)),
@@ -641,6 +1266,7 @@ fn create_window(
         memory_policy_guard: Rc::new(Cell::new(false)),
         memory_policy_pending: Rc::new(Cell::new(false)),
         memory_policy_notice: Rc::new(Cell::new(None)),
+        temporary_cleanup_notice: Rc::new(Cell::new(None)),
         source_drop_target,
     };
     install_provider_focus_traversal(
@@ -651,8 +1277,50 @@ fn create_window(
                 .remove_saved_profile
                 .clone()
                 .upcast::<gtk::Widget>(),
+            bindings.provider_preset.clone().upcast::<gtk::Widget>(),
             bindings.provider_name.clone().upcast::<gtk::Widget>(),
             bindings.provider_endpoint.clone().upcast::<gtk::Widget>(),
+            bindings.provider_notes.clone().upcast::<gtk::Widget>(),
+            bindings
+                .provider_organization
+                .clone()
+                .upcast::<gtk::Widget>(),
+            bindings.provider_project.clone().upcast::<gtk::Widget>(),
+            bindings.provider_region.clone().upcast::<gtk::Widget>(),
+            bindings
+                .provider_account_identifier
+                .clone()
+                .upcast::<gtk::Widget>(),
+            bindings.provider_proxy.clone().upcast::<gtk::Widget>(),
+            bindings
+                .provider_proxy_credentials
+                .clone()
+                .upcast::<gtk::Widget>(),
+            bindings
+                .provider_request_timeout
+                .clone()
+                .upcast::<gtk::Widget>(),
+            bindings
+                .provider_connection_timeout
+                .clone()
+                .upcast::<gtk::Widget>(),
+            bindings
+                .provider_streaming_idle_timeout
+                .clone()
+                .upcast::<gtk::Widget>(),
+            bindings
+                .provider_trusted_certificates_pem
+                .clone()
+                .upcast::<gtk::Widget>(),
+            bindings
+                .provider_custom_headers
+                .clone()
+                .upcast::<gtk::Widget>(),
+            bindings
+                .provider_secret_custom_headers
+                .clone()
+                .upcast::<gtk::Widget>(),
+            bindings.manual_model.clone().upcast::<gtk::Widget>(),
             bindings.provider_credential.clone().upcast::<gtk::Widget>(),
             bindings.connect.clone().upcast::<gtk::Widget>(),
             bindings.remember_profile.clone().upcast::<gtk::Widget>(),
@@ -683,12 +1351,106 @@ fn install_keyboard_focus_probe(
             bindings.saved_profile.clone().upcast::<gtk::Widget>(),
         ),
         (
+            "provider_preset",
+            bindings.provider_preset.clone().upcast::<gtk::Widget>(),
+        ),
+        (
             "provider_name",
             bindings.provider_name.clone().upcast::<gtk::Widget>(),
         ),
         (
             "provider_endpoint",
             bindings.provider_endpoint.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_notes",
+            bindings.provider_notes.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_organization",
+            bindings
+                .provider_organization
+                .clone()
+                .upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_project",
+            bindings.provider_project.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_region",
+            bindings.provider_region.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_account_identifier",
+            bindings
+                .provider_account_identifier
+                .clone()
+                .upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_proxy",
+            bindings.provider_proxy.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_proxy_credentials",
+            bindings
+                .provider_proxy_credentials
+                .clone()
+                .upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_request_timeout",
+            bindings
+                .provider_request_timeout
+                .clone()
+                .upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_connection_timeout",
+            bindings
+                .provider_connection_timeout
+                .clone()
+                .upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_streaming_idle_timeout",
+            bindings
+                .provider_streaming_idle_timeout
+                .clone()
+                .upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_trusted_certificates_pem",
+            bindings
+                .provider_trusted_certificates_pem
+                .clone()
+                .upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_client_certificate_identity",
+            bindings
+                .provider_client_certificate_identity
+                .clone()
+                .upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_custom_headers",
+            bindings
+                .provider_custom_headers
+                .clone()
+                .upcast::<gtk::Widget>(),
+        ),
+        (
+            "provider_secret_custom_headers",
+            bindings
+                .provider_secret_custom_headers
+                .clone()
+                .upcast::<gtk::Widget>(),
+        ),
+        (
+            "manual_model",
+            bindings.manual_model.clone().upcast::<gtk::Widget>(),
         ),
         (
             "provider_credential",
@@ -709,6 +1471,10 @@ fn install_keyboard_focus_probe(
             bindings.target_locale.clone().upcast::<gtk::Widget>(),
         ),
         (
+            "swap_locales",
+            bindings.swap_locales.clone().upcast::<gtk::Widget>(),
+        ),
+        (
             "glossary",
             bindings.glossary.clone().upcast::<gtk::Widget>(),
         ),
@@ -719,6 +1485,14 @@ fn install_keyboard_focus_probe(
         (
             "export_glossary",
             bindings.export_glossary.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "glossary_libraries",
+            bindings.glossary_libraries.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "save_glossary",
+            bindings.save_glossary.clone().upcast::<gtk::Widget>(),
         ),
         (
             "incognito",
@@ -769,6 +1543,14 @@ fn install_keyboard_focus_probe(
             bindings.translate.clone().upcast::<gtk::Widget>(),
         ),
         (
+            "copy_output",
+            bindings.copy_output.clone().upcast::<gtk::Widget>(),
+        ),
+        (
+            "clear_workspace",
+            bindings.clear_workspace.clone().upcast::<gtk::Widget>(),
+        ),
+        (
             "export_output",
             bindings.export_output.clone().upcast::<gtk::Widget>(),
         ),
@@ -801,6 +1583,10 @@ fn install_keyboard_focus_probe(
             bindings.provider_endpoint.clone().upcast::<gtk::Widget>(),
         ),
         (
+            "provider_notes",
+            bindings.provider_notes.clone().upcast::<gtk::Widget>(),
+        ),
+        (
             "provider_credential",
             bindings.provider_credential.clone().upcast::<gtk::Widget>(),
         ),
@@ -813,8 +1599,10 @@ fn install_keyboard_focus_probe(
     let ready_logged = Rc::new(Cell::new(false));
     let ready_log = Rc::clone(&log);
     let focus_window = window.clone();
+    let focus_workspace = bindings.workspace.clone();
     let focus_start_path = std::env::var_os("LINGUAMESH_KEYBOARD_FOCUS_START");
     let focus_coordinates_path = std::env::var_os("LINGUAMESH_KEYBOARD_FOCUS_COORDINATES");
+    let expect_rtl = std::env::var_os("LINGUAMESH_KEYBOARD_FOCUS_EXPECT_RTL").is_some();
     let focus_request_logged = Cell::new(false);
     let focus_attempt_logged = Cell::new(false);
     let mut focus_deadline = None;
@@ -830,6 +1618,11 @@ fn install_keyboard_focus_probe(
                     widget.is_visible(),
                     widget.is_mapped()
                 );
+            }
+            // RTL 键盘夹具必须确认生产工作区方向已切换，避免只验证控件焦点而遗漏布局状态。
+            if expect_rtl && focus_workspace.direction() == gtk::TextDirection::Rtl {
+                let _ = writeln!(log, "__rtl__");
+                let _ = log.flush();
             }
             let _ = writeln!(log, "__ready__");
             let _ = log.flush();
@@ -969,8 +1762,8 @@ fn create_editors() -> EditorBindings {
     editors.set_wide_handle(true);
     let source_label = localized_mnemonic(locale, "field.source_text", "Source text");
     let output_label = localized_mnemonic(locale, "field.translation", "Translation");
-    let (source_panel, source_label) = editor_panel(&source_label, &source_view);
-    let (output_panel, output_label) = editor_panel(&output_label, &output_view);
+    let (source_panel, source_label, source_metrics) = editor_panel(&source_label, &source_view);
+    let (output_panel, output_label, output_metrics) = editor_panel(&output_label, &output_view);
     editors.set_start_child(Some(&source_panel));
     editors.set_end_child(Some(&output_panel));
     editors.set_vexpand(true);
@@ -982,19 +1775,40 @@ fn create_editors() -> EditorBindings {
         output_view,
         source_label,
         output_label,
+        source_metrics,
+        output_metrics,
     }
 }
 
-#[allow(clippy::too_many_lines)]
+#[allow(clippy::too_many_lines, clippy::type_complexity)]
 fn create_provider_session() -> (
     gtk::Box,
     gtk::DropDown,
+    gtk::DropDown,
     gtk::Entry,
+    gtk::Entry,
+    gtk::Entry,
+    gtk::Entry,
+    gtk::Entry,
+    gtk::Entry,
+    gtk::Entry,
+    gtk::Entry,
+    gtk::PasswordEntry,
+    gtk::SpinButton,
+    gtk::SpinButton,
+    gtk::SpinButton,
+    gtk::Entry,
+    gtk::PasswordEntry,
+    gtk::Entry,
+    gtk::PasswordEntry,
+    gtk::Box,
     gtk::Entry,
     gtk::PasswordEntry,
     gtk::CheckButton,
     gtk::Button,
     gtk::Button,
+    gtk::Button,
+    gtk::Label,
     gtk::Label,
     gtk::Label,
     gtk::Label,
@@ -1047,6 +1861,21 @@ fn create_provider_session() -> (
     profile_actions.append(&remove_saved_profile);
     section.append(&profile_actions);
 
+    let preset_labels = provider_preset_labels(locale);
+    let preset_label_refs = preset_labels.iter().map(String::as_str).collect::<Vec<_>>();
+    let provider_preset = gtk::DropDown::from_strings(&preset_label_refs);
+    provider_preset.set_hexpand(true);
+    provider_preset.set_focusable(true);
+    provider_preset.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_preset",
+        "Choose the provider protocol used for model discovery and streaming",
+    )));
+    section.append(&labeled_control(
+        &localized_mnemonic(locale, "label.provider_preset", "Provider preset"),
+        provider_preset.upcast_ref::<gtk::Widget>(),
+    ));
+
     let fields = gtk::Box::new(gtk::Orientation::Horizontal, 12);
     let default_provider_name =
         localization::text(locale, "profile.default_name", DEFAULT_PROVIDER_NAME);
@@ -1068,6 +1897,187 @@ fn create_provider_session() -> (
         "tooltip.endpoint",
         "HTTPS or loopback HTTP OpenAI-compatible base endpoint",
     )));
+    let provider_notes = gtk::Entry::new();
+    provider_notes.set_hexpand(true);
+    provider_notes.set_placeholder_text(Some(&localization::text(
+        locale,
+        "placeholder.provider_notes",
+        "Optional non-secret note for this saved profile",
+    )));
+    provider_notes.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_notes",
+        "Optional non-secret note for this saved profile",
+    )));
+    let provider_organization = gtk::Entry::new();
+    provider_organization.set_hexpand(true);
+    provider_organization.set_placeholder_text(Some(&localization::text(
+        locale,
+        "placeholder.provider_organization",
+        "Optional OpenAI organization ID",
+    )));
+    provider_organization.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_organization",
+        "Optional organization identifier sent to OpenAI-compatible endpoints",
+    )));
+    let provider_project = gtk::Entry::new();
+    provider_project.set_hexpand(true);
+    provider_project.set_placeholder_text(Some(&localization::text(
+        locale,
+        "placeholder.provider_project",
+        "Optional OpenAI project ID",
+    )));
+    provider_project.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_project",
+        "Optional project identifier sent to OpenAI-compatible endpoints",
+    )));
+    let provider_region = gtk::Entry::new();
+    provider_region.set_hexpand(true);
+    provider_region.set_placeholder_text(Some(&localization::text(
+        locale,
+        "placeholder.provider_region",
+        "Optional provider region or deployment geography",
+    )));
+    provider_region.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_region",
+        "Optional non-secret region identifier used by the provider account",
+    )));
+    let provider_account_identifier = gtk::Entry::new();
+    provider_account_identifier.set_hexpand(true);
+    provider_account_identifier.set_placeholder_text(Some(&localization::text(
+        locale,
+        "placeholder.provider_account_identifier",
+        "Optional non-secret account or tenant identifier",
+    )));
+    provider_account_identifier.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_account_identifier",
+        "Optional account identifier used to distinguish provider tenants",
+    )));
+    let provider_proxy = gtk::Entry::new();
+    provider_proxy.set_hexpand(true);
+    provider_proxy.set_placeholder_text(Some(&localization::text(
+        locale,
+        "placeholder.provider_proxy",
+        "Optional proxy URL, for example http://127.0.0.1:8080",
+    )));
+    provider_proxy.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_proxy",
+        "Optional HTTP, HTTPS, SOCKS5, or SOCKS5H proxy without embedded credentials",
+    )));
+    let provider_proxy_credentials = gtk::PasswordEntry::builder()
+        .show_peek_icon(true)
+        .hexpand(true)
+        .build();
+    provider_proxy_credentials.set_placeholder_text(Some(&localization::text(
+        locale,
+        "placeholder.provider_proxy_credentials",
+        "Optional username:password for the proxy",
+    )));
+    provider_proxy_credentials.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_proxy_credentials",
+        "Stored in Secret Service when remembered and never embedded in the proxy URL",
+    )));
+    let provider_request_timeout = gtk::SpinButton::with_range(1.0, 600.0, 1.0);
+    provider_request_timeout.set_value(30.0);
+    provider_request_timeout.set_digits(0);
+    provider_request_timeout.set_numeric(true);
+    provider_request_timeout.set_hexpand(true);
+    provider_request_timeout.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_request_timeout",
+        "Total provider request timeout in seconds, from 1 to 600",
+    )));
+    let provider_connection_timeout = gtk::SpinButton::with_range(1.0, 120.0, 1.0);
+    provider_connection_timeout.set_value(10.0);
+    provider_connection_timeout.set_digits(0);
+    provider_connection_timeout.set_numeric(true);
+    provider_connection_timeout.set_hexpand(true);
+    provider_connection_timeout.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_connection_timeout",
+        "Provider connection timeout in seconds, from 1 to 120",
+    )));
+    let provider_streaming_idle_timeout = gtk::SpinButton::with_range(1.0, 300.0, 1.0);
+    provider_streaming_idle_timeout.set_value(60.0);
+    provider_streaming_idle_timeout.set_digits(0);
+    provider_streaming_idle_timeout.set_numeric(true);
+    provider_streaming_idle_timeout.set_hexpand(true);
+    provider_streaming_idle_timeout.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_streaming_idle_timeout",
+        "Provider streaming idle timeout in seconds, from 1 to 300",
+    )));
+    let provider_trusted_certificates_pem = gtk::Entry::new();
+    provider_trusted_certificates_pem.set_hexpand(true);
+    provider_trusted_certificates_pem.set_placeholder_text(Some(&localization::text(
+        locale,
+        "placeholder.provider_trusted_certificates_pem",
+        "Optional PEM certificate bundle; TLS verification remains enabled",
+    )));
+    provider_trusted_certificates_pem.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_trusted_certificates_pem",
+        "Optional trusted certificate PEM bundle; system roots remain trusted and TLS verification stays enabled",
+    )));
+    let provider_client_certificate_identity = gtk::PasswordEntry::builder()
+        .show_peek_icon(true)
+        .hexpand(true)
+        .build();
+    provider_client_certificate_identity.set_placeholder_text(Some(&localization::text(
+        locale,
+        "placeholder.provider_client_certificate_identity",
+        "Optional PEM client certificate and private key identity",
+    )));
+    provider_client_certificate_identity.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_client_certificate_identity",
+        "Kept in memory for the connection and stored in Secret Service only when remembered",
+    )));
+    let provider_custom_headers = gtk::Entry::new();
+    provider_custom_headers.set_hexpand(true);
+    provider_custom_headers.set_placeholder_text(Some(&localization::text(
+        locale,
+        "placeholder.provider_custom_headers",
+        "Optional JSON object of non-secret request headers",
+    )));
+    provider_custom_headers.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_custom_headers",
+        "Optional bounded non-secret headers; authorization and credential headers are rejected",
+    )));
+    let provider_secret_custom_headers = gtk::PasswordEntry::builder()
+        .show_peek_icon(true)
+        .hexpand(true)
+        .build();
+    provider_secret_custom_headers.set_placeholder_text(Some(&localization::text(
+        locale,
+        "placeholder.provider_secret_custom_headers",
+        "Optional JSON object of secret request headers",
+    )));
+    provider_secret_custom_headers.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.provider_secret_custom_headers",
+        "Optional bounded secret headers; stored in Secret Service when remembered and otherwise kept for this session",
+    )));
+    let manual_model = gtk::Entry::new();
+    manual_model.set_hexpand(true);
+    manual_model.set_placeholder_text(Some(&localization::text(
+        locale,
+        "option.model.manual",
+        "Enter a model ID manually...",
+    )));
+    manual_model.set_tooltip_text(Some(&provider_model_tooltip(locale, 0)));
+    let manual_model_row = labeled_control(
+        &localized_mnemonic(locale, "field.model", "Model"),
+        manual_model.upcast_ref::<gtk::Widget>(),
+    );
+    manual_model_row.set_visible(manual_model_field_visible());
     let provider_credential = gtk::PasswordEntry::builder()
         .show_peek_icon(true)
         .hexpand(true)
@@ -1090,6 +2100,17 @@ fn create_provider_session() -> (
     )));
     let connect =
         gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.connect", "Connect"));
+    let test_connection = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.test_connection",
+        "Test connection",
+    ));
+    test_connection.set_focusable(true);
+    test_connection.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.test_connection",
+        "Check the provider model endpoint without switching or saving the active profile",
+    )));
     connect.set_focusable(true);
     fields.append(&labeled_control(
         &localized_mnemonic(locale, "provider.name", "Provider name"),
@@ -1104,6 +2125,99 @@ fn create_provider_session() -> (
         provider_endpoint.upcast_ref::<gtk::Widget>(),
     ));
     fields.append(&labeled_control(
+        &localized_mnemonic(locale, "label.provider_notes", "Profile notes"),
+        provider_notes.upcast_ref::<gtk::Widget>(),
+    ));
+    fields.append(&labeled_control(
+        &localized_mnemonic(locale, "label.provider_organization", "Organization"),
+        provider_organization.upcast_ref::<gtk::Widget>(),
+    ));
+    fields.append(&labeled_control(
+        &localized_mnemonic(locale, "label.provider_project", "Project"),
+        provider_project.upcast_ref::<gtk::Widget>(),
+    ));
+    fields.append(&labeled_control(
+        &localized_mnemonic(locale, "label.provider_region", "Region"),
+        provider_region.upcast_ref::<gtk::Widget>(),
+    ));
+    fields.append(&labeled_control(
+        &localized_mnemonic(
+            locale,
+            "label.provider_account_identifier",
+            "Account identifier",
+        ),
+        provider_account_identifier.upcast_ref::<gtk::Widget>(),
+    ));
+    fields.append(&labeled_control(
+        &localized_mnemonic(locale, "label.provider_proxy", "Proxy URL"),
+        provider_proxy.upcast_ref::<gtk::Widget>(),
+    ));
+    fields.append(&labeled_control(
+        &localized_mnemonic(
+            locale,
+            "label.provider_proxy_credentials",
+            "Proxy credentials",
+        ),
+        provider_proxy_credentials.upcast_ref::<gtk::Widget>(),
+    ));
+    fields.append(&labeled_control(
+        &localized_mnemonic(
+            locale,
+            "label.provider_request_timeout",
+            "Request timeout (seconds)",
+        ),
+        provider_request_timeout.upcast_ref::<gtk::Widget>(),
+    ));
+    fields.append(&labeled_control(
+        &localized_mnemonic(
+            locale,
+            "label.provider_connection_timeout",
+            "Connection timeout (seconds)",
+        ),
+        provider_connection_timeout.upcast_ref::<gtk::Widget>(),
+    ));
+    fields.append(&labeled_control(
+        &localized_mnemonic(
+            locale,
+            "label.provider_streaming_idle_timeout",
+            "Streaming idle timeout (seconds)",
+        ),
+        provider_streaming_idle_timeout.upcast_ref::<gtk::Widget>(),
+    ));
+    fields.append(&labeled_control(
+        &localized_mnemonic(
+            locale,
+            "label.provider_trusted_certificates_pem",
+            "Trusted certificates (PEM)",
+        ),
+        provider_trusted_certificates_pem.upcast_ref::<gtk::Widget>(),
+    ));
+    fields.append(&labeled_control(
+        &localized_mnemonic(
+            locale,
+            "label.provider_client_certificate_identity",
+            "Client certificate identity (PEM)",
+        ),
+        provider_client_certificate_identity.upcast_ref::<gtk::Widget>(),
+    ));
+    fields.append(&labeled_control(
+        &localized_mnemonic(
+            locale,
+            "label.provider_custom_headers",
+            "Custom headers (non-secret JSON)",
+        ),
+        provider_custom_headers.upcast_ref::<gtk::Widget>(),
+    ));
+    fields.append(&labeled_control(
+        &localized_mnemonic(
+            locale,
+            "label.provider_secret_custom_headers",
+            "Custom headers (secret JSON)",
+        ),
+        provider_secret_custom_headers.upcast_ref::<gtk::Widget>(),
+    ));
+    fields.append(&manual_model_row);
+    fields.append(&labeled_control(
         &localized_mnemonic(
             locale,
             "label.credential",
@@ -1111,6 +2225,7 @@ fn create_provider_session() -> (
         ),
         provider_credential.upcast_ref::<gtk::Widget>(),
     ));
+    fields.append(&test_connection);
     fields.append(&connect);
     section.append(&fields);
     section.append(&remember_profile);
@@ -1118,16 +2233,41 @@ fn create_provider_session() -> (
     active_provider.set_xalign(0.0);
     active_provider.set_wrap(true);
     section.append(&active_provider);
+    let provider_health = gtk::Label::new(None);
+    provider_health.set_xalign(0.0);
+    provider_health.set_wrap(true);
+    provider_health.add_css_class("dim-label");
+    provider_health.set_visible(false);
+    section.append(&provider_health);
     (
         section,
         saved_profile,
+        provider_preset,
         provider_name,
         provider_endpoint,
+        provider_notes,
+        provider_organization,
+        provider_project,
+        provider_region,
+        provider_account_identifier,
+        provider_proxy,
+        provider_proxy_credentials,
+        provider_request_timeout,
+        provider_connection_timeout,
+        provider_streaming_idle_timeout,
+        provider_trusted_certificates_pem,
+        provider_client_certificate_identity,
+        provider_custom_headers,
+        provider_secret_custom_headers,
+        manual_model_row,
+        manual_model,
         provider_credential,
         remember_profile,
         remove_saved_profile,
         connect,
+        test_connection,
         active_provider,
+        provider_health,
         title,
         note,
     )
@@ -1187,14 +2327,23 @@ fn create_controls() -> (
     gtk::DropDown,
     gtk::DropDown,
     gtk::DropDown,
+    gtk::Button,
+    gtk::DropDown,
+    gtk::DropDown,
     gtk::Entry,
     gtk::Button,
     gtk::Button,
+    gtk::Button,
+    gtk::Button,
     gtk::CheckButton,
     gtk::CheckButton,
     gtk::Button,
     gtk::Button,
     gtk::CheckButton,
+    gtk::Button,
+    gtk::Button,
+    gtk::Button,
+    gtk::Button,
     gtk::Button,
     gtk::Button,
     gtk::DropDown,
@@ -1230,6 +2379,45 @@ fn create_controls() -> (
             .map(String::as_str)
             .collect::<Vec<_>>(),
     );
+    let swap_locales = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.swap_languages",
+        "Swap languages",
+    ));
+    swap_locales.set_focusable(true);
+    swap_locales.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.swap_languages",
+        "Swap the source and target languages",
+    )));
+    let swap_label = localization::text(locale, "action.swap_languages", "Swap languages");
+    swap_locales.update_property(&[gtk::accessible::Property::Label(&swap_label)]);
+    let quality_labels = quality_mode_labels(locale);
+    let quality_mode = gtk::DropDown::from_strings(
+        &quality_labels
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>(),
+    );
+    quality_mode.set_selected(quality_mode_selection(TranslationQualityMode::Balanced));
+    quality_mode.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.quality_mode",
+        "Fast uses one direct pass; Balanced adds deterministic structure checks; Best asks for an internal critique and revision.",
+    )));
+    let translation_preset_labels = translation_preset_labels(locale);
+    let translation_preset = gtk::DropDown::from_strings(
+        &translation_preset_labels
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>(),
+    );
+    translation_preset.set_selected(0);
+    translation_preset.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.translation_preset",
+        "Apply a bounded domain, tone, formality, and audience preference to the next request",
+    )));
     let glossary = gtk::Entry::new();
     glossary.set_hexpand(true);
     glossary.set_placeholder_text(Some(&localization::text(
@@ -1263,6 +2451,28 @@ fn create_controls() -> (
         locale,
         "tooltip.export_glossary",
         "Save the current glossary rules as a UTF-8 CSV file",
+    )));
+    let glossary_libraries = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.glossary_libraries",
+        "Glossary libraries",
+    ));
+    glossary_libraries.set_focusable(true);
+    glossary_libraries.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.glossary_libraries",
+        "Inspect, select, and delete reusable local glossary libraries",
+    )));
+    let save_glossary = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.save_glossary",
+        "Save glossary library",
+    ));
+    save_glossary.set_focusable(true);
+    save_glossary.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.save_glossary",
+        "Save the current validated glossary as a reusable local library",
     )));
     let incognito = gtk::CheckButton::with_mnemonic(&localized_mnemonic(
         locale,
@@ -1343,6 +2553,51 @@ fn create_controls() -> (
         "tooltip.clear_memory",
         "Delete all locally stored translation memory entries",
     )));
+    let clear_temporary_files = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.clear_temporary_files",
+        "Clear temporary files",
+    ));
+    clear_temporary_files.set_focusable(true);
+    clear_temporary_files.add_css_class("destructive-action");
+    clear_temporary_files.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.clear_temporary_files",
+        "Delete LinguaMesh temporary OCR files and abandoned export files from the system temporary directory",
+    )));
+    let routing_profiles = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.routing_profiles",
+        "Routing profiles",
+    ));
+    routing_profiles.set_focusable(true);
+    routing_profiles.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.routing_profiles",
+        "Create, inspect, and delete non-secret routing planner profiles",
+    )));
+    let open_source_licenses = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.open_source_licenses",
+        "Open-source licenses",
+    ));
+    open_source_licenses.set_focusable(true);
+    open_source_licenses.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.open_source_licenses",
+        "Review the licenses and third-party notices included with this build",
+    )));
+    let about = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.about",
+        "About LinguaMesh",
+    ));
+    about.set_focusable(true);
+    about.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.about",
+        "Show application and shared-core version information",
+    )));
     let theme_options = [
         localization::text(locale, "theme.system", "System"),
         localization::text(locale, "theme.light", "Light"),
@@ -1376,6 +2631,18 @@ fn create_controls() -> (
             target_locale.upcast_ref::<gtk::Widget>(),
         ),
         (
+            localized_mnemonic(UiLocale::default(), "label.quality_mode", "Quality mode"),
+            quality_mode.upcast_ref::<gtk::Widget>(),
+        ),
+        (
+            localized_mnemonic(
+                UiLocale::default(),
+                "label.translation_preset",
+                "Translation preset",
+            ),
+            translation_preset.upcast_ref::<gtk::Widget>(),
+        ),
+        (
             localized_mnemonic(UiLocale::default(), "field.glossary", "Glossary"),
             glossary.upcast_ref::<gtk::Widget>(),
         ),
@@ -1394,8 +2661,11 @@ fn create_controls() -> (
     ] {
         controls.append(&labeled_control(&label, control));
     }
+    controls.append(&swap_locales);
     controls.append(&import_glossary);
     controls.append(&export_glossary);
+    controls.append(&glossary_libraries);
+    controls.append(&save_glossary);
     controls.append(&incognito);
     controls.append(&history_enabled);
     controls.append(&history);
@@ -1403,14 +2673,23 @@ fn create_controls() -> (
     controls.append(&memory_enabled);
     controls.append(&memory);
     controls.append(&clear_memory);
+    controls.append(&clear_temporary_files);
+    controls.append(&routing_profiles);
+    controls.append(&open_source_licenses);
+    controls.append(&about);
     (
         controls,
         model,
         source_locale,
         target_locale,
+        swap_locales,
+        quality_mode,
+        translation_preset,
         glossary,
         import_glossary,
         export_glossary,
+        glossary_libraries,
+        save_glossary,
         incognito,
         history_enabled,
         history,
@@ -1418,6 +2697,10 @@ fn create_controls() -> (
         memory_enabled,
         memory,
         clear_memory,
+        clear_temporary_files,
+        routing_profiles,
+        open_source_licenses,
+        about,
         theme,
         locale,
     )
@@ -1502,6 +2785,32 @@ fn parse_glossary(
     })
 }
 
+// 将经过校验的词汇表转换为编辑框可再次导入的确定性摘要。
+fn glossary_summary(glossary: &Glossary) -> String {
+    glossary
+        .entries()
+        .iter()
+        .map(|entry| format!("{} => {}", entry.source_term, entry.target_term))
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
+// 读取当前编辑框或已导入的词汇表，统一保存和导出前的校验路径。
+fn current_glossary_for_library(
+    bindings: &UiBindings,
+    state: &AppState,
+) -> Result<Option<Glossary>, TranslationError> {
+    if bindings.glossary_from_csv.get() {
+        Ok(state.glossary().cloned())
+    } else {
+        parse_glossary(
+            bindings.glossary.text().as_str(),
+            SOURCE_LOCALES[bindings.source_locale.selected() as usize],
+            TARGET_LOCALES[bindings.target_locale.selected() as usize],
+        )
+    }
+}
+
 fn current_document_options(
     bindings: &UiBindings,
     state: &mut AppState,
@@ -1516,7 +2825,7 @@ fn current_document_options(
                 localization::text(
                     state.locale(),
                     "error.glossary_import",
-                    "The imported glossary is no longer available.",
+                    "The glossary file could not be imported.",
                 ),
             )
         })
@@ -1567,6 +2876,8 @@ fn localized_locale_name(locale: UiLocale, displayed_locale: UiLocale) -> String
         UiLocale::Russian => ("locale.name.ru", "Russian"),
         UiLocale::Arabic => ("locale.name.ar", "Arabic"),
         UiLocale::Hindi => ("locale.name.hi", "Hindi"),
+        UiLocale::PseudoAccentedEnglish => ("locale.name.en_xa", "Pseudo English (Accented)"),
+        UiLocale::PseudoRtlArabic => ("locale.name.ar_xb", "Pseudo Arabic (RTL)"),
     };
     localization::text(locale, key, fallback)
 }
@@ -1720,9 +3031,57 @@ fn selected_fallback_profile_id(bindings: &UiBindings) -> Option<ProviderProfile
 }
 
 fn show_saved_profile_in_form(bindings: &UiBindings, profile: &ProviderProfile) {
+    let preset_index = provider_preset_index(profile.preset_id());
+    bindings.provider_preset_guard.set(true);
+    bindings.provider_preset.set_selected(preset_index);
+    bindings.provider_preset_previous.set(preset_index);
+    bindings.provider_preset_guard.set(false);
     bindings.provider_name.set_text(profile.display_name());
     bindings.provider_endpoint.set_text(profile.base_endpoint());
+    bindings
+        .provider_notes
+        .set_text(profile.user_notes().unwrap_or_default());
+    bindings
+        .provider_organization
+        .set_text(profile.organization().unwrap_or_default());
+    bindings
+        .provider_project
+        .set_text(profile.project().unwrap_or_default());
+    bindings
+        .provider_region
+        .set_text(profile.region().unwrap_or_default());
+    bindings
+        .provider_account_identifier
+        .set_text(profile.account_identifier().unwrap_or_default());
+    bindings
+        .provider_proxy
+        .set_text(profile.proxy_url().unwrap_or_default());
+    bindings
+        .provider_request_timeout
+        .set_value(f64::from(profile.request_timeout_secs()));
+    bindings
+        .provider_connection_timeout
+        .set_value(f64::from(profile.connection_timeout_secs()));
+    bindings
+        .provider_streaming_idle_timeout
+        .set_value(f64::from(profile.streaming_idle_timeout_secs()));
+    bindings
+        .provider_trusted_certificates_pem
+        .set_text(profile.trusted_certificates_pem().unwrap_or_default());
+    bindings
+        .provider_custom_headers
+        .set_text(profile.custom_headers().unwrap_or_default());
+    bindings
+        .manual_model
+        .set_text(profile.selected_model().unwrap_or_default());
+    bindings
+        .manual_model_row
+        .set_visible(manual_model_field_visible());
     bindings.provider_credential.set_text("");
+    bindings.provider_proxy_credentials.set_text("");
+    bindings.provider_client_certificate_identity.set_text("");
+    // 保存的秘密请求头只保留引用，不把 Secret Service 内容回填到表单。
+    bindings.provider_secret_custom_headers.set_text("");
     bindings.remember_profile.set_active(true);
     bindings.draft_profile_id.replace(None);
 }
@@ -1733,15 +3092,40 @@ fn show_new_profile_in_form(
 ) -> Result<(), TranslationError> {
     let profile_id = generate_custom_provider_id(state.saved_profiles())?;
     bindings.draft_profile_id.replace(Some(profile_id));
-    bindings.provider_name.set_text(DEFAULT_PROVIDER_NAME);
+    bindings.provider_preset_guard.set(true);
+    bindings.provider_preset.set_selected(0);
+    bindings.provider_preset_previous.set(0);
+    bindings.provider_preset_guard.set(false);
+    bindings
+        .provider_name
+        .set_text(&localized_provider_default_name(state.locale(), 0));
     bindings
         .provider_endpoint
         .set_text(DEFAULT_PROVIDER_ENDPOINT);
+    bindings.provider_notes.set_text("");
+    bindings.provider_organization.set_text("");
+    bindings.provider_project.set_text("");
+    bindings.provider_region.set_text("");
+    bindings.provider_account_identifier.set_text("");
+    bindings.provider_proxy.set_text("");
+    bindings.provider_request_timeout.set_value(30.0);
+    bindings.provider_connection_timeout.set_value(10.0);
+    bindings.provider_streaming_idle_timeout.set_value(60.0);
+    bindings.provider_trusted_certificates_pem.set_text("");
+    bindings.provider_client_certificate_identity.set_text("");
+    bindings.provider_custom_headers.set_text("");
+    bindings.manual_model.set_text("");
+    bindings
+        .manual_model_row
+        .set_visible(manual_model_field_visible());
     bindings.provider_credential.set_text("");
+    bindings.provider_proxy_credentials.set_text("");
+    bindings.provider_secret_custom_headers.set_text("");
     bindings.remember_profile.set_active(false);
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn custom_provider_profile(
     profile_id: ProviderProfileId,
     display_name: String,
@@ -1749,6 +3133,18 @@ fn custom_provider_profile(
     adapter_type: String,
     endpoint: String,
     secret_ref: Option<SecretRef>,
+    user_notes: Option<String>,
+    organization: Option<String>,
+    project: Option<String>,
+    region: Option<String>,
+    account_identifier: Option<String>,
+    proxy_url: Option<String>,
+    request_timeout_secs: u32,
+    connection_timeout_secs: u32,
+    streaming_idle_timeout_secs: u32,
+    trusted_certificates_pem: Option<String>,
+    client_certificate_identity_ref: Option<SecretRef>,
+    custom_headers: Option<String>,
     selected_model: Option<String>,
 ) -> Result<ProviderProfile, TranslationError> {
     ProviderProfile::new(
@@ -1759,6 +3155,18 @@ fn custom_provider_profile(
         endpoint,
         secret_ref,
     )
+    .and_then(|profile| profile.with_user_notes(user_notes))
+    .and_then(|profile| profile.with_organization(organization))
+    .and_then(|profile| profile.with_project(project))
+    .and_then(|profile| profile.with_region(region))
+    .and_then(|profile| profile.with_account_identifier(account_identifier))
+    .and_then(|profile| profile.with_proxy_url(proxy_url))
+    .and_then(|profile| profile.with_request_timeout_secs(request_timeout_secs))
+    .and_then(|profile| profile.with_connection_timeout_secs(connection_timeout_secs))
+    .and_then(|profile| profile.with_streaming_idle_timeout_secs(streaming_idle_timeout_secs))
+    .and_then(|profile| profile.with_trusted_certificates_pem(trusted_certificates_pem))
+    .map(|profile| profile.with_client_certificate_identity_ref(client_certificate_identity_ref))
+    .and_then(|profile| profile.with_custom_headers(custom_headers))
     .and_then(|profile| profile.with_selected_model(selected_model))
     .map_err(|error| {
         TranslationError::new(
@@ -1768,7 +3176,43 @@ fn custom_provider_profile(
     })
 }
 
-fn editor_panel(label: &str, editor: &gtk::TextView) -> (gtk::Box, gtk::Label) {
+fn provider_request_timeout_secs(spin_button: &gtk::SpinButton) -> Result<u32, TranslationError> {
+    u32::try_from(spin_button.value_as_int()).map_err(|_| {
+        TranslationError::new(
+            ErrorKind::InvalidConfiguration,
+            "The provider request timeout must be a positive whole number of seconds.",
+        )
+    })
+}
+
+fn provider_connection_timeout_secs(
+    spin_button: &gtk::SpinButton,
+) -> Result<u32, TranslationError> {
+    u32::try_from(spin_button.value_as_int()).map_err(|_| {
+        TranslationError::new(
+            ErrorKind::InvalidConfiguration,
+            "The provider connection timeout must be a positive whole number of seconds.",
+        )
+    })
+}
+
+fn provider_streaming_idle_timeout_secs(
+    spin_button: &gtk::SpinButton,
+) -> Result<u32, TranslationError> {
+    u32::try_from(spin_button.value_as_int()).map_err(|_| {
+        TranslationError::new(
+            ErrorKind::InvalidConfiguration,
+            "The provider streaming idle timeout must be a positive whole number of seconds.",
+        )
+    })
+}
+
+fn provider_trusted_certificates_pem(entry: &gtk::Entry) -> Option<String> {
+    let value = entry.text().trim().to_owned();
+    (!value.is_empty()).then_some(value)
+}
+
+fn editor_panel(label: &str, editor: &gtk::TextView) -> (gtk::Box, gtk::Label, gtk::Label) {
     let container = gtk::Box::new(gtk::Orientation::Vertical, 6);
     let label = gtk::Label::with_mnemonic(label);
     label.set_xalign(0.0);
@@ -1781,9 +3225,91 @@ fn editor_panel(label: &str, editor: &gtk::TextView) -> (gtk::Box, gtk::Label) {
         .vscrollbar_policy(gtk::PolicyType::Automatic)
         .build();
     scroller.set_vexpand(true);
+    let metrics = gtk::Label::new(Some(&text_metrics_label(UiLocale::default(), "")));
+    metrics.set_xalign(0.0);
+    metrics.add_css_class("dim-label");
     container.append(&label);
     container.append(&scroller);
-    (container, label)
+    container.append(&metrics);
+    (container, label, metrics)
+}
+
+// 根据文本内容生成非敏感的字符数和近似 token 数提示。
+fn text_metrics_label(locale: UiLocale, text: &str) -> String {
+    let characters = text.chars().count().to_string();
+    let estimated_tokens = text.len().saturating_add(3) / 4;
+    let estimated_tokens_text = estimated_tokens.to_string();
+    localized_template(
+        locale,
+        "status.text_metrics",
+        "Characters: {characters} · Estimated tokens: {tokens}",
+        &[
+            ("{characters}", &characters),
+            ("{tokens}", &estimated_tokens_text),
+        ],
+    )
+}
+
+// 根据核心归一化记录生成不含文本和定价假设的 usage 提示。
+fn usage_label(locale: UiLocale, usage: Option<&UsageRecord>) -> Option<String> {
+    let usage = usage?;
+    let source = match usage.source {
+        UsageSource::ProviderReported => localization::text(
+            locale,
+            "usage.source.provider_reported",
+            "provider reported",
+        ),
+        UsageSource::LocallyEstimated => localization::text(
+            locale,
+            "usage.source.locally_estimated",
+            "locally estimated",
+        ),
+        UsageSource::Unknown => localization::text(locale, "usage.source.unknown", "unknown"),
+    };
+    Some(match usage.total_tokens {
+        Some(total_tokens) => localized_template(
+            locale,
+            "status.usage",
+            "Usage: {total_tokens} tokens ({source})",
+            &[
+                ("{total_tokens}", &total_tokens.to_string()),
+                ("{source}", &source),
+            ],
+        ),
+        None => localized_template(
+            locale,
+            "status.usage_unknown",
+            "Usage: unavailable ({source})",
+            &[("{source}", &source)],
+        ),
+    })
+}
+
+// 将文本指标和已完成请求的 usage 信息组合到译文面板。
+fn output_metrics_label(locale: UiLocale, text: &str, usage: Option<&UsageRecord>) -> String {
+    let metrics = text_metrics_label(locale, text);
+    usage_label(locale, usage)
+        .map(|usage| format!("{metrics}\n{usage}"))
+        .unwrap_or(metrics)
+}
+
+// 读取 GTK 文本缓冲区内容，供计数提示使用而不影响翻译状态。
+fn text_buffer_contents(buffer: &gtk::TextBuffer) -> String {
+    let (start, end) = buffer.bounds();
+    buffer.text(&start, &end, true).to_string()
+}
+
+// 同步源文本和译文的计数提示，并随界面语言刷新其模板。
+fn refresh_text_metrics(bindings: &UiBindings, locale: UiLocale, usage: Option<&UsageRecord>) {
+    bindings.source_metrics.set_label(&text_metrics_label(
+        locale,
+        &text_buffer_contents(&bindings.source),
+    ));
+    bindings.output_metrics.set_label(&output_metrics_label(
+        locale,
+        &text_buffer_contents(&bindings.output),
+        usage,
+    ));
 }
 
 fn confirmed_model_index(state: &AppState) -> u32 {
@@ -1859,6 +3385,51 @@ fn connect_profile_selection_handler(bindings: &UiBindings, state: &Rc<RefCell<A
         });
 }
 
+// 预设切换只更新仍为默认值的字段，保留用户明确输入的名称和端点。
+fn connect_provider_preset_handler(bindings: &UiBindings) {
+    let preset_bindings = bindings.clone();
+    bindings
+        .provider_preset
+        .connect_selected_notify(move |drop_down| {
+            if preset_bindings.provider_preset_guard.get() {
+                return;
+            }
+            let selected = drop_down.selected();
+            let previous = preset_bindings.provider_preset_previous.replace(selected);
+            if selected == previous {
+                return;
+            }
+            let locale = UiLocale::from_index(preset_bindings.locale.selected() as usize);
+            let (_, _, _, default_endpoint) = provider_preset_config(selected);
+            if endpoint_matches_preset_default(&preset_bindings.provider_endpoint.text(), previous)
+            {
+                preset_bindings.provider_endpoint.set_text(default_endpoint);
+            }
+            let (_, _, previous_name, _) = provider_preset_config(previous);
+            let localized_previous_name = localized_provider_default_name(locale, previous);
+            if preset_bindings.provider_name.text().trim() == previous_name
+                || preset_bindings.provider_name.text().trim() == localized_previous_name
+            {
+                preset_bindings
+                    .provider_name
+                    .set_text(&localized_provider_default_name(locale, selected));
+            }
+            preset_bindings
+                .provider_endpoint
+                .set_tooltip_text(Some(&provider_endpoint_tooltip(locale, selected)));
+            preset_bindings
+                .manual_model_row
+                .set_visible(manual_model_field_visible());
+            preset_bindings
+                .manual_model
+                .set_sensitive(manual_model_field_visible());
+            preset_bindings
+                .manual_model
+                .set_tooltip_text(Some(&provider_model_tooltip(locale, selected)));
+        });
+}
+
+#[allow(clippy::too_many_lines)]
 fn connect_selection_handlers(
     bindings: &UiBindings,
     theme: &gtk::DropDown,
@@ -1867,6 +3438,41 @@ fn connect_selection_handlers(
     worker: &Rc<CoreWorker>,
 ) {
     connect_profile_selection_handler(bindings, state);
+    connect_provider_preset_handler(bindings);
+
+    let quality_bindings = bindings.clone();
+    let quality_state = Rc::clone(state);
+    bindings
+        .quality_mode
+        .connect_selected_notify(move |drop_down| {
+            let mode = quality_mode_for_selection(drop_down.selected());
+            quality_state.borrow_mut().set_quality_mode(mode);
+            refresh_ui(&quality_bindings, &quality_state.borrow());
+        });
+
+    let preset_bindings = bindings.clone();
+    let preset_state = Rc::clone(state);
+    bindings
+        .translation_preset
+        .connect_selected_notify(move |drop_down| {
+            let preset = translation_preset_for_selection(drop_down.selected());
+            preset_state.borrow_mut().set_translation_preset(preset);
+            refresh_ui(&preset_bindings, &preset_state.borrow());
+        });
+
+    let swap_bindings = bindings.clone();
+    let swap_state = Rc::clone(state);
+    bindings.swap_locales.connect_clicked(move |_| {
+        let Some((source_index, target_index)) = swap_locale_selection(
+            swap_bindings.source_locale.selected(),
+            swap_bindings.target_locale.selected(),
+        ) else {
+            return;
+        };
+        swap_bindings.source_locale.set_selected(source_index);
+        swap_bindings.target_locale.set_selected(target_index);
+        refresh_ui(&swap_bindings, &swap_state.borrow());
+    });
 
     let model_bindings = bindings.clone();
     let model_state = Rc::clone(state);
@@ -1964,6 +3570,491 @@ fn connect_selection_handlers(
     });
 }
 
+// 在普通文本请求可能触发回退前要求用户再次确认内容边界。
+fn show_fallback_approval_dialog(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
+    let locale = state.borrow().locale();
+    let dialog = gtk::Window::builder()
+        .application(&bindings.application)
+        .transient_for(&bindings.window)
+        .modal(true)
+        .title(localization::text(
+            locale,
+            "action.enable_fallback",
+            "Allow approved fallback",
+        ))
+        .default_width(520)
+        .default_height(220)
+        .build();
+    let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    root.set_margin_top(16);
+    root.set_margin_bottom(16);
+    root.set_margin_start(16);
+    root.set_margin_end(16);
+    let message = gtk::Label::new(Some(&format!(
+        "{}\n\n{}",
+        localization::text(
+            locale,
+            "status.fallback_selected",
+            "The approved fallback provider was selected; content may be sent there.",
+        ),
+        localization::text(
+            locale,
+            "tooltip.fallback",
+            "Retry only retryable network failures with this saved provider; document jobs, cancellation, and credential failures never fall back",
+        )
+    )));
+    message.set_xalign(0.0);
+    message.set_wrap(true);
+    message.set_focusable(true);
+    root.append(&message);
+    let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let approve =
+        gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.translate", "Translate"));
+    approve.set_focusable(true);
+    let cancel = gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.close", "Close"));
+    cancel.set_focusable(true);
+    actions.append(&approve);
+    actions.append(&cancel);
+    root.append(&actions);
+    dialog.set_child(Some(&root));
+
+    let approve_bindings = bindings.clone();
+    let approve_dialog = dialog.clone();
+    approve.connect_clicked(move |_| {
+        approve_bindings.fallback_approval.set(true);
+        approve_dialog.close();
+        approve_bindings.translate.emit_clicked();
+    });
+    let cancel_dialog = dialog.clone();
+    cancel.connect_clicked(move |_| cancel_dialog.close());
+    dialog.present();
+}
+
+// Secret Service 持久化交互失败时，明确引导用户改用仅会话凭据而不静默改变意图。
+fn show_secret_storage_session_fallback(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
+    let locale = state.borrow().locale();
+    let error_text = state
+        .borrow()
+        .localized_error_text(locale)
+        .unwrap_or_else(|| {
+            localization::text(
+                locale,
+                "error.storage.secure_unavailable",
+                "Secure credential storage is unavailable.",
+            )
+        });
+    let dialog = gtk::Window::builder()
+        .application(&bindings.application)
+        .transient_for(&bindings.window)
+        .modal(true)
+        .title(localization::text(
+            locale,
+            "error.storage.secure_unavailable",
+            "Secure credential storage is unavailable.",
+        ))
+        .default_width(520)
+        .default_height(240)
+        .build();
+    let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    root.set_margin_top(16);
+    root.set_margin_bottom(16);
+    root.set_margin_start(16);
+    root.set_margin_end(16);
+    let message = gtk::Label::new(Some(&format!(
+        "{}\n\n{}",
+        error_text,
+        localization::text(
+            locale,
+            "error.storage.session_only",
+            "Profile storage is unavailable; use session-only mode.",
+        )
+    )));
+    message.set_xalign(0.0);
+    message.set_wrap(true);
+    message.set_focusable(true);
+    root.append(&message);
+    let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let session_only = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "error.storage.session_only",
+        "Profile storage is unavailable; use session-only mode.",
+    ));
+    session_only.set_focusable(true);
+    let close = gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.close", "Close"));
+    close.set_focusable(true);
+    actions.append(&session_only);
+    actions.append(&close);
+    root.append(&actions);
+    dialog.set_child(Some(&root));
+
+    let fallback_bindings = bindings.clone();
+    let fallback_dialog = dialog.clone();
+    session_only.connect_clicked(move |_| {
+        fallback_bindings.remember_profile.set_active(false);
+        fallback_bindings.provider_credential.grab_focus();
+        fallback_dialog.close();
+    });
+    let close_dialog = dialog.clone();
+    close.connect_clicked(move |_| close_dialog.close());
+    dialog.present();
+}
+
+// 生成只包含版本与协议字段的 About 文本，避免把端点、凭据或翻译内容带入对话框。
+fn about_details(locale: UiLocale) -> String {
+    let compatibility = core_compatibility().ok();
+    let core = compatibility.as_ref().map_or_else(
+        || "unavailable".to_owned(),
+        |value| value.core_version.clone(),
+    );
+    let abi = compatibility.as_ref().map_or_else(
+        || "unavailable".to_owned(),
+        |value| value.abi_major.to_string(),
+    );
+    let protocol = compatibility.as_ref().map_or_else(
+        || "unavailable".to_owned(),
+        |value| value.protocol_version.to_string(),
+    );
+    localized_template(
+        locale,
+        "dialog.about_details",
+        "Version: {version}\nCore: {core}\nABI: {abi}\nProtocol: {protocol}",
+        &[
+            ("{version}", env!("CARGO_PKG_VERSION")),
+            ("{core}", &core),
+            ("{abi}", &abi),
+            ("{protocol}", &protocol),
+        ],
+    )
+}
+
+// 展示应用版本与共享核心兼容性信息，不访问网络或读取秘密。
+fn show_about_dialog(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
+    let locale = state.borrow().locale();
+    let dialog = gtk::Window::builder()
+        .application(&bindings.application)
+        .transient_for(&bindings.window)
+        .modal(true)
+        .title(localization::text(
+            locale,
+            "dialog.about",
+            "About LinguaMesh",
+        ))
+        .default_width(480)
+        .default_height(300)
+        .build();
+    let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    root.set_margin_top(24);
+    root.set_margin_bottom(24);
+    root.set_margin_start(24);
+    root.set_margin_end(24);
+    let title = gtk::Label::new(Some(&localization::text(locale, "app.title", "LinguaMesh")));
+    title.set_xalign(0.0);
+    title.add_css_class("title-2");
+    let details_text = about_details(locale);
+    let details = gtk::Label::new(Some(&details_text));
+    details.set_xalign(0.0);
+    details.set_selectable(true);
+    details.set_focusable(true);
+    details.set_wrap(true);
+    details.update_property(&[gtk::accessible::Property::Label(&details_text)]);
+    root.append(&title);
+    root.append(&details);
+    let close = gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.close", "Close"));
+    close.set_focusable(true);
+    root.append(&close);
+    dialog.set_child(Some(&root));
+    let close_dialog = dialog.clone();
+    close.connect_clicked(move |_| close_dialog.close());
+    dialog.present();
+}
+
+// 展示随 Linux 构建捆绑的许可证与第三方声明，读取过程不访问网络。
+fn show_open_source_licenses_dialog(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
+    let locale = state.borrow().locale();
+    let dialog = gtk::Window::builder()
+        .application(&bindings.application)
+        .transient_for(&bindings.window)
+        .modal(true)
+        .title(localization::text(
+            locale,
+            "dialog.open_source_licenses",
+            "Open-source licenses",
+        ))
+        .default_width(720)
+        .default_height(560)
+        .build();
+    let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    root.set_margin_top(16);
+    root.set_margin_bottom(16);
+    root.set_margin_start(16);
+    root.set_margin_end(16);
+    let notices = gtk::TextView::new();
+    notices.set_editable(false);
+    notices.set_cursor_visible(false);
+    notices.set_monospace(true);
+    notices.set_wrap_mode(gtk::WrapMode::WordChar);
+    notices.set_focusable(true);
+    notices
+        .buffer()
+        .set_text(include_str!("../THIRD_PARTY_NOTICES.md"));
+    let scroller = gtk::ScrolledWindow::builder()
+        .vexpand(true)
+        .child(&notices)
+        .build();
+    root.append(&scroller);
+    let close = gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.close", "Close"));
+    close.set_focusable(true);
+    root.append(&close);
+    dialog.set_child(Some(&root));
+    let close_dialog = dialog.clone();
+    close.connect_clicked(move |_| close_dialog.close());
+    dialog.present();
+}
+
+// 展示保存词汇表库的最小命名对话框，实际校验和写入由核心工作线程完成。
+fn show_save_glossary_dialog(
+    bindings: &UiBindings,
+    state: &Rc<RefCell<AppState>>,
+    worker: &WorkerCommandHandle,
+    glossary: Glossary,
+) {
+    let locale = state.borrow().locale();
+    let dialog = gtk::Window::builder()
+        .application(&bindings.application)
+        .transient_for(&bindings.window)
+        .modal(true)
+        .title(localization::text(
+            locale,
+            "dialog.save_glossary",
+            "Save glossary library",
+        ))
+        .default_width(520)
+        .default_height(180)
+        .build();
+    let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    root.set_margin_top(16);
+    root.set_margin_bottom(16);
+    root.set_margin_start(16);
+    root.set_margin_end(16);
+    let id_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let id_label = gtk::Label::with_mnemonic(&localized_mnemonic(
+        locale,
+        "label.glossary_id",
+        "Glossary library ID",
+    ));
+    let id_entry = gtk::Entry::new();
+    id_entry.set_text("default");
+    id_entry.set_max_length(128);
+    id_entry.set_hexpand(true);
+    id_entry.set_focusable(true);
+    id_entry.set_placeholder_text(Some(&localization::text(
+        locale,
+        "placeholder.glossary_id",
+        "letters, numbers, '.', '_' or '-'",
+    )));
+    id_entry.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.glossary_id",
+        "Use 1-128 ASCII letters, numbers, '.', '_' or '-' for the glossary library ID.",
+    )));
+    id_label.set_mnemonic_widget(Some(&id_entry));
+    id_row.append(&id_label);
+    id_row.append(&id_entry);
+    root.append(&id_row);
+    let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let save = gtk::Button::with_mnemonic(&localized_mnemonic(locale, "dialog.save", "Save"));
+    save.set_focusable(true);
+    save.add_css_class("suggested-action");
+    let close = gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.close", "Close"));
+    close.set_focusable(true);
+    actions.append(&save);
+    actions.append(&close);
+    root.append(&actions);
+    dialog.set_child(Some(&root));
+
+    let close_dialog = dialog.clone();
+    close.connect_clicked(move |_| close_dialog.close());
+    let save_dialog = dialog.clone();
+    let save_bindings = bindings.clone();
+    let save_state = Rc::clone(state);
+    let save_worker = worker.clone();
+    save.connect_clicked(move |_| {
+        let glossary_id = id_entry.text().trim().to_owned();
+        if glossary_id.is_empty() {
+            save_state
+                .borrow_mut()
+                .record_client_error("Glossary library ID is required.");
+            refresh_ui(&save_bindings, &save_state.borrow());
+            return;
+        }
+        match save_worker.save_glossary(glossary_id, glossary.clone()) {
+            Ok(()) => save_dialog.close(),
+            Err(error) => {
+                save_state
+                    .borrow_mut()
+                    .record_client_error(error.to_string());
+                refresh_ui(&save_bindings, &save_state.borrow());
+            }
+        }
+    });
+    dialog.present();
+}
+
+// 展示可复用的本地词汇表库，并提供安全的加载与删除操作。
+#[allow(clippy::too_many_lines)]
+fn show_glossary_libraries_dialog(
+    bindings: &UiBindings,
+    state: &Rc<RefCell<AppState>>,
+    worker: &WorkerCommandHandle,
+    glossaries: Vec<GlossaryRecord>,
+) {
+    let locale = state.borrow().locale();
+    let dialog = gtk::Window::builder()
+        .application(&bindings.application)
+        .transient_for(&bindings.window)
+        .modal(true)
+        .title(localization::text(
+            locale,
+            "dialog.glossary_libraries",
+            "Glossary libraries",
+        ))
+        .default_width(720)
+        .default_height(480)
+        .build();
+    let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    root.set_margin_top(16);
+    root.set_margin_bottom(16);
+    root.set_margin_start(16);
+    root.set_margin_end(16);
+    let list = gtk::ListBox::new();
+    list.set_selection_mode(gtk::SelectionMode::None);
+    list.set_vexpand(true);
+    if glossaries.is_empty() {
+        let empty = gtk::Label::new(Some(&localization::text(
+            locale,
+            "status.glossary_libraries_empty",
+            "No local glossary libraries are stored.",
+        )));
+        empty.set_xalign(0.0);
+        empty.add_css_class("dim-label");
+        list.append(&empty);
+    } else {
+        for record in glossaries {
+            let row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+            row.set_margin_top(8);
+            row.set_margin_bottom(8);
+            let details = gtk::Label::new(Some(&format!(
+                "{} — {} entries",
+                record.id,
+                record.glossary.entries().len()
+            )));
+            details.set_xalign(0.0);
+            details.set_hexpand(true);
+            details.set_selectable(true);
+            let use_button = gtk::Button::with_mnemonic(&localized_mnemonic(
+                locale,
+                "action.use_glossary",
+                "Use",
+            ));
+            use_button.set_focusable(true);
+            let delete_button = gtk::Button::with_mnemonic(&localized_mnemonic(
+                locale,
+                "action.delete_glossary",
+                "Delete",
+            ));
+            delete_button.set_focusable(true);
+            delete_button.add_css_class("destructive-action");
+            row.append(&details);
+            row.append(&use_button);
+            row.append(&delete_button);
+
+            let use_bindings = bindings.clone();
+            let use_state = Rc::clone(state);
+            let use_dialog = dialog.clone();
+            let use_glossary = record.glossary.clone();
+            use_button.connect_clicked(move |_| {
+                use_bindings
+                    .glossary
+                    .set_text(&glossary_summary(&use_glossary));
+                use_bindings.glossary_from_csv.set(true);
+                use_bindings.glossary_notice.set(true);
+                use_state
+                    .borrow_mut()
+                    .set_glossary(Some(use_glossary.clone()));
+                use_bindings.error.set_label("");
+                use_bindings.error.set_visible(false);
+                refresh_ui(&use_bindings, &use_state.borrow());
+                use_dialog.close();
+            });
+
+            let delete_bindings = bindings.clone();
+            let delete_state = Rc::clone(state);
+            let delete_worker = worker.clone();
+            let delete_dialog = dialog.clone();
+            let glossary_id = record.id;
+            delete_button.connect_clicked(move |_| {
+                match delete_worker.delete_glossary(glossary_id.clone()) {
+                    Ok(()) => delete_dialog.close(),
+                    Err(error) => {
+                        delete_state
+                            .borrow_mut()
+                            .record_client_error(error.to_string());
+                        refresh_ui(&delete_bindings, &delete_state.borrow());
+                    }
+                }
+            });
+            list.append(&row);
+        }
+    }
+    let scroller = gtk::ScrolledWindow::builder()
+        .vexpand(true)
+        .child(&list)
+        .build();
+    root.append(&scroller);
+    let close = gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.close", "Close"));
+    close.set_focusable(true);
+    root.append(&close);
+    dialog.set_child(Some(&root));
+    let close_dialog = dialog.clone();
+    close.connect_clicked(move |_| close_dialog.close());
+    dialog.present();
+}
+
+// 只有用户尚未确认且开启了回退时才显示一次发送前提示。
+#[must_use]
+fn fallback_confirmation_needed(enabled: bool, approved: bool) -> bool {
+    enabled && !approved
+}
+
+// 仅清理系统临时目录中由 LinguaMesh 创建且具有固定前缀的孤立临时项。
+fn clear_linguamesh_temporary_files(root: &Path) -> Result<usize, std::io::Error> {
+    let mut removed = 0_usize;
+    let entries = fs::read_dir(root)?;
+    for entry in entries {
+        let entry = entry?;
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if !name.starts_with("linguamesh-ocr-") && !name.starts_with(".linguamesh-export-") {
+            continue;
+        }
+        let path = entry.path();
+        let file_type = entry.file_type()?;
+        let result = if file_type.is_dir() {
+            fs::remove_dir_all(&path)
+        } else if file_type.is_file() || file_type.is_symlink() {
+            fs::remove_file(&path)
+        } else {
+            continue;
+        };
+        match result {
+            Ok(()) => removed = removed.saturating_add(1),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error),
+        }
+    }
+    Ok(removed)
+}
+
 // 四个原生操作共享同一状态与工作线程绑定，集中注册可保持生命周期一致。
 #[allow(clippy::too_many_lines)]
 fn connect_action_handlers(
@@ -1983,6 +4074,15 @@ fn connect_action_handlers(
             *source_job_bindings.document_job_id.borrow_mut() = None;
             source_job_bindings.document_warnings.borrow_mut().clear();
         }
+    });
+
+    let source_metrics_bindings = bindings.clone();
+    let source_metrics_state = Rc::clone(state);
+    bindings.source.connect_changed(move |buffer| {
+        let locale = source_metrics_state.borrow().locale();
+        source_metrics_bindings
+            .source_metrics
+            .set_label(&text_metrics_label(locale, &text_buffer_contents(buffer)));
     });
 
     let incognito_bindings = bindings.clone();
@@ -2120,6 +4220,66 @@ fn connect_action_handlers(
         }
     });
 
+    let temporary_bindings = bindings.clone();
+    let temporary_state = Rc::clone(state);
+    bindings.clear_temporary_files.connect_clicked(move |_| {
+        let current_state = temporary_state.borrow();
+        if !current_state.worker_ready()
+            || matches!(
+                current_state.status(),
+                AppStatus::Connecting | AppStatus::Translating | AppStatus::Cancelling
+            )
+            || temporary_bindings.ocr_pending.get()
+        {
+            return;
+        }
+        let locale = current_state.locale();
+        let dialog = gtk::AlertDialog::builder()
+            .message(localization::text(
+                locale,
+                "dialog.clear_temporary_files",
+                "Clear LinguaMesh temporary files?",
+            ))
+            .detail(localization::text(
+                locale,
+                "dialog.clear_temporary_files_detail",
+                "Only LinguaMesh OCR and abandoned export items in the system temporary directory will be removed.",
+            ))
+            .modal(true)
+            .build();
+        let cancel = localization::text(locale, "action.cancel", "Cancel");
+        let confirm = localization::text(
+            locale,
+            "action.clear_temporary_files",
+            "Clear temporary files",
+        );
+        dialog.set_buttons(&[cancel.as_str(), confirm.as_str()]);
+        dialog.set_cancel_button(0);
+        dialog.set_default_button(0);
+        let choice_bindings = temporary_bindings.clone();
+        let choice_state = Rc::clone(&temporary_state);
+        let choice_window = choice_bindings.window.clone();
+        dialog.choose(
+            Some(&choice_window),
+            None::<&gtk::gio::Cancellable>,
+            move |response| {
+                if response != Ok(1) {
+                    return;
+                }
+                match clear_linguamesh_temporary_files(&std::env::temp_dir()) {
+                    Ok(count) => choice_bindings
+                        .temporary_cleanup_notice
+                        .set(Some(count)),
+                    Err(error) => choice_state
+                        .borrow_mut()
+                        .record_client_error(error.to_string()),
+                }
+                refresh_ui(&choice_bindings, &choice_state.borrow());
+            },
+        );
+        dialog.show(Some(&temporary_bindings.window));
+    });
+
     let memory_bindings = bindings.clone();
     let memory_state = Rc::clone(state);
     let memory_worker = Rc::clone(worker);
@@ -2135,6 +4295,33 @@ fn connect_action_handlers(
         }
     });
 
+    let routing_bindings = bindings.clone();
+    let routing_state = Rc::clone(state);
+    let routing_worker = Rc::clone(worker);
+    bindings.routing_profiles.connect_clicked(move |_| {
+        if !routing_state.borrow().profile_storage_available() {
+            return;
+        }
+        if let Err(error) = routing_worker.command_handle().list_routing_profiles() {
+            routing_state
+                .borrow_mut()
+                .record_client_error(error.to_string());
+            refresh_ui(&routing_bindings, &routing_state.borrow());
+        }
+    });
+
+    let licenses_bindings = bindings.clone();
+    let licenses_state = Rc::clone(state);
+    bindings.open_source_licenses.connect_clicked(move |_| {
+        show_open_source_licenses_dialog(&licenses_bindings, &licenses_state);
+    });
+
+    let about_bindings = bindings.clone();
+    let about_state = Rc::clone(state);
+    bindings.about.connect_clicked(move |_| {
+        show_about_dialog(&about_bindings, &about_state);
+    });
+
     let import_bindings = bindings.clone();
     let import_state = Rc::clone(state);
     bindings.import_glossary.connect_clicked(move |_| {
@@ -2145,6 +4332,58 @@ fn connect_action_handlers(
     let export_state = Rc::clone(state);
     bindings.export_glossary.connect_clicked(move |_| {
         begin_glossary_export(&export_bindings, &export_state);
+    });
+
+    let libraries_bindings = bindings.clone();
+    let libraries_state = Rc::clone(state);
+    let libraries_worker = Rc::clone(worker);
+    bindings.glossary_libraries.connect_clicked(move |_| {
+        if !libraries_state.borrow().profile_storage_available() {
+            return;
+        }
+        if let Err(error) = libraries_worker.command_handle().list_glossaries() {
+            libraries_state
+                .borrow_mut()
+                .record_client_error(error.to_string());
+            refresh_ui(&libraries_bindings, &libraries_state.borrow());
+        }
+    });
+
+    let save_library_bindings = bindings.clone();
+    let save_library_state = Rc::clone(state);
+    let save_library_worker = Rc::clone(worker);
+    bindings.save_glossary.connect_clicked(move |_| {
+        let glossary = {
+            let state = save_library_state.borrow();
+            match current_glossary_for_library(&save_library_bindings, &state) {
+                Ok(Some(glossary)) => glossary,
+                Ok(None) => {
+                    drop(state);
+                    save_library_state
+                        .borrow_mut()
+                        .record_client_error("Enter or import glossary rules before saving.");
+                    refresh_ui(&save_library_bindings, &save_library_state.borrow());
+                    return;
+                }
+                Err(error) => {
+                    drop(state);
+                    save_library_state
+                        .borrow_mut()
+                        .record_client_error(error.to_string());
+                    refresh_ui(&save_library_bindings, &save_library_state.borrow());
+                    return;
+                }
+            }
+        };
+        save_library_state
+            .borrow_mut()
+            .set_glossary(Some(glossary.clone()));
+        show_save_glossary_dialog(
+            &save_library_bindings,
+            &save_library_state,
+            &save_library_worker.command_handle(),
+            glossary,
+        );
     });
 
     let open_bindings = bindings.clone();
@@ -2194,6 +4433,238 @@ fn connect_action_handlers(
             }
         });
 
+    let test_bindings = bindings.clone();
+    let test_state = Rc::clone(state);
+    let test_worker = Rc::clone(worker);
+    bindings.test_connection.connect_clicked(move |_| {
+        if !test_state.borrow().worker_ready() {
+            return;
+        }
+        test_bindings.connection_test_notice.set(false);
+        test_bindings.connection_test_model_count.set(None);
+        test_bindings.connection_test_profile_id.replace(None);
+        let display_name = test_bindings.provider_name.text().trim().to_owned();
+        let endpoint = test_bindings.provider_endpoint.text().trim().to_owned();
+        let notes_text = test_bindings.provider_notes.text().trim().to_owned();
+        let user_notes = (!notes_text.is_empty()).then_some(notes_text);
+        let organization_text = test_bindings.provider_organization.text().trim().to_owned();
+        let organization = (!organization_text.is_empty()).then_some(organization_text);
+        let project_text = test_bindings.provider_project.text().trim().to_owned();
+        let project = (!project_text.is_empty()).then_some(project_text);
+        let region_text = test_bindings.provider_region.text().trim().to_owned();
+        let region = (!region_text.is_empty()).then_some(region_text);
+        let account_text = test_bindings
+            .provider_account_identifier
+            .text()
+            .trim()
+            .to_owned();
+        let account_identifier = (!account_text.is_empty()).then_some(account_text);
+        let proxy_text = test_bindings.provider_proxy.text().trim().to_owned();
+        let proxy_url = (!proxy_text.is_empty()).then_some(proxy_text);
+        let proxy_credentials_text = test_bindings.provider_proxy_credentials.text();
+        let has_proxy_credentials = !proxy_credentials_text.is_empty();
+        let session_proxy_authentication =
+            has_proxy_credentials.then(|| SecretValue::new(proxy_credentials_text.as_str()));
+        test_bindings.provider_proxy_credentials.set_text("");
+        drop(proxy_credentials_text);
+        let request_timeout_secs =
+            match provider_request_timeout_secs(&test_bindings.provider_request_timeout) {
+                Ok(value) => value,
+                Err(error) => {
+                    let mut state = test_state.borrow_mut();
+                    state.record_client_error(error.to_string());
+                    refresh_ui(&test_bindings, &state);
+                    return;
+                }
+            };
+        let connection_timeout_secs =
+            match provider_connection_timeout_secs(&test_bindings.provider_connection_timeout) {
+                Ok(value) => value,
+                Err(error) => {
+                    let mut state = test_state.borrow_mut();
+                    state.record_client_error(error.to_string());
+                    refresh_ui(&test_bindings, &state);
+                    return;
+                }
+            };
+        let streaming_idle_timeout_secs = match provider_streaming_idle_timeout_secs(
+            &test_bindings.provider_streaming_idle_timeout,
+        ) {
+            Ok(value) => value,
+            Err(error) => {
+                let mut state = test_state.borrow_mut();
+                state.record_client_error(error.to_string());
+                refresh_ui(&test_bindings, &state);
+                return;
+            }
+        };
+        let trusted_certificates_pem =
+            provider_trusted_certificates_pem(&test_bindings.provider_trusted_certificates_pem);
+        let client_certificate_identity_text =
+            test_bindings.provider_client_certificate_identity.text();
+        let has_client_certificate_identity = !client_certificate_identity_text.is_empty();
+        let session_client_certificate_identity = has_client_certificate_identity
+            .then(|| SecretValue::new(client_certificate_identity_text.as_str()));
+        test_bindings
+            .provider_client_certificate_identity
+            .set_text("");
+        drop(client_certificate_identity_text);
+        let custom_headers_text = test_bindings
+            .provider_custom_headers
+            .text()
+            .trim()
+            .to_owned();
+        let custom_headers = (!custom_headers_text.is_empty()).then_some(custom_headers_text);
+        let secret_custom_headers_text = test_bindings.provider_secret_custom_headers.text();
+        let has_secret_custom_headers = !secret_custom_headers_text.is_empty();
+        let session_secret_custom_headers = has_secret_custom_headers
+            .then(|| SecretValue::new(secret_custom_headers_text.as_str()));
+        test_bindings.provider_secret_custom_headers.set_text("");
+        drop(secret_custom_headers_text);
+        let credential_text = test_bindings.provider_credential.text();
+        let has_credential = !credential_text.is_empty();
+        let session_secret = has_credential.then(|| SecretValue::new(credential_text.as_str()));
+        test_bindings.provider_credential.set_text("");
+        drop(credential_text);
+        let mut state = test_state.borrow_mut();
+        let locale = state.locale();
+        if display_name.is_empty() {
+            state.record_client_error(localization::text(
+                locale,
+                "error.provider_name_required",
+                "Enter a provider name.",
+            ));
+            refresh_ui(&test_bindings, &state);
+            return;
+        }
+        if endpoint.is_empty() {
+            state.record_client_error(localization::text(
+                locale,
+                "error.provider_endpoint_required",
+                "Enter a provider endpoint.",
+            ));
+            refresh_ui(&test_bindings, &state);
+            return;
+        }
+        let preset_index = test_bindings.provider_preset.selected();
+        let (preset_id, adapter_type, _, _) = provider_preset_config(preset_index);
+        let manual_model = test_bindings.manual_model.text().trim().to_owned();
+        if preset_requires_manual_model(preset_index) && manual_model.is_empty() {
+            state.record_client_error(localization::text(
+                locale,
+                if preset_index == 4 {
+                    "error.azure_openai_deployment_required"
+                } else {
+                    "error.anthropic_model_required"
+                },
+                if preset_index == 4 {
+                    "Enter an Azure OpenAI deployment name before connecting."
+                } else {
+                    "Enter an Anthropic model ID before connecting."
+                },
+            ));
+            refresh_ui(&test_bindings, &state);
+            return;
+        }
+        let (
+            profile_id,
+            saved_secret_ref,
+            saved_secret_custom_headers_ref,
+            saved_proxy_auth_ref,
+            saved_client_certificate_identity_ref,
+            selected_model,
+        ) = match state.selected_saved_profile() {
+            Some(saved) => (
+                saved.id().clone(),
+                saved.secret_ref().cloned(),
+                saved.secret_custom_headers_ref().cloned(),
+                saved.proxy_auth_ref().cloned(),
+                saved.client_certificate_identity_ref().cloned(),
+                if manual_model.is_empty() {
+                    saved.selected_model().map(str::to_owned)
+                } else {
+                    Some(manual_model.clone())
+                },
+            ),
+            None => match ensure_draft_profile_id(&test_bindings, &state) {
+                Ok(profile_id) => (
+                    profile_id,
+                    None,
+                    None,
+                    None,
+                    None,
+                    (!manual_model.is_empty()).then_some(manual_model.clone()),
+                ),
+                Err(error) => {
+                    state.record_client_error(error.to_string());
+                    refresh_ui(&test_bindings, &state);
+                    return;
+                }
+            },
+        };
+        let secret_ref = if has_credential {
+            Some(SecretRef::new(SecretRefNamespace::Session))
+        } else {
+            saved_secret_ref
+        };
+        let secret_custom_headers_ref = if has_secret_custom_headers {
+            Some(SecretRef::new(SecretRefNamespace::Session))
+        } else {
+            saved_secret_custom_headers_ref
+        };
+        let proxy_auth_ref = if has_proxy_credentials {
+            Some(SecretRef::new(SecretRefNamespace::Session))
+        } else {
+            saved_proxy_auth_ref
+        };
+        let client_certificate_identity_ref = if has_client_certificate_identity {
+            Some(SecretRef::new(SecretRefNamespace::Session))
+        } else {
+            saved_client_certificate_identity_ref
+        };
+        let profile = match custom_provider_profile(
+            profile_id,
+            display_name,
+            preset_id.to_owned(),
+            adapter_type.to_owned(),
+            endpoint,
+            secret_ref,
+            user_notes,
+            organization,
+            project,
+            region,
+            account_identifier,
+            proxy_url,
+            request_timeout_secs,
+            connection_timeout_secs,
+            streaming_idle_timeout_secs,
+            trusted_certificates_pem,
+            client_certificate_identity_ref,
+            custom_headers,
+            selected_model,
+        ) {
+            Ok(profile) => profile,
+            Err(error) => {
+                state.record_client_error(error.to_string());
+                refresh_ui(&test_bindings, &state);
+                return;
+            }
+        };
+        let profile = profile
+            .with_secret_custom_headers_ref(secret_custom_headers_ref)
+            .with_proxy_auth_ref(proxy_auth_ref);
+        if let Err(error) = test_worker.try_send(WorkerCommand::TestConnection {
+            profile,
+            secret: session_secret,
+            secret_custom_headers: session_secret_custom_headers,
+            proxy_authentication: session_proxy_authentication,
+            client_certificate_identity: session_client_certificate_identity,
+        }) {
+            state.record_client_error(error.to_string());
+        }
+        refresh_ui(&test_bindings, &state);
+    });
+
     let connect_bindings = bindings.clone();
     let connect_state = Rc::clone(state);
     let connect_worker = Rc::clone(worker);
@@ -2203,6 +4674,86 @@ fn connect_action_handlers(
         }
         let display_name = connect_bindings.provider_name.text().trim().to_owned();
         let endpoint = connect_bindings.provider_endpoint.text().trim().to_owned();
+        let notes_text = connect_bindings.provider_notes.text().trim().to_owned();
+        let user_notes = (!notes_text.is_empty()).then_some(notes_text);
+        let organization_text = connect_bindings
+            .provider_organization
+            .text()
+            .trim()
+            .to_owned();
+        let organization = (!organization_text.is_empty()).then_some(organization_text);
+        let project_text = connect_bindings.provider_project.text().trim().to_owned();
+        let project = (!project_text.is_empty()).then_some(project_text);
+        let region_text = connect_bindings.provider_region.text().trim().to_owned();
+        let region = (!region_text.is_empty()).then_some(region_text);
+        let account_text = connect_bindings
+            .provider_account_identifier
+            .text()
+            .trim()
+            .to_owned();
+        let account_identifier = (!account_text.is_empty()).then_some(account_text);
+        let proxy_text = connect_bindings.provider_proxy.text().trim().to_owned();
+        let proxy_url = (!proxy_text.is_empty()).then_some(proxy_text);
+        let proxy_credentials_text = connect_bindings.provider_proxy_credentials.text();
+        let has_proxy_credentials = !proxy_credentials_text.is_empty();
+        let session_proxy_authentication =
+            has_proxy_credentials.then(|| SecretValue::new(proxy_credentials_text.as_str()));
+        connect_bindings.provider_proxy_credentials.set_text("");
+        drop(proxy_credentials_text);
+        let request_timeout_secs =
+            match provider_request_timeout_secs(&connect_bindings.provider_request_timeout) {
+                Ok(value) => value,
+                Err(error) => {
+                    let mut state = connect_state.borrow_mut();
+                    state.provider_failed(error);
+                    refresh_ui(&connect_bindings, &state);
+                    return;
+                }
+            };
+        let connection_timeout_secs =
+            match provider_connection_timeout_secs(&connect_bindings.provider_connection_timeout) {
+                Ok(value) => value,
+                Err(error) => {
+                    let mut state = connect_state.borrow_mut();
+                    state.provider_failed(error);
+                    refresh_ui(&connect_bindings, &state);
+                    return;
+                }
+            };
+        let streaming_idle_timeout_secs = match provider_streaming_idle_timeout_secs(
+            &connect_bindings.provider_streaming_idle_timeout,
+        ) {
+            Ok(value) => value,
+            Err(error) => {
+                let mut state = connect_state.borrow_mut();
+                state.provider_failed(error);
+                refresh_ui(&connect_bindings, &state);
+                return;
+            }
+        };
+        let trusted_certificates_pem =
+            provider_trusted_certificates_pem(&connect_bindings.provider_trusted_certificates_pem);
+        let client_certificate_identity_text =
+            connect_bindings.provider_client_certificate_identity.text();
+        let has_client_certificate_identity = !client_certificate_identity_text.is_empty();
+        let session_client_certificate_identity = has_client_certificate_identity
+            .then(|| SecretValue::new(client_certificate_identity_text.as_str()));
+        connect_bindings
+            .provider_client_certificate_identity
+            .set_text("");
+        drop(client_certificate_identity_text);
+        let custom_headers_text = connect_bindings
+            .provider_custom_headers
+            .text()
+            .trim()
+            .to_owned();
+        let custom_headers = (!custom_headers_text.is_empty()).then_some(custom_headers_text);
+        let secret_custom_headers_text = connect_bindings.provider_secret_custom_headers.text();
+        let has_secret_custom_headers = !secret_custom_headers_text.is_empty();
+        let session_secret_custom_headers = has_secret_custom_headers
+            .then(|| SecretValue::new(secret_custom_headers_text.as_str()));
+        connect_bindings.provider_secret_custom_headers.set_text("");
+        drop(secret_custom_headers_text);
         let remember_profile = connect_bindings.remember_profile.is_active();
         let credential_text = connect_bindings.provider_credential.text();
         let has_credential = !credential_text.is_empty();
@@ -2230,25 +4781,61 @@ fn connect_action_handlers(
             refresh_ui(&connect_bindings, &state);
             return;
         }
-        let (profile_id, preset_id, adapter_type, saved_secret_ref, enabled, selected_model) =
-            match state.selected_saved_profile() {
-                Some(saved) => (
-                    Ok(saved.id().clone()),
-                    saved.preset_id().to_owned(),
-                    saved.adapter_type().to_owned(),
-                    saved.secret_ref().cloned(),
-                    saved.enabled(),
-                    saved.selected_model().map(str::to_owned),
-                ),
-                None => (
-                    ensure_draft_profile_id(&connect_bindings, &state),
-                    CUSTOM_PROVIDER_PRESET_ID.to_owned(),
-                    OPENAI_ADAPTER_TYPE.to_owned(),
-                    None,
-                    true,
-                    None,
-                ),
-            };
+        let preset_index = connect_bindings.provider_preset.selected();
+        let (preset_id, adapter_type, _, _) = provider_preset_config(preset_index);
+        let preset_id = preset_id.to_owned();
+        let adapter_type = adapter_type.to_owned();
+        let manual_model = connect_bindings.manual_model.text().trim().to_owned();
+        if preset_requires_manual_model(preset_index) && manual_model.is_empty() {
+            let message = localization::text(
+                state.locale(),
+                if preset_index == 4 {
+                    "error.azure_openai_deployment_required"
+                } else {
+                    "error.anthropic_model_required"
+                },
+                if preset_index == 4 {
+                    "Enter an Azure OpenAI deployment name before connecting."
+                } else {
+                    "Enter an Anthropic model ID before connecting."
+                },
+            );
+            state.provider_failed(TranslationError::new(ErrorKind::ModelUnavailable, message));
+            refresh_ui(&connect_bindings, &state);
+            return;
+        }
+        let (
+            profile_id,
+            saved_secret_ref,
+            saved_secret_custom_headers_ref,
+            saved_proxy_auth_ref,
+            saved_client_certificate_identity_ref,
+            enabled,
+            selected_model,
+        ) = match state.selected_saved_profile() {
+            Some(saved) => (
+                Ok(saved.id().clone()),
+                saved.secret_ref().cloned(),
+                saved.secret_custom_headers_ref().cloned(),
+                saved.proxy_auth_ref().cloned(),
+                saved.client_certificate_identity_ref().cloned(),
+                saved.enabled(),
+                if manual_model.is_empty() {
+                    saved.selected_model().map(str::to_owned)
+                } else {
+                    Some(manual_model.clone())
+                },
+            ),
+            None => (
+                ensure_draft_profile_id(&connect_bindings, &state),
+                None,
+                None,
+                None,
+                None,
+                true,
+                (!manual_model.is_empty()).then_some(manual_model.clone()),
+            ),
+        };
         let profile_id = match profile_id {
             Ok(profile_id) => profile_id,
             Err(error) => {
@@ -2267,12 +4854,93 @@ fn connect_action_handlers(
             {
                 state.provider_failed(error);
                 refresh_ui(&connect_bindings, &state);
+                drop(state);
+                show_secret_storage_session_fallback(&connect_bindings, &connect_state);
                 return;
             }
             Some(secret_ref)
         } else {
             None
         };
+        let persistent_secret_custom_headers_ref = if remember_profile && has_secret_custom_headers
+        {
+            let secret_ref = saved_secret_custom_headers_ref
+                .clone()
+                .filter(SecretRef::is_persistent)
+                .unwrap_or_else(|| SecretRef::new(SecretRefNamespace::SecretService));
+            if let Some(secret) = session_secret_custom_headers.as_ref()
+                && let Err(error) = secret_service::store_secret(&secret_ref, secret)
+            {
+                state.provider_failed(error);
+                refresh_ui(&connect_bindings, &state);
+                drop(state);
+                show_secret_storage_session_fallback(&connect_bindings, &connect_state);
+                return;
+            }
+            Some(secret_ref)
+        } else {
+            None
+        };
+        let persistent_proxy_auth_ref = if remember_profile && has_proxy_credentials {
+            let secret_ref = saved_proxy_auth_ref
+                .clone()
+                .filter(SecretRef::is_persistent)
+                .unwrap_or_else(|| SecretRef::new(SecretRefNamespace::SecretService));
+            if let Some(secret) = session_proxy_authentication.as_ref()
+                && let Err(error) = secret_service::store_secret(&secret_ref, secret)
+            {
+                state.provider_failed(error);
+                refresh_ui(&connect_bindings, &state);
+                drop(state);
+                show_secret_storage_session_fallback(&connect_bindings, &connect_state);
+                return;
+            }
+            Some(secret_ref)
+        } else {
+            None
+        };
+        let persistent_client_certificate_identity_ref =
+            if remember_profile && has_client_certificate_identity {
+                let secret_ref = saved_client_certificate_identity_ref
+                    .clone()
+                    .filter(SecretRef::is_persistent)
+                    .unwrap_or_else(|| SecretRef::new(SecretRefNamespace::SecretService));
+                if let Some(secret) = session_client_certificate_identity.as_ref()
+                    && let Err(error) = secret_service::store_secret(&secret_ref, secret)
+                {
+                    state.provider_failed(error);
+                    refresh_ui(&connect_bindings, &state);
+                    drop(state);
+                    show_secret_storage_session_fallback(&connect_bindings, &connect_state);
+                    return;
+                }
+                Some(secret_ref)
+            } else {
+                None
+            };
+        let secret_custom_headers_ref =
+            if let Some(secret_ref) = persistent_secret_custom_headers_ref {
+                Some(secret_ref)
+            } else if has_secret_custom_headers {
+                Some(SecretRef::new(SecretRefNamespace::Session))
+            } else {
+                saved_secret_custom_headers_ref
+            };
+        let proxy_auth_ref = if let Some(secret_ref) = persistent_proxy_auth_ref {
+            Some(secret_ref)
+        } else if has_proxy_credentials {
+            Some(SecretRef::new(SecretRefNamespace::Session))
+        } else {
+            saved_proxy_auth_ref
+        };
+        let client_certificate_identity_ref =
+            if let Some(secret_ref) = persistent_client_certificate_identity_ref {
+                Some(secret_ref)
+            } else if has_client_certificate_identity {
+                Some(SecretRef::new(SecretRefNamespace::Session))
+            } else {
+                saved_client_certificate_identity_ref
+            };
         let profile = match custom_provider_profile(
             profile_id,
             display_name,
@@ -2286,10 +4954,26 @@ fn connect_action_handlers(
             } else {
                 saved_secret_ref
             },
+            user_notes,
+            organization,
+            project,
+            region,
+            account_identifier,
+            proxy_url,
+            request_timeout_secs,
+            connection_timeout_secs,
+            streaming_idle_timeout_secs,
+            trusted_certificates_pem,
+            client_certificate_identity_ref,
+            custom_headers,
             selected_model,
         )
-        .map(|profile| profile.with_enabled(enabled))
-        {
+        .map(|profile| {
+            profile
+                .with_enabled(enabled)
+                .with_secret_custom_headers_ref(secret_custom_headers_ref)
+                .with_proxy_auth_ref(proxy_auth_ref)
+        }) {
             Ok(profile) => profile,
             Err(error) => {
                 state.provider_failed(error);
@@ -2302,6 +4986,9 @@ fn connect_action_handlers(
                 if let Err(error) = connect_worker.try_send(WorkerCommand::Connect {
                     profile,
                     secret: session_secret,
+                    secret_custom_headers: session_secret_custom_headers,
+                    proxy_authentication: session_proxy_authentication,
+                    client_certificate_identity: session_client_certificate_identity,
                     persistence: if remember_profile {
                         PersistenceIntent::Persistent
                     } else {
@@ -2367,6 +5054,7 @@ fn connect_action_handlers(
     let translate_worker = Rc::clone(worker);
     bindings.translate.connect_clicked(move |_| {
         translate_bindings.export_notice.set(false);
+        translate_bindings.report_export_notice.set(false);
         translate_bindings.fallback_notice.set(false);
         *translate_bindings.output_uri.borrow_mut() = None;
         let source = translate_bindings.source.text(
@@ -2380,6 +5068,10 @@ fn connect_action_handlers(
             Ok((source_locale, target_locale, glossary)) => {
                 let document_job_id = translate_bindings.document_job_id.borrow().clone();
                 let fallback_enabled = translate_bindings.fallback_enabled.is_active();
+                let routing_profile_id = translate_bindings
+                    .selected_routing_profile_id
+                    .borrow()
+                    .clone();
                 let fallback_profile_id = if fallback_enabled {
                     selected_fallback_profile_id(&translate_bindings)
                 } else {
@@ -2393,12 +5085,28 @@ fn connect_action_handlers(
                     } else {
                         match state.begin_document_translation() {
                             Ok(()) => {
-                                let command = WorkerCommand::TranslateDocumentJob {
-                                    job_id,
-                                    source_locale,
-                                    target_locale,
-                                    glossary,
-                                    privacy_mode: state.privacy_mode(),
+                                let command = match routing_profile_id {
+                                    Some(routing_profile_id) => {
+                                        WorkerCommand::TranslateDocumentJobWithRouting {
+                                            job_id,
+                                            source_locale,
+                                            target_locale,
+                                            glossary,
+                                            quality_mode: state.quality_mode(),
+                                            translation_preset: state.translation_preset().clone(),
+                                            privacy_mode: state.privacy_mode(),
+                                            routing_profile_id,
+                                        }
+                                    }
+                                    None => WorkerCommand::TranslateDocumentJob {
+                                        job_id,
+                                        source_locale,
+                                        target_locale,
+                                        glossary,
+                                        quality_mode: state.quality_mode(),
+                                        translation_preset: state.translation_preset().clone(),
+                                        privacy_mode: state.privacy_mode(),
+                                    },
                                 };
                                 match translate_worker.try_send(command) {
                                     Ok(()) => {
@@ -2412,7 +5120,10 @@ fn connect_action_handlers(
                             Err(error) => state.record_client_error(error.to_string()),
                         }
                     }
-                } else if fallback_enabled && fallback_profile_id.is_none() {
+                } else if routing_profile_id.is_none()
+                    && fallback_enabled
+                    && fallback_profile_id.is_none()
+                {
                     let message = localization::text(
                         state.locale(),
                         "error.fallback_profile_required",
@@ -2420,15 +5131,31 @@ fn connect_action_handlers(
                     );
                     state.record_client_error(message);
                 } else {
+                    if fallback_confirmation_needed(
+                        fallback_enabled,
+                        translate_bindings.fallback_approval.get(),
+                    ) {
+                        drop(state);
+                        show_fallback_approval_dialog(&translate_bindings, &translate_state);
+                        return;
+                    }
                     match state.begin_translation() {
                         Ok(request) => {
-                            let command = fallback_profile_id.map_or(
-                                WorkerCommand::Translate(request.clone()),
-                                |fallback_profile_id| WorkerCommand::TranslateWithFallback {
+                            translate_bindings.fallback_approval.set(false);
+                            let command = if let Some(routing_profile_id) = routing_profile_id {
+                                WorkerCommand::TranslateWithRouting {
                                     request,
-                                    fallback_profile_id,
-                                },
-                            );
+                                    routing_profile_id,
+                                }
+                            } else {
+                                fallback_profile_id.map_or(
+                                    WorkerCommand::Translate(request.clone()),
+                                    |fallback_profile_id| WorkerCommand::TranslateWithFallback {
+                                        request,
+                                        fallback_profile_id,
+                                    },
+                                )
+                            };
                             if let Err(error) = translate_worker.try_send(command) {
                                 state.record_client_error(error.to_string());
                             }
@@ -2442,14 +5169,72 @@ fn connect_action_handlers(
         refresh_ui(&translate_bindings, &state);
     });
 
+    let retry_button = bindings.translate.clone();
+    bindings.retry_translation.connect_clicked(move |_| {
+        retry_button.emit_clicked();
+    });
+
+    let copy_bindings = bindings.clone();
+    bindings.copy_output.connect_clicked(move |_| {
+        let output = text_buffer_contents(&copy_bindings.output);
+        if output.is_empty() {
+            return;
+        }
+        copy_bindings
+            .output_view
+            .display()
+            .clipboard()
+            .set_text(&output);
+    });
+
+    let clear_bindings = bindings.clone();
+    let clear_state = Rc::clone(state);
+    bindings.clear_workspace.connect_clicked(move |_| {
+        let can_clear = {
+            let state = clear_state.borrow();
+            state.pending_profile_deletion().is_none()
+                && state.pending_model_selection().is_none()
+                && !clear_bindings.ocr_pending.get()
+                && !matches!(
+                    state.status(),
+                    AppStatus::Connecting | AppStatus::Translating | AppStatus::Cancelling
+                )
+                && clear_bindings.document_job_id.borrow().is_none()
+        };
+        if !can_clear {
+            return;
+        }
+        clear_state.borrow_mut().clear_workspace();
+        clear_bindings.source.set_text("");
+        clear_bindings.output.set_text("");
+        clear_bindings.source_uri.borrow_mut().take();
+        clear_bindings.output_uri.borrow_mut().take();
+        clear_bindings.document_warnings.borrow_mut().clear();
+        clear_bindings.document_progress.set(None);
+        clear_bindings.document_job_state.set(None);
+        clear_bindings.export_notice.set(false);
+        clear_bindings.report_export_notice.set(false);
+        clear_bindings.fallback_notice.set(false);
+        clear_bindings.connection_test_notice.set(false);
+        clear_bindings.connection_test_model_count.set(None);
+        clear_bindings
+            .connection_test_profile_id
+            .borrow_mut()
+            .take();
+        refresh_ui(&clear_bindings, &clear_state.borrow());
+    });
+
     let pause_bindings = bindings.clone();
+    let pause_state = Rc::clone(state);
     let pause_worker = Rc::clone(worker);
     bindings.pause_document.connect_clicked(move |_| {
         let Some(job_id) = pause_bindings.document_job_id.borrow().clone() else {
             return;
         };
         if let Err(error) = pause_worker.try_send(WorkerCommand::PauseDocumentJob { job_id }) {
-            pause_bindings.error.set_label(&error.to_string());
+            let mut state = pause_state.borrow_mut();
+            state.record_client_error(error.to_string());
+            refresh_ui(&pause_bindings, &state);
         }
     });
 
@@ -2630,14 +5415,17 @@ fn begin_source_file_open(
     );
 }
 
-// 通过 GTK 原生文件对话框选择受限的 UTF-8 词汇表 CSV 文件。
+// 通过 GTK 原生文件对话框选择受限的 UTF-8 词汇表 CSV 或 TBX 文件。
 fn begin_glossary_import(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
     let locale = state.borrow().locale();
-    let filter_name = localization::text(locale, "file.filter.csv", "CSV glossary files");
+    let filter_name = localization::text(locale, "file.filter.csv", "CSV and TBX glossary files");
     let filter = gtk::FileFilter::new();
     filter.set_name(Some(&filter_name));
     filter.add_mime_type("text/csv");
+    filter.add_mime_type("application/xml");
+    filter.add_mime_type("text/xml");
     filter.add_suffix("csv");
+    filter.add_suffix("tbx");
     let filters = gtk::gio::ListStore::new::<gtk::FileFilter>();
     filters.append(&filter);
     let dialog_title = localization::text(locale, "dialog.open_glossary", "Import glossary");
@@ -2661,18 +5449,28 @@ fn begin_glossary_import(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
                 &localization::text(
                     import_state.borrow().locale(),
                     "error.glossary_import",
-                    "The glossary CSV could not be imported.",
+                    "The glossary file could not be imported.",
                 ),
             ),
         },
     );
 }
 
-// 将词汇表 CSV 读取限制在领域层上限内，并只把安全的错误文本反馈给界面。
-#[allow(clippy::single_match_else)]
+// 将词汇表 CSV 或 TBX 读取限制在领域层上限内，并只把安全的错误文本反馈给界面。
+#[allow(clippy::single_match_else, clippy::too_many_lines)]
 fn load_glossary_file(file: &gtk::gio::File, bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
     let bytes_read = Rc::new(Cell::new(0_usize));
     let too_large = Rc::new(Cell::new(false));
+    let is_tbx = file.basename().is_some_and(|name| {
+        name.to_string_lossy()
+            .to_ascii_lowercase()
+            .ends_with(".tbx")
+    });
+    let max_bytes = if is_tbx {
+        MAX_GLOSSARY_TBX_BYTES
+    } else {
+        MAX_GLOSSARY_CSV_BYTES
+    };
     let read_bytes = Rc::clone(&bytes_read);
     let read_too_large = Rc::clone(&too_large);
     let load_bindings = bindings.clone();
@@ -2681,7 +5479,7 @@ fn load_glossary_file(file: &gtk::gio::File, bindings: &UiBindings, state: &Rc<R
         None::<&gtk::gio::Cancellable>,
         move |chunk| {
             let next = read_bytes.get().saturating_add(chunk.len());
-            if next > MAX_GLOSSARY_CSV_BYTES {
+            if next > max_bytes {
                 read_too_large.set(true);
                 false
             } else {
@@ -2696,7 +5494,7 @@ fn load_glossary_file(file: &gtk::gio::File, bindings: &UiBindings, state: &Rc<R
                     &localization::text(
                         load_state.borrow().locale(),
                         "error.glossary_import",
-                        "The glossary CSV could not be imported.",
+                        "The glossary file could not be imported.",
                     ),
                 );
                 return;
@@ -2711,20 +5509,25 @@ fn load_glossary_file(file: &gtk::gio::File, bindings: &UiBindings, state: &Rc<R
                             &localization::text(
                                 load_state.borrow().locale(),
                                 "error.glossary_import",
-                                "The glossary CSV could not be imported.",
+                                "The glossary file could not be imported.",
                             ),
                         );
                         return;
                     };
-                    match Glossary::from_csv(text) {
+                    let imported = if is_tbx {
+                        Glossary::from_tbx(text).map_err(|_| ())
+                    } else {
+                        Glossary::from_csv(text).map_err(|_| ())
+                    };
+                    match imported {
                         Ok(glossary) => glossary,
-                        Err(_) => {
+                        Err(()) => {
                             show_file_import_error(
                                 &load_bindings,
                                 &localization::text(
                                     load_state.borrow().locale(),
                                     "error.glossary_import",
-                                    "The glossary CSV could not be imported.",
+                                    "The glossary file could not be imported.",
                                 ),
                             );
                             return;
@@ -2737,7 +5540,7 @@ fn load_glossary_file(file: &gtk::gio::File, bindings: &UiBindings, state: &Rc<R
                         &localization::text(
                             load_state.borrow().locale(),
                             "error.glossary_import",
-                            "The glossary CSV could not be imported.",
+                            "The glossary file could not be imported.",
                         ),
                     );
                     return;
@@ -2799,7 +5602,7 @@ fn begin_glossary_export(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
         );
         return;
     };
-    let contents = glib::Bytes::from_owned(glossary.to_csv().into_bytes());
+    let contents = glossary.to_csv().into_bytes();
     let dialog_title = localization::text(locale, "dialog.export_glossary", "Export glossary");
     let dialog_accept = localization::text(locale, "dialog.save", "Save");
     let dialog = gtk::FileDialog::builder()
@@ -2817,27 +5620,21 @@ fn begin_glossary_export(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
             Ok(file) => {
                 let callback_bindings = export_bindings.clone();
                 let callback_state = Rc::clone(&export_state);
-                file.replace_contents_bytes_async(
-                    &contents,
-                    None,
-                    false,
-                    gtk::gio::FileCreateFlags::NONE,
-                    None::<&gtk::gio::Cancellable>,
-                    move |write_result| match write_result {
-                        Ok(_) => {
-                            callback_bindings.glossary_notice.set(true);
-                            refresh_ui(&callback_bindings, &callback_state.borrow());
-                        }
-                        Err(_) => show_file_export_error(
+                write_new_file_async(&file, contents, move |write_succeeded| {
+                    if write_succeeded {
+                        callback_bindings.glossary_notice.set(true);
+                        refresh_ui(&callback_bindings, &callback_state.borrow());
+                    } else {
+                        show_file_export_error(
                             &callback_bindings,
                             &localization::text(
                                 callback_state.borrow().locale(),
                                 "error.glossary_export",
                                 "The glossary CSV could not be saved.",
                             ),
-                        ),
-                    },
-                );
+                        );
+                    }
+                });
             }
             Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
             Err(_) => show_file_export_error(
@@ -2852,13 +5649,311 @@ fn begin_glossary_export(bindings: &UiBindings, state: &Rc<RefCell<AppState>>) {
     );
 }
 
+// 判断导出目标是否通过相同路径、符号链接或硬链接指向源文件。
+fn destination_matches_source(source_uri: Option<&str>, destination: &gtk::gio::File) -> bool {
+    let Some(source_uri) = source_uri else {
+        return false;
+    };
+    let source = gtk::gio::File::for_uri(source_uri);
+    if source.equal(destination) {
+        return true;
+    }
+    let (Some(source_path), Some(destination_path)) = (source.path(), destination.path()) else {
+        return false;
+    };
+    if source_path == destination_path {
+        return true;
+    }
+    if let (Ok(source_path), Ok(destination_path)) = (
+        fs::canonicalize(&source_path),
+        fs::canonicalize(&destination_path),
+    ) && source_path == destination_path
+    {
+        return true;
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+
+        if let (Ok(source_metadata), Ok(destination_metadata)) =
+            (fs::metadata(source_path), fs::metadata(destination_path))
+        {
+            return source_metadata.dev() == destination_metadata.dev()
+                && source_metadata.ino() == destination_metadata.ino();
+        }
+    }
+    false
+}
+
+// 将源文件名和目标语言规范化为安全、可读且稳定的导出文件名。
+fn translation_output_name(source_name: &str, target_locale: &str) -> String {
+    let source_path = Path::new(source_name);
+    let basename = source_path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("translation.txt");
+    let base = source_path
+        .file_stem()
+        .and_then(|name| name.to_str())
+        .unwrap_or(basename);
+    let base = if basename
+        .strip_prefix('.')
+        .is_some_and(|name| !name.is_empty() && !name.contains('.'))
+    {
+        "translation"
+    } else {
+        base
+    };
+    let base = sanitize_output_component(base, "translation");
+    let target = target_locale
+        .chars()
+        .map(|character| {
+            if character.is_ascii_alphanumeric() || character == '-' {
+                character
+            } else {
+                '_'
+            }
+        })
+        .collect::<String>();
+    let target = sanitize_output_component(&target, "und");
+    let extension = source_path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .map_or_else(
+            || "txt".to_owned(),
+            |extension| sanitize_output_component(extension, "txt"),
+        );
+    format!("{base}.{target}.{extension}")
+}
+
+// 移除控制字符和路径分隔符，避免用户可控名称逃逸导出目录。
+fn sanitize_output_component(value: &str, fallback: &str) -> String {
+    let sanitized = value
+        .chars()
+        .map(|character| {
+            if character.is_control() || matches!(character, '/' | '\\') {
+                '_'
+            } else {
+                character
+            }
+        })
+        .collect::<String>();
+    let trimmed = sanitized.trim_matches(|character| character == '.' || character == ' ');
+    if trimmed.is_empty() {
+        fallback.to_owned()
+    } else {
+        trimmed.to_owned()
+    }
+}
+
+// 为已存在的目标文件分配从 -1 开始的确定性后缀，避免覆盖任何现有文件。
+fn collision_safe_output_path(destination: &Path) -> Option<PathBuf> {
+    let path_available = |path: &Path| {
+        matches!(
+            fs::symlink_metadata(path),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound
+        )
+    };
+    if path_available(destination) {
+        return Some(destination.to_owned());
+    }
+    let parent = destination.parent()?;
+    let stem = destination.file_stem()?.to_str()?;
+    let extension = destination
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .filter(|extension| !extension.is_empty());
+    for suffix in 1..=9999 {
+        let filename = extension.map_or_else(
+            || format!("{stem}-{suffix}"),
+            |extension| format!("{stem}-{suffix}.{extension}"),
+        );
+        let candidate = parent.join(filename);
+        if path_available(&candidate) {
+            return Some(candidate);
+        }
+    }
+    None
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ExportWriteStrategy {
+    LocalAtomicRename,
+    ExclusiveCreate,
+}
+
+// 非本地 URI 没有可验证的同目录路径，只能使用 GIO 独占创建保持不覆盖语义。
+fn export_write_strategy(destination: &gtk::gio::File) -> ExportWriteStrategy {
+    match destination.path() {
+        Some(path) if path.parent().is_some() => ExportWriteStrategy::LocalAtomicRename,
+        _ => ExportWriteStrategy::ExclusiveCreate,
+    }
+}
+
+// 将本地导出文件及其父目录同步到文件系统，缩小崩溃或断电后出现半成品的窗口。
+fn sync_local_export(path: &Path) -> bool {
+    let file_synced = fs::File::open(path)
+        .and_then(|file| file.sync_all())
+        .is_ok();
+    let parent_synced = path.parent().is_some_and(sync_local_export_directory);
+    file_synced && parent_synced
+}
+
+// 同步目录元数据，使临时文件写入和最终重命名的目录项具有明确的耐久性边界。
+fn sync_local_export_directory(path: &Path) -> bool {
+    fs::File::open(path)
+        .and_then(|directory| directory.sync_all())
+        .is_ok()
+}
+
+// 将 GIO 目标转换为不会覆盖已有本地文件的确定性路径。
+fn collision_safe_destination(destination: &gtk::gio::File) -> Option<gtk::gio::File> {
+    destination.path().map_or_else(
+        || Some(destination.clone()),
+        |path| collision_safe_output_path(&path).map(|path| gtk::gio::File::for_path(&path)),
+    )
+}
+
+// 以独占创建和异步写入保存新文件，避免检查与写入之间的竞争覆盖已有文件。
+fn write_contents_to_new_file_async(
+    destination: &gtk::gio::File,
+    contents: Vec<u8>,
+    callback: impl FnOnce(bool) + 'static,
+) {
+    let destination = destination.clone();
+    let destination_for_sync = destination.clone();
+    destination.create_async(
+        gtk::gio::FileCreateFlags::NONE,
+        glib::Priority::DEFAULT,
+        None::<&gtk::gio::Cancellable>,
+        move |create_result| match create_result {
+            Ok(stream) => stream.write_all_async(
+                contents,
+                glib::Priority::DEFAULT,
+                None::<&gtk::gio::Cancellable>,
+                {
+                    let close_stream = stream.clone();
+                    move |write_result| {
+                        let write_succeeded = matches!(write_result, Ok((_, _, None)));
+                        close_stream.close_async(
+                            glib::Priority::DEFAULT,
+                            None::<&gtk::gio::Cancellable>,
+                            move |close_result| {
+                                let durable = destination_for_sync
+                                    .path()
+                                    .is_none_or(|path| sync_local_export(&path));
+                                callback(write_succeeded && close_result.is_ok() && durable);
+                            },
+                        );
+                    }
+                },
+            ),
+            Err(_) => callback(false),
+        },
+    );
+}
+
+// 在专用进程中暂停本地导出移动，供中断回归确认半成品不会提前可见。
+#[cfg(test)]
+fn pause_before_local_export_move_for_test() {
+    let (Ok(marker), Ok(release)) = (
+        std::env::var("LINGUAMESH_TEST_EXPORT_PAUSE_MARKER"),
+        std::env::var("LINGUAMESH_TEST_EXPORT_PAUSE_RELEASE"),
+    ) else {
+        return;
+    };
+    if fs::write(&marker, b"ready").is_err() {
+        return;
+    }
+    while !Path::new(&release).exists() {
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
+// 生产构建不启用测试进程暂停钩子，保持导出路径不受测试环境变量影响。
+#[cfg(not(test))]
+fn pause_before_local_export_move_for_test() {}
+
+// 先写入同目录临时文件，再以 GIO 非覆盖移动完成本地输出，避免半成品可见。
+fn write_new_file_async(
+    destination: &gtk::gio::File,
+    contents: Vec<u8>,
+    callback: impl FnOnce(bool) + 'static,
+) {
+    if export_write_strategy(destination) == ExportWriteStrategy::ExclusiveCreate {
+        write_contents_to_new_file_async(destination, contents, callback);
+        return;
+    }
+    let Some(destination_path) = destination.path() else {
+        write_contents_to_new_file_async(destination, contents, callback);
+        return;
+    };
+    let Some(parent) = destination_path.parent() else {
+        write_contents_to_new_file_async(destination, contents, callback);
+        return;
+    };
+    let parent_path = parent.to_path_buf();
+    let temporary_path = parent.join(format!(
+        ".linguamesh-export-{}.tmp",
+        glib::uuid_string_random()
+    ));
+    let temporary = gtk::gio::File::for_path(temporary_path);
+    let destination = destination.clone();
+    let temporary_for_write_cleanup = temporary.clone();
+    let temporary_for_move_cleanup = temporary.clone();
+    let temporary_for_write = temporary.clone();
+    write_contents_to_new_file_async(&temporary_for_write, contents, move |write_succeeded| {
+        if !write_succeeded {
+            temporary_for_write_cleanup.delete_async(
+                glib::Priority::DEFAULT,
+                None::<&gtk::gio::Cancellable>,
+                move |_| callback(false),
+            );
+            return;
+        }
+        pause_before_local_export_move_for_test();
+        temporary.move_async(
+            &destination,
+            gtk::gio::FileCopyFlags::NONE,
+            glib::Priority::DEFAULT,
+            None::<&gtk::gio::Cancellable>,
+            None,
+            move |move_result| {
+                if move_result.is_ok() && sync_local_export_directory(&parent_path) {
+                    callback(true);
+                    return;
+                }
+                temporary_for_move_cleanup.delete_async(
+                    glib::Priority::DEFAULT,
+                    None::<&gtk::gio::Cancellable>,
+                    move |_| callback(false),
+                );
+            },
+        );
+    });
+}
+
+// 从已导入 URI 提取原始文件名；纯文本编辑器没有源文件时使用稳定回退名。
+fn source_name_for_export(source_uri: Option<&str>) -> String {
+    source_uri
+        .and_then(|uri| gtk::gio::File::for_uri(uri).basename())
+        .map_or_else(
+            || "translation.txt".to_owned(),
+            |name| name.to_string_lossy().into_owned(),
+        )
+}
+
 // 将译文异步写入用户选择的新文件，并拒绝覆盖已导入的源文件。
+#[allow(clippy::too_many_lines)]
 fn begin_translation_export(
     bindings: &UiBindings,
     state: &Rc<RefCell<AppState>>,
     worker: &Rc<CoreWorker>,
 ) {
-    let locale = state.borrow().locale();
+    let (locale, target_locale) = {
+        let state = state.borrow();
+        (state.locale(), state.target_locale().to_owned())
+    };
     if let Some(job_id) = bindings.document_job_id.borrow().clone() {
         if let Err(error) = worker.try_send(WorkerCommand::ExportDocumentJob { job_id }) {
             state.borrow_mut().record_client_error(error.to_string());
@@ -2893,17 +5988,20 @@ fn begin_translation_export(
         .accept_label(&dialog_accept)
         .modal(true)
         .build();
-    dialog.set_initial_name(Some("linguamesh-translation.txt"));
     let export_bindings = bindings.clone();
     let export_state = Rc::clone(state);
     let source_uri = bindings.source_uri.borrow().clone();
+    let default_name = translation_output_name(
+        &source_name_for_export(source_uri.as_deref()),
+        &target_locale,
+    );
+    dialog.set_initial_name(Some(&default_name));
     dialog.save(
         Some(&bindings.window),
         None::<&gtk::gio::Cancellable>,
         move |result| match result {
             Ok(file) => {
-                let destination_uri = file.uri().to_string();
-                if source_uri.as_deref() == Some(destination_uri.as_str()) {
+                if destination_matches_source(source_uri.as_deref(), &file) {
                     show_file_export_error(
                         &export_bindings,
                         &localization::text(
@@ -2914,32 +6012,258 @@ fn begin_translation_export(
                     );
                     return;
                 }
-                let contents = glib::Bytes::from_owned(output.into_bytes());
+                let Some(file) = collision_safe_destination(&file) else {
+                    show_file_export_error(
+                        &export_bindings,
+                        &localization::text(
+                            export_state.borrow().locale(),
+                            "error.file_export",
+                            "The translated output could not be saved.",
+                        ),
+                    );
+                    return;
+                };
+                let destination_uri = file.uri().to_string();
                 let output_uri = destination_uri.clone();
                 let callback_bindings = export_bindings.clone();
                 let callback_state = Rc::clone(&export_state);
-                file.replace_contents_bytes_async(
-                    &contents,
-                    None,
-                    false,
-                    gtk::gio::FileCreateFlags::NONE,
-                    None::<&gtk::gio::Cancellable>,
-                    move |write_result| match write_result {
-                        Ok(_) => {
-                            *callback_bindings.output_uri.borrow_mut() = Some(output_uri.clone());
-                            callback_bindings.export_notice.set(true);
-                            refresh_ui(&callback_bindings, &callback_state.borrow());
-                        }
-                        Err(_) => show_file_export_error(
+                write_new_file_async(&file, output.into_bytes(), move |write_succeeded| {
+                    if write_succeeded {
+                        *callback_bindings.output_uri.borrow_mut() = Some(output_uri.clone());
+                        callback_bindings.export_notice.set(true);
+                        refresh_ui(&callback_bindings, &callback_state.borrow());
+                    } else {
+                        show_file_export_error(
                             &callback_bindings,
                             &localization::text(
                                 callback_state.borrow().locale(),
                                 "error.file_export",
                                 "The translated output could not be saved.",
                             ),
+                        );
+                    }
+                });
+            }
+            Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
+            Err(_) => show_file_export_error(
+                &export_bindings,
+                &localization::text(
+                    export_state.borrow().locale(),
+                    "error.file_export",
+                    "The translated output could not be saved.",
+                ),
+            ),
+        },
+    );
+}
+
+// 将报告字段折叠为单行，避免源文件名或 warning 破坏 TSV 结构。
+fn report_field(value: &str) -> String {
+    value
+        .chars()
+        .map(|character| match character {
+            '\t' | '\r' | '\n' => ' ',
+            _ => character,
+        })
+        .collect()
+}
+
+// 根据已持久化的文档段生成不含正文的本地 usage 估算。
+fn document_usage_report(snapshot: &DocumentJobSnapshot) -> String {
+    let source = snapshot
+        .job
+        .segments
+        .iter()
+        .map(|segment| segment.source_text.as_str())
+        .collect::<String>();
+    let translated = snapshot
+        .job
+        .segments
+        .iter()
+        .filter_map(|segment| segment.translated_text.as_deref())
+        .collect::<String>();
+    let usage = UsageRecord::locally_estimated(&source, &translated);
+    format!(
+        "{{\"source\":\"locally_estimated\",\"input_tokens\":{},\"output_tokens\":{},\"total_tokens\":{}}}",
+        usage.input_tokens.unwrap_or_default(),
+        usage.output_tokens.unwrap_or_default(),
+        usage.total_tokens.unwrap_or_default()
+    )
+}
+
+// 生成不含凭据、源正文或本地路径的确定性文档翻译报告。
+fn document_translation_report(snapshot: &DocumentJobSnapshot, core_version: &str) -> String {
+    let options = snapshot.options.as_ref();
+    let completed = snapshot
+        .job
+        .segments
+        .iter()
+        .filter(|segment| {
+            segment.kind == DocumentSegmentKind::Prose && segment.translated_text.is_some()
+        })
+        .count();
+    let skipped = snapshot
+        .job
+        .segments
+        .iter()
+        .filter(|segment| segment.kind == DocumentSegmentKind::Verbatim)
+        .count();
+    let pending = snapshot.job.pending_count();
+    let failed = usize::from(snapshot.state == DocumentJobState::Failed);
+    let warnings = snapshot.job.warnings().unwrap_or_default();
+    let warning_text = if warnings.is_empty() {
+        "none".to_owned()
+    } else {
+        warnings
+            .iter()
+            .map(|warning| format!("{:?}", warning.kind))
+            .collect::<Vec<_>>()
+            .join(",")
+    };
+    let source_locale = options
+        .and_then(|options| options.source_locale.as_deref())
+        .unwrap_or("auto");
+    let target_locale = options.map_or("unknown", |options| options.target_locale.as_str());
+    let provider = options.map_or("unavailable", |options| options.provider_id.as_str());
+    let model = options.map_or("unavailable", |options| options.model_id.as_str());
+    let routing = options
+        .and_then(|options| options.routing_profile_id.as_deref())
+        .map_or_else(|| "manual".to_owned(), |id| format!("profile:{id}"));
+    let preset = options.map_or("unavailable", |options| {
+        options.translation_preset.id.as_str()
+    });
+    let glossary = options
+        .and_then(|options| options.glossary.as_ref())
+        .map_or_else(
+            || "none".to_owned(),
+            |glossary| format!("entries:{}", glossary.entries().len()),
+        );
+    let state = format!("{:?}", snapshot.state);
+    let output_target_locale = options.map_or("und", |options| options.target_locale.as_str());
+    let output_identifier =
+        translation_output_name(&snapshot.job.source_name, output_target_locale);
+    let fields = [
+        ("report_version", "1".to_owned()),
+        ("source_identifier", snapshot.job.source_name.clone()),
+        ("output_identifier", output_identifier),
+        ("source_locale", source_locale.to_owned()),
+        ("target_locale", target_locale.to_owned()),
+        ("provider", provider.to_owned()),
+        ("model", model.to_owned()),
+        ("routing_decision", routing),
+        ("translation_preset", preset.to_owned()),
+        ("glossary_version", glossary),
+        ("application_version", env!("CARGO_PKG_VERSION").to_owned()),
+        ("core_version", core_version.to_owned()),
+        (
+            "prompt_template_version",
+            "translation-prompt-v3".to_owned(),
+        ),
+        ("state", state),
+        ("segment_total", snapshot.job.segments.len().to_string()),
+        ("completed_count", completed.to_string()),
+        ("skipped_count", skipped.to_string()),
+        ("pending_count", pending.to_string()),
+        ("retried_count", "unknown".to_owned()),
+        ("failed_count", failed.to_string()),
+        ("warnings", warning_text),
+        ("usage", document_usage_report(snapshot)),
+        ("start_time_unix_seconds", snapshot.created_at.to_string()),
+        (
+            "completion_time_unix_seconds",
+            snapshot.updated_at.to_string(),
+        ),
+    ];
+    let mut report = String::from("field\tvalue\n");
+    for (key, value) in fields {
+        report.push_str(key);
+        report.push('\t');
+        report.push_str(&report_field(&value));
+        report.push('\n');
+    }
+    report
+}
+
+// 将选中文档任务的安全报告异步写入用户指定的新文件。
+fn begin_document_report_export(
+    bindings: &UiBindings,
+    state: &Rc<RefCell<AppState>>,
+    snapshot: &DocumentJobSnapshot,
+) {
+    let locale = state.borrow().locale();
+    bindings.report_export_notice.set(false);
+    let report = document_translation_report(
+        snapshot,
+        &core_compatibility().map_or_else(
+            |_| "unavailable".to_owned(),
+            |compatibility| compatibility.core_version,
+        ),
+    );
+    let target_locale = snapshot
+        .options
+        .as_ref()
+        .map_or("und", |options| options.target_locale.as_str());
+    let report_name = format!(
+        "{}.report.tsv",
+        translation_output_name(&snapshot.job.source_name, target_locale)
+    );
+    let dialog = gtk::FileDialog::builder()
+        .title(localization::text(
+            locale,
+            "dialog.export_translation",
+            "Export translation",
+        ))
+        .accept_label(localization::text(locale, "dialog.save", "Save"))
+        .modal(true)
+        .build();
+    dialog.set_initial_name(Some(&report_name));
+    let export_bindings = bindings.clone();
+    let export_state = Rc::clone(state);
+    let source_uri = bindings.source_uri.borrow().clone();
+    dialog.save(
+        Some(&bindings.window),
+        None::<&gtk::gio::Cancellable>,
+        move |result| match result {
+            Ok(file) => {
+                if destination_matches_source(source_uri.as_deref(), &file) {
+                    show_file_export_error(
+                        &export_bindings,
+                        &localization::text(
+                            export_state.borrow().locale(),
+                            "error.file_export_source",
+                            "Choose a different file so the source remains unchanged.",
                         ),
-                    },
-                );
+                    );
+                    return;
+                }
+                let Some(file) = collision_safe_destination(&file) else {
+                    show_file_export_error(
+                        &export_bindings,
+                        &localization::text(
+                            export_state.borrow().locale(),
+                            "error.file_export",
+                            "The translated output could not be saved.",
+                        ),
+                    );
+                    return;
+                };
+                let callback_bindings = export_bindings.clone();
+                let callback_state = Rc::clone(&export_state);
+                write_new_file_async(&file, report.clone().into_bytes(), move |write_succeeded| {
+                    if write_succeeded {
+                        callback_bindings.report_export_notice.set(true);
+                        refresh_ui(&callback_bindings, &callback_state.borrow());
+                    } else {
+                        show_file_export_error(
+                            &callback_bindings,
+                            &localization::text(
+                                callback_state.borrow().locale(),
+                                "error.file_export",
+                                "The translated output could not be saved.",
+                            ),
+                        );
+                    }
+                });
             }
             Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
             Err(_) => show_file_export_error(
@@ -2959,13 +6283,11 @@ fn begin_document_binary_export(
     bindings: &UiBindings,
     state: &Rc<RefCell<AppState>>,
     source_name: &str,
+    target_locale: &str,
     contents: Vec<u8>,
 ) {
     let locale = state.borrow().locale();
-    let extension = source_name
-        .rsplit_once('.')
-        .map_or("txt", |(_, extension)| extension);
-    let default_name = format!("linguamesh-translation.{extension}");
+    let default_name = translation_output_name(source_name, target_locale);
     let dialog = gtk::FileDialog::builder()
         .title(localization::text(
             locale,
@@ -2984,8 +6306,7 @@ fn begin_document_binary_export(
         None::<&gtk::gio::Cancellable>,
         move |result| match result {
             Ok(file) => {
-                let destination_uri = file.uri().to_string();
-                if source_uri.as_deref() == Some(destination_uri.as_str()) {
+                if destination_matches_source(source_uri.as_deref(), &file) {
                     show_file_export_error(
                         &export_bindings,
                         &localization::text(
@@ -2996,32 +6317,37 @@ fn begin_document_binary_export(
                     );
                     return;
                 }
-                let bytes = glib::Bytes::from_owned(contents);
+                let Some(file) = collision_safe_destination(&file) else {
+                    show_file_export_error(
+                        &export_bindings,
+                        &localization::text(
+                            export_state.borrow().locale(),
+                            "error.file_export",
+                            "The translated output could not be saved.",
+                        ),
+                    );
+                    return;
+                };
+                let destination_uri = file.uri().to_string();
                 let output_uri = destination_uri.clone();
                 let callback_bindings = export_bindings.clone();
                 let callback_state = Rc::clone(&export_state);
-                file.replace_contents_bytes_async(
-                    &bytes,
-                    None,
-                    false,
-                    gtk::gio::FileCreateFlags::NONE,
-                    None::<&gtk::gio::Cancellable>,
-                    move |write_result| match write_result {
-                        Ok(_) => {
-                            *callback_bindings.output_uri.borrow_mut() = Some(output_uri.clone());
-                            callback_bindings.export_notice.set(true);
-                            refresh_ui(&callback_bindings, &callback_state.borrow());
-                        }
-                        Err(_) => show_file_export_error(
+                write_new_file_async(&file, contents, move |write_succeeded| {
+                    if write_succeeded {
+                        *callback_bindings.output_uri.borrow_mut() = Some(output_uri.clone());
+                        callback_bindings.export_notice.set(true);
+                        refresh_ui(&callback_bindings, &callback_state.borrow());
+                    } else {
+                        show_file_export_error(
                             &callback_bindings,
                             &localization::text(
                                 callback_state.borrow().locale(),
                                 "error.file_export",
                                 "The translated output could not be saved.",
                             ),
-                        ),
-                    },
-                );
+                        );
+                    }
+                });
             }
             Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
             Err(_) => show_file_export_error(
@@ -3037,7 +6363,7 @@ fn begin_document_binary_export(
 }
 
 // 通过 GIO 的分块异步读取限制内存占用，并在主线程完成 UTF-8 解码。
-#[allow(clippy::too_many_lines)]
+#[allow(clippy::single_match_else, clippy::too_many_lines)]
 fn load_source_file(
     file: &gtk::gio::File,
     bindings: &UiBindings,
@@ -3047,20 +6373,41 @@ fn load_source_file(
     let bytes_read = Rc::new(Cell::new(0_usize));
     let too_large = Rc::new(Cell::new(false));
     let source_uri = file.uri().to_string();
+    let Ok(source_lease) = FileLease::desktop_path(source_uri.clone()) else {
+        show_file_import_error(
+            bindings,
+            &localization::text(
+                state.borrow().locale(),
+                "error.file_open",
+                "The selected text file could not be opened.",
+            ),
+        );
+        return;
+    };
     let source_name = file.basename().map_or_else(
         || "source.txt".to_owned(),
         |name| name.to_string_lossy().into_owned(),
     );
     let read_bytes = Rc::clone(&bytes_read);
     let read_too_large = Rc::clone(&too_large);
+    let lease_expired = Rc::new(Cell::new(false));
+    let read_lease_expired = Rc::clone(&lease_expired);
+    let read_lease = source_lease.clone();
+    let import_failed = Rc::new(Cell::new(false));
+    let load_import_failed = Rc::clone(&import_failed);
     let load_bindings = bindings.clone();
     let load_state = Rc::clone(state);
     let load_worker = Rc::clone(worker);
     load_bindings.export_notice.set(false);
+    load_bindings.report_export_notice.set(false);
     *load_bindings.output_uri.borrow_mut() = None;
     file.load_partial_contents_async(
         None::<&gtk::gio::Cancellable>,
         move |chunk| {
+            if !read_lease.is_active() {
+                read_lease_expired.set(true);
+                return false;
+            }
             let next = read_bytes.get().saturating_add(chunk.len());
             if next > file_import::MAX_TEXT_FILE_BYTES {
                 read_too_large.set(true);
@@ -3071,6 +6418,17 @@ fn load_source_file(
             }
         },
         move |result| {
+            if lease_expired.get() {
+                show_file_import_error(
+                    &load_bindings,
+                    &localization::text(
+                        load_state.borrow().locale(),
+                        "error.file_open",
+                        "The selected text file could not be opened.",
+                    ),
+                );
+                return;
+            }
             if too_large.get() {
                 show_file_import_error(
                     &load_bindings,
@@ -3084,8 +6442,13 @@ fn load_source_file(
             }
             match result {
                 Ok((contents, _)) => {
-                    match file_import::decode_document_job(&source_name, contents.as_ref()) {
+                    match file_import::decode_document_job_with_lease(
+                        &source_lease,
+                        &source_name,
+                        contents.as_ref(),
+                    ) {
                     Ok(job) => {
+                        source_lease.revoke();
                         let warnings = job.warnings().unwrap_or_default();
                         if std::env::var_os("LINGUAMESH_TEST_FILE_DIALOG").is_some() {
                             println!("GTK file chooser application fixture completed the asynchronous GIO read.");
@@ -3128,6 +6491,7 @@ fn load_source_file(
                         load_bindings.error.set_visible(false);
                     }
                     Err(error) => {
+                        load_import_failed.set(true);
                         let locale = load_state.borrow().locale();
                         let (key, fallback) = match error {
                             file_import::TextImportError::TooLarge => (
@@ -3142,7 +6506,8 @@ fn load_source_file(
                                 "error.file_open",
                                 "The selected document format is not supported.",
                             ),
-                            file_import::TextImportError::InvalidStructure => (
+                            file_import::TextImportError::InvalidStructure
+                            | file_import::TextImportError::LeaseExpired => (
                                 "error.file_open",
                                 "The selected document structure is invalid.",
                             ),
@@ -3152,16 +6517,21 @@ fn load_source_file(
                     }
                     }
                 }
-                Err(_) => show_file_import_error(
-                    &load_bindings,
-                    &localization::text(
-                        load_state.borrow().locale(),
-                        "error.file_read",
-                        "The selected text file could not be read.",
-                    ),
-                ),
+                Err(_) => {
+                    load_import_failed.set(true);
+                    show_file_import_error(
+                        &load_bindings,
+                        &localization::text(
+                            load_state.borrow().locale(),
+                            "error.file_read",
+                            "The selected text file could not be read.",
+                        ),
+                    );
+                }
             }
-            refresh_ui(&load_bindings, &load_state.borrow());
+            if !load_import_failed.get() {
+                refresh_ui(&load_bindings, &load_state.borrow());
+            }
         },
     );
 }
@@ -3180,6 +6550,18 @@ fn show_file_export_error(bindings: &UiBindings, message: &str) {
 }
 
 // 将队列中的任务选为当前编辑器任务并同步其源文本和状态。
+// 将持久化的文档翻译选项恢复到当前编辑状态。
+fn restore_document_translation_options(
+    state: &Rc<RefCell<AppState>>,
+    snapshot: &DocumentJobSnapshot,
+) {
+    if let Some(options) = snapshot.options.as_ref() {
+        let mut state = state.borrow_mut();
+        state.set_quality_mode(options.quality_mode);
+        state.set_translation_preset(options.translation_preset.clone());
+    }
+}
+
 fn select_document_job(
     bindings: &UiBindings,
     state: &Rc<RefCell<AppState>>,
@@ -3195,8 +6577,1262 @@ fn select_document_job(
     bindings.source.set_text(&source_text);
     bindings.document_job_guard.set(false);
     *bindings.document_warnings.borrow_mut() = selected.job.warnings().unwrap_or_default();
+    restore_document_translation_options(state, selected);
     state.borrow_mut().set_source_text(&source_text);
     refresh_ui(bindings, &state.borrow());
+}
+
+// 将核心路由模式映射到可本地化的短标签。
+fn localized_routing_mode(locale: UiLocale, mode: RoutingMode) -> String {
+    let (key, fallback) = match mode {
+        RoutingMode::Manual => ("routing.mode.manual", "Manual"),
+        RoutingMode::Ordered => ("routing.mode.ordered", "Ordered"),
+        RoutingMode::Automatic => ("routing.mode.automatic", "Automatic"),
+    };
+    localization::text(locale, key, fallback)
+}
+
+// 将核心路由模式映射回 GTK 下拉框的稳定索引。
+fn routing_mode_selection(mode: RoutingMode) -> u32 {
+    match mode {
+        RoutingMode::Manual => 0,
+        RoutingMode::Ordered => 1,
+        RoutingMode::Automatic => 2,
+    }
+}
+
+// 将自动路由偏好映射到稳定的 GTK 下拉框索引。
+fn routing_preference_selection(preference: RoutingPreference) -> u32 {
+    match preference {
+        RoutingPreference::None => 0,
+        RoutingPreference::Local => 1,
+        RoutingPreference::Quality => 2,
+        RoutingPreference::Latency => 3,
+        RoutingPreference::Cost => 4,
+    }
+}
+
+// 将 GTK 下拉框索引安全地还原为核心路由偏好。
+fn routing_preference_for_selection(selection: u32) -> RoutingPreference {
+    match selection {
+        1 => RoutingPreference::Local,
+        2 => RoutingPreference::Quality,
+        3 => RoutingPreference::Latency,
+        4 => RoutingPreference::Cost,
+        _ => RoutingPreference::None,
+    }
+}
+
+// 聚合路由编辑器控件，避免恢复函数的参数顺序产生错误。
+#[derive(Clone, Copy)]
+struct RoutingEditorWidgets<'a> {
+    mode: &'a gtk::DropDown,
+    preference: &'a gtk::DropDown,
+    allow_fallback: &'a gtk::CheckButton,
+    local_only: &'a gtk::CheckButton,
+    allow_remote: &'a gtk::CheckButton,
+    privacy_sensitive: &'a gtk::CheckButton,
+    require_streaming: &'a gtk::CheckButton,
+    require_document: &'a gtk::CheckButton,
+    provider_allowlist: &'a gtk::Entry,
+    provider_denylist: &'a gtk::Entry,
+    model_allowlist: &'a gtk::Entry,
+    model_denylist: &'a gtk::Entry,
+    minimum_quality_tier: &'a gtk::Entry,
+    max_request_bytes: &'a gtk::Entry,
+}
+
+// 聚合路由约束的文本输入框，避免保存时混用控件顺序。
+#[derive(Clone, Copy)]
+struct RoutingConstraintTextWidgets<'a> {
+    provider_allowlist: &'a gtk::Entry,
+    provider_denylist: &'a gtk::Entry,
+    model_allowlist: &'a gtk::Entry,
+    model_denylist: &'a gtk::Entry,
+    minimum_quality_tier: &'a gtk::Entry,
+    max_request_bytes: &'a gtk::Entry,
+}
+
+// 聚合已解析前的路由约束文本，供 GTK 和无界面回归测试共同使用。
+#[derive(Clone, Copy)]
+struct RoutingConstraintTextValues<'a> {
+    provider_allowlist: &'a str,
+    provider_denylist: &'a str,
+    model_allowlist: &'a str,
+    model_denylist: &'a str,
+    minimum_quality_tier: &'a str,
+    max_request_bytes: &'a str,
+}
+
+// 将路由标识列表以稳定的逗号格式展示在编辑器中。
+fn routing_identifier_list_text(values: &[String]) -> String {
+    values.join(", ")
+}
+
+// 解析编辑器中的逗号分隔路由标识列表，并拒绝空项或非法标识。
+fn routing_identifier_list_from_text(value: &str) -> Result<Vec<String>, ()> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut values = Vec::new();
+    for item in trimmed.split(',') {
+        let item = item.trim();
+        if !valid_routing_profile_id(item) {
+            return Err(());
+        }
+        values.push(item.to_owned());
+    }
+    Ok(values)
+}
+
+// 将可选的质量等级或字节上限解析为 Core 约束值。
+fn routing_optional_limit_from_text(value: &str) -> Result<Option<usize>, ()> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+    let parsed = trimmed.parse::<usize>().map_err(|_| ())?;
+    if parsed == 0 {
+        return Err(());
+    }
+    Ok(Some(parsed))
+}
+
+// 创建带有本地化标签和提示的路由文本约束输入框。
+fn routing_text_entry(
+    locale: UiLocale,
+    label_key: &str,
+    label_fallback: &str,
+    tooltip_key: &str,
+    tooltip_fallback: &str,
+) -> (gtk::Entry, gtk::Box) {
+    let entry = gtk::Entry::new();
+    entry.set_hexpand(true);
+    entry.set_focusable(true);
+    entry.set_tooltip_text(Some(&localization::text(
+        locale,
+        tooltip_key,
+        tooltip_fallback,
+    )));
+    let label = localized_mnemonic(locale, label_key, label_fallback);
+    let control = labeled_control(&label, entry.upcast_ref::<gtk::Widget>());
+    (entry, control)
+}
+
+// 仅更新编辑器暴露的约束，同时保留核心未来字段以保证编辑回写不丢数据。
+fn routing_constraints_from_controls(
+    existing: Option<&RoutingConstraints>,
+    selected: &RoutingConstraints,
+) -> RoutingConstraints {
+    let mut constraints = existing.cloned().unwrap_or_default();
+    constraints.preference = selected.preference;
+    constraints.local_only = selected.local_only;
+    constraints.allow_remote = selected.allow_remote;
+    constraints.privacy_sensitive = selected.privacy_sensitive;
+    constraints.require_streaming = selected.require_streaming;
+    constraints.require_document = selected.require_document;
+    constraints.explicit_fallback_allowed = selected.explicit_fallback_allowed;
+    constraints
+}
+
+// 从纯文本值更新 Core 的列表和数值约束，并保留未暴露的字段。
+fn routing_constraints_from_text_values(
+    existing: Option<&RoutingConstraints>,
+    selected: &RoutingConstraints,
+    values: RoutingConstraintTextValues<'_>,
+) -> Result<RoutingConstraints, ()> {
+    let mut constraints = routing_constraints_from_controls(existing, selected);
+    constraints.provider_allowlist = routing_identifier_list_from_text(values.provider_allowlist)?;
+    constraints.provider_denylist = routing_identifier_list_from_text(values.provider_denylist)?;
+    constraints.model_allowlist = routing_identifier_list_from_text(values.model_allowlist)?;
+    constraints.model_denylist = routing_identifier_list_from_text(values.model_denylist)?;
+    let minimum_quality_tier = routing_optional_limit_from_text(values.minimum_quality_tier)?;
+    constraints.minimum_quality_tier = minimum_quality_tier
+        .map(|value| u8::try_from(value).map_err(|_| ()))
+        .transpose()?;
+    constraints.max_request_bytes = routing_optional_limit_from_text(values.max_request_bytes)?;
+    Ok(constraints)
+}
+
+// 从 GTK 文本输入框读取路由约束，并复用无界面解析路径。
+fn routing_constraints_from_text_controls(
+    existing: Option<&RoutingConstraints>,
+    selected: &RoutingConstraints,
+    widgets: RoutingConstraintTextWidgets<'_>,
+) -> Result<RoutingConstraints, ()> {
+    let provider_allowlist = widgets.provider_allowlist.text();
+    let provider_denylist = widgets.provider_denylist.text();
+    let model_allowlist = widgets.model_allowlist.text();
+    let model_denylist = widgets.model_denylist.text();
+    let minimum_quality_tier = widgets.minimum_quality_tier.text();
+    let max_request_bytes = widgets.max_request_bytes.text();
+    routing_constraints_from_text_values(
+        existing,
+        selected,
+        RoutingConstraintTextValues {
+            provider_allowlist: provider_allowlist.as_str(),
+            provider_denylist: provider_denylist.as_str(),
+            model_allowlist: model_allowlist.as_str(),
+            model_denylist: model_denylist.as_str(),
+            minimum_quality_tier: minimum_quality_tier.as_str(),
+            max_request_bytes: max_request_bytes.as_str(),
+        },
+    )
+}
+
+// 按 Core 的标识符约束检查路由配置 ID，避免保存时才暴露无效输入。
+fn valid_routing_profile_id(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= MAX_ROUTING_IDENTIFIER_BYTES
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-'))
+}
+
+// 防止新建配置静默覆盖已有 ID，同时允许编辑流程更新原记录。
+fn routing_profile_id_conflicts(
+    existing_ids: &[String],
+    editing_profile_id: Option<&str>,
+    profile_id: &str,
+) -> bool {
+    editing_profile_id.is_none() && existing_ids.iter().any(|id| id == profile_id)
+}
+
+// 将 Manual 模式的候选集合限制为当前显示顺序中的首个候选。
+fn normalized_candidate_ids_for_mode(
+    mode: RoutingMode,
+    candidate_ids: Vec<ProviderProfileId>,
+) -> Vec<ProviderProfileId> {
+    if mode == RoutingMode::Manual {
+        candidate_ids.into_iter().take(1).collect()
+    } else {
+        candidate_ids
+    }
+}
+
+type RoutingCandidateControls = Rc<RefCell<Vec<(ProviderProfileId, gtk::Box, gtk::CheckButton)>>>;
+
+// 在 Manual 模式下同步复选框，避免界面继续展示多个精确候选。
+fn enforce_manual_candidate_selection(controls: &RoutingCandidateControls) {
+    let mut selected = false;
+    for (_, _, check) in controls.borrow().iter() {
+        if check.is_active() {
+            if selected {
+                check.set_active(false);
+            } else {
+                selected = true;
+            }
+        }
+    }
+}
+
+// 清空并按当前顺序重建路由候选行，避免 GTK 列表顺序与持久化顺序分离。
+fn rebuild_routing_candidate_rows(container: &gtk::Box, controls: &RoutingCandidateControls) {
+    while let Some(child) = container.first_child() {
+        container.remove(&child);
+    }
+    let controls = controls.borrow();
+    for (_, row, _) in controls.iter() {
+        container.append(row);
+    }
+}
+
+// 按按钮方向移动候选行，并把新顺序留给配置创建闭包读取。
+fn move_routing_candidate_row(
+    container: &gtk::Box,
+    controls: &RoutingCandidateControls,
+    profile_id: &ProviderProfileId,
+    offset: isize,
+) {
+    let mut controls_mut = controls.borrow_mut();
+    let mut ids = controls_mut
+        .iter()
+        .map(|(id, _, _)| id.clone())
+        .collect::<Vec<_>>();
+    if !move_routing_profile_id(&mut ids, profile_id, offset) {
+        return;
+    }
+    let mut remaining = std::mem::take(&mut *controls_mut);
+    let mut reordered = Vec::with_capacity(remaining.len());
+    for id in ids {
+        if let Some(index) = remaining
+            .iter()
+            .position(|(candidate_id, _, _)| *candidate_id == id)
+        {
+            reordered.push(remaining.swap_remove(index));
+        }
+    }
+    *controls_mut = reordered;
+    drop(controls_mut);
+    rebuild_routing_candidate_rows(container, controls);
+}
+
+// 按拖放目标移动候选行，并把新顺序留给配置创建闭包读取。
+fn move_routing_candidate_row_before(
+    container: &gtk::Box,
+    controls: &RoutingCandidateControls,
+    dragged_id: &ProviderProfileId,
+    target_id: &ProviderProfileId,
+) -> bool {
+    let mut controls_mut = controls.borrow_mut();
+    let mut ids = controls_mut
+        .iter()
+        .map(|(id, _, _)| id.clone())
+        .collect::<Vec<_>>();
+    if !move_routing_profile_id_before(&mut ids, dragged_id, target_id) {
+        return false;
+    }
+    let mut remaining = std::mem::take(&mut *controls_mut);
+    let mut reordered = Vec::with_capacity(remaining.len());
+    for id in ids {
+        if let Some(index) = remaining
+            .iter()
+            .position(|(candidate_id, _, _)| *candidate_id == id)
+        {
+            reordered.push(remaining.swap_remove(index));
+        }
+    }
+    *controls_mut = reordered;
+    drop(controls_mut);
+    rebuild_routing_candidate_rows(container, controls);
+    true
+}
+
+// 为候选行安装文本拖动源和“放置到该行之前”的 GTK 控制器。
+fn attach_routing_candidate_drag(
+    row: &gtk::Box,
+    container: &gtk::Box,
+    controls: &RoutingCandidateControls,
+    profile_id: &ProviderProfileId,
+) {
+    let bytes = glib::Bytes::from(profile_id.as_str().as_bytes());
+    let provider = gtk::gdk::ContentProvider::for_bytes("text/plain", &bytes);
+    let drag_source = gtk::DragSource::new();
+    drag_source.set_actions(gtk::gdk::DragAction::MOVE);
+    drag_source.set_content(Some(&provider));
+    row.add_controller(drag_source);
+
+    let drop_target = gtk::DropTarget::new(String::static_type(), gtk::gdk::DragAction::MOVE);
+    let drop_container = container.clone();
+    let drop_controls = Rc::clone(controls);
+    let target_id = profile_id.clone();
+    drop_target.connect_drop(move |_, value, _, _| {
+        let Ok(dragged_id) = value.get::<String>() else {
+            return false;
+        };
+        let Ok(dragged_id) = ProviderProfileId::parse(dragged_id) else {
+            return false;
+        };
+        move_routing_candidate_row_before(&drop_container, &drop_controls, &dragged_id, &target_id)
+    });
+    row.add_controller(drop_target);
+}
+
+// 将已保存配置恢复到编辑器，缺失的提供商候选会被安全地跳过。
+fn load_routing_profile_editor(
+    widgets: RoutingEditorWidgets<'_>,
+    container: &gtk::Box,
+    controls: &RoutingCandidateControls,
+    profile: &RoutingProfile,
+) {
+    widgets
+        .mode
+        .set_selected(routing_mode_selection(profile.mode));
+    widgets
+        .preference
+        .set_selected(routing_preference_selection(profile.constraints.preference));
+    widgets
+        .allow_fallback
+        .set_active(profile.constraints.explicit_fallback_allowed);
+    widgets
+        .local_only
+        .set_active(profile.constraints.local_only);
+    widgets
+        .allow_remote
+        .set_active(profile.constraints.allow_remote);
+    widgets
+        .privacy_sensitive
+        .set_active(profile.constraints.privacy_sensitive);
+    widgets
+        .require_streaming
+        .set_active(profile.constraints.require_streaming);
+    widgets
+        .require_document
+        .set_active(profile.constraints.require_document);
+    widgets
+        .provider_allowlist
+        .set_text(&routing_identifier_list_text(
+            &profile.constraints.provider_allowlist,
+        ));
+    widgets
+        .provider_denylist
+        .set_text(&routing_identifier_list_text(
+            &profile.constraints.provider_denylist,
+        ));
+    widgets
+        .model_allowlist
+        .set_text(&routing_identifier_list_text(
+            &profile.constraints.model_allowlist,
+        ));
+    widgets
+        .model_denylist
+        .set_text(&routing_identifier_list_text(
+            &profile.constraints.model_denylist,
+        ));
+    widgets.minimum_quality_tier.set_text(
+        &profile
+            .constraints
+            .minimum_quality_tier
+            .map_or_else(String::new, |value| value.to_string()),
+    );
+    widgets.max_request_bytes.set_text(
+        &profile
+            .constraints
+            .max_request_bytes
+            .map_or_else(String::new, |value| value.to_string()),
+    );
+    {
+        let controls_ref = controls.borrow();
+        for (_, _, check) in controls_ref.iter() {
+            check.set_active(false);
+        }
+    }
+    let candidate_ids = profile
+        .candidates
+        .iter()
+        .filter_map(|candidate| ProviderProfileId::parse(&candidate.provider_id).ok())
+        .collect::<Vec<_>>();
+    {
+        let controls_ref = controls.borrow();
+        for (profile_id, _, check) in controls_ref.iter() {
+            check.set_active(candidate_ids.iter().any(|id| id == profile_id));
+        }
+    }
+    for pair in candidate_ids.windows(2) {
+        move_routing_candidate_row_before(container, controls, &pair[1], &pair[0]);
+    }
+    if profile.mode == RoutingMode::Manual {
+        enforce_manual_candidate_selection(controls);
+    }
+}
+
+// 从用户明确保存的提供商配置生成不含端点和秘密的路由候选。
+fn routing_candidate_for_profile(
+    profile: &ProviderProfile,
+) -> Result<RoutingCandidate, TranslationError> {
+    let model = profile.selected_model().ok_or_else(|| {
+        TranslationError::new(
+            ErrorKind::ModelUnavailable,
+            "Select a model for every saved provider before creating a routing profile.",
+        )
+    })?;
+    let endpoint = profile.base_endpoint();
+    let local = endpoint.starts_with("http://127.0.0.1")
+        || endpoint.starts_with("http://localhost")
+        || endpoint.starts_with("http://[::1]");
+    let mut candidate = RoutingCandidate::new(profile.id().as_str(), model, local, 64 * 1024)
+        .map_err(|error| {
+            TranslationError::new(ErrorKind::InvalidConfiguration, error.to_string())
+        })?;
+    candidate.supports_document = true;
+    candidate.quality_tier = if local { 2 } else { 1 };
+    Ok(candidate)
+}
+
+// 创建一个可复用的 Linux 自动路由配置，候选只来自已保存的提供商配置。
+// 根据用户选择创建路由配置，并把回退权限保持为显式开关。
+fn default_routing_profile(
+    state: &AppState,
+    profile_id: &str,
+    mode: RoutingMode,
+    constraints: RoutingConstraints,
+    selected_candidate_ids: &[ProviderProfileId],
+) -> Result<RoutingProfile, TranslationError> {
+    let candidate_ids = ordered_routing_profile_ids(state.saved_profiles(), selected_candidate_ids);
+    let candidates = candidate_ids
+        .iter()
+        .filter_map(|id| {
+            state
+                .saved_profiles()
+                .iter()
+                .find(|profile| profile.id() == id)
+        })
+        .map(routing_candidate_for_profile)
+        .collect::<Result<Vec<_>, _>>()?;
+    if candidates.is_empty() {
+        return Err(TranslationError::new(
+            ErrorKind::InvalidConfiguration,
+            "Save at least one provider profile before creating a routing profile.",
+        ));
+    }
+    RoutingProfile::new(profile_id, mode, candidates, constraints)
+        .map_err(|error| TranslationError::new(ErrorKind::InvalidConfiguration, error.to_string()))
+}
+
+// 展示持久化的路由规划配置，并把保存、删除操作交给核心工作线程。
+#[allow(clippy::too_many_lines)]
+fn show_routing_profiles_dialog(
+    bindings: &UiBindings,
+    state: &Rc<RefCell<AppState>>,
+    worker: &WorkerCommandHandle,
+    profiles: Vec<RoutingProfileRecord>,
+) {
+    let locale = state.borrow().locale();
+    let dialog = gtk::Window::builder()
+        .application(&bindings.application)
+        .transient_for(&bindings.window)
+        .modal(true)
+        .title(localization::text(
+            locale,
+            "dialog.routing_profiles",
+            "Routing profiles",
+        ))
+        .default_width(720)
+        .default_height(480)
+        .build();
+    let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    root.set_margin_top(16);
+    root.set_margin_bottom(16);
+    root.set_margin_start(16);
+    root.set_margin_end(16);
+    let profile_id_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let profile_id_label = gtk::Label::with_mnemonic(&localized_mnemonic(
+        locale,
+        "label.routing_profile_id",
+        "Routing profile ID",
+    ));
+    let profile_id = gtk::Entry::new();
+    profile_id.set_text("linux-default");
+    profile_id.set_max_length(
+        i32::try_from(MAX_ROUTING_IDENTIFIER_BYTES)
+            .expect("routing profile identifier limit fits GTK length type"),
+    );
+    profile_id.set_hexpand(true);
+    profile_id.set_focusable(true);
+    profile_id.set_tooltip_text(Some(&localization::text(
+        locale,
+        "error.routing_profile_id_invalid",
+        "Use 1-128 ASCII letters, numbers, '.', '_' or '-' for the routing profile ID.",
+    )));
+    profile_id_label.set_mnemonic_widget(Some(&profile_id));
+    profile_id_row.append(&profile_id_label);
+    profile_id_row.append(&profile_id);
+    root.append(&profile_id_row);
+    let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let mode_labels = [
+        localized_routing_mode(locale, RoutingMode::Manual),
+        localized_routing_mode(locale, RoutingMode::Ordered),
+        localized_routing_mode(locale, RoutingMode::Automatic),
+    ];
+    let mode_label_refs = mode_labels.iter().map(String::as_str).collect::<Vec<_>>();
+    let mode = gtk::DropDown::from_strings(&mode_label_refs);
+    mode.set_selected(2);
+    mode.set_focusable(true);
+    mode.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.routing_profiles",
+        "Create, inspect, and delete non-secret routing planner profiles",
+    )));
+    let allow_fallback = gtk::CheckButton::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.enable_fallback",
+        "Allow approved fallback",
+    ));
+    allow_fallback.set_focusable(true);
+    allow_fallback.set_active(false);
+    allow_fallback.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.fallback",
+        "Retry only retryable network failures with this saved provider; document jobs, cancellation, and credential failures never fall back",
+    )));
+    actions.append(&mode);
+    actions.append(&allow_fallback);
+    let preference_labels = [
+        localization::text(locale, "routing.preference.none", "No preference"),
+        localization::text(locale, "routing.preference.local", "Local first"),
+        localization::text(locale, "routing.preference.quality", "Quality first"),
+        localization::text(locale, "routing.preference.latency", "Lowest latency"),
+        localization::text(locale, "routing.preference.cost", "Lowest cost"),
+    ];
+    let preference_label_refs = preference_labels
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<_>>();
+    let preference = gtk::DropDown::from_strings(&preference_label_refs);
+    preference.set_selected(routing_preference_selection(RoutingPreference::Local));
+    preference.set_focusable(true);
+    preference.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.routing_preference",
+        "Choose the first ranking preference used by Automatic routing",
+    )));
+    let preference_control = labeled_control(
+        &localized_mnemonic(locale, "label.routing_preference", "Automatic preference"),
+        preference.upcast_ref::<gtk::Widget>(),
+    );
+    let local_only = gtk::CheckButton::with_mnemonic(&localized_mnemonic(
+        locale,
+        "option.routing_local_only",
+        "Local candidates only",
+    ));
+    local_only.set_focusable(true);
+    local_only.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.routing_local_only",
+        "Reject saved providers that are not local loopback endpoints",
+    )));
+    let allow_remote = gtk::CheckButton::with_mnemonic(&localized_mnemonic(
+        locale,
+        "option.routing_allow_remote",
+        "Allow remote candidates",
+    ));
+    allow_remote.set_active(true);
+    allow_remote.set_focusable(true);
+    allow_remote.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.routing_allow_remote",
+        "Permit this profile to send content to non-local providers",
+    )));
+    let privacy_sensitive = gtk::CheckButton::with_mnemonic(&localized_mnemonic(
+        locale,
+        "option.routing_privacy_sensitive",
+        "Protect privacy-sensitive requests",
+    ));
+    privacy_sensitive.set_focusable(true);
+    privacy_sensitive.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.routing_privacy_sensitive",
+        "When a request is marked privacy-sensitive, reject remote candidates",
+    )));
+    let require_streaming = gtk::CheckButton::with_mnemonic(&localized_mnemonic(
+        locale,
+        "option.routing_require_streaming",
+        "Require streamed output",
+    ));
+    require_streaming.set_focusable(true);
+    require_streaming.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.routing_require_streaming",
+        "Reject candidates that cannot return real streamed deltas",
+    )));
+    let require_document = gtk::CheckButton::with_mnemonic(&localized_mnemonic(
+        locale,
+        "option.routing_require_document",
+        "Require document support",
+    ));
+    require_document.set_focusable(true);
+    require_document.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.routing_require_document",
+        "Keep only candidates that advertise document translation",
+    )));
+    let (provider_allowlist, provider_allowlist_control) = routing_text_entry(
+        locale,
+        "label.routing_provider_allowlist",
+        "Provider allowlist",
+        "tooltip.routing_identifier_list",
+        "Comma-separated provider or model identifiers; leave blank for no list",
+    );
+    let (provider_denylist, provider_denylist_control) = routing_text_entry(
+        locale,
+        "label.routing_provider_denylist",
+        "Provider denylist",
+        "tooltip.routing_identifier_list",
+        "Comma-separated provider or model identifiers; leave blank for no list",
+    );
+    let (model_allowlist, model_allowlist_control) = routing_text_entry(
+        locale,
+        "label.routing_model_allowlist",
+        "Model allowlist",
+        "tooltip.routing_identifier_list",
+        "Comma-separated provider or model identifiers; leave blank for no list",
+    );
+    let (model_denylist, model_denylist_control) = routing_text_entry(
+        locale,
+        "label.routing_model_denylist",
+        "Model denylist",
+        "tooltip.routing_identifier_list",
+        "Comma-separated provider or model identifiers; leave blank for no list",
+    );
+    let (minimum_quality_tier, minimum_quality_tier_control) = routing_text_entry(
+        locale,
+        "label.routing_minimum_quality",
+        "Minimum quality tier",
+        "tooltip.routing_minimum_quality",
+        "Leave blank to accept every quality tier",
+    );
+    let (max_request_bytes, max_request_bytes_control) = routing_text_entry(
+        locale,
+        "label.routing_max_request_bytes",
+        "Maximum request bytes",
+        "tooltip.routing_max_request_bytes",
+        "Leave blank for no profile-level request size limit; otherwise use a positive byte count",
+    );
+    let constraints = gtk::Box::new(gtk::Orientation::Vertical, 4);
+    constraints.append(&preference_control);
+    constraints.append(&local_only);
+    constraints.append(&allow_remote);
+    constraints.append(&privacy_sensitive);
+    constraints.append(&require_streaming);
+    constraints.append(&require_document);
+    constraints.append(&provider_allowlist_control);
+    constraints.append(&provider_denylist_control);
+    constraints.append(&model_allowlist_control);
+    constraints.append(&model_denylist_control);
+    constraints.append(&minimum_quality_tier_control);
+    constraints.append(&max_request_bytes_control);
+    root.append(&constraints);
+    let remote_guard = allow_remote.clone();
+    local_only.connect_toggled(move |button| {
+        if button.is_active() {
+            remote_guard.set_active(false);
+        }
+    });
+    let local_guard = local_only.clone();
+    allow_remote.connect_toggled(move |button| {
+        if button.is_active() {
+            local_guard.set_active(false);
+        }
+    });
+    let candidate_controls: RoutingCandidateControls = Rc::new(RefCell::new(Vec::new()));
+    let candidates_box = gtk::Box::new(gtk::Orientation::Vertical, 4);
+    for profile in state
+        .borrow()
+        .saved_profiles()
+        .iter()
+        .filter(|profile| profile.enabled() && profile.selected_model().is_some())
+    {
+        let model = profile.selected_model().unwrap_or_default();
+        let check =
+            gtk::CheckButton::with_label(&format!("{} · {}", profile.display_name(), model));
+        check.set_active(true);
+        check.set_focusable(true);
+        check.set_hexpand(true);
+        check.set_halign(gtk::Align::Fill);
+        check.set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.routing_profiles",
+            "Create, inspect, and delete non-secret routing planner profiles",
+        )));
+        let up = gtk::Button::from_icon_name("go-up-symbolic");
+        up.set_focusable(true);
+        up.set_has_frame(false);
+        let up_label = localization::text(locale, "action.move_candidate_up", "Move candidate up");
+        up.set_tooltip_text(Some(&up_label));
+        up.update_property(&[gtk::accessible::Property::Label(&up_label)]);
+        let down = gtk::Button::from_icon_name("go-down-symbolic");
+        down.set_focusable(true);
+        down.set_has_frame(false);
+        let down_label =
+            localization::text(locale, "action.move_candidate_down", "Move candidate down");
+        down.set_tooltip_text(Some(&down_label));
+        down.update_property(&[gtk::accessible::Property::Label(&down_label)]);
+        let row = gtk::Box::new(gtk::Orientation::Horizontal, 4);
+        row.append(&check);
+        row.append(&up);
+        row.append(&down);
+        let profile_id = profile.id().clone();
+        attach_routing_candidate_drag(&row, &candidates_box, &candidate_controls, &profile_id);
+        let up_controls = Rc::clone(&candidate_controls);
+        let up_container = candidates_box.clone();
+        let up_id = profile_id.clone();
+        up.connect_clicked(move |_| {
+            move_routing_candidate_row(&up_container, &up_controls, &up_id, -1);
+        });
+        let down_controls = Rc::clone(&candidate_controls);
+        let down_container = candidates_box.clone();
+        let down_id = profile_id.clone();
+        down.connect_clicked(move |_| {
+            move_routing_candidate_row(&down_container, &down_controls, &down_id, 1);
+        });
+        candidate_controls
+            .borrow_mut()
+            .push((profile_id, row, check.clone()));
+    }
+    rebuild_routing_candidate_rows(&candidates_box, &candidate_controls);
+    root.append(&candidates_box);
+    let manual_candidate_controls = Rc::clone(&candidate_controls);
+    mode.connect_selected_notify(move |drop_down| {
+        if routing_mode_for_selection(drop_down.selected()) == RoutingMode::Manual {
+            enforce_manual_candidate_selection(&manual_candidate_controls);
+        }
+    });
+    let editing_profile: Rc<RefCell<Option<RoutingProfile>>> = Rc::new(RefCell::new(None));
+    let create = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.create_routing_profile",
+        "Create local-first profile",
+    ));
+    create.set_focusable(true);
+    let import = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.import_routing_profile",
+        "Import profile",
+    ));
+    import.set_focusable(true);
+    import.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.routing_profiles",
+        "Create, inspect, and delete non-secret routing planner profiles",
+    )));
+    let close = gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.close", "Close"));
+    close.set_focusable(true);
+    actions.append(&import);
+    actions.append(&create);
+    actions.append(&close);
+    root.append(&actions);
+    let existing_profile_ids = profiles
+        .iter()
+        .map(|record| record.id.clone())
+        .collect::<Vec<_>>();
+    let list = gtk::ListBox::new();
+    list.set_selection_mode(gtk::SelectionMode::None);
+    list.set_vexpand(true);
+    if profiles.is_empty() {
+        let empty = gtk::Label::new(Some(&localization::text(
+            locale,
+            "status.routing_profile_empty",
+            "No routing profiles are saved.",
+        )));
+        empty.set_xalign(0.0);
+        empty.add_css_class("dim-label");
+        list.append(&empty);
+    } else {
+        for record in profiles {
+            let row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+            row.set_margin_top(8);
+            row.set_margin_bottom(8);
+            let metadata = localized_template(
+                locale,
+                "status.routing_profile_row",
+                "{id} · {mode} · {candidates} candidates",
+                &[
+                    ("{id}", record.id.as_str()),
+                    (
+                        "{mode}",
+                        localized_routing_mode(locale, record.profile.mode).as_str(),
+                    ),
+                    ("{candidates}", &record.profile.candidates.len().to_string()),
+                ],
+            );
+            let label = gtk::Label::new(Some(&metadata));
+            label.set_xalign(0.0);
+            label.set_hexpand(true);
+            label.add_css_class("dim-label");
+            let edit = gtk::Button::with_mnemonic(&localized_mnemonic(
+                locale,
+                "action.edit_routing_profile",
+                "Edit",
+            ));
+            edit.set_focusable(true);
+            let edit_mode = mode.clone();
+            let edit_preference = preference.clone();
+            let edit_allow_fallback = allow_fallback.clone();
+            let edit_local_only = local_only.clone();
+            let edit_allow_remote = allow_remote.clone();
+            let edit_privacy_sensitive = privacy_sensitive.clone();
+            let edit_require_streaming = require_streaming.clone();
+            let edit_require_document = require_document.clone();
+            let edit_provider_allowlist = provider_allowlist.clone();
+            let edit_provider_denylist = provider_denylist.clone();
+            let edit_model_allowlist = model_allowlist.clone();
+            let edit_model_denylist = model_denylist.clone();
+            let edit_minimum_quality_tier = minimum_quality_tier.clone();
+            let edit_max_request_bytes = max_request_bytes.clone();
+            let edit_container = candidates_box.clone();
+            let edit_controls = Rc::clone(&candidate_controls);
+            let edit_save = create.clone();
+            let edit_profile_id = profile_id.clone();
+            let edit_profile = record.profile.clone();
+            let edit_selection = Rc::clone(&editing_profile);
+            edit.connect_clicked(move |_| {
+                load_routing_profile_editor(
+                    RoutingEditorWidgets {
+                        mode: &edit_mode,
+                        preference: &edit_preference,
+                        allow_fallback: &edit_allow_fallback,
+                        local_only: &edit_local_only,
+                        allow_remote: &edit_allow_remote,
+                        privacy_sensitive: &edit_privacy_sensitive,
+                        require_streaming: &edit_require_streaming,
+                        require_document: &edit_require_document,
+                        provider_allowlist: &edit_provider_allowlist,
+                        provider_denylist: &edit_provider_denylist,
+                        model_allowlist: &edit_model_allowlist,
+                        model_denylist: &edit_model_denylist,
+                        minimum_quality_tier: &edit_minimum_quality_tier,
+                        max_request_bytes: &edit_max_request_bytes,
+                    },
+                    &edit_container,
+                    &edit_controls,
+                    &edit_profile,
+                );
+                edit_profile_id.set_text(&edit_profile.id);
+                edit_profile_id.set_editable(false);
+                edit_selection.replace(Some(edit_profile.clone()));
+                edit_save.set_label(&localized_mnemonic(
+                    locale,
+                    "action.save_routing_profile",
+                    "Save routing profile",
+                ));
+            });
+            let use_button = gtk::Button::with_mnemonic(&localized_mnemonic(
+                locale,
+                "action.use_routing_profile",
+                "Use",
+            ));
+            use_button.set_focusable(true);
+            let use_bindings = bindings.clone();
+            let use_dialog = dialog.clone();
+            let use_profile_id = record.id.clone();
+            use_button.connect_clicked(move |_| {
+                use_bindings
+                    .selected_routing_profile_id
+                    .replace(Some(use_profile_id.clone()));
+                use_dialog.close();
+            });
+            let export = gtk::Button::with_mnemonic(&localized_mnemonic(
+                locale,
+                "action.export_routing_profile",
+                "Export",
+            ));
+            export.set_focusable(true);
+            let export_worker = worker.clone();
+            let export_bindings = bindings.clone();
+            let export_state = Rc::clone(state);
+            let export_profile_id = record.id.clone();
+            export.connect_clicked(move |_| {
+                if let Err(error) = export_worker.export_routing_profile(export_profile_id.clone())
+                {
+                    export_state
+                        .borrow_mut()
+                        .record_client_error(error.to_string());
+                    refresh_ui(&export_bindings, &export_state.borrow());
+                }
+            });
+            let delete = gtk::Button::with_mnemonic(&localized_mnemonic(
+                locale,
+                "action.delete_routing_profile",
+                "Delete",
+            ));
+            delete.set_focusable(true);
+            delete.add_css_class("destructive-action");
+            let delete_worker = worker.clone();
+            let delete_dialog = dialog.clone();
+            let delete_bindings = bindings.clone();
+            let delete_state = Rc::clone(state);
+            let profile_id = record.id;
+            delete.connect_clicked(move |_| {
+                if let Err(error) = delete_worker.delete_routing_profile(profile_id.clone()) {
+                    delete_state
+                        .borrow_mut()
+                        .record_client_error(error.to_string());
+                    refresh_ui(&delete_bindings, &delete_state.borrow());
+                } else {
+                    delete_dialog.close();
+                }
+            });
+            row.append(&label);
+            row.append(&edit);
+            row.append(&use_button);
+            row.append(&export);
+            row.append(&delete);
+            list.append(&row);
+        }
+    }
+    let scroller = gtk::ScrolledWindow::builder()
+        .vexpand(true)
+        .child(&list)
+        .build();
+    root.append(&scroller);
+    dialog.set_child(Some(&root));
+    let create_bindings = bindings.clone();
+    let create_state = Rc::clone(state);
+    let create_worker = worker.clone();
+    let create_dialog = dialog.clone();
+    let create_candidate_controls = Rc::clone(&candidate_controls);
+    let create_editing_profile = Rc::clone(&editing_profile);
+    let create_profile_id = profile_id.clone();
+    let create_existing_profile_ids = existing_profile_ids;
+    create.connect_clicked(move |_| {
+        let profile_id = create_profile_id.text().trim().to_owned();
+        if !valid_routing_profile_id(&profile_id) {
+            let error_message = localization::text(
+                create_state.borrow().locale(),
+                "error.routing_profile_id_invalid",
+                "Use 1-128 ASCII letters, numbers, '.', '_' or '-' for the routing profile ID.",
+            );
+            create_state.borrow_mut().record_client_error(error_message);
+            refresh_ui(&create_bindings, &create_state.borrow());
+            return;
+        }
+        let editing_profile = create_editing_profile.borrow();
+        if routing_profile_id_conflicts(
+            &create_existing_profile_ids,
+            editing_profile.as_ref().map(|profile| profile.id.as_str()),
+            &profile_id,
+        ) {
+            let error_message = localization::text(
+                create_state.borrow().locale(),
+                "error.routing_profile_id_exists",
+                "A routing profile with this ID already exists. Edit it or choose another ID.",
+            );
+            create_state.borrow_mut().record_client_error(error_message);
+            refresh_ui(&create_bindings, &create_state.borrow());
+            return;
+        }
+        drop(editing_profile);
+        let selected_candidate_ids = create_candidate_controls
+            .borrow()
+            .iter()
+            .filter(|(_, _, check)| check.is_active())
+            .map(|(id, _, _)| id.clone())
+            .collect::<Vec<_>>();
+        let selected_candidate_ids = normalized_candidate_ids_for_mode(
+            routing_mode_for_selection(mode.selected()),
+            selected_candidate_ids,
+        );
+        let editing_profile = create_editing_profile.borrow();
+        let Ok(constraints) = routing_constraints_from_text_controls(
+            editing_profile.as_ref().map(|profile| &profile.constraints),
+            &RoutingConstraints {
+                preference: routing_preference_for_selection(preference.selected()),
+                local_only: local_only.is_active(),
+                allow_remote: allow_remote.is_active(),
+                privacy_sensitive: privacy_sensitive.is_active(),
+                require_streaming: require_streaming.is_active(),
+                require_document: require_document.is_active(),
+                explicit_fallback_allowed: allow_fallback.is_active(),
+                ..RoutingConstraints::default()
+            },
+            RoutingConstraintTextWidgets {
+                provider_allowlist: &provider_allowlist,
+                provider_denylist: &provider_denylist,
+                model_allowlist: &model_allowlist,
+                model_denylist: &model_denylist,
+                minimum_quality_tier: &minimum_quality_tier,
+                max_request_bytes: &max_request_bytes,
+            },
+        ) else {
+            create_state
+                .borrow_mut()
+                .record_client_error(localization::text(
+                    create_state.borrow().locale(),
+                    "error.routing_constraints_invalid",
+                    "Use comma-separated ASCII identifiers and positive numeric limits.",
+                ));
+            refresh_ui(&create_bindings, &create_state.borrow());
+            return;
+        };
+        match default_routing_profile(
+            &create_state.borrow(),
+            &profile_id,
+            routing_mode_for_selection(mode.selected()),
+            constraints,
+            &selected_candidate_ids,
+        ) {
+            Ok(mut profile) => {
+                if let Some(existing_profile) = editing_profile.clone() {
+                    profile.id = existing_profile.id;
+                }
+                if let Err(error) = create_worker.save_routing_profile(profile) {
+                    create_state
+                        .borrow_mut()
+                        .record_client_error(error.to_string());
+                    refresh_ui(&create_bindings, &create_state.borrow());
+                } else {
+                    create_dialog.close();
+                }
+            }
+            Err(error) => {
+                create_state
+                    .borrow_mut()
+                    .record_client_error(localization::text(
+                        create_state.borrow().locale(),
+                        "error.routing_profile_no_candidates",
+                        &error.to_string(),
+                    ));
+                refresh_ui(&create_bindings, &create_state.borrow());
+            }
+        }
+    });
+    let close_dialog = dialog.clone();
+    close.connect_clicked(move |_| close_dialog.close());
+    let import_bindings = bindings.clone();
+    let import_state = Rc::clone(state);
+    let import_worker = worker.clone();
+    let import_dialog = dialog.clone();
+    import.connect_clicked(move |_| {
+        begin_routing_profile_import(
+            &import_bindings,
+            &import_state,
+            &import_worker,
+            &import_dialog,
+        );
+    });
+    dialog.present();
+}
+
+// 通过受限的 GIO 异步读取导入文件，只把 UTF-8 JSON 交给核心校验。
+fn begin_routing_profile_import(
+    bindings: &UiBindings,
+    state: &Rc<RefCell<AppState>>,
+    worker: &WorkerCommandHandle,
+    dialog: &gtk::Window,
+) {
+    let locale = state.borrow().locale();
+    let filter_name = localization::text(locale, "file.filter.json", "JSON files");
+    let filter = gtk::FileFilter::new();
+    filter.set_name(Some(&filter_name));
+    filter.add_mime_type("application/json");
+    filter.add_suffix("json");
+    let filters = gtk::gio::ListStore::new::<gtk::FileFilter>();
+    filters.append(&filter);
+    let dialog_title = localization::text(
+        locale,
+        "dialog.open_routing_profile",
+        "Import routing profile",
+    );
+    let dialog_accept = localization::text(locale, "dialog.open", "Open");
+    let file_dialog = gtk::FileDialog::builder()
+        .title(&dialog_title)
+        .accept_label(&dialog_accept)
+        .modal(true)
+        .build();
+    file_dialog.set_filters(Some(&filters));
+    let import_bindings = bindings.clone();
+    let import_state = Rc::clone(state);
+    let import_worker = worker.clone();
+    let import_dialog = dialog.clone();
+    file_dialog.open(
+        Some(&bindings.window),
+        None::<&gtk::gio::Cancellable>,
+        move |result| match result {
+            Ok(file) => {
+                let bytes_read = Rc::new(Cell::new(0_usize));
+                let too_large = Rc::new(Cell::new(false));
+                let read_bytes = Rc::clone(&bytes_read);
+                let read_too_large = Rc::clone(&too_large);
+                let callback_bindings = import_bindings.clone();
+                let callback_state = Rc::clone(&import_state);
+                let callback_worker = import_worker.clone();
+                let callback_dialog = import_dialog.clone();
+                file.load_partial_contents_async(
+                    None::<&gtk::gio::Cancellable>,
+                    move |chunk| {
+                        let next = read_bytes.get().saturating_add(chunk.len());
+                        if next > MAX_ROUTING_PROFILE_JSON_BYTES {
+                            read_too_large.set(true);
+                            false
+                        } else {
+                            read_bytes.set(next);
+                            true
+                        }
+                    },
+                    move |read_result| {
+                        if too_large.get() {
+                            show_file_import_error(
+                                &callback_bindings,
+                                &localization::text(
+                                    callback_state.borrow().locale(),
+                                    "error.routing_profile_import",
+                                    "The routing profile JSON could not be imported.",
+                                ),
+                            );
+                            return;
+                        }
+                        match read_result {
+                            Ok((contents, _)) => {
+                                if let Err(error) = callback_worker
+                                    .import_routing_profile(contents.as_ref().to_vec())
+                                {
+                                    callback_state
+                                        .borrow_mut()
+                                        .record_client_error(error.to_string());
+                                    refresh_ui(&callback_bindings, &callback_state.borrow());
+                                } else {
+                                    callback_dialog.close();
+                                }
+                            }
+                            Err(_) => show_file_import_error(
+                                &callback_bindings,
+                                &localization::text(
+                                    callback_state.borrow().locale(),
+                                    "error.routing_profile_import",
+                                    "The routing profile JSON could not be imported.",
+                                ),
+                            ),
+                        }
+                    },
+                );
+            }
+            Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
+            Err(_) => show_file_import_error(
+                &import_bindings,
+                &localization::text(
+                    import_state.borrow().locale(),
+                    "error.routing_profile_import",
+                    "The routing profile JSON could not be imported.",
+                ),
+            ),
+        },
+    );
+}
+
+// 通过 GTK 原生保存对话框写出核心编码的非秘密路由配置 JSON。
+fn begin_routing_profile_export(
+    bindings: &UiBindings,
+    state: &Rc<RefCell<AppState>>,
+    profile_id: &str,
+    contents: Vec<u8>,
+) {
+    let locale = state.borrow().locale();
+    let dialog_title = localization::text(
+        locale,
+        "dialog.export_routing_profile",
+        "Export routing profile",
+    );
+    let dialog_accept = localization::text(locale, "dialog.save", "Save");
+    let file_dialog = gtk::FileDialog::builder()
+        .title(&dialog_title)
+        .accept_label(&dialog_accept)
+        .modal(true)
+        .build();
+    file_dialog.set_initial_name(Some(&format!("linguamesh-routing-{profile_id}.json")));
+    let export_bindings = bindings.clone();
+    let export_state = Rc::clone(state);
+    file_dialog.save(
+        Some(&bindings.window),
+        None::<&gtk::gio::Cancellable>,
+        move |result| match result {
+            Ok(file) => {
+                let callback_bindings = export_bindings.clone();
+                let callback_state = Rc::clone(&export_state);
+                write_new_file_async(&file, contents, move |write_succeeded| {
+                    if !write_succeeded {
+                        show_file_export_error(
+                            &callback_bindings,
+                            &localization::text(
+                                callback_state.borrow().locale(),
+                                "error.routing_profile_export",
+                                "The routing profile JSON could not be saved.",
+                            ),
+                        );
+                    }
+                });
+            }
+            Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
+            Err(_) => show_file_export_error(
+                &export_bindings,
+                &localization::text(
+                    export_state.borrow().locale(),
+                    "error.routing_profile_export",
+                    "The routing profile JSON could not be saved.",
+                ),
+            ),
+        },
+    );
 }
 
 // 展示持久化文档任务并允许用户选择或控制队列中的任务。
@@ -3228,6 +7864,19 @@ fn show_document_jobs_dialog(
     let close = gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.close", "Close"));
     close.set_focusable(true);
     root.append(&close);
+    let job_count = u64::try_from(jobs.len()).unwrap_or(u64::MAX);
+    let job_count_text = localization::text_plural(
+        locale,
+        "document.file_count",
+        "{count} file",
+        "{count} files",
+        job_count,
+    )
+    .replace("{count}", &jobs.len().to_string());
+    let job_count_label = gtk::Label::new(Some(&job_count_text));
+    job_count_label.set_xalign(0.0);
+    job_count_label.add_css_class("dim-label");
+    root.append(&job_count_label);
     let list = gtk::ListBox::new();
     list.set_selection_mode(gtk::SelectionMode::None);
     list.set_vexpand(true);
@@ -3235,7 +7884,7 @@ fn show_document_jobs_dialog(
         let empty = gtk::Label::new(Some(&localization::text(
             locale,
             "status.document_jobs_empty",
-            "No persisted document jobs are available.",
+            "No document jobs yet",
         )));
         empty.set_xalign(0.0);
         empty.add_css_class("dim-label");
@@ -3270,7 +7919,7 @@ fn show_document_jobs_dialog(
             let select = gtk::Button::with_mnemonic(&localized_mnemonic(
                 locale,
                 "action.select_document_job",
-                "Select",
+                "Select document job",
             ));
             select.set_focusable(true);
             let selected = snapshot.clone();
@@ -3284,8 +7933,13 @@ fn show_document_jobs_dialog(
             header.append(&metadata);
             header.append(&select);
             row.append(&header);
-            let job_prefix = localization::text(locale, "dialog.document_jobs", "Document jobs");
-            let id = gtk::Label::new(Some(&format!("{job_prefix}: {}", snapshot.job_id)));
+            let id_text = localized_template(
+                locale,
+                "status.document_job_id",
+                "Job: {id}",
+                &[("{id}", snapshot.job_id.as_str())],
+            );
+            let id = gtk::Label::new(Some(&id_text));
             id.set_xalign(0.0);
             id.add_css_class("dim-label");
             row.append(&id);
@@ -3334,6 +7988,77 @@ fn show_document_jobs_dialog(
                 });
                 queue_actions.append(&action);
             }
+            let report = gtk::Button::with_mnemonic(&localized_mnemonic(
+                locale,
+                "action.export_report",
+                "Export translation report",
+            ));
+            report.set_focusable(true);
+            report.set_tooltip_text(Some(&localization::text(
+                locale,
+                "tooltip.export_report",
+                "Save a redacted TSV report for this document job",
+            )));
+            let report_bindings = bindings.clone();
+            let report_state = Rc::clone(state);
+            let report_snapshot = snapshot.clone();
+            report.connect_clicked(move |_| {
+                begin_document_report_export(&report_bindings, &report_state, &report_snapshot);
+            });
+            queue_actions.append(&report);
+            let delete = gtk::Button::with_mnemonic(&localized_mnemonic(
+                locale,
+                "action.delete_history_entry",
+                "Delete",
+            ));
+            delete.set_focusable(true);
+            delete.add_css_class("destructive-action");
+            let delete_bindings = bindings.clone();
+            let delete_state = Rc::clone(state);
+            let delete_worker = worker.clone();
+            let delete_dialog = dialog.clone();
+            let delete_snapshot = snapshot.clone();
+            let delete_metadata = metadata_text.clone();
+            delete.connect_clicked(move |_| {
+                let current_locale = delete_state.borrow().locale();
+                let heading =
+                    localization::text(current_locale, "action.delete_history_entry", "Delete");
+                let cancel = localization::text(current_locale, "action.cancel", "Cancel");
+                let confirm =
+                    localization::text(current_locale, "action.delete_history_entry", "Delete");
+                let confirmation = gtk::AlertDialog::builder()
+                    .message(heading)
+                    .detail(delete_metadata.clone())
+                    .modal(true)
+                    .build();
+                confirmation.set_buttons(&[cancel.as_str(), confirm.as_str()]);
+                confirmation.set_cancel_button(0);
+                confirmation.set_default_button(0);
+                let choice_state = Rc::clone(&delete_state);
+                let choice_bindings = delete_bindings.clone();
+                let choice_worker = delete_worker.clone();
+                let choice_dialog = delete_dialog.clone();
+                let job_id = delete_snapshot.job_id.clone();
+                confirmation.choose(
+                    Some(&delete_dialog),
+                    None::<&gtk::gio::Cancellable>,
+                    move |response| {
+                        if response != Ok(1) {
+                            return;
+                        }
+                        if let Err(error) = choice_worker.delete_document_job(job_id.clone()) {
+                            choice_state
+                                .borrow_mut()
+                                .record_client_error(error.to_string());
+                            refresh_ui(&choice_bindings, &choice_state.borrow());
+                        } else {
+                            choice_dialog.close();
+                        }
+                    },
+                );
+                confirmation.show(Some(&delete_dialog));
+            });
+            queue_actions.append(&delete);
             row.append(&queue_actions);
             list.append(&row);
         }
@@ -3407,13 +8132,24 @@ fn show_history_dialog(
             row.set_margin_top(8);
             row.set_margin_bottom(8);
             let header = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-            let metadata = gtk::Label::new(Some(&format!(
-                "{} → {} · {} · {}",
-                entry.source_locale.as_deref().unwrap_or("auto"),
-                entry.target_locale,
-                entry.model_id,
-                entry.created_at,
-            )));
+            let auto_locale = localization::text(locale, "option.source.auto", "Auto");
+            let source_locale = entry
+                .source_locale
+                .as_deref()
+                .unwrap_or(auto_locale.as_str());
+            let created_at = entry.created_at.to_string();
+            let metadata_text = localized_template(
+                locale,
+                "status.translation_entry_metadata",
+                "{source} → {target} · {model} · {created_at}",
+                &[
+                    ("{source}", source_locale),
+                    ("{target}", entry.target_locale.as_str()),
+                    ("{model}", entry.model_id.as_str()),
+                    ("{created_at}", created_at.as_str()),
+                ],
+            );
+            let metadata = gtk::Label::new(Some(&metadata_text));
             metadata.set_xalign(0.0);
             metadata.set_hexpand(true);
             metadata.add_css_class("dim-label");
@@ -3514,7 +8250,7 @@ fn begin_history_export(
         contents.push_str(&history_tsv_field(&entry.translated_text));
         contents.push('\n');
     }
-    let contents = glib::Bytes::from_owned(contents.into_bytes());
+    let contents = contents.into_bytes();
     let dialog = gtk::FileDialog::builder()
         .title(localization::text(
             locale,
@@ -3534,27 +8270,21 @@ fn begin_history_export(
             Ok(file) => {
                 let callback_bindings = export_bindings.clone();
                 let callback_state = Rc::clone(&export_state);
-                file.replace_contents_bytes_async(
-                    &contents,
-                    None,
-                    false,
-                    gtk::gio::FileCreateFlags::NONE,
-                    None::<&gtk::gio::Cancellable>,
-                    move |write_result| match write_result {
-                        Ok(_) => {
-                            callback_bindings.history_export_notice.set(true);
-                            refresh_ui(&callback_bindings, &callback_state.borrow());
-                        }
-                        Err(_) => show_file_export_error(
+                write_new_file_async(&file, contents, move |write_succeeded| {
+                    if write_succeeded {
+                        callback_bindings.history_export_notice.set(true);
+                        refresh_ui(&callback_bindings, &callback_state.borrow());
+                    } else {
+                        show_file_export_error(
                             &callback_bindings,
                             &localization::text(
                                 callback_state.borrow().locale(),
                                 "error.history_export",
                                 "The translation history could not be saved.",
                             ),
-                        ),
-                    },
-                );
+                        );
+                    }
+                });
             }
             Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
             Err(_) => show_file_export_error(
@@ -3626,13 +8356,24 @@ fn show_memory_dialog(
             row.set_margin_top(8);
             row.set_margin_bottom(8);
             let header = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-            let metadata = gtk::Label::new(Some(&format!(
-                "{} → {} · {} · {}",
-                entry.source_locale.as_deref().unwrap_or("auto"),
-                entry.target_locale,
-                entry.model_id,
-                entry.created_at,
-            )));
+            let auto_locale = localization::text(locale, "option.source.auto", "Auto");
+            let source_locale = entry
+                .source_locale
+                .as_deref()
+                .unwrap_or(auto_locale.as_str());
+            let created_at = entry.created_at.to_string();
+            let metadata_text = localized_template(
+                locale,
+                "status.translation_entry_metadata",
+                "{source} → {target} · {model} · {created_at}",
+                &[
+                    ("{source}", source_locale),
+                    ("{target}", entry.target_locale.as_str()),
+                    ("{model}", entry.model_id.as_str()),
+                    ("{created_at}", created_at.as_str()),
+                ],
+            );
+            let metadata = gtk::Label::new(Some(&metadata_text));
             metadata.set_xalign(0.0);
             metadata.set_hexpand(true);
             metadata.add_css_class("dim-label");
@@ -3738,7 +8479,7 @@ fn begin_memory_export(
         contents.push_str(&memory_tsv_field(&entry.identity_json));
         contents.push('\n');
     }
-    let contents = glib::Bytes::from_owned(contents.into_bytes());
+    let contents = contents.into_bytes();
     let dialog = gtk::FileDialog::builder()
         .title(localization::text(
             locale,
@@ -3758,27 +8499,21 @@ fn begin_memory_export(
             Ok(file) => {
                 let callback_bindings = export_bindings.clone();
                 let callback_state = Rc::clone(&export_state);
-                file.replace_contents_bytes_async(
-                    &contents,
-                    None,
-                    false,
-                    gtk::gio::FileCreateFlags::NONE,
-                    None::<&gtk::gio::Cancellable>,
-                    move |write_result| match write_result {
-                        Ok(_) => {
-                            callback_bindings.memory_export_notice.set(true);
-                            refresh_ui(&callback_bindings, &callback_state.borrow());
-                        }
-                        Err(_) => show_file_export_error(
+                write_new_file_async(&file, contents, move |write_succeeded| {
+                    if write_succeeded {
+                        callback_bindings.memory_export_notice.set(true);
+                        refresh_ui(&callback_bindings, &callback_state.borrow());
+                    } else {
+                        show_file_export_error(
                             &callback_bindings,
                             &localization::text(
                                 callback_state.borrow().locale(),
                                 "error.memory_export",
                                 "The translation memory could not be saved.",
                             ),
-                        ),
-                    },
-                );
+                        );
+                    }
+                });
             }
             Err(error) if error.matches(gtk::gio::IOErrorEnum::Cancelled) => {}
             Err(_) => show_file_export_error(
@@ -3926,7 +8661,9 @@ fn apply_worker_event(
         WorkerEvent::TranslationHistoryActionRejected(error)
         | WorkerEvent::SecretCleanupFailed { error, .. }
         | WorkerEvent::TranslationMemoryActionRejected(error)
-        | WorkerEvent::DocumentJobStorageUnavailable(error) => {
+        | WorkerEvent::GlossaryActionRejected(error)
+        | WorkerEvent::DocumentJobStorageUnavailable(error)
+        | WorkerEvent::RoutingProfileActionRejected(error) => {
             state.borrow_mut().record_client_error(error.to_string());
         }
         WorkerEvent::DocumentJobActionRejected(error) => {
@@ -3996,6 +8733,72 @@ fn apply_worker_event(
             bindings.memory_warning.set(true);
             bindings.memory_clear_pending.set(false);
         }
+        WorkerEvent::GlossariesListed { glossaries } => {
+            let glossary_worker = worker.command_handle();
+            show_glossary_libraries_dialog(bindings, state, &glossary_worker, glossaries);
+        }
+        WorkerEvent::GlossarySaved(record) => {
+            let summary = glossary_summary(&record.glossary);
+            bindings.glossary.set_text(&summary);
+            bindings.glossary_from_csv.set(true);
+            bindings.glossary_notice.set(true);
+            state.borrow_mut().set_glossary(Some(record.glossary));
+        }
+        WorkerEvent::GlossaryDeleted { .. } => {
+            bindings.glossary_notice.set(true);
+        }
+        WorkerEvent::DocumentJobSegment { .. } => {}
+        WorkerEvent::RoutingProfilesListed { profiles } => {
+            let routing_worker = worker.command_handle();
+            show_routing_profiles_dialog(bindings, state, &routing_worker, profiles);
+        }
+        WorkerEvent::RoutingProfileExported {
+            profile_id,
+            contents,
+        } => {
+            begin_routing_profile_export(bindings, state, &profile_id, contents);
+        }
+        WorkerEvent::RoutingDecisionSelected {
+            profile_id,
+            provider_id,
+            model_id,
+            eligible_count,
+            rejected_count,
+            fallback_count,
+            eligible_candidates,
+            rejected_candidates,
+            ranking_inputs,
+            fallback_order,
+        } => {
+            state
+                .borrow_mut()
+                .record_routing_decision(RoutingDecisionSummary {
+                    profile_id,
+                    provider_id,
+                    model_id,
+                    eligible_count,
+                    rejected_count,
+                    fallback_count,
+                    eligible_candidates,
+                    rejected_candidates,
+                    ranking_inputs,
+                    fallback_order,
+                });
+        }
+        WorkerEvent::RoutingProfileSaved(_) | WorkerEvent::RoutingProfileImported(_) => {
+            if let Err(error) = worker.command_handle().list_routing_profiles() {
+                state.borrow_mut().record_client_error(error.to_string());
+            }
+        }
+        WorkerEvent::RoutingProfileDeleted { profile_id } => {
+            if bindings.selected_routing_profile_id.borrow().as_deref() == Some(profile_id.as_str())
+            {
+                bindings.selected_routing_profile_id.replace(None);
+            }
+            if let Err(error) = worker.command_handle().list_routing_profiles() {
+                state.borrow_mut().record_client_error(error.to_string());
+            }
+        }
         WorkerEvent::DocumentJobsRestored { jobs } => {
             if bindings.document_job_id.borrow().is_none()
                 && let Some(snapshot) = jobs.first()
@@ -4011,17 +8814,27 @@ fn apply_worker_event(
                 bindings.document_job_guard.set(false);
                 *bindings.document_warnings.borrow_mut() =
                     snapshot.job.warnings().unwrap_or_default();
+                restore_document_translation_options(state, snapshot);
             }
         }
         WorkerEvent::DocumentJobsListed { jobs } => {
             let jobs_worker = worker.command_handle();
             show_document_jobs_dialog(bindings, state, &jobs_worker, jobs);
         }
+        WorkerEvent::DocumentJobDeleted { job_id } => {
+            if bindings.document_job_id.borrow().as_deref() == Some(job_id.as_str()) {
+                bindings.document_job_id.borrow_mut().take();
+                bindings.document_job_state.set(None);
+                bindings.document_progress.set(None);
+                bindings.document_warnings.borrow_mut().clear();
+            }
+        }
         WorkerEvent::DocumentJobExported {
             source_name,
+            target_locale,
             contents,
         } => {
-            begin_document_binary_export(bindings, state, &source_name, contents);
+            begin_document_binary_export(bindings, state, &source_name, &target_locale, contents);
         }
         WorkerEvent::DocumentJobUpdated(snapshot) => {
             bindings.ocr_pending.set(false);
@@ -4031,6 +8844,7 @@ fn apply_worker_event(
                 .document_progress
                 .set(Some(document_progress(&snapshot)));
             *bindings.document_warnings.borrow_mut() = snapshot.job.warnings().unwrap_or_default();
+            restore_document_translation_options(state, &snapshot);
             if let Ok(output) = snapshot.job.reconstruct() {
                 let mut state = state.borrow_mut();
                 match snapshot.state {
@@ -4054,13 +8868,13 @@ fn apply_worker_event(
                 }
             }
         }
-        WorkerEvent::DocumentJobSegment { .. } => {}
         WorkerEvent::DemoProviderReady { endpoint } => {
             let should_use_demo = {
                 let state = state.borrow();
                 state.active_provider().is_none()
                     && state.pending_provider().is_none()
                     && state.saved_profiles().is_empty()
+                    && bindings.provider_preset.selected() == 0
                     && bindings.provider_endpoint.text() == DEFAULT_PROVIDER_ENDPOINT
             };
             if should_use_demo {
@@ -4074,8 +8888,15 @@ fn apply_worker_event(
             saved_profile,
         } => {
             let profile_was_saved = saved_profile.is_some();
-            let mut labels = vec!["Select a model...".to_owned()];
-            labels.extend(models.iter().map(|model| model.display_name.clone()));
+            let locale = state.borrow().locale();
+            let model_placeholder =
+                localization::text(locale, "option.model.select", "Select a model...");
+            let mut labels = vec![model_placeholder];
+            labels.extend(
+                models
+                    .iter()
+                    .map(|model| model_descriptor_label(locale, model)),
+            );
             let label_refs = labels.iter().map(String::as_str).collect::<Vec<_>>();
             let selected = {
                 let mut state = state.borrow_mut();
@@ -4106,6 +8927,35 @@ fn apply_worker_event(
                 bindings.draft_profile_id.replace(None);
                 rebuild_saved_profile_dropdown(bindings, &state.borrow());
             }
+        }
+        WorkerEvent::ConnectionTested {
+            profile_id,
+            model_count,
+        } => {
+            bindings.connection_test_notice.set(true);
+            bindings.connection_test_model_count.set(Some(model_count));
+            bindings
+                .connection_test_profile_id
+                .replace(Some(profile_id.as_str().to_owned()));
+        }
+        WorkerEvent::ProfileHealthUpdated { profile } => {
+            let selected = state.borrow().selected_saved_profile_id() == Some(profile.id());
+            let updated = {
+                let mut state = state.borrow_mut();
+                state.update_saved_profile_health(profile.clone()).is_ok()
+            };
+            if updated {
+                rebuild_saved_profile_dropdown(bindings, &state.borrow());
+                if selected {
+                    show_saved_profile_in_form(bindings, &profile);
+                }
+            }
+        }
+        WorkerEvent::ConnectionTestRejected { error, .. } => {
+            bindings.connection_test_notice.set(false);
+            bindings.connection_test_model_count.set(None);
+            bindings.connection_test_profile_id.replace(None);
+            state.borrow_mut().record_operation_failure(error);
         }
         WorkerEvent::ModelSelected {
             profile_id,
@@ -4193,10 +9043,12 @@ fn apply_worker_event(
                 send_translation_notification(bindings, state.borrow().locale());
             }
         }
-        WorkerEvent::FallbackSelected { .. } => {
+        WorkerEvent::RoutingFallbackSelected { .. } | WorkerEvent::FallbackSelected { .. } => {
             bindings.fallback_notice.set(true);
         }
-        WorkerEvent::OperationFailed(error) | WorkerEvent::TranslationRejected(error) => {
+        WorkerEvent::ProfileHealthPersistenceFailed { error, .. }
+        | WorkerEvent::OperationFailed(error)
+        | WorkerEvent::TranslationRejected(error) => {
             state.borrow_mut().record_operation_failure(error);
         }
         WorkerEvent::ProviderRejected { profile, error } => {
@@ -4288,15 +9140,15 @@ fn refresh_active_provider_label(bindings: &UiBindings, state: &AppState) {
             &[("{provider}", pending.display_name()), ("{mode}", &pending_mode)],
         )),
         (Some(active), None) => {
-            let template = localization::text(
+            bindings.active_provider.set_label(&localized_template(
                 state.locale(),
-                "provider.active",
-                "Active provider: {provider}",
-            );
-            let active_label = template.replace("{provider}", active.display_name());
-            bindings
-                .active_provider
-                .set_label(&format!("{active_label} ({active_mode})"));
+                "provider.active_with_mode",
+                "Active provider: {provider} ({mode})",
+                &[
+                    ("{provider}", active.display_name()),
+                    ("{mode}", &active_mode),
+                ],
+            ));
         }
         (None, None) if !state.saved_profiles().is_empty() => {
             bindings.active_provider.set_label(&localization::text(
@@ -4311,6 +9163,82 @@ fn refresh_active_provider_label(bindings: &UiBindings, state: &AppState) {
             "No provider connected. Credentials stay session-only unless remembered through Secret Service.",
         )),
     }
+}
+
+// 将健康检查失败类别映射到现有的本地化错误类别。
+fn localized_provider_health_category(locale: UiLocale, kind: ErrorKind) -> String {
+    let (key, fallback) = match kind {
+        ErrorKind::Cancelled => ("error.category.cancellation", "Cancellation"),
+        ErrorKind::InvalidEndpoint => ("error.category.invalid_endpoint", "Invalid endpoint"),
+        ErrorKind::Network => ("error.category.network", "Network"),
+        ErrorKind::Timeout => ("error.category.timeout", "Timeout"),
+        ErrorKind::Authentication => ("error.category.authentication", "Authentication"),
+        ErrorKind::RateLimited => ("error.category.rate_limited", "Rate limited"),
+        ErrorKind::ModelUnavailable => ("error.category.model_unavailable", "Model unavailable"),
+        ErrorKind::MalformedResponse => ("error.category.malformed_response", "Malformed response"),
+        ErrorKind::Persistence => ("error.category.persistence", "Persistence"),
+        ErrorKind::ProtocolIncompatible => (
+            "error.category.protocol_incompatible",
+            "Protocol incompatible",
+        ),
+        ErrorKind::InvalidConfiguration => (
+            "error.category.invalid_configuration",
+            "Invalid configuration",
+        ),
+        ErrorKind::UnsupportedCapability => (
+            "error.category.unsupported_capability",
+            "Unsupported capability",
+        ),
+        ErrorKind::SecretUnavailable => ("error.category.secret_unavailable", "Secret unavailable"),
+        ErrorKind::SecureStorageUnavailable => (
+            "error.category.secure_storage_unavailable",
+            "Secure storage unavailable",
+        ),
+        ErrorKind::Internal => ("error.category.internal", "Internal"),
+    };
+    localization::text(locale, key, fallback)
+}
+
+// 将持久化的 Unix 秒转换为不含本地敏感数据的稳定 UTC 时间文本。
+fn provider_health_timestamp(timestamp: i64) -> String {
+    glib::DateTime::from_unix_utc(timestamp)
+        .and_then(|date_time| date_time.format_iso8601())
+        .map_or_else(|_| timestamp.to_string(), |value| value.to_string())
+}
+
+// 刷新当前选中配置的非秘密健康状态展示。
+fn refresh_provider_health_label(bindings: &UiBindings, state: &AppState) {
+    let profile = state
+        .selected_saved_profile()
+        .or_else(|| state.active_provider());
+    let Some(profile) = profile else {
+        bindings.provider_health.set_label("");
+        bindings.provider_health.set_visible(false);
+        return;
+    };
+    let health = if let Some(category) = profile.last_failure_category() {
+        let category = localized_provider_health_category(state.locale(), category);
+        localized_template(
+            state.locale(),
+            "provider.health.failure",
+            "Last provider health check failed: {category}",
+            [("{category}", category.as_str())].as_slice(),
+        )
+    } else if let Some(timestamp) = profile.last_successful_health_check() {
+        let timestamp = provider_health_timestamp(timestamp);
+        localized_template(
+            state.locale(),
+            "provider.health.success",
+            "Last provider health check: {timestamp}",
+            [("{timestamp}", timestamp.as_str())].as_slice(),
+        )
+    } else {
+        bindings.provider_health.set_label("");
+        bindings.provider_health.set_visible(false);
+        return;
+    };
+    bindings.provider_health.set_label(&health);
+    bindings.provider_health.set_visible(true);
 }
 
 #[allow(clippy::too_many_lines)]
@@ -4423,10 +9351,12 @@ fn refresh_onboarding(bindings: &UiBindings, state: &AppState) {
         }
         OnboardingStage::Ready => {
             let provider = state.active_provider().map_or_else(
-                || "Unavailable".to_owned(),
+                || localization::text(state.locale(), "status.unavailable", "Unavailable"),
                 |profile| format!("{} [{}]", profile.display_name(), profile.id().as_str()),
             );
-            let model = state.selected_model().unwrap_or("Unavailable");
+            let unavailable =
+                localization::text(state.locale(), "status.unavailable", "Unavailable");
+            let model = state.selected_model().unwrap_or(unavailable.as_str());
             (
                 localization::text(
                     state.locale(),
@@ -4479,6 +9409,31 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
         "When enabled, use the optional Tesseract plugin for image-only PDF pages and import page-marked text",
     );
     let translate = localization::text(locale, "action.translate", "Translate");
+    let retry_translation =
+        localization::text(locale, "action.retry_translation", "Retry translation");
+    let retry_translation_tooltip = localization::text(
+        locale,
+        "tooltip.retry_translation",
+        "Retry the last failed or cancelled text translation",
+    );
+    let copy_output = localization::text(locale, "action.copy_output", "Copy translation");
+    let copy_output_tooltip = localization::text(
+        locale,
+        "tooltip.copy_output",
+        "Copy the translated output to the system clipboard",
+    );
+    let clear_workspace = localization::text(locale, "action.clear_workspace", "Clear workspace");
+    let clear_workspace_tooltip = localization::text(
+        locale,
+        "tooltip.clear_workspace",
+        "Clear the source text, translated output, and request diagnostics",
+    );
+    let swap_languages = localization::text(locale, "action.swap_languages", "Swap languages");
+    let swap_languages_tooltip = localization::text(
+        locale,
+        "tooltip.swap_languages",
+        "Swap the source and target languages",
+    );
     let stop = localization::text(locale, "accessibility.stop_translation", "Stop translation");
     let pause = localization::text(locale, "action.pause_document", "Pause document");
     let resume = localization::text(locale, "action.resume_document", "Resume document");
@@ -4486,6 +9441,12 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     let export = localization::text(locale, "action.export_output", "Export translation");
     let open_output = localization::text(locale, "action.open_output", "Open exported output");
     let connect = localization::text(locale, "action.connect", "Connect");
+    let test_connection = localization::text(locale, "action.test_connection", "Test connection");
+    let test_connection_tooltip = localization::text(
+        locale,
+        "tooltip.test_connection",
+        "Check the provider model endpoint without switching or saving the active profile",
+    );
     let remove_profile =
         localization::text(locale, "action.remove_profile", "Remove saved profile");
     let remember_profile = localization::text(
@@ -4495,6 +9456,9 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     );
     let import_glossary = localization::text(locale, "action.import_glossary", "Import glossary");
     let export_glossary = localization::text(locale, "action.export_glossary", "Export glossary");
+    let glossary_libraries =
+        localization::text(locale, "action.glossary_libraries", "Glossary libraries");
+    let save_glossary = localization::text(locale, "action.save_glossary", "Save glossary library");
     let incognito = localization::text(locale, "settings.incognito", "Incognito mode");
     let history_enabled =
         localization::text(locale, "settings.save_history", "Save translation history");
@@ -4505,6 +9469,29 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     let memory = localization::text(locale, "action.view_memory", "View translation memory");
     let clear_memory =
         localization::text(locale, "action.clear_memory", "Clear translation memory");
+    let clear_temporary_files = localization::text(
+        locale,
+        "action.clear_temporary_files",
+        "Clear temporary files",
+    );
+    let routing_profiles =
+        localization::text(locale, "action.routing_profiles", "Routing profiles");
+    let open_source_licenses = localization::text(
+        locale,
+        "action.open_source_licenses",
+        "Open-source licenses",
+    );
+    let open_source_licenses_tooltip = localization::text(
+        locale,
+        "tooltip.open_source_licenses",
+        "Review the licenses and third-party notices included with this build",
+    );
+    let about = localization::text(locale, "action.about", "About LinguaMesh");
+    let about_tooltip = localization::text(
+        locale,
+        "tooltip.about",
+        "Show application and shared-core version information",
+    );
     let fallback_action =
         localization::text(locale, "action.enable_fallback", "Allow approved fallback");
     let fallback_tooltip = localization::text(
@@ -4530,9 +9517,43 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
         .set_tooltip_text(Some(&localization::text(
             locale,
             "tooltip.document_jobs",
-            "View and select persisted document jobs",
+            "Inspect persisted document jobs and their progress",
         )));
     bindings.translate.set_label(&translate_label);
+    bindings
+        .retry_translation
+        .set_label(&format!("_{retry_translation}"));
+    bindings
+        .retry_translation
+        .set_tooltip_text(Some(&retry_translation_tooltip));
+    bindings
+        .retry_translation
+        .update_property(&[gtk::accessible::Property::Label(&retry_translation)]);
+    bindings.copy_output.set_label(&format!("_{copy_output}"));
+    bindings
+        .copy_output
+        .set_tooltip_text(Some(&copy_output_tooltip));
+    bindings
+        .copy_output
+        .update_property(&[gtk::accessible::Property::Label(&copy_output)]);
+    bindings
+        .clear_workspace
+        .set_label(&format!("_{clear_workspace}"));
+    bindings
+        .clear_workspace
+        .set_tooltip_text(Some(&clear_workspace_tooltip));
+    bindings
+        .clear_workspace
+        .update_property(&[gtk::accessible::Property::Label(&clear_workspace)]);
+    bindings
+        .swap_locales
+        .set_label(&format!("_{swap_languages}"));
+    bindings
+        .swap_locales
+        .set_tooltip_text(Some(&swap_languages_tooltip));
+    bindings
+        .swap_locales
+        .update_property(&[gtk::accessible::Property::Label(&swap_languages)]);
     bindings.export_output.set_label(&format!("_{export}"));
     bindings
         .export_output
@@ -4554,6 +9575,12 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     bindings.resume_document.set_label(&format!("_{resume}"));
     bindings.retry_document.set_label(&format!("_{retry}"));
     bindings.connect.set_label(&format!("_{connect}"));
+    bindings
+        .test_connection
+        .set_label(&format!("_{test_connection}"));
+    bindings
+        .test_connection
+        .set_tooltip_text(Some(&test_connection_tooltip));
     bindings.remove_saved_profile.set_label(&remove_profile);
     bindings.remember_profile.set_label(Some(&remember_profile));
     bindings
@@ -4562,6 +9589,12 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     bindings
         .export_glossary
         .set_label(&format!("_{export_glossary}"));
+    bindings
+        .glossary_libraries
+        .set_label(&format!("_{glossary_libraries}"));
+    bindings
+        .save_glossary
+        .set_label(&format!("_{save_glossary}"));
     bindings.incognito.set_label(Some(&format!("_{incognito}")));
     bindings
         .history_enabled
@@ -4576,8 +9609,26 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
     bindings.memory.set_label(&format!("_{memory}"));
     bindings.clear_memory.set_label(&format!("_{clear_memory}"));
     bindings
+        .clear_temporary_files
+        .set_label(&format!("_{clear_temporary_files}"));
+    bindings
+        .routing_profiles
+        .set_label(&format!("_{routing_profiles}"));
+    bindings
+        .open_source_licenses
+        .set_label(&format!("_{open_source_licenses}"));
+    bindings
+        .open_source_licenses
+        .set_tooltip_text(Some(&open_source_licenses_tooltip));
+    bindings.about.set_label(&format!("_{about}"));
+    bindings.about.set_tooltip_text(Some(&about_tooltip));
+    bindings
         .fallback_enabled
         .set_label(Some(&format!("_{fallback_action}")));
+    // 在运行时切换界面语言时同步更新复选框的可访问名称。
+    bindings
+        .fallback_enabled
+        .update_property(&[gtk::accessible::Property::Label(&fallback_action)]);
     bindings
         .fallback_enabled
         .set_tooltip_text(Some(&fallback_tooltip));
@@ -4594,6 +9645,20 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
             locale,
             "tooltip.export_glossary",
             "Save the current glossary rules as a UTF-8 CSV file",
+        )));
+    bindings
+        .glossary_libraries
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.glossary_libraries",
+            "Inspect, select, and delete reusable local glossary libraries",
+        )));
+    bindings
+        .save_glossary
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.save_glossary",
+            "Save the current validated glossary as a reusable local library",
         )));
     bindings
         .incognito
@@ -4632,11 +9697,25 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
         "Inspect, export, or delete individual local translation memory entries",
     )));
     bindings
+        .routing_profiles
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.routing_profiles",
+            "Create, inspect, and delete non-secret routing planner profiles",
+        )));
+    bindings
         .clear_memory
         .set_tooltip_text(Some(&localization::text(
             locale,
             "tooltip.clear_memory",
             "Delete all locally stored translation memory entries",
+        )));
+    bindings
+        .clear_temporary_files
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.clear_temporary_files",
+            "Delete LinguaMesh temporary OCR files and abandoned export files from the system temporary directory",
         )));
     bindings
         .remove_saved_profile
@@ -4660,6 +9739,13 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
             "Choose a saved non-secret profile or create a new profile",
         )));
     bindings
+        .provider_preset
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.provider_preset",
+            "Choose the provider protocol used for model discovery and streaming",
+        )));
+    bindings
         .provider_name
         .set_tooltip_text(Some(&localization::text(
             locale,
@@ -4668,10 +9754,26 @@ fn refresh_localized_actions(bindings: &UiBindings, locale: UiLocale) {
         )));
     bindings
         .provider_endpoint
-        .set_tooltip_text(Some(&localization::text(
+        .set_tooltip_text(Some(&provider_endpoint_tooltip(
             locale,
-            "tooltip.endpoint",
-            "HTTPS or loopback HTTP OpenAI-compatible base endpoint",
+            bindings.provider_preset.selected(),
+        )));
+    set_labeled_control_label(
+        bindings.manual_model.upcast_ref(),
+        &localized_mnemonic(locale, "field.model", "Model"),
+    );
+    bindings
+        .manual_model
+        .set_placeholder_text(Some(&localization::text(
+            locale,
+            "option.model.manual",
+            "Enter a model ID manually...",
+        )));
+    bindings
+        .manual_model
+        .set_tooltip_text(Some(&provider_model_tooltip(
+            locale,
+            bindings.provider_preset.selected(),
         )));
     bindings
         .provider_credential
@@ -4724,6 +9826,11 @@ fn refresh_localized_widgets(bindings: &UiBindings, locale: UiLocale) {
         .output_view
         .update_property(&[gtk::accessible::Property::Label(&output_accessible)]);
     set_labeled_control_label(
+        bindings.provider_preset.upcast_ref(),
+        &localized_mnemonic(locale, "label.provider_preset", "Provider preset"),
+    );
+    refresh_dropdown_labels(&bindings.provider_preset, &provider_preset_labels(locale));
+    set_labeled_control_label(
         bindings.provider_name.upcast_ref(),
         &localized_mnemonic(locale, "provider.name", "Provider name"),
     );
@@ -4735,6 +9842,251 @@ fn refresh_localized_widgets(bindings: &UiBindings, locale: UiLocale) {
             "Endpoint (loopback example)",
         ),
     );
+    set_labeled_control_label(
+        bindings.provider_notes.upcast_ref(),
+        &localized_mnemonic(locale, "label.provider_notes", "Profile notes"),
+    );
+    bindings
+        .provider_notes
+        .set_placeholder_text(Some(&localization::text(
+            locale,
+            "placeholder.provider_notes",
+            "Optional non-secret note for this saved profile",
+        )));
+    bindings
+        .provider_notes
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.provider_notes",
+            "Optional non-secret note for this saved profile",
+        )));
+    set_labeled_control_label(
+        bindings.provider_organization.upcast_ref(),
+        &localized_mnemonic(locale, "label.provider_organization", "Organization"),
+    );
+    bindings
+        .provider_organization
+        .set_placeholder_text(Some(&localization::text(
+            locale,
+            "placeholder.provider_organization",
+            "Optional OpenAI organization ID",
+        )));
+    bindings
+        .provider_organization
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.provider_organization",
+            "Optional organization identifier sent to OpenAI-compatible endpoints",
+        )));
+    set_labeled_control_label(
+        bindings.provider_project.upcast_ref(),
+        &localized_mnemonic(locale, "label.provider_project", "Project"),
+    );
+    bindings
+        .provider_project
+        .set_placeholder_text(Some(&localization::text(
+            locale,
+            "placeholder.provider_project",
+            "Optional OpenAI project ID",
+        )));
+    bindings
+        .provider_project
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.provider_project",
+            "Optional project identifier sent to OpenAI-compatible endpoints",
+        )));
+    set_labeled_control_label(
+        bindings.provider_region.upcast_ref(),
+        &localized_mnemonic(locale, "label.provider_region", "Region"),
+    );
+    bindings
+        .provider_region
+        .set_placeholder_text(Some(&localization::text(
+            locale,
+            "placeholder.provider_region",
+            "Optional provider region or deployment geography",
+        )));
+    bindings
+        .provider_region
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.provider_region",
+            "Optional non-secret region identifier used by the provider account",
+        )));
+    set_labeled_control_label(
+        bindings.provider_account_identifier.upcast_ref(),
+        &localized_mnemonic(
+            locale,
+            "label.provider_account_identifier",
+            "Account identifier",
+        ),
+    );
+    bindings
+        .provider_account_identifier
+        .set_placeholder_text(Some(&localization::text(
+            locale,
+            "placeholder.provider_account_identifier",
+            "Optional non-secret account or tenant identifier",
+        )));
+    bindings
+        .provider_account_identifier
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.provider_account_identifier",
+            "Optional account identifier used to distinguish provider tenants",
+        )));
+    set_labeled_control_label(
+        bindings.provider_proxy.upcast_ref(),
+        &localized_mnemonic(locale, "label.provider_proxy", "Proxy URL"),
+    );
+    bindings
+        .provider_proxy
+        .set_placeholder_text(Some(&localization::text(
+            locale,
+            "placeholder.provider_proxy",
+            "Optional proxy URL, for example http://127.0.0.1:8080",
+        )));
+    bindings
+        .provider_proxy
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.provider_proxy",
+            "Optional HTTP, HTTPS, SOCKS5, or SOCKS5H proxy without embedded credentials",
+        )));
+    set_labeled_control_label(
+        bindings.provider_proxy_credentials.upcast_ref(),
+        &localized_mnemonic(
+            locale,
+            "label.provider_proxy_credentials",
+            "Proxy credentials",
+        ),
+    );
+    bindings
+        .provider_proxy_credentials
+        .set_placeholder_text(Some(&localization::text(
+            locale,
+            "placeholder.provider_proxy_credentials",
+            "Optional username:password for the proxy",
+        )));
+    bindings
+        .provider_proxy_credentials
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.provider_proxy_credentials",
+            "Stored in Secret Service when remembered and never embedded in the proxy URL",
+        )));
+    set_labeled_control_label(
+        bindings.provider_request_timeout.upcast_ref(),
+        &localized_mnemonic(
+            locale,
+            "label.provider_request_timeout",
+            "Request timeout (seconds)",
+        ),
+    );
+    bindings
+        .provider_request_timeout
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.provider_request_timeout",
+            "Total provider request timeout in seconds, from 1 to 600",
+        )));
+    set_labeled_control_label(
+        bindings.provider_connection_timeout.upcast_ref(),
+        &localized_mnemonic(
+            locale,
+            "label.provider_connection_timeout",
+            "Connection timeout (seconds)",
+        ),
+    );
+    bindings
+        .provider_connection_timeout
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.provider_connection_timeout",
+            "Provider connection timeout in seconds, from 1 to 120",
+        )));
+    set_labeled_control_label(
+        bindings.provider_streaming_idle_timeout.upcast_ref(),
+        &localized_mnemonic(
+            locale,
+            "label.provider_streaming_idle_timeout",
+            "Streaming idle timeout (seconds)",
+        ),
+    );
+    bindings
+        .provider_streaming_idle_timeout
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.provider_streaming_idle_timeout",
+            "Provider streaming idle timeout in seconds, from 1 to 300",
+        )));
+    set_labeled_control_label(
+        bindings.provider_trusted_certificates_pem.upcast_ref(),
+        &localized_mnemonic(
+            locale,
+            "label.provider_trusted_certificates_pem",
+            "Trusted certificates (PEM)",
+        ),
+    );
+    bindings
+        .provider_trusted_certificates_pem
+        .set_placeholder_text(Some(&localization::text(
+            locale,
+            "placeholder.provider_trusted_certificates_pem",
+            "Optional PEM certificate bundle; TLS verification remains enabled",
+        )));
+    bindings
+        .provider_trusted_certificates_pem
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.provider_trusted_certificates_pem",
+            "Optional trusted certificate PEM bundle; system roots remain trusted and TLS verification stays enabled",
+        )));
+    set_labeled_control_label(
+        bindings.provider_custom_headers.upcast_ref(),
+        &localized_mnemonic(
+            locale,
+            "label.provider_custom_headers",
+            "Custom headers (non-secret JSON)",
+        ),
+    );
+    bindings
+        .provider_custom_headers
+        .set_placeholder_text(Some(&localization::text(
+            locale,
+            "placeholder.provider_custom_headers",
+            "Optional JSON object of non-secret request headers",
+        )));
+    bindings
+        .provider_custom_headers
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.provider_custom_headers",
+            "Optional bounded non-secret headers; authorization and credential headers are rejected",
+        )));
+    set_labeled_control_label(
+        bindings.provider_secret_custom_headers.upcast_ref(),
+        &localized_mnemonic(
+            locale,
+            "label.provider_secret_custom_headers",
+            "Custom headers (secret JSON)",
+        ),
+    );
+    bindings
+        .provider_secret_custom_headers
+        .set_placeholder_text(Some(&localization::text(
+            locale,
+            "placeholder.provider_secret_custom_headers",
+            "Optional JSON object of secret request headers",
+        )));
+    bindings
+        .provider_secret_custom_headers
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.provider_secret_custom_headers",
+            "Optional bounded secret headers; stored in Secret Service when remembered and otherwise kept for this session",
+        )));
     set_labeled_control_label(
         bindings.provider_credential.upcast_ref(),
         &localized_mnemonic(
@@ -4765,6 +10117,14 @@ fn refresh_localized_widgets(bindings: &UiBindings, locale: UiLocale) {
     set_labeled_control_label(
         bindings.target_locale.upcast_ref(),
         &localized_mnemonic(locale, "settings.target_language", "Target language"),
+    );
+    set_labeled_control_label(
+        bindings.quality_mode.upcast_ref(),
+        &localized_mnemonic(locale, "label.quality_mode", "Quality mode"),
+    );
+    set_labeled_control_label(
+        bindings.translation_preset.upcast_ref(),
+        &localized_mnemonic(locale, "label.translation_preset", "Translation preset"),
     );
     set_labeled_control_label(
         bindings.glossary.upcast_ref(),
@@ -4818,6 +10178,23 @@ fn refresh_localized_widgets(bindings: &UiBindings, locale: UiLocale) {
             localization::text(locale, "option.target.japanese", "Japanese"),
         ],
     );
+    refresh_dropdown_labels(&bindings.quality_mode, &quality_mode_labels(locale));
+    bindings.quality_mode.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.quality_mode",
+        "Fast uses one direct pass; Balanced adds deterministic structure checks; Best asks for an internal critique and revision.",
+    )));
+    refresh_dropdown_labels(
+        &bindings.translation_preset,
+        &translation_preset_labels(locale),
+    );
+    bindings
+        .translation_preset
+        .set_tooltip_text(Some(&localization::text(
+            locale,
+            "tooltip.translation_preset",
+            "Apply a bounded domain, tone, formality, and audience preference to the next request",
+        )));
     let locale_labels = UiLocale::ALL
         .map(|displayed_locale| localized_locale_name(locale, displayed_locale))
         .to_vec();
@@ -4985,6 +10362,7 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             gtk::TextDirection::Ltr
         });
     bindings.output.set_text(state.output());
+    refresh_text_metrics(bindings, state.locale(), state.usage());
     let document_state = bindings.document_job_state.get();
     let status_label = if bindings.ocr_pending.get() {
         localization::text(state.locale(), "status.ocr_running", "Running OCR")
@@ -5009,22 +10387,41 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         "{}: {status_label}",
         localization::text(state.locale(), "status.label", "Status")
     ));
-    let partial_label = if let Some((completed, total)) = bindings.document_progress.get() {
-        localized_template(
+    if let Some((completed, total)) = bindings.document_progress.get() {
+        let progress_label = localized_template(
             state.locale(),
             "status.document_progress",
-            "Document progress: {completed}/{total}",
+            "{completed} of {total} segments translated",
             &[
                 ("{completed}", &completed.to_string()),
                 ("{total}", &total.to_string()),
             ],
-        )
-    } else if state.has_partial_output() {
-        localization::text(state.locale(), "status.partial_output", "Partial output")
+        );
+        let fraction = if total == 0 {
+            0.0
+        } else {
+            let completed = u32::try_from(completed.min(total)).unwrap_or(u32::MAX);
+            let total = u32::try_from(total).unwrap_or(u32::MAX);
+            (f64::from(completed) / f64::from(total)).clamp(0.0, 1.0)
+        };
+        bindings.progress.set_fraction(fraction);
+        bindings.progress.set_text(Some(&progress_label));
+        bindings
+            .progress
+            .update_property(&[gtk::accessible::Property::Label(&progress_label)]);
+        bindings.progress.set_visible(true);
+        bindings.partial.set_label("");
     } else {
-        String::new()
-    };
-    bindings.partial.set_label(&partial_label);
+        bindings.progress.set_fraction(0.0);
+        bindings.progress.set_text(None);
+        bindings.progress.set_visible(false);
+        let partial_label = if state.has_partial_output() {
+            localization::text(state.locale(), "status.partial_output", "Partial output")
+        } else {
+            String::new()
+        };
+        bindings.partial.set_label(&partial_label);
+    }
     let error_text = state.localized_error_text(state.locale());
     let has_error = error_text.is_some();
     bindings
@@ -5046,11 +10443,37 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             "status.fallback_selected",
             "The approved fallback provider was selected; content may be sent there.",
         )
+    } else if bindings.connection_test_notice.get() {
+        let model_count = bindings
+            .connection_test_model_count
+            .get()
+            .unwrap_or_default()
+            .to_string();
+        let provider = bindings
+            .connection_test_profile_id
+            .borrow()
+            .clone()
+            .unwrap_or_else(|| "provider".to_owned());
+        localized_template(
+            state.locale(),
+            "status.connection_tested",
+            "Connection test passed for {provider}; {model_count} models are available.",
+            &[
+                ("{provider}", provider.as_str()),
+                ("{model_count}", &model_count),
+            ],
+        )
     } else if bindings.export_notice.get() {
         localization::text(
             state.locale(),
             "status.exported",
             "Translation saved to the selected file.",
+        )
+    } else if bindings.report_export_notice.get() {
+        localization::text(
+            state.locale(),
+            "status.report_exported",
+            "Translation report saved to the selected file.",
         )
     } else if bindings.history_warning.get() {
         localization::text(
@@ -5102,6 +10525,13 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             "status.memory_cleared",
             "Local translation memory was cleared.",
         )
+    } else if let Some(count) = bindings.temporary_cleanup_notice.get() {
+        localized_template(
+            state.locale(),
+            "status.temporary_files_cleared",
+            "Cleared {count} LinguaMesh temporary items.",
+            &[("{count}", &count.to_string())],
+        )
     } else if let Some(enabled) = bindings.memory_policy_notice.get() {
         if enabled {
             localization::text(
@@ -5152,7 +10582,9 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         )
     };
     bindings.locale_note.set_label(&locale_note);
-    bindings.diagnostics.set_label(&state.diagnostics_text());
+    bindings
+        .diagnostics
+        .set_label(&state.localized_diagnostics_text(state.locale()));
     let translation_busy = matches!(
         state.status(),
         AppStatus::Translating | AppStatus::Cancelling
@@ -5180,11 +10612,27 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
     let document_job_available = bindings.document_job_id.borrow().is_some();
     refresh_onboarding(bindings, state);
     refresh_active_provider_label(bindings, state);
+    refresh_provider_health_label(bindings, state);
     bindings
         .provider_name
         .set_sensitive(provider_controls_enabled);
     bindings
+        .provider_preset
+        .set_sensitive(provider_controls_enabled);
+    bindings
         .provider_endpoint
+        .set_sensitive(provider_controls_enabled);
+    bindings
+        .provider_notes
+        .set_sensitive(provider_controls_enabled);
+    bindings
+        .provider_organization
+        .set_sensitive(provider_controls_enabled);
+    bindings
+        .manual_model_row
+        .set_visible(manual_model_field_visible());
+    bindings
+        .manual_model
         .set_sensitive(provider_controls_enabled);
     bindings
         .provider_credential
@@ -5200,10 +10648,20 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             && state.profile_storage_available()
             && state.selected_saved_profile_id().is_some(),
     );
+    bindings
+        .test_connection
+        .set_sensitive(provider_controls_enabled);
     bindings.connect.set_sensitive(provider_controls_enabled);
     bindings
         .translate
         .set_sensitive(state.worker_ready() && !blocked && state.selected_model().is_some());
+    bindings.retry_translation.set_sensitive(
+        state.worker_ready()
+            && !blocked
+            && !document_job_available
+            && state.selected_model().is_some()
+            && state.can_retry_translation(),
+    );
     let fallback_available = state.worker_ready()
         && !blocked
         && !document_job_available
@@ -5245,6 +10703,13 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         .export_output
         .set_sensitive(!state.output().is_empty() && !blocked);
     bindings
+        .copy_output
+        .set_sensitive(!state.output().is_empty() && !blocked);
+    let source_has_text = !text_buffer_contents(&bindings.source).is_empty();
+    bindings.clear_workspace.set_sensitive(
+        !blocked && !document_job_available && (source_has_text || !state.output().is_empty()),
+    );
+    bindings
         .open_output
         .set_sensitive(bindings.output_uri.borrow().is_some() && !blocked);
     bindings
@@ -5257,6 +10722,15 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
         state.worker_ready() && !blocked && !ocr_pending && state.profile_storage_available(),
     );
     bindings.import_glossary.set_sensitive(!blocked);
+    bindings
+        .glossary_libraries
+        .set_sensitive(state.worker_ready() && state.profile_storage_available() && !blocked);
+    bindings.save_glossary.set_sensitive(
+        state.worker_ready()
+            && state.profile_storage_available()
+            && !blocked
+            && (!bindings.glossary.text().trim().is_empty() || state.glossary().is_some()),
+    );
     if bindings.incognito.is_active() != state.is_incognito() {
         bindings.incognito.set_active(state.is_incognito());
     }
@@ -5288,51 +10762,1647 @@ fn refresh_ui(bindings: &UiBindings, state: &AppState) {
             && !bindings.memory_clear_pending.get()
             && state.translation_memory_count() > 0,
     );
+    bindings
+        .clear_temporary_files
+        .set_sensitive(state.worker_ready() && !blocked && !ocr_pending);
     bindings.memory.set_sensitive(
         state.profile_storage_available() && !blocked && state.translation_memory_count() > 0,
     );
+    bindings
+        .routing_profiles
+        .set_sensitive(state.profile_storage_available() && !blocked);
     bindings.export_glossary.set_sensitive(
         !blocked && (!bindings.glossary.text().trim().is_empty() || state.glossary().is_some()),
     );
+    // Orca 烟测需要在空闲窗口中聚焦 Stop 控件，生产状态仍由工作阶段控制可用性。
+    let orca_fixture = std::env::var_os("LINGUAMESH_TEST_ORCA_ATSPI").is_some();
     bindings.stop.set_sensitive(
-        state.worker_ready()
-            && matches!(
-                state.status(),
-                AppStatus::Connecting | AppStatus::Translating
-            ),
+        orca_fixture
+            || (state.worker_ready()
+                && matches!(
+                    state.status(),
+                    AppStatus::Connecting | AppStatus::Translating
+                )),
     );
     bindings
         .model
         .set_sensitive(state.worker_ready() && !blocked && !state.models().is_empty());
     bindings.source_locale.set_sensitive(!blocked);
     bindings.target_locale.set_sensitive(!blocked);
+    bindings.swap_locales.set_sensitive(
+        !blocked
+            && swap_locale_selection(
+                bindings.source_locale.selected(),
+                bindings.target_locale.selected(),
+            )
+            .is_some(),
+    );
+    if bindings.quality_mode.selected() != quality_mode_selection(state.quality_mode()) {
+        bindings
+            .quality_mode
+            .set_selected(quality_mode_selection(state.quality_mode()));
+    }
+    bindings.quality_mode.set_sensitive(!blocked);
+    let preset_selection = translation_preset_selection(state.translation_preset());
+    if bindings.translation_preset.selected() != preset_selection {
+        bindings.translation_preset.set_selected(preset_selection);
+    }
+    bindings.translation_preset.set_sensitive(!blocked);
     bindings.glossary.set_sensitive(!blocked);
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        AppState, AppStatus, CUSTOM_PROVIDER_PRESET_ID, CoreWorker, DEFAULT_PROVIDER_ENDPOINT,
-        DEFAULT_PROVIDER_NAME, ErrorKind, OPENAI_ADAPTER_TYPE, OnboardingStage, ProviderProfileId,
-        SecretRef, SecretRefNamespace, SecretValue, TranslationError, UiLocale, WorkerCommand,
-        WorkerEvent, apply_worker_event, connect_action_handlers, connect_selection_handlers,
-        create_window, custom_provider_profile, document_format_label, generate_custom_provider_id,
-        localized_document_job_state, localized_document_warnings, refresh_ui, start_event_pump,
+        ANTHROPIC_ADAPTER_TYPE, ANTHROPIC_PROVIDER_PRESET_ID, AZURE_ADAPTER_TYPE,
+        AZURE_PROVIDER_PRESET_ID, AppState, AppStatus, CUSTOM_PROVIDER_PRESET_ID, CoreWorker,
+        DEFAULT_ANTHROPIC_ENDPOINT, DEFAULT_ANTHROPIC_PROVIDER_NAME, DEFAULT_AZURE_ENDPOINT,
+        DEFAULT_AZURE_PROVIDER_NAME, DEFAULT_GEMINI_ENDPOINT, DEFAULT_GEMINI_PROVIDER_NAME,
+        DEFAULT_OLLAMA_ENDPOINT, DEFAULT_OLLAMA_PROVIDER_NAME, DEFAULT_PROVIDER_ENDPOINT,
+        DEFAULT_PROVIDER_NAME, DEFAULT_RESPONSES_ENDPOINT, DEFAULT_RESPONSES_PROVIDER_NAME,
+        ErrorKind, ExportWriteStrategy, GEMINI_ADAPTER_TYPE, GEMINI_PROVIDER_PRESET_ID,
+        OLLAMA_ADAPTER_TYPE, OLLAMA_PROVIDER_PRESET_ID, OPENAI_ADAPTER_TYPE, OnboardingStage,
+        ProviderProfile, ProviderProfileId, RESPONSES_ADAPTER_TYPE, RESPONSES_PROVIDER_PRESET_ID,
+        RoutingCandidate, RoutingConstraintTextValues, RoutingDecisionSummary, RoutingProfile,
+        RoutingProfileRecord, SecretRef, SecretRefNamespace, SecretValue, TranslationError,
+        UiLocale, WorkerCommand, WorkerEvent, about_details, apply_worker_event,
+        clear_linguamesh_temporary_files, collision_safe_destination, collision_safe_output_path,
+        connect_action_handlers, connect_selection_handlers, create_window,
+        custom_provider_profile, destination_matches_source, document_format_label,
+        document_translation_report, endpoint_matches_preset_default, export_write_strategy,
+        fallback_confirmation_needed, generate_custom_provider_id, load_source_file,
+        localized_document_job_state, localized_document_warnings, localized_provider_default_name,
+        localized_provider_health_category, localized_template, model_descriptor_label,
+        normalized_candidate_ids_for_mode, output_metrics_label, preset_requires_manual_model,
+        provider_health_timestamp, provider_preset_config, provider_preset_index,
+        quality_mode_for_selection, quality_mode_selection, refresh_ui,
+        routing_constraints_from_controls, routing_constraints_from_text_values,
+        routing_identifier_list_from_text, routing_optional_limit_from_text,
+        routing_preference_for_selection, routing_preference_selection,
+        routing_profile_id_conflicts, show_about_dialog, show_document_jobs_dialog,
+        show_fallback_approval_dialog, show_new_profile_in_form, show_routing_profiles_dialog,
+        show_secret_storage_session_fallback, start_event_pump, swap_locale_selection,
+        sync_local_export, text_metrics_label, translation_output_name,
+        translation_preset_for_selection, translation_preset_selection, usage_label,
+        valid_routing_profile_id, validate_provider_preset_catalog, write_new_file_async,
     };
     use adw::prelude::*;
     use gtk::glib;
     use linguamesh_document::{
-        DocumentFormat, DocumentJobState, DocumentWarning, DocumentWarningKind,
+        DocumentFormat, DocumentJob, DocumentJobState, DocumentWarning, DocumentWarningKind,
     };
+    use linguamesh_domain::{
+        ModelDescriptor, ModelSource, RoutingConstraints, RoutingMode, RoutingPreference,
+        TranslationPreset, TranslationQualityMode, UsageRecord,
+    };
+    use linguamesh_storage::{DocumentJobSnapshot, Storage};
     use linguamesh_testkit::FakeProviderServer;
-    use std::cell::RefCell;
+    use std::cell::{Cell, RefCell};
+    use std::fmt::Write as FmtWrite;
     use std::fs;
+    use std::io::{Cursor, Read, Write};
+    use std::net::TcpListener;
+    use std::os::unix::fs::PermissionsExt;
+    use std::path::PathBuf;
+    use std::process::Command;
     use std::rc::Rc;
-    use std::sync::mpsc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::{Arc, mpsc};
     use std::thread::JoinHandle;
     use std::time::{Duration, Instant};
     use tokio::runtime::Builder;
     use tokio::sync::oneshot;
+    use zip::write::{SimpleFileOptions, ZipWriter};
+
+    fn descendant_widgets(root: &gtk::Widget) -> Vec<gtk::Widget> {
+        let mut descendants = Vec::new();
+        let mut child = root.first_child();
+        while let Some(widget) = child {
+            descendants.push(widget.clone());
+            descendants.extend(descendant_widgets(&widget));
+            child = widget.next_sibling();
+        }
+        descendants
+    }
+
+    #[test]
+    fn routing_profile_id_matches_core_identifier_bounds() {
+        assert!(valid_routing_profile_id("linux-default"));
+        assert!(valid_routing_profile_id("team.eu_01"));
+        assert!(valid_routing_profile_id(&"a".repeat(128)));
+        assert!(!valid_routing_profile_id(""));
+        assert!(!valid_routing_profile_id("routing profile"));
+        assert!(!valid_routing_profile_id("配置"));
+        assert!(!valid_routing_profile_id(&"a".repeat(129)));
+    }
+
+    #[test]
+    fn local_export_sync_barrier_accepts_file_and_parent_directory() {
+        let root = std::env::temp_dir().join(format!(
+            "linguamesh-linux-export-sync-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).expect("create export sync test directory");
+        let output = root.join("nested").join("translation.txt");
+        fs::create_dir_all(output.parent().expect("nested export directory"))
+            .expect("create nested directory");
+        fs::write(&output, b"durable test output").expect("write export sync test file");
+
+        assert!(sync_local_export(&output));
+
+        fs::remove_dir_all(&root).expect("remove export sync test directory");
+    }
+
+    #[test]
+    fn swap_locale_selection_only_supports_known_bidirectional_pair() {
+        assert_eq!(swap_locale_selection(1, 0), Some((2, 1)));
+        assert_eq!(swap_locale_selection(2, 1), Some((1, 0)));
+        assert_eq!(swap_locale_selection(0, 0), None);
+        assert_eq!(swap_locale_selection(1, 2), None);
+    }
+
+    #[test]
+    fn provider_health_helpers_are_stable_and_localized() {
+        assert_eq!(provider_health_timestamp(0), "1970-01-01T00:00:00Z");
+        assert_eq!(
+            localized_provider_health_category(UiLocale::English, ErrorKind::Authentication),
+            "Authentication"
+        );
+    }
+
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_provider_health_label_tracks_selected_saved_profile_state() {
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.ProviderHealthTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK provider health test application");
+
+        let profile_id = ProviderProfileId::parse("health-profile").expect("health profile ID");
+        let success_profile = ProviderProfile::new(
+            profile_id,
+            "Health profile",
+            CUSTOM_PROVIDER_PRESET_ID,
+            OPENAI_ADAPTER_TYPE,
+            "http://127.0.0.1:1",
+            None,
+        )
+        .expect("health profile")
+        .with_last_successful_health_check(Some(1_750_000_000))
+        .expect("valid health timestamp");
+        let state = Rc::new(RefCell::new(AppState::default()));
+        state
+            .borrow_mut()
+            .restore_saved_profile(success_profile.clone())
+            .expect("restore health profile");
+        let (window, bindings, _, _) = create_window(&application);
+        window.present();
+
+        refresh_ui(&bindings, &state.borrow());
+        let expected_success = localized_template(
+            UiLocale::English,
+            "provider.health.success",
+            "Last provider health check: {timestamp}",
+            &[("{timestamp}", "2025-06-15T15:06:40Z")],
+        );
+        assert!(bindings.provider_health.is_visible());
+        assert_eq!(bindings.provider_health.label(), expected_success);
+
+        let failure_profile = success_profile
+            .with_last_successful_health_check(None)
+            .expect("clear health timestamp")
+            .with_last_failure_category(Some(ErrorKind::Authentication));
+        state
+            .borrow_mut()
+            .update_saved_profile_health(failure_profile.clone())
+            .expect("update failed health");
+        refresh_ui(&bindings, &state.borrow());
+        let expected_failure = localized_template(
+            UiLocale::English,
+            "provider.health.failure",
+            "Last provider health check failed: {category}",
+            &[("{category}", "Authentication")],
+        );
+        assert!(bindings.provider_health.is_visible());
+        assert_eq!(bindings.provider_health.label(), expected_failure);
+
+        let no_health_profile = failure_profile.with_last_failure_category(None);
+        state
+            .borrow_mut()
+            .update_saved_profile_health(no_health_profile)
+            .expect("clear failed health");
+        refresh_ui(&bindings, &state.borrow());
+        assert!(!bindings.provider_health.is_visible());
+        assert_eq!(bindings.provider_health.label(), "");
+
+        state
+            .borrow_mut()
+            .select_saved_profile(None)
+            .expect("clear selected profile");
+        refresh_ui(&bindings, &state.borrow());
+        assert!(!bindings.provider_health.is_visible());
+        assert_eq!(bindings.provider_health.label(), "");
+
+        window.close();
+        application.quit();
+    }
+
+    #[test]
+    fn bundled_license_notice_covers_system_and_first_party_components() {
+        let notice = include_str!("../THIRD_PARTY_NOTICES.md");
+        assert!(notice.contains("GTK 4"));
+        assert!(notice.contains("LGPL-2.1-or-later"));
+        assert!(notice.contains("MIT"));
+        assert!(notice.contains("LinguaMesh Core"));
+    }
+
+    #[test]
+    fn about_details_reports_versions_without_private_runtime_data() {
+        let details = about_details(UiLocale::English);
+        assert!(details.contains("Version:"));
+        assert!(details.contains("Core:"));
+        assert!(details.contains("ABI:"));
+        assert!(details.contains("Protocol:"));
+        assert!(!details.contains("http://"));
+        assert!(!details.contains("https://"));
+        assert!(!details.contains("secret"));
+    }
+
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_about_dialog_shows_version_and_core_compatibility() {
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.AboutTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK test application");
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let (window, bindings, _, _) = create_window(&application);
+        window.present();
+        show_about_dialog(&bindings, &state);
+        let dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| candidate.title().as_deref() == Some("About LinguaMesh"))
+            .expect("about dialog");
+        assert!(dialog.is_modal());
+        let widgets = descendant_widgets(dialog.upcast_ref::<gtk::Widget>());
+        let details = widgets
+            .iter()
+            .filter_map(|widget| widget.clone().downcast::<gtk::Label>().ok())
+            .find(|label| label.label().starts_with("Version:"))
+            .expect("version details label");
+        assert_eq!(details.label(), about_details(UiLocale::English));
+        let close = widgets
+            .iter()
+            .filter_map(|widget| widget.clone().downcast::<gtk::Button>().ok())
+            .find(|button| {
+                button
+                    .label()
+                    .is_some_and(|label| label.trim_start_matches('_') == "Close")
+            })
+            .expect("about close button");
+        assert!(close.is_focusable());
+        dialog.close();
+        window.close();
+        application.quit();
+    }
+
+    #[test]
+    fn quality_mode_selection_round_trips_core_values() {
+        for mode in [
+            TranslationQualityMode::Fast,
+            TranslationQualityMode::Balanced,
+            TranslationQualityMode::Best,
+        ] {
+            assert_eq!(
+                quality_mode_for_selection(quality_mode_selection(mode)),
+                mode
+            );
+        }
+        assert_eq!(
+            quality_mode_for_selection(99),
+            TranslationQualityMode::Balanced
+        );
+    }
+
+    #[test]
+    fn translation_preset_selection_round_trips_core_values() {
+        for preset in [
+            TranslationPreset::general(),
+            TranslationPreset::technical(),
+            TranslationPreset::marketing(),
+            TranslationPreset::english_us(),
+            TranslationPreset::chinese_simplified(),
+        ] {
+            assert_eq!(
+                translation_preset_for_selection(translation_preset_selection(&preset)),
+                preset
+            );
+        }
+        assert_eq!(
+            translation_preset_for_selection(99),
+            TranslationPreset::general()
+        );
+    }
+
+    #[test]
+    fn new_routing_profile_id_cannot_replace_existing_record() {
+        let existing_ids = vec!["linux-default".to_owned(), "team-eu".to_owned()];
+        assert!(routing_profile_id_conflicts(
+            &existing_ids,
+            None,
+            "linux-default"
+        ));
+        assert!(!routing_profile_id_conflicts(
+            &existing_ids,
+            Some("linux-default"),
+            "linux-default"
+        ));
+        assert!(!routing_profile_id_conflicts(
+            &existing_ids,
+            None,
+            "team-apac"
+        ));
+    }
+
+    #[test]
+    fn manual_routing_profile_keeps_only_the_first_candidate() {
+        let candidates = vec![
+            ProviderProfileId::parse("first").expect("first candidate"),
+            ProviderProfileId::parse("second").expect("second candidate"),
+        ];
+        assert_eq!(
+            normalized_candidate_ids_for_mode(RoutingMode::Manual, candidates.clone()),
+            vec![candidates[0].clone()]
+        );
+        assert_eq!(
+            normalized_candidate_ids_for_mode(RoutingMode::Ordered, candidates.clone()),
+            candidates
+        );
+        assert_eq!(
+            normalized_candidate_ids_for_mode(RoutingMode::Automatic, candidates.clone()),
+            candidates
+        );
+    }
+
+    #[test]
+    fn fallback_requires_one_shot_user_confirmation() {
+        assert!(fallback_confirmation_needed(true, false));
+        assert!(!fallback_confirmation_needed(true, true));
+        assert!(!fallback_confirmation_needed(false, false));
+    }
+
+    #[allow(clippy::too_many_lines)]
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_fallback_approval_dialog_requires_an_explicit_one_shot_action() {
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.FallbackApprovalTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK test application");
+
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let (window, bindings, theme, locale) = create_window(&application);
+        let translate_count = Rc::new(std::cell::Cell::new(0_u32));
+        let translate_count_handler = Rc::clone(&translate_count);
+        bindings.translate.connect_clicked(move |_| {
+            translate_count_handler.set(translate_count_handler.get().saturating_add(1));
+        });
+        let context = glib::MainContext::default();
+        window.present();
+
+        show_fallback_approval_dialog(&bindings, &state);
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Allow approved fallback"))
+        });
+        let dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| candidate.title().as_deref() == Some("Allow approved fallback"))
+            .expect("fallback approval dialog");
+        assert!(dialog.is_modal());
+        let widgets = descendant_widgets(dialog.upcast_ref::<gtk::Widget>());
+        let message = widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Label>())
+            .find(|label| {
+                label
+                    .label()
+                    .contains("The approved fallback provider was selected")
+            })
+            .expect("fallback approval message");
+        assert!(message.is_focusable());
+        let buttons = widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .cloned()
+            .collect::<Vec<_>>();
+        let close = buttons
+            .iter()
+            .find(|button| {
+                button
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.trim_start_matches('_') == "Close")
+            })
+            .cloned()
+            .expect("fallback close button");
+        let approve = buttons
+            .iter()
+            .find(|button| {
+                button
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.trim_start_matches('_') == "Translate")
+            })
+            .cloned()
+            .expect("fallback approve button");
+        assert!(close.is_focusable());
+        assert!(approve.is_focusable());
+        assert!(!bindings.fallback_approval.get());
+        close.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            !application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Allow approved fallback"))
+        });
+        assert_eq!(translate_count.get(), 0);
+        assert!(!bindings.fallback_approval.get());
+
+        show_fallback_approval_dialog(&bindings, &state);
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Allow approved fallback"))
+        });
+        let dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| candidate.title().as_deref() == Some("Allow approved fallback"))
+            .expect("second fallback approval dialog");
+        let approve = descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .find(|button| {
+                button
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.trim_start_matches('_') == "Translate")
+            })
+            .cloned()
+            .expect("second fallback approve button");
+        approve.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            !application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Allow approved fallback"))
+        });
+        assert_eq!(translate_count.get(), 1);
+        assert!(bindings.fallback_approval.get());
+        assert!(!fallback_confirmation_needed(
+            true,
+            bindings.fallback_approval.get()
+        ));
+
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+    }
+
+    // 验证 Secret Service 持久化失败时，用户必须明确选择仅会话恢复且关闭不会改写意图。
+    #[allow(clippy::too_many_lines)]
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_secret_storage_fallback_dialog_requires_explicit_session_only_action() {
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.SecretStorageFallbackTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK test application");
+
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let (window, bindings, theme, locale) = create_window(&application);
+        bindings.remember_profile.set_active(true);
+        let context = glib::MainContext::default();
+        window.present();
+
+        show_secret_storage_session_fallback(&bindings, &state);
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application.windows().iter().any(|candidate| {
+                candidate.title().as_deref() == Some("Secure credential storage is unavailable.")
+            })
+        });
+        let dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| {
+                candidate.title().as_deref() == Some("Secure credential storage is unavailable.")
+            })
+            .expect("secure-storage fallback dialog");
+        assert!(dialog.is_modal());
+        let widgets = descendant_widgets(dialog.upcast_ref::<gtk::Widget>());
+        let message = widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Label>())
+            .find(|label| {
+                label
+                    .label()
+                    .contains("Profile storage is unavailable; use session-only mode.")
+            })
+            .expect("session-only recovery message");
+        assert!(message.is_focusable());
+        let buttons = widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .cloned()
+            .collect::<Vec<_>>();
+        let session_only = buttons
+            .iter()
+            .find(|button| {
+                button.label().as_deref().is_some_and(|label| {
+                    label.trim_start_matches('_')
+                        == "Profile storage is unavailable; use session-only mode."
+                })
+            })
+            .cloned()
+            .expect("session-only recovery button");
+        let close = buttons
+            .iter()
+            .find(|button| {
+                button
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.trim_start_matches('_') == "Close")
+            })
+            .cloned()
+            .expect("secure-storage close button");
+        assert!(session_only.is_focusable());
+        assert!(close.is_focusable());
+        session_only.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            !application.windows().iter().any(|candidate| {
+                candidate.title().as_deref() == Some("Secure credential storage is unavailable.")
+            })
+        });
+        assert!(!bindings.remember_profile.is_active());
+        assert!(bindings.provider_credential.is_focusable());
+
+        bindings.remember_profile.set_active(true);
+        show_secret_storage_session_fallback(&bindings, &state);
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application.windows().iter().any(|candidate| {
+                candidate.title().as_deref() == Some("Secure credential storage is unavailable.")
+            })
+        });
+        let dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| {
+                candidate.title().as_deref() == Some("Secure credential storage is unavailable.")
+            })
+            .expect("second secure-storage fallback dialog");
+        let close = descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .find(|button| {
+                button
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.trim_start_matches('_') == "Close")
+            })
+            .cloned()
+            .expect("second secure-storage close button");
+        close.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            !application.windows().iter().any(|candidate| {
+                candidate.title().as_deref() == Some("Secure credential storage is unavailable.")
+            })
+        });
+        assert!(bindings.remember_profile.is_active());
+
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+    }
+
+    // 验证路由候选管理器的可访问控件、排序操作和编辑生命周期。
+    #[allow(clippy::too_many_lines)]
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_routing_profile_candidate_controls_have_accessible_lifecycle() {
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.RoutingProfilesTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK test application");
+
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let database_directory = std::env::temp_dir().join(format!(
+            "linguamesh-linux-routing-ui-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock after Unix epoch")
+                .as_nanos()
+        ));
+        fs::create_dir(&database_directory).expect("create routing UI database directory");
+        fs::set_permissions(&database_directory, fs::Permissions::from_mode(0o700))
+            .expect("protect routing UI database directory");
+        let database_path = database_directory.join("state.sqlite3");
+        let worker = Rc::new(CoreWorker::spawn_with_database(&database_path));
+        let startup_deadline = Instant::now() + Duration::from_secs(5);
+        let mut worker_ready = false;
+        while Instant::now() < startup_deadline {
+            match worker.try_recv() {
+                Ok(WorkerEvent::DemoProviderReady { .. }) => {
+                    worker_ready = true;
+                    break;
+                }
+                Ok(_) => {}
+                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    panic!("routing UI worker event channel disconnected")
+                }
+            }
+        }
+        assert!(worker_ready, "routing UI worker did not become ready");
+        let (window, bindings, theme, locale) = create_window(&application);
+        let profile_a = custom_provider_profile(
+            ProviderProfileId::parse("profile-a").expect("candidate A ID"),
+            "Candidate A".to_owned(),
+            CUSTOM_PROVIDER_PRESET_ID.to_owned(),
+            OPENAI_ADAPTER_TYPE.to_owned(),
+            "http://127.0.0.1:4242/v1/".to_owned(),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            30,
+            10,
+            60,
+            None,
+            None,
+            None,
+            Some("model-a".to_owned()),
+        )
+        .expect("candidate A profile");
+        let profile_b = custom_provider_profile(
+            ProviderProfileId::parse("profile-b").expect("candidate B ID"),
+            "Candidate B".to_owned(),
+            CUSTOM_PROVIDER_PRESET_ID.to_owned(),
+            OPENAI_ADAPTER_TYPE.to_owned(),
+            "http://127.0.0.1:4243/v1/".to_owned(),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            30,
+            10,
+            60,
+            None,
+            None,
+            None,
+            Some("model-b".to_owned()),
+        )
+        .expect("candidate B profile");
+        state
+            .borrow_mut()
+            .restore_saved_profiles(vec![profile_b.clone(), profile_a.clone()], None)
+            .expect("restore routing candidates");
+        // 验证诊断面板展示经过脱敏的路由候选、拒绝原因、排名输入和回退顺序。
+        state
+            .borrow_mut()
+            .record_routing_decision(RoutingDecisionSummary {
+                profile_id: "linux-candidates".to_owned(),
+                provider_id: "profile-a".to_owned(),
+                model_id: "model-a".to_owned(),
+                eligible_count: 2,
+                rejected_count: 1,
+                fallback_count: 1,
+                eligible_candidates: vec!["profile-a@model-a".to_owned()],
+                rejected_candidates: vec!["profile-c@model-c (RemoteDisallowed)".to_owned()],
+                ranking_inputs: vec!["profile-a@model-a [1,0]".to_owned()],
+                fallback_order: vec!["profile-b@model-b".to_owned()],
+            });
+        refresh_ui(&bindings, &state.borrow());
+        assert!(bindings.diagnostics.label().contains("profile-a@model-a"));
+        assert!(
+            bindings
+                .diagnostics
+                .label()
+                .contains("profile-c@model-c (RemoteDisallowed)")
+        );
+        assert!(bindings.diagnostics.label().contains("profile-b@model-b"));
+        window.present();
+        let context = glib::MainContext::default();
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("LinguaMesh"))
+        });
+
+        let routing_profile = RoutingProfile::new(
+            "linux-candidates",
+            RoutingMode::Ordered,
+            vec![
+                RoutingCandidate::new("profile-a", "model-a", true, 64 * 1024)
+                    .expect("candidate A"),
+                RoutingCandidate::new("profile-b", "model-b", true, 64 * 1024)
+                    .expect("candidate B"),
+            ],
+            RoutingConstraints::default(),
+        )
+        .expect("routing profile");
+        show_routing_profiles_dialog(
+            &bindings,
+            &state,
+            &worker.command_handle(),
+            vec![RoutingProfileRecord {
+                id: "linux-candidates".to_owned(),
+                profile: routing_profile,
+                created_at: 0,
+                updated_at: 0,
+            }],
+        );
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Routing profiles"))
+        });
+        let dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| candidate.title().as_deref() == Some("Routing profiles"))
+            .expect("routing profile dialog");
+        assert!(dialog.is_modal());
+        let widgets = descendant_widgets(dialog.upcast_ref::<gtk::Widget>());
+
+        let profile_id = widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Entry>())
+            .find(|entry| entry.text() == "linux-default")
+            .cloned()
+            .expect("routing profile ID entry");
+        assert_labeled_control(profile_id.upcast_ref::<gtk::Widget>());
+
+        let mode = widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::DropDown>())
+            .find(|drop_down| {
+                drop_down
+                    .model()
+                    .and_then(|model| model.downcast::<gtk::StringList>().ok())
+                    .is_some_and(|model| {
+                        model.n_items() == 3
+                            && model.string(0).as_deref() == Some("Manual")
+                            && model.string(1).as_deref() == Some("Ordered")
+                            && model.string(2).as_deref() == Some("Automatic")
+                    })
+            })
+            .cloned()
+            .expect("routing mode control");
+        assert!(mode.is_focusable());
+        assert_eq!(mode.selected(), 2);
+
+        let fallback = widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::CheckButton>())
+            .find(|check| {
+                check
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.trim_start_matches('_') == "Allow approved fallback")
+            })
+            .cloned()
+            .expect("fallback routing control");
+        assert!(fallback.is_focusable());
+        assert!(!fallback.is_active());
+
+        let candidate_labels = || {
+            descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
+                .iter()
+                .filter_map(|widget| widget.downcast_ref::<gtk::CheckButton>())
+                .filter_map(gtk::prelude::CheckButtonExt::label)
+                .map(|label| label.to_string())
+                .filter(|label| label.starts_with("Candidate "))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            candidate_labels(),
+            vec!["Candidate A · model-a", "Candidate B · model-b"]
+        );
+        for candidate in descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::CheckButton>())
+            .filter(|check| {
+                check
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.starts_with("Candidate "))
+            })
+        {
+            assert!(candidate.is_focusable());
+            assert!(candidate.is_active());
+        }
+        let movement_buttons = descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .filter_map(gtk::prelude::WidgetExt::tooltip_text)
+            .collect::<Vec<_>>();
+        assert!(
+            movement_buttons
+                .iter()
+                .any(|label| label == "Move candidate up")
+        );
+        assert!(
+            movement_buttons
+                .iter()
+                .any(|label| label == "Move candidate down")
+        );
+        assert!(
+            descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
+                .iter()
+                .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+                .filter(|button| {
+                    button.tooltip_text().is_some_and(|label| {
+                        label == "Move candidate up" || label == "Move candidate down"
+                    })
+                })
+                .all(|button| {
+                    button.is_focusable()
+                        && gtk::test_accessible_has_property(button, gtk::AccessibleProperty::Label)
+                })
+        );
+
+        let candidate_a_row = descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Box>())
+            .find(|row| {
+                row.first_child()
+                    .and_then(|child| child.downcast::<gtk::CheckButton>().ok())
+                    .and_then(|check| check.label())
+                    .is_some_and(|label| label == "Candidate A · model-a")
+            })
+            .cloned()
+            .expect("candidate A row");
+        let candidate_a_down = candidate_a_row
+            .first_child()
+            .and_then(|child| child.next_sibling())
+            .and_then(|child| child.next_sibling())
+            .and_then(|child| child.downcast::<gtk::Button>().ok())
+            .expect("candidate A down button");
+        candidate_a_down.emit_clicked();
+        assert_eq!(
+            candidate_labels(),
+            vec!["Candidate B · model-b", "Candidate A · model-a"]
+        );
+        mode.set_selected(0);
+        assert!(
+            descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
+                .iter()
+                .filter_map(|widget| widget.downcast_ref::<gtk::CheckButton>())
+                .find(|check| {
+                    check
+                        .label()
+                        .as_deref()
+                        .is_some_and(|label| label == "Candidate B · model-b")
+                })
+                .is_some_and(gtk::prelude::CheckButtonExt::is_active)
+        );
+        assert!(
+            !descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
+                .iter()
+                .filter_map(|widget| widget.downcast_ref::<gtk::CheckButton>())
+                .find(|check| {
+                    check
+                        .label()
+                        .as_deref()
+                        .is_some_and(|label| label == "Candidate A · model-a")
+                })
+                .is_some_and(gtk::prelude::CheckButtonExt::is_active)
+        );
+
+        let edit_button = descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .find(|button| {
+                button
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.trim_start_matches('_') == "Edit")
+            })
+            .cloned()
+            .expect("edit routing profile button");
+        edit_button.emit_clicked();
+        assert!(!profile_id.is_editable());
+        let save_button = descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .find(|button| {
+                button
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.trim_start_matches('_') == "Save routing profile")
+            })
+            .cloned()
+            .expect("save routing profile button");
+        let candidate_b = descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::CheckButton>())
+            .find(|check| {
+                check
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label == "Candidate B · model-b")
+            })
+            .cloned()
+            .expect("candidate B checkbox after edit");
+        candidate_b.set_active(false);
+        save_button.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            !application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Routing profiles"))
+        });
+        let save_deadline = Instant::now() + Duration::from_secs(5);
+        let saved_profile = loop {
+            assert!(
+                Instant::now() < save_deadline,
+                "routing profile save timed out"
+            );
+            match worker.try_recv() {
+                Ok(WorkerEvent::RoutingProfileSaved(record)) => break record,
+                Ok(WorkerEvent::RoutingProfileActionRejected(error)) => {
+                    panic!("routing profile save rejected: {error}")
+                }
+                Ok(_) => {}
+                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    panic!("routing UI worker event channel disconnected after save")
+                }
+            }
+        };
+        assert_eq!(saved_profile.id, "linux-candidates");
+        assert_eq!(saved_profile.profile.mode, RoutingMode::Ordered);
+        assert_eq!(saved_profile.profile.candidates.len(), 1);
+        assert_eq!(saved_profile.profile.candidates[0].provider_id, "profile-a");
+        worker
+            .try_send(WorkerCommand::ListRoutingProfiles)
+            .expect("list saved routing profile");
+        let listed_deadline = Instant::now() + Duration::from_secs(5);
+        let listed_profile = loop {
+            assert!(
+                Instant::now() < listed_deadline,
+                "routing profile reload timed out"
+            );
+            match worker.try_recv() {
+                Ok(WorkerEvent::RoutingProfilesListed { profiles }) => {
+                    break profiles
+                        .into_iter()
+                        .find(|record| record.id == "linux-candidates")
+                        .expect("saved routing profile after reload");
+                }
+                Ok(WorkerEvent::RoutingProfileActionRejected(error)) => {
+                    panic!("routing profile reload rejected: {error}")
+                }
+                Ok(_) => {}
+                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    panic!("routing UI worker event channel disconnected during reload")
+                }
+            }
+        };
+        assert_eq!(listed_profile.profile.candidates.len(), 1);
+        assert_eq!(
+            listed_profile.profile.candidates[0].provider_id,
+            "profile-a"
+        );
+        show_routing_profiles_dialog(
+            &bindings,
+            &state,
+            &worker.command_handle(),
+            vec![listed_profile.clone()],
+        );
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Routing profiles"))
+        });
+        let reloaded_dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| candidate.title().as_deref() == Some("Routing profiles"))
+            .expect("reloaded routing profile dialog");
+        let reload_edit = descendant_widgets(reloaded_dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .find(|button| {
+                button
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.trim_start_matches('_') == "Edit")
+            })
+            .cloned()
+            .expect("reloaded edit routing profile button");
+        reload_edit.emit_clicked();
+        let reloaded_candidates = descendant_widgets(reloaded_dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::CheckButton>())
+            .filter(|check| {
+                check
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.starts_with("Candidate "))
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        assert!(reloaded_candidates.iter().any(|check| {
+            check.label().as_deref() == Some("Candidate A · model-a") && check.is_active()
+        }));
+        assert!(reloaded_candidates.iter().any(|check| {
+            check.label().as_deref() == Some("Candidate B · model-b") && !check.is_active()
+        }));
+        reloaded_dialog.close();
+
+        let use_button = descendant_widgets(dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .find(|button| {
+                button
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.trim_start_matches('_') == "Use")
+            })
+            .cloned()
+            .expect("use routing profile button");
+        assert!(use_button.is_focusable());
+        use_button.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            !application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Routing profiles"))
+        });
+        assert_eq!(
+            bindings.selected_routing_profile_id.borrow().as_deref(),
+            Some("linux-candidates")
+        );
+
+        show_routing_profiles_dialog(
+            &bindings,
+            &state,
+            &worker.command_handle(),
+            vec![listed_profile],
+        );
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Routing profiles"))
+        });
+        let delete_dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| candidate.title().as_deref() == Some("Routing profiles"))
+            .expect("routing profile delete dialog");
+        let delete_button = descendant_widgets(delete_dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .find(|button| {
+                button
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.trim_start_matches('_') == "Delete")
+            })
+            .cloned()
+            .expect("delete routing profile button");
+        assert!(delete_button.is_focusable());
+        delete_button.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            !application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Routing profiles"))
+        });
+        let delete_deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            assert!(
+                Instant::now() < delete_deadline,
+                "routing profile delete timed out"
+            );
+            match worker.try_recv() {
+                Ok(WorkerEvent::RoutingProfileDeleted { profile_id }) => {
+                    assert_eq!(profile_id, "linux-candidates");
+                    apply_worker_event(
+                        &bindings,
+                        &state,
+                        worker.as_ref(),
+                        WorkerEvent::RoutingProfileDeleted { profile_id },
+                    );
+                    break;
+                }
+                Ok(WorkerEvent::RoutingProfileActionRejected(error)) => {
+                    panic!("routing profile delete rejected: {error}")
+                }
+                Ok(_) => {}
+                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    panic!("routing UI worker event channel disconnected after delete")
+                }
+            }
+        }
+        assert!(bindings.selected_routing_profile_id.borrow().is_none());
+        let empty_deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            assert!(
+                Instant::now() < empty_deadline,
+                "routing profile empty-list reload timed out"
+            );
+            match worker.try_recv() {
+                Ok(WorkerEvent::RoutingProfilesListed { profiles }) => {
+                    assert!(profiles.is_empty());
+                    break;
+                }
+                Ok(WorkerEvent::RoutingProfileActionRejected(error)) => {
+                    panic!("routing profile empty-list reload rejected: {error}")
+                }
+                Ok(_) => {}
+                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    panic!("routing UI worker event channel disconnected after delete reload")
+                }
+            }
+        }
+
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
+        std::thread::sleep(Duration::from_millis(100));
+        fs::remove_dir_all(&database_directory).expect("remove routing UI database directory");
+    }
+
+    #[test]
+    fn text_metrics_report_characters_and_approximate_tokens() {
+        assert_eq!(
+            text_metrics_label(UiLocale::English, "abcd"),
+            "Characters: 4 · Estimated tokens: 1"
+        );
+        assert_eq!(
+            text_metrics_label(UiLocale::English, "中a"),
+            "Characters: 2 · Estimated tokens: 1"
+        );
+    }
+
+    #[test]
+    fn usage_label_preserves_source_and_unknown_boundary() {
+        let estimated = UsageRecord::locally_estimated("abcd", "你好");
+        assert_eq!(
+            usage_label(UiLocale::English, Some(&estimated)).as_deref(),
+            Some("Usage: 3 tokens (locally estimated)")
+        );
+        let unknown = UsageRecord::unknown();
+        assert_eq!(
+            output_metrics_label(UiLocale::English, "abcd", Some(&unknown)),
+            "Characters: 4 · Estimated tokens: 1\nUsage: unavailable (unknown)"
+        );
+    }
+
+    #[test]
+    fn routing_preference_selection_round_trips_core_values() {
+        for preference in [
+            RoutingPreference::None,
+            RoutingPreference::Local,
+            RoutingPreference::Quality,
+            RoutingPreference::Latency,
+            RoutingPreference::Cost,
+        ] {
+            assert_eq!(
+                routing_preference_for_selection(routing_preference_selection(preference)),
+                preference
+            );
+        }
+        assert_eq!(
+            routing_preference_for_selection(99),
+            RoutingPreference::None
+        );
+    }
+
+    #[test]
+    fn routing_editor_constraints_preserve_hidden_core_fields() {
+        let existing = RoutingConstraints {
+            provider_allowlist: vec!["local-loopback".to_owned()],
+            minimum_quality_tier: Some(2),
+            ..RoutingConstraints::default()
+        };
+        let updated = routing_constraints_from_controls(
+            Some(&existing),
+            &RoutingConstraints {
+                preference: RoutingPreference::Quality,
+                local_only: true,
+                allow_remote: false,
+                privacy_sensitive: true,
+                require_streaming: true,
+                require_document: false,
+                explicit_fallback_allowed: true,
+                ..RoutingConstraints::default()
+            },
+        );
+        assert_eq!(updated.provider_allowlist, existing.provider_allowlist);
+        assert_eq!(updated.minimum_quality_tier, Some(2));
+        assert_eq!(updated.preference, RoutingPreference::Quality);
+        assert!(updated.local_only);
+        assert!(!updated.allow_remote);
+        assert!(updated.privacy_sensitive);
+        assert!(updated.require_streaming);
+        assert!(!updated.require_document);
+        assert!(updated.explicit_fallback_allowed);
+    }
+
+    #[test]
+    fn routing_constraint_text_parsers_reject_unsafe_values() {
+        assert_eq!(
+            routing_identifier_list_from_text("provider-a, model-b"),
+            Ok(vec!["provider-a".to_owned(), "model-b".to_owned()])
+        );
+        assert_eq!(routing_identifier_list_from_text(""), Ok(Vec::new()));
+        assert!(routing_identifier_list_from_text("provider-a,,model-b").is_err());
+        assert!(routing_identifier_list_from_text("provider/a").is_err());
+        assert_eq!(routing_optional_limit_from_text(""), Ok(None));
+        assert_eq!(routing_optional_limit_from_text("4096"), Ok(Some(4096)));
+        assert!(routing_optional_limit_from_text("0").is_err());
+        assert!(routing_optional_limit_from_text("not-a-number").is_err());
+    }
+
+    #[test]
+    fn routing_constraint_text_values_update_visible_core_fields() {
+        let existing = RoutingConstraints {
+            provider_denylist: vec!["legacy-provider".to_owned()],
+            ..RoutingConstraints::default()
+        };
+        let updated = routing_constraints_from_text_values(
+            Some(&existing),
+            &RoutingConstraints {
+                preference: RoutingPreference::Quality,
+                ..RoutingConstraints::default()
+            },
+            RoutingConstraintTextValues {
+                provider_allowlist: "local-loopback, team-eu",
+                provider_denylist: "blocked-provider",
+                model_allowlist: "qwen-2, llama-3",
+                model_denylist: "unsafe-model",
+                minimum_quality_tier: "2",
+                max_request_bytes: "65536",
+            },
+        )
+        .expect("routing text values");
+        assert_eq!(
+            updated.provider_allowlist,
+            vec!["local-loopback", "team-eu"]
+        );
+        assert_eq!(updated.provider_denylist, vec!["blocked-provider"]);
+        assert_eq!(updated.model_allowlist, vec!["qwen-2", "llama-3"]);
+        assert_eq!(updated.model_denylist, vec!["unsafe-model"]);
+        assert_eq!(updated.minimum_quality_tier, Some(2));
+        assert_eq!(updated.max_request_bytes, Some(65536));
+        assert_eq!(updated.preference, RoutingPreference::Quality);
+    }
+
+    #[test]
+    fn output_export_rejects_same_file_aliases() {
+        let directory =
+            std::env::temp_dir().join(format!("linguamesh-linux-export-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).expect("directory");
+        let source_path = directory.join("source.txt");
+        fs::write(&source_path, "source").expect("source");
+        let source_file = gtk::gio::File::for_path(&source_path);
+        let source_uri = source_file.uri().to_string();
+
+        assert!(destination_matches_source(
+            Some(source_uri.as_str()),
+            &gtk::gio::File::for_path(&source_path),
+        ));
+
+        let different_path = directory.join("different.txt");
+        assert!(!destination_matches_source(
+            Some(source_uri.as_str()),
+            &gtk::gio::File::for_path(&different_path),
+        ));
+
+        #[cfg(unix)]
+        {
+            let symlink_path = directory.join("source-link.txt");
+            std::os::unix::fs::symlink(&source_path, &symlink_path).expect("symlink");
+            assert!(destination_matches_source(
+                Some(source_uri.as_str()),
+                &gtk::gio::File::for_path(&symlink_path),
+            ));
+
+            let hard_link_path = directory.join("source-hard-link.txt");
+            fs::hard_link(&source_path, &hard_link_path).expect("hard link");
+            assert!(destination_matches_source(
+                Some(source_uri.as_str()),
+                &gtk::gio::File::for_path(&hard_link_path),
+            ));
+        }
+        let _ = fs::remove_dir_all(directory);
+    }
+
+    #[test]
+    fn translation_output_name_uses_source_stem_and_target_locale() {
+        assert_eq!(
+            translation_output_name("guide.v1.md", "zh-CN"),
+            "guide.v1.zh-CN.md"
+        );
+        assert_eq!(
+            translation_output_name("nested\\unsafe\tname", "ar_XB"),
+            "nested_unsafe_name.ar_XB.txt"
+        );
+        assert_eq!(translation_output_name(".txt", ""), "translation.und.txt");
+    }
+
+    #[test]
+    fn collision_safe_output_path_adds_stable_suffix_without_overwriting() {
+        let directory =
+            std::env::temp_dir().join(format!("linguamesh-linux-collision-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).expect("directory");
+        let destination = directory.join("guide.zh-CN.md");
+        fs::write(&destination, "existing").expect("destination");
+        fs::write(directory.join("guide.zh-CN-1.md"), "existing").expect("first collision");
+        assert_eq!(
+            collision_safe_output_path(&destination),
+            Some(directory.join("guide.zh-CN-2.md"))
+        );
+        assert_eq!(
+            collision_safe_output_path(&directory.join("new.txt")),
+            Some(directory.join("new.txt"))
+        );
+        let _ = fs::remove_dir_all(directory);
+    }
+
+    #[test]
+    fn temporary_cleanup_removes_only_linguamesh_owned_items() {
+        let directory = std::env::temp_dir().join(format!(
+            "linguamesh-linux-temporary-cleanup-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(directory.join("linguamesh-ocr-fixture")).expect("ocr directory");
+        fs::write(
+            directory.join(".linguamesh-export-fixture.tmp"),
+            b"temporary",
+        )
+        .expect("export temporary file");
+        fs::write(directory.join("keep.txt"), b"keep").expect("unrelated file");
+
+        assert_eq!(
+            clear_linguamesh_temporary_files(&directory).expect("cleanup"),
+            2
+        );
+        assert!(!directory.join("linguamesh-ocr-fixture").exists());
+        assert!(!directory.join(".linguamesh-export-fixture.tmp").exists());
+        assert!(directory.join("keep.txt").exists());
+        let _ = fs::remove_dir_all(directory);
+    }
+
+    #[test]
+    fn non_local_export_uses_exclusive_create_fallback() {
+        let destination = gtk::gio::File::for_uri("smb://server/share/output.txt");
+        assert_eq!(
+            export_write_strategy(&destination),
+            ExportWriteStrategy::ExclusiveCreate
+        );
+        assert!(destination.path().is_none());
+        let selected = collision_safe_destination(&destination).expect("non-local destination");
+        assert_eq!(selected.uri().as_str(), "smb://server/share/output.txt");
+    }
+
+    #[test]
+    fn non_local_source_alias_is_rejected_by_uri_identity() {
+        let source_uri = "smb://server/share/source.txt";
+        let source = gtk::gio::File::for_uri(source_uri);
+        assert!(destination_matches_source(Some(source_uri), &source));
+        assert!(!destination_matches_source(
+            Some(source_uri),
+            &gtk::gio::File::for_uri("smb://server/share/translated.txt")
+        ));
+    }
+
+    // 验证临时文件原子完成在目标被占用时失败，并保留原有文件内容。
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_atomic_output_writer_never_replaces_existing_file() {
+        adw::init().expect("initialize GTK output writer fixture");
+        let directory = std::env::temp_dir().join(format!(
+            "linguamesh-linux-exclusive-output-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).expect("directory");
+        let destination_path = directory.join("existing.txt");
+        fs::write(&destination_path, b"keep").expect("existing output");
+        let destination = gtk::gio::File::for_path(&destination_path);
+        let context = glib::MainContext::default();
+        let result = Rc::new(Cell::new(None));
+        let callback_result = Rc::clone(&result);
+        write_new_file_async(&destination, b"replace".to_vec(), move |succeeded| {
+            callback_result.set(Some(succeeded));
+        });
+        spin_main_context_until(&context, Duration::from_secs(2), || result.get().is_some());
+        assert_eq!(result.get(), Some(false));
+        assert_eq!(
+            fs::read(&destination_path).expect("read existing output"),
+            b"keep"
+        );
+        assert_eq!(
+            fs::read_dir(&directory)
+                .expect("read output directory")
+                .count(),
+            1
+        );
+        let new_destination_path = directory.join("new.txt");
+        let new_destination = gtk::gio::File::for_path(&new_destination_path);
+        let new_result = Rc::new(Cell::new(None));
+        let new_callback_result = Rc::clone(&new_result);
+        write_new_file_async(&new_destination, b"created".to_vec(), move |succeeded| {
+            new_callback_result.set(Some(succeeded));
+        });
+        spin_main_context_until(&context, Duration::from_secs(2), || {
+            new_result.get().is_some()
+        });
+        assert_eq!(new_result.get(), Some(true));
+        assert_eq!(
+            fs::read(&new_destination_path).expect("read new output"),
+            b"created"
+        );
+        let _ = fs::remove_dir_all(directory);
+    }
+
+    // 验证进程在本地临时文件同步后中断时不会留下可见的最终输出文件。
+    #[ignore = "run as a child of the serialized GTK interruption fixture"]
+    #[test]
+    fn gtk_atomic_output_writer_crash_child() {
+        adw::init().expect("initialize GTK export interruption child");
+        let destination = gtk::gio::File::for_path(PathBuf::from(
+            std::env::var_os("LINGUAMESH_TEST_EXPORT_DESTINATION")
+                .expect("export interruption destination"),
+        ));
+        let context = glib::MainContext::default();
+        write_new_file_async(&destination, b"interrupted output".to_vec(), |_| {});
+        loop {
+            context.iteration(true);
+        }
+    }
+
+    // 通过 SIGKILL 模拟最终移动前的进程中断，并检查源目录安全边界。
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_atomic_output_writer_survives_process_interruption() {
+        adw::init().expect("initialize GTK export interruption fixture");
+        let directory = std::env::temp_dir().join(format!(
+            "linguamesh-linux-export-interruption-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).expect("create interruption directory");
+        let marker = directory.join("pause.marker");
+        let release = directory.join("release.marker");
+        let destination = directory.join("interrupted.txt");
+        let mut child = Command::new(std::env::current_exe().expect("current test binary"))
+            .args([
+                "--exact",
+                "tests::gtk_atomic_output_writer_crash_child",
+                "--ignored",
+                "--nocapture",
+            ])
+            .env("LINGUAMESH_TEST_EXPORT_PAUSE_MARKER", marker.as_os_str())
+            .env("LINGUAMESH_TEST_EXPORT_PAUSE_RELEASE", release.as_os_str())
+            .env(
+                "LINGUAMESH_TEST_EXPORT_DESTINATION",
+                destination.as_os_str(),
+            )
+            .spawn()
+            .expect("spawn export interruption child");
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while !marker.is_file() {
+            if Instant::now() >= deadline {
+                child
+                    .kill()
+                    .expect("kill stalled export interruption child");
+                let _ = child.wait();
+                let _ = fs::remove_dir_all(&directory);
+                panic!("export interruption child did not reach the pre-move barrier");
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        child.kill().expect("kill export interruption child");
+        let status = child.wait().expect("wait child");
+        assert!(!status.success());
+        assert!(!destination.exists());
+        let temporary = fs::read_dir(&directory)
+            .expect("read interrupted export directory")
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .find(|path| {
+                path.file_name()
+                    .and_then(|name| name.to_str())
+                    .is_some_and(|name| name.starts_with(".linguamesh-export-"))
+            })
+            .expect("durable temporary export");
+        assert_eq!(
+            fs::read(&temporary).expect("read temporary export"),
+            b"interrupted output"
+        );
+        assert!(!destination.exists());
+        let _ = fs::remove_dir_all(directory);
+    }
+
+    #[test]
+    fn document_translation_report_is_redacted_and_counts_segments() {
+        let mut job = DocumentJob::from_text(
+            "guide\tprivate.txt",
+            DocumentFormat::Txt,
+            "translated\npending",
+        );
+        job.segments[0].translated_text = Some("traduction".to_owned());
+        let snapshot = DocumentJobSnapshot {
+            job,
+            job_id: "report-job".to_owned(),
+            state: DocumentJobState::Completed,
+            options: None,
+            created_at: 100,
+            updated_at: 200,
+        };
+        let report = document_translation_report(&snapshot, "0.1.0-alpha.2");
+        assert!(report.contains("source_identifier\tguide private.txt"));
+        assert!(report.contains("segment_total\t2"));
+        assert!(report.contains("completed_count\t1"));
+        assert!(report.contains("pending_count\t1"));
+        assert!(report.contains("output_identifier\tguide_private.und.txt"));
+        assert!(report.contains("core_version\t0.1.0-alpha.2"));
+        assert!(report.contains("retried_count\tunknown"));
+        assert!(report.contains(
+            "usage\t{\"source\":\"locally_estimated\",\"input_tokens\":5,\"output_tokens\":3,\"total_tokens\":8}"
+        ));
+        assert!(!report.contains("traduction"));
+        assert!(!report.contains("\ttranslated\n"));
+        assert!(!report.contains("\tpending\n"));
+        assert!(!report.contains("private\n"));
+    }
 
     #[test]
     fn document_job_metadata_uses_stable_format_and_localized_state_labels() {
@@ -5421,6 +12491,166 @@ mod tests {
         assert!(!text.contains("source"));
     }
 
+    #[test]
+    fn provider_presets_map_to_stable_native_and_compatible_defaults() {
+        assert!(validate_provider_preset_catalog().is_ok());
+        assert_eq!(provider_preset_index(OLLAMA_PROVIDER_PRESET_ID), 1);
+        assert_eq!(provider_preset_index(ANTHROPIC_PROVIDER_PRESET_ID), 2);
+        assert_eq!(provider_preset_index(GEMINI_PROVIDER_PRESET_ID), 3);
+        assert_eq!(provider_preset_index(AZURE_PROVIDER_PRESET_ID), 4);
+        assert_eq!(provider_preset_index(RESPONSES_PROVIDER_PRESET_ID), 5);
+        assert_eq!(provider_preset_index(CUSTOM_PROVIDER_PRESET_ID), 0);
+        assert_eq!(
+            provider_preset_config(0),
+            (
+                CUSTOM_PROVIDER_PRESET_ID,
+                OPENAI_ADAPTER_TYPE,
+                DEFAULT_PROVIDER_NAME,
+                DEFAULT_PROVIDER_ENDPOINT,
+            )
+        );
+        assert_eq!(
+            provider_preset_config(1),
+            (
+                OLLAMA_PROVIDER_PRESET_ID,
+                OLLAMA_ADAPTER_TYPE,
+                DEFAULT_OLLAMA_PROVIDER_NAME,
+                DEFAULT_OLLAMA_ENDPOINT,
+            )
+        );
+        assert_eq!(
+            provider_preset_config(2),
+            (
+                ANTHROPIC_PROVIDER_PRESET_ID,
+                ANTHROPIC_ADAPTER_TYPE,
+                DEFAULT_ANTHROPIC_PROVIDER_NAME,
+                DEFAULT_ANTHROPIC_ENDPOINT,
+            )
+        );
+        assert_eq!(
+            provider_preset_config(3),
+            (
+                GEMINI_PROVIDER_PRESET_ID,
+                GEMINI_ADAPTER_TYPE,
+                DEFAULT_GEMINI_PROVIDER_NAME,
+                DEFAULT_GEMINI_ENDPOINT,
+            )
+        );
+        assert_eq!(
+            provider_preset_config(4),
+            (
+                AZURE_PROVIDER_PRESET_ID,
+                AZURE_ADAPTER_TYPE,
+                DEFAULT_AZURE_PROVIDER_NAME,
+                DEFAULT_AZURE_ENDPOINT,
+            )
+        );
+        assert_eq!(
+            provider_preset_config(5),
+            (
+                RESPONSES_PROVIDER_PRESET_ID,
+                RESPONSES_ADAPTER_TYPE,
+                DEFAULT_RESPONSES_PROVIDER_NAME,
+                DEFAULT_RESPONSES_ENDPOINT,
+            )
+        );
+        assert!(endpoint_matches_preset_default(
+            DEFAULT_PROVIDER_ENDPOINT,
+            0
+        ));
+        assert!(endpoint_matches_preset_default(DEFAULT_OLLAMA_ENDPOINT, 1));
+        assert!(endpoint_matches_preset_default(
+            DEFAULT_ANTHROPIC_ENDPOINT,
+            2
+        ));
+        assert!(endpoint_matches_preset_default(DEFAULT_GEMINI_ENDPOINT, 3));
+        assert!(endpoint_matches_preset_default(DEFAULT_AZURE_ENDPOINT, 4));
+        assert!(endpoint_matches_preset_default(
+            DEFAULT_RESPONSES_ENDPOINT,
+            5
+        ));
+        assert!(preset_requires_manual_model(2));
+        assert!(preset_requires_manual_model(4));
+        assert!(!preset_requires_manual_model(0));
+        assert!(!preset_requires_manual_model(5));
+        assert!(!endpoint_matches_preset_default(
+            "https://api.example.test/v1/",
+            0
+        ));
+        assert!(!endpoint_matches_preset_default(
+            "https://api.example.test/api/",
+            1
+        ));
+        assert!(!endpoint_matches_preset_default(
+            "https://api.example.test/v1/",
+            2
+        ));
+        assert!(!endpoint_matches_preset_default(
+            "https://api.example.test/v1beta/",
+            3
+        ));
+    }
+
+    #[test]
+    fn model_descriptor_labels_identify_their_source() {
+        let discovered = ModelDescriptor {
+            id: "discovered-model".into(),
+            display_name: "Discovered model".into(),
+            source: ModelSource::Discovered,
+        };
+        let catalog = ModelDescriptor {
+            id: "catalog-model".into(),
+            display_name: "Catalog model".into(),
+            source: ModelSource::Catalog,
+        };
+        let manual = ModelDescriptor {
+            id: "manual-model".into(),
+            display_name: "Manual model".into(),
+            source: ModelSource::Manual,
+        };
+
+        assert_eq!(
+            model_descriptor_label(UiLocale::English, &discovered),
+            "Discovered model (Discovered)"
+        );
+        assert_eq!(
+            model_descriptor_label(UiLocale::English, &catalog),
+            "Catalog model (Catalog)"
+        );
+        assert_eq!(
+            model_descriptor_label(UiLocale::SimplifiedChinese, &manual),
+            "Manual model (手动)"
+        );
+    }
+
+    #[test]
+    fn built_in_provider_default_names_follow_the_active_locale() {
+        assert_eq!(
+            localized_provider_default_name(UiLocale::English, 0),
+            DEFAULT_PROVIDER_NAME
+        );
+        assert_eq!(
+            localized_provider_default_name(UiLocale::English, 1),
+            DEFAULT_OLLAMA_PROVIDER_NAME
+        );
+        assert_eq!(
+            localized_provider_default_name(UiLocale::English, 2),
+            DEFAULT_ANTHROPIC_PROVIDER_NAME
+        );
+        assert_eq!(
+            localized_provider_default_name(UiLocale::English, 3),
+            DEFAULT_GEMINI_PROVIDER_NAME
+        );
+        assert_eq!(
+            localized_provider_default_name(UiLocale::SimplifiedChinese, 0),
+            "本地 OpenAI 兼容提供商"
+        );
+        assert_eq!(
+            localized_provider_default_name(UiLocale::SimplifiedChinese, 1),
+            "本地 Ollama 提供商"
+        );
+    }
+
     fn spin_main_context_until(
         context: &glib::MainContext,
         timeout: Duration,
@@ -5439,8 +12669,78 @@ mod tests {
         panic!("Timed out while waiting for the GTK state transition.");
     }
 
+    // 构造带有恶意归档条目的最小 DOCX，复用生产导入路径验证失败闭环。
+    fn malicious_docx_fixture(entry_name: &str, payload: &[u8], compressed: bool) -> Vec<u8> {
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        let options = if compressed {
+            SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated)
+        } else {
+            SimpleFileOptions::default()
+        };
+        writer
+            .start_file("[Content_Types].xml", options)
+            .expect("content types");
+        writer.write_all(b"<Types/>").expect("content types bytes");
+        writer
+            .start_file(entry_name, options)
+            .expect("malicious entry");
+        writer.write_all(payload).expect("malicious entry bytes");
+        writer
+            .start_file("word/document.xml", options)
+            .expect("document");
+        writer
+            .write_all(
+                br#"<w:document xmlns:w="urn:w"><w:body><w:p><w:r><w:t>Safe</w:t></w:r></w:p></w:body></w:document>"#,
+            )
+            .expect("document bytes");
+        writer
+            .finish()
+            .expect("malicious DOCX archive")
+            .into_inner()
+    }
+
+    fn read_http_request(stream: &mut std::net::TcpStream) -> Vec<u8> {
+        let mut request = Vec::new();
+        let mut chunk = [0_u8; 4096];
+        let body_start = loop {
+            let read = stream.read(&mut chunk).expect("HTTP request headers");
+            assert!(read > 0);
+            request.extend_from_slice(&chunk[..read]);
+            if let Some(position) = request.windows(4).position(|window| window == b"\r\n\r\n") {
+                break position + 4;
+            }
+        };
+        let content_length = String::from_utf8_lossy(&request[..body_start])
+            .lines()
+            .find_map(|line| {
+                let (name, value) = line.split_once(':')?;
+                name.eq_ignore_ascii_case("content-length")
+                    .then(|| value.trim().parse::<usize>().ok())
+                    .flatten()
+            })
+            .unwrap_or(0);
+        while request.len() - body_start < content_length {
+            let read = stream.read(&mut chunk).expect("HTTP request body");
+            assert!(read > 0);
+            request.extend_from_slice(&chunk[..read]);
+        }
+        request
+    }
+
+    fn write_http_response(stream: &mut std::net::TcpStream, content_type: &str, body: &[u8]) {
+        let header = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+            body.len()
+        );
+        stream
+            .write_all(header.as_bytes())
+            .expect("HTTP response headers");
+        stream.write_all(body).expect("HTTP response body");
+    }
+
     struct ExternalFakeProvider {
         endpoint: String,
+        chat_requests: Arc<AtomicUsize>,
         shutdown: Option<oneshot::Sender<()>>,
         thread: Option<JoinHandle<()>>,
     }
@@ -5461,18 +12761,20 @@ mod tests {
                     )
                     .await
                     .expect("external provider");
+                    let chat_requests = server.chat_request_counter();
                     ready_sender
-                        .send(server.base_url())
+                        .send((server.base_url(), chat_requests))
                         .expect("provider endpoint");
                     let _ = shutdown_receiver.await;
                     server.shutdown().await;
                 });
             });
-            let endpoint = ready_receiver
+            let (endpoint, chat_requests) = ready_receiver
                 .recv_timeout(Duration::from_secs(5))
                 .expect("provider startup");
             Self {
                 endpoint,
+                chat_requests,
                 shutdown: Some(shutdown),
                 thread: Some(thread),
             }
@@ -5486,6 +12788,187 @@ mod tests {
             }
             if let Some(thread) = self.thread.take() {
                 thread.join().expect("provider shutdown");
+            }
+        }
+    }
+
+    struct NativeOllamaFakeProvider {
+        endpoint: String,
+        shutdown: Option<oneshot::Sender<()>>,
+        thread: Option<JoinHandle<()>>,
+    }
+
+    impl NativeOllamaFakeProvider {
+        fn start() -> Self {
+            let (ready_sender, ready_receiver) = mpsc::sync_channel(1);
+            let (shutdown, shutdown_receiver) = oneshot::channel();
+            let thread = std::thread::spawn(move || {
+                let runtime = Builder::new_multi_thread()
+                    .worker_threads(2)
+                    .enable_all()
+                    .build()
+                    .expect("native Ollama provider runtime");
+                runtime.block_on(async move {
+                    let server = FakeProviderServer::start_ollama_native()
+                        .await
+                        .expect("native Ollama provider");
+                    ready_sender
+                        .send(server.ollama_base_url())
+                        .expect("native Ollama endpoint");
+                    let _ = shutdown_receiver.await;
+                    server.shutdown().await;
+                });
+            });
+            let endpoint = ready_receiver
+                .recv_timeout(Duration::from_secs(5))
+                .expect("native Ollama startup");
+            Self {
+                endpoint,
+                shutdown: Some(shutdown),
+                thread: Some(thread),
+            }
+        }
+    }
+
+    impl Drop for NativeOllamaFakeProvider {
+        fn drop(&mut self) {
+            if let Some(shutdown) = self.shutdown.take() {
+                let _ = shutdown.send(());
+            }
+            if let Some(thread) = self.thread.take() {
+                thread.join().expect("native Ollama shutdown");
+            }
+        }
+    }
+
+    // 通过本地回环服务验证需要不同路径和模型策略的原生预设。
+    #[derive(Clone, Copy)]
+    enum NativeProtocolPreset {
+        Anthropic,
+        Gemini,
+        Azure,
+    }
+
+    // 为 GTK 流程提供无外部凭据的协议回环服务。
+    struct NativeProtocolFakeProvider {
+        endpoint: String,
+        kind: NativeProtocolPreset,
+        shutdown: Option<oneshot::Sender<()>>,
+        thread: Option<JoinHandle<()>>,
+    }
+
+    impl NativeProtocolFakeProvider {
+        fn start(kind: NativeProtocolPreset) -> Self {
+            let (ready_sender, ready_receiver) = mpsc::sync_channel(1);
+            let (shutdown, shutdown_receiver) = oneshot::channel();
+            let thread = std::thread::spawn(move || {
+                let runtime = Builder::new_multi_thread()
+                    .worker_threads(2)
+                    .enable_all()
+                    .build()
+                    .expect("native protocol provider runtime");
+                runtime.block_on(async move {
+                    match kind {
+                        NativeProtocolPreset::Anthropic => {
+                            let server = FakeProviderServer::start_anthropic()
+                                .await
+                                .expect("Anthropic provider");
+                            ready_sender
+                                .send(server.base_url())
+                                .expect("Anthropic endpoint");
+                            let _ = shutdown_receiver.await;
+                            server.shutdown().await;
+                        }
+                        NativeProtocolPreset::Gemini => {
+                            let server = FakeProviderServer::start_gemini()
+                                .await
+                                .expect("Gemini provider");
+                            ready_sender
+                                .send(server.gemini_base_url())
+                                .expect("Gemini endpoint");
+                            let _ = shutdown_receiver.await;
+                            server.shutdown().await;
+                        }
+                        NativeProtocolPreset::Azure => {
+                            let server = FakeProviderServer::start_azure()
+                                .await
+                                .expect("Azure provider");
+                            ready_sender
+                                .send(server.azure_base_url())
+                                .expect("Azure endpoint");
+                            let _ = shutdown_receiver.await;
+                            server.shutdown().await;
+                        }
+                    }
+                });
+            });
+            let endpoint = ready_receiver
+                .recv_timeout(Duration::from_secs(5))
+                .expect("native protocol provider startup");
+            Self {
+                endpoint,
+                kind,
+                shutdown: Some(shutdown),
+                thread: Some(thread),
+            }
+        }
+
+        fn preset_index(&self) -> u32 {
+            match self.kind {
+                NativeProtocolPreset::Anthropic => 2,
+                NativeProtocolPreset::Gemini => 3,
+                NativeProtocolPreset::Azure => 4,
+            }
+        }
+
+        fn provider_name(&self) -> &'static str {
+            match self.kind {
+                NativeProtocolPreset::Anthropic => "Native Anthropic provider",
+                NativeProtocolPreset::Gemini => "Native Gemini provider",
+                NativeProtocolPreset::Azure => "Native Azure provider",
+            }
+        }
+
+        fn model_id(&self) -> &'static str {
+            match self.kind {
+                NativeProtocolPreset::Anthropic => "claude-test",
+                NativeProtocolPreset::Gemini => "gemini-2.0-flash",
+                NativeProtocolPreset::Azure => "fake-deployment",
+            }
+        }
+
+        fn credential(&self) -> Option<&'static str> {
+            match self.kind {
+                NativeProtocolPreset::Anthropic => Some("anthropic-test-key"),
+                NativeProtocolPreset::Gemini => None,
+                NativeProtocolPreset::Azure => Some("azure-test-key"),
+            }
+        }
+
+        fn adapter_type(&self) -> &'static str {
+            match self.kind {
+                NativeProtocolPreset::Anthropic => ANTHROPIC_ADAPTER_TYPE,
+                NativeProtocolPreset::Gemini => GEMINI_ADAPTER_TYPE,
+                NativeProtocolPreset::Azure => AZURE_ADAPTER_TYPE,
+            }
+        }
+
+        fn expected_output(&self) -> &'static str {
+            match self.kind {
+                NativeProtocolPreset::Anthropic => "你好，Anthropic！",
+                NativeProtocolPreset::Gemini => "你好，Gemini！",
+                NativeProtocolPreset::Azure => "你好，Azure！",
+            }
+        }
+    }
+
+    impl Drop for NativeProtocolFakeProvider {
+        fn drop(&mut self) {
+            if let Some(shutdown) = self.shutdown.take() {
+                let _ = shutdown.send(());
+            }
+            if let Some(thread) = self.thread.take() {
+                thread.join().expect("native protocol provider shutdown");
             }
         }
     }
@@ -5504,11 +12987,152 @@ mod tests {
         assert_eq!(label.mnemonic_widget().as_ref(), Some(control));
     }
 
+    fn run_gtk_native_ollama_preset_flow(application: &adw::Application) {
+        let external = NativeOllamaFakeProvider::start();
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn());
+        let (window, bindings, theme, locale) = create_window(application);
+        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
+        connect_action_handlers(&bindings, &state, &worker);
+        start_event_pump(&bindings, &state, &worker);
+        let context = glib::MainContext::default();
+        window.present();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().worker_ready()
+        });
+
+        bindings.provider_preset.set_selected(1);
+        bindings.provider_name.set_text("Native Ollama provider");
+        bindings.provider_endpoint.set_text(&external.endpoint);
+        bindings.connect.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Ready
+                && state.borrow().active_provider().is_some()
+                && !state.borrow().models().is_empty()
+        });
+        bindings.model.set_selected(1);
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().selected_model().is_some()
+        });
+        let active = state
+            .borrow()
+            .active_provider()
+            .cloned()
+            .expect("active provider");
+        assert_eq!(active.preset_id(), OLLAMA_PROVIDER_PRESET_ID);
+        assert_eq!(active.adapter_type(), OLLAMA_ADAPTER_TYPE);
+        assert_eq!(state.borrow().selected_model(), Some("llama3.2:latest"));
+
+        bindings.source.set_text("Hello");
+        bindings.translate.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Completed
+        });
+        assert_eq!(state.borrow().output(), "你好，Ollama！");
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        drop(window);
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
+    }
+
+    // 验证 Anthropic、Gemini 与 Azure 预设的生产 GTK 连接、模型选择和流式翻译路径。
+    fn run_gtk_native_protocol_preset_flow(
+        application: &adw::Application,
+        kind: NativeProtocolPreset,
+    ) {
+        let external = NativeProtocolFakeProvider::start(kind);
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn());
+        let (window, bindings, theme, locale) = create_window(application);
+        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
+        connect_action_handlers(&bindings, &state, &worker);
+        start_event_pump(&bindings, &state, &worker);
+        let context = glib::MainContext::default();
+        window.present();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().worker_ready()
+        });
+
+        bindings
+            .provider_preset
+            .set_selected(external.preset_index());
+        bindings.provider_name.set_text(external.provider_name());
+        bindings.provider_endpoint.set_text(&external.endpoint);
+        if let Some(credential) = external.credential() {
+            bindings.provider_credential.set_text(credential);
+        }
+        if matches!(
+            kind,
+            NativeProtocolPreset::Anthropic | NativeProtocolPreset::Azure
+        ) {
+            bindings.manual_model.set_text(external.model_id());
+        }
+        bindings.connect.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            let state = state.borrow();
+            state.status() == AppStatus::Ready
+                && state.active_provider().is_some()
+                && !state.models().is_empty()
+        });
+
+        bindings.model.set_selected(1);
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().selected_model() == Some(external.model_id())
+        });
+        let active = state
+            .borrow()
+            .active_provider()
+            .cloned()
+            .expect("active provider");
+        assert_eq!(active.adapter_type(), external.adapter_type());
+        assert_eq!(state.borrow().selected_model(), Some(external.model_id()));
+
+        bindings.source.set_text("Hello");
+        bindings.translate.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Completed
+        });
+        assert_eq!(state.borrow().output(), external.expected_output());
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        drop(window);
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
+    }
+
+    // 单个串行测试覆盖三个协议预设，避免并行 GTK 初始化和回环端口竞争。
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_provider_protocol_presets_use_native_transports() {
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.ProtocolPresetsTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK protocol preset test application");
+        run_gtk_native_protocol_preset_flow(&application, NativeProtocolPreset::Anthropic);
+        run_gtk_native_protocol_preset_flow(&application, NativeProtocolPreset::Gemini);
+        run_gtk_native_protocol_preset_flow(&application, NativeProtocolPreset::Azure);
+    }
+
     // 单个原生流程覆盖真实控件生命周期和恢复表单，避免拆分后并行初始化 GTK。
     #[ignore = "requires the persistent Secret Service onboarding fixture"]
     #[test]
+    #[allow(clippy::too_many_lines)]
     fn gtk_remembered_credential_uses_secret_service_and_clears_the_form() {
         const SECRET_CANARY: &str = "GTK_PERSISTENT_ONBOARDING_SECRET_CANARY";
+        const SECRET_HEADERS_CANARY: &str = "GTK_PERSISTENT_SECRET_HEADERS_CANARY";
+        const SECRET_HEADERS_VALUE: &str =
+            r#"{"X-LinguaMesh-Test":"GTK_PERSISTENT_SECRET_HEADERS_CANARY"}"#;
         adw::init().expect("initialize GTK and libadwaita");
         let application = adw::Application::builder()
             .application_id("dev.linguamesh.LinguaMesh.SecureOnboardingTest")
@@ -5543,9 +13167,13 @@ mod tests {
             .set_text("Secure onboarding provider");
         bindings.provider_endpoint.set_text(&external.endpoint);
         bindings.provider_credential.set_text(SECRET_CANARY);
+        bindings
+            .provider_secret_custom_headers
+            .set_text(SECRET_HEADERS_VALUE);
         bindings.remember_profile.set_active(true);
         bindings.connect.emit_clicked();
         assert!(bindings.provider_credential.text().is_empty());
+        assert!(bindings.provider_secret_custom_headers.text().is_empty());
         assert_eq!(state.borrow().status(), AppStatus::Connecting);
         spin_main_context_until(&context, Duration::from_secs(5), || {
             state.borrow().status() == AppStatus::Ready
@@ -5559,13 +13187,25 @@ mod tests {
             .cloned()
             .expect("saved Secret Service reference");
         assert!(saved_secret_ref.is_persistent());
+        let saved_secret_headers_ref = state
+            .borrow()
+            .saved_profiles()
+            .first()
+            .and_then(|profile| profile.secret_custom_headers_ref())
+            .cloned()
+            .expect("saved Secret Service custom-header reference");
+        assert!(saved_secret_headers_ref.is_persistent());
         assert!(
             state
                 .borrow()
                 .active_provider()
                 .is_some_and(|profile| { profile.secret_ref() == Some(&saved_secret_ref) })
         );
+        assert!(state.borrow().active_provider().is_some_and(|profile| {
+            profile.secret_custom_headers_ref() == Some(&saved_secret_headers_ref)
+        }));
         assert!(bindings.provider_credential.text().is_empty());
+        assert!(bindings.provider_secret_custom_headers.text().is_empty());
         for entry in fs::read_dir(&database_directory).expect("database directory") {
             let path = entry.expect("database entry").path();
             if path.is_file() {
@@ -5574,6 +13214,11 @@ mod tests {
                     !bytes
                         .windows(SECRET_CANARY.len())
                         .any(|candidate| candidate == SECRET_CANARY.as_bytes())
+                );
+                assert!(
+                    !bytes
+                        .windows(SECRET_HEADERS_CANARY.len())
+                        .any(|candidate| candidate == SECRET_HEADERS_CANARY.as_bytes())
                 );
             }
         }
@@ -5590,6 +13235,8 @@ mod tests {
         assert_eq!(state.borrow().output(), "你好，LinguaMesh！");
         super::secret_service::delete_secret(&saved_secret_ref)
             .expect("delete onboarding credential");
+        super::secret_service::delete_secret(&saved_secret_headers_ref)
+            .expect("delete onboarding custom headers");
         let _ = worker.try_send(WorkerCommand::Shutdown);
         drop(window);
         drop(bindings);
@@ -5598,6 +13245,1333 @@ mod tests {
         drop(state);
         drop(worker);
         let _ = fs::remove_dir_all(&database_directory);
+    }
+
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_authentication_failure_shows_localized_redacted_error() {
+        const EXPECTED_SECRET: &str = "GTK_EXPECTED_AUTH_SECRET";
+        const WRONG_SECRET: &str = "GTK_WRONG_AUTH_SECRET_CANARY";
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.GtkAuthenticationFailureTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK test application");
+
+        let external = ExternalFakeProvider::start(EXPECTED_SECRET);
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn());
+        let (window, bindings, theme, locale) = create_window(&application);
+        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
+        connect_action_handlers(&bindings, &state, &worker);
+        start_event_pump(&bindings, &state, &worker);
+        let context = glib::MainContext::default();
+        window.present();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().worker_ready()
+                && bindings.provider_endpoint.text() != DEFAULT_PROVIDER_ENDPOINT
+        });
+
+        bindings.locale.set_selected(1);
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            state.borrow().locale() == UiLocale::SimplifiedChinese
+        });
+        bindings.provider_name.set_text("认证失败提供商");
+        bindings.provider_endpoint.set_text(&external.endpoint);
+        bindings.provider_credential.set_text(WRONG_SECRET);
+        bindings.connect.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        assert_eq!(state.borrow().status(), AppStatus::Connecting);
+
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Failed && bindings.error.is_visible()
+        });
+        let error_text = bindings.error.label().to_string();
+        assert!(error_text.contains("身份验证"));
+        assert!(error_text.contains("请检查"));
+        assert!(error_text.contains("凭据"));
+        assert!(!error_text.contains(WRONG_SECRET));
+        assert!(!error_text.contains("401"));
+        assert!(!error_text.contains("403"));
+        assert!(gtk::test_accessible_has_role(
+            &bindings.error,
+            gtk::AccessibleRole::Alert
+        ));
+        assert!(state.borrow().active_provider().is_none());
+
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
+    }
+
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_offline_connection_failure_preserves_confirmed_session() {
+        const EXPECTED_SECRET: &str = "GTK_EXPECTED_OFFLINE_SECRET";
+        const OFFLINE_SECRET: &str = "GTK_OFFLINE_SECRET_CANARY";
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.GtkOfflineConnectionTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK test application");
+
+        let external = ExternalFakeProvider::start(EXPECTED_SECRET);
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn());
+        let (window, bindings, theme, locale) = create_window(&application);
+        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
+        connect_action_handlers(&bindings, &state, &worker);
+        start_event_pump(&bindings, &state, &worker);
+        let context = glib::MainContext::default();
+        window.present();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().worker_ready()
+                && bindings.provider_endpoint.text() != DEFAULT_PROVIDER_ENDPOINT
+        });
+
+        bindings.locale.set_selected(1);
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            state.borrow().locale() == UiLocale::SimplifiedChinese
+        });
+        bindings
+            .provider_name
+            .set_text("Confirmed offline provider");
+        bindings.provider_endpoint.set_text(&external.endpoint);
+        bindings.provider_credential.set_text(EXPECTED_SECRET);
+        bindings.connect.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Ready
+                && state.borrow().active_provider().is_some()
+                && !state.borrow().models().is_empty()
+        });
+        bindings.model.set_selected(1);
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().selected_model() == Some("fake-translator")
+        });
+        let confirmed_provider = state
+            .borrow()
+            .active_provider()
+            .cloned()
+            .expect("confirmed provider");
+        let confirmed_provider_id = confirmed_provider.id().clone();
+        let confirmed_models = state.borrow().models().to_vec();
+        bindings.source.set_text("保留离线源文本");
+
+        let listener = TcpListener::bind(("127.0.0.1", 0)).expect("offline fixture listener");
+        let unavailable_endpoint = format!(
+            "http://{}/v1/",
+            listener.local_addr().expect("offline fixture address")
+        );
+        drop(listener);
+        bindings
+            .provider_name
+            .set_text("Unavailable offline provider");
+        bindings.provider_endpoint.set_text(&unavailable_endpoint);
+        bindings.provider_credential.set_text(OFFLINE_SECRET);
+        bindings.connect.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Ready && bindings.error.is_visible()
+        });
+
+        let source_text = bindings.source.text(
+            &bindings.source.start_iter(),
+            &bindings.source.end_iter(),
+            true,
+        );
+        assert_eq!(source_text.as_str(), "保留离线源文本");
+        assert_eq!(state.borrow().active_provider(), Some(&confirmed_provider));
+        assert_eq!(state.borrow().provider_id(), Some(&confirmed_provider_id));
+        assert_eq!(state.borrow().models(), confirmed_models.as_slice());
+        assert_eq!(state.borrow().selected_model(), Some("fake-translator"));
+        assert_eq!(
+            state.borrow().onboarding_stage(),
+            super::OnboardingStage::Ready
+        );
+        let error_text = bindings.error.label().to_string();
+        assert!(error_text.contains("网络"));
+        assert!(!error_text.contains(OFFLINE_SECRET));
+        assert!(gtk::test_accessible_has_role(
+            &bindings.error,
+            gtk::AccessibleRole::Alert
+        ));
+
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
+    }
+
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_cancel_translation_preserves_partial_output() {
+        const EXPECTED_SECRET: &str = "GTK_EXPECTED_CANCEL_SECRET";
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.GtkCancellationTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK test application");
+
+        let external = ExternalFakeProvider::start(EXPECTED_SECRET);
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn());
+        let (window, bindings, theme, locale) = create_window(&application);
+        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
+        connect_action_handlers(&bindings, &state, &worker);
+        start_event_pump(&bindings, &state, &worker);
+        let context = glib::MainContext::default();
+        window.present();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().worker_ready()
+                && bindings.provider_endpoint.text() != DEFAULT_PROVIDER_ENDPOINT
+        });
+
+        bindings.provider_name.set_text("GTK cancellation provider");
+        bindings.provider_endpoint.set_text(&external.endpoint);
+        bindings.provider_credential.set_text(EXPECTED_SECRET);
+        bindings.connect.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Ready
+                && state.borrow().active_provider().is_some()
+                && !state.borrow().models().is_empty()
+        });
+
+        bindings.model.set_selected(2);
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().selected_model() == Some("fake-slow-translator")
+        });
+        bindings
+            .source
+            .set_text("Cancel after the first streamed delta.");
+        bindings.translate.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Translating
+                && !state.borrow().output().is_empty()
+                && bindings.stop.is_sensitive()
+        });
+        let partial_output = state.borrow().output().to_owned();
+        assert_eq!(partial_output, "你好");
+        bindings.stop.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Cancelled && state.borrow().has_partial_output()
+        });
+        assert_eq!(state.borrow().output(), partial_output);
+        assert!(bindings.status.label().contains("Translation cancelled"));
+        assert!(!bindings.stop.is_sensitive());
+        assert!(bindings.retry_translation.is_sensitive());
+        assert!(state.borrow().error_text().is_none());
+
+        std::thread::sleep(Duration::from_millis(350));
+        while context.pending() {
+            context.iteration(false);
+        }
+        assert_eq!(state.borrow().status(), AppStatus::Cancelled);
+        assert_eq!(state.borrow().output(), partial_output);
+
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
+    }
+
+    #[allow(clippy::too_many_lines)]
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_malicious_archive_import_fails_closed_before_document_job() {
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.GtkMaliciousArchiveTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK malicious archive application");
+
+        let fixture_directory = std::env::temp_dir().join(format!(
+            "linguamesh-linux-gtk-malicious-archive-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&fixture_directory);
+        fs::create_dir_all(&fixture_directory).expect("create malicious archive directory");
+        fs::set_permissions(&fixture_directory, fs::Permissions::from_mode(0o700))
+            .expect("restrict malicious archive directory");
+        let repetitive_payload = vec![b'x'; 512 * 1024];
+        let cases = vec![
+            (
+                "unsafe.docx",
+                malicious_docx_fixture("../outside.txt", b"unsafe", false),
+                "outside.txt",
+            ),
+            (
+                "suspicious-ratio.docx",
+                malicious_docx_fixture("word/repetitive.bin", &repetitive_payload, true),
+                "repetitive.bin",
+            ),
+            (
+                "macro.docx",
+                malicious_docx_fixture("word/vbaProject.bin", b"unsupported macro", false),
+                "vbaProject.bin",
+            ),
+            (
+                "signed.docx",
+                malicious_docx_fixture("_xmlsignatures/sig1.xml", b"unsupported signature", false),
+                "sig1.xml",
+            ),
+        ];
+
+        let context = glib::MainContext::default();
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn());
+        let (window, bindings, theme, locale) = create_window(&application);
+        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
+        connect_action_handlers(&bindings, &state, &worker);
+        start_event_pump(&bindings, &state, &worker);
+        window.present();
+        eprintln!("GTK malicious archive: waiting for worker readiness");
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().worker_ready()
+        });
+
+        for (file_name, contents, forbidden_name) in cases {
+            let fixture_path = fixture_directory.join(file_name);
+            fs::write(&fixture_path, contents).expect("write malicious archive fixture");
+            let file = gtk::gio::File::for_path(&fixture_path);
+            load_source_file(&file, &bindings, &state, &worker);
+            eprintln!("GTK malicious archive: waiting for rejected {file_name}");
+            spin_main_context_until(&context, Duration::from_secs(5), || {
+                bindings.error.is_visible()
+            });
+            let error_text = bindings.error.text().to_string();
+            assert!(!error_text.is_empty());
+            assert!(!error_text.contains(forbidden_name));
+            assert!(bindings.document_job_id.borrow().is_none());
+            assert!(
+                bindings
+                    .source
+                    .text(
+                        &bindings.source.start_iter(),
+                        &bindings.source.end_iter(),
+                        true,
+                    )
+                    .is_empty()
+            );
+            assert!(!fixture_directory.join(forbidden_name).exists());
+            bindings.error.set_visible(false);
+        }
+
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
+        let _ = fs::remove_dir_all(fixture_directory);
+    }
+
+    #[allow(clippy::too_many_lines)]
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_glossary_and_protected_terms_preserve_translation() {
+        const EXPECTED_SECRET: &str = "GTK_EXPECTED_GLOSSARY_SECRET";
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.GtkGlossaryTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK test application");
+
+        let listener = TcpListener::bind("127.0.0.1:0").expect("glossary provider listener");
+        let endpoint = format!(
+            "http://{}/v1/",
+            listener.local_addr().expect("listener address")
+        );
+        let (request_sender, request_receiver) = mpsc::sync_channel(1);
+        let provider_thread = std::thread::spawn(move || {
+            let (mut model_stream, _) = listener.accept().expect("model request");
+            let _ = read_http_request(&mut model_stream);
+            let models = r#"{"data":[{"id":"glossary-translator","object":"model"}]}"#;
+            write_http_response(&mut model_stream, "application/json", models.as_bytes());
+
+            let (mut chat_stream, _) = listener.accept().expect("chat request");
+            let request = read_http_request(&mut chat_stream);
+            let request_text = String::from_utf8_lossy(&request);
+            request_sender
+                .send(request_text.contains("LinguaMesh"))
+                .expect("request observation");
+            let prefix = b"__LINGUAMESH_PROTECTED_";
+            let marker_start = request
+                .windows(prefix.len())
+                .rposition(|window| window == prefix)
+                .expect("protected glossary marker");
+            let suffix_start = marker_start + prefix.len();
+            let suffix_offset = request[suffix_start..]
+                .windows(2)
+                .position(|window| window == b"__")
+                .expect("protected marker suffix");
+            let marker =
+                String::from_utf8(request[marker_start..suffix_start + suffix_offset + 2].to_vec())
+                    .expect("protected marker text");
+            let split = marker.len() / 2;
+            let mut events = String::new();
+            for fragment in [
+                "你好，".to_owned(),
+                marker[..split].to_owned(),
+                marker[split..].to_owned(),
+                "！".to_owned(),
+            ] {
+                writeln!(
+                    &mut events,
+                    "data: {{\"choices\":[{{\"delta\":{{\"content\":\"{fragment}\"}}}}]}}"
+                )
+                .expect("SSE event");
+                events.push('\n');
+            }
+            events.push_str("data: [DONE]\n\n");
+            write_http_response(&mut chat_stream, "text/event-stream", events.as_bytes());
+        });
+
+        let context = glib::MainContext::default();
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn());
+        let (window, bindings, theme, locale) = create_window(&application);
+        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
+        connect_action_handlers(&bindings, &state, &worker);
+        start_event_pump(&bindings, &state, &worker);
+        window.present();
+        eprintln!("GTK document restart: waiting for first worker readiness");
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().worker_ready()
+        });
+
+        bindings.provider_name.set_text("GTK glossary provider");
+        bindings.provider_endpoint.set_text(&endpoint);
+        bindings.provider_credential.set_text(EXPECTED_SECRET);
+        bindings.connect.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        eprintln!("GTK document restart: waiting for first provider connection");
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Ready
+                && state.borrow().active_provider().is_some()
+                && !state.borrow().models().is_empty()
+        });
+
+        bindings.model.set_selected(1);
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().selected_model() == Some("glossary-translator")
+        });
+        bindings.source.set_text("LinguaMesh");
+        bindings.glossary.set_text("LinguaMesh => 凌瓦网");
+        bindings.translate.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Completed
+                && state.borrow().output() == "你好，凌瓦网！"
+        });
+        assert_eq!(state.borrow().output(), "你好，凌瓦网！");
+        assert!(state.borrow().glossary().is_some());
+        assert!(
+            !request_receiver
+                .recv_timeout(Duration::from_secs(5))
+                .expect("request observation")
+        );
+
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
+        provider_thread.join().expect("glossary provider shutdown");
+    }
+
+    #[allow(clippy::too_many_lines)]
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_incognito_translation_bypasses_memory_and_persistence() {
+        const EXPECTED_SECRET: &str = "GTK_EXPECTED_INCOGNITO_SECRET";
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.GtkIncognitoTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK incognito application");
+
+        let database_directory = std::env::temp_dir().join(format!(
+            "linguamesh-linux-incognito-ui-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock after Unix epoch")
+                .as_nanos()
+        ));
+        fs::create_dir(&database_directory).expect("create incognito UI database directory");
+        fs::set_permissions(&database_directory, fs::Permissions::from_mode(0o700))
+            .expect("protect incognito UI database directory");
+        let database_path = database_directory.join("state.sqlite3");
+        let external = ExternalFakeProvider::start(EXPECTED_SECRET);
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn_with_database(&database_path));
+        let (window, bindings, theme, locale) = create_window(&application);
+        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
+        connect_action_handlers(&bindings, &state, &worker);
+        start_event_pump(&bindings, &state, &worker);
+        let context = glib::MainContext::default();
+        window.present();
+        eprintln!("GTK incognito: waiting for worker readiness");
+        // 等待数据库 worker 就绪后再驱动真实 GTK 连接流程。
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().worker_ready()
+        });
+
+        bindings.provider_name.set_text("GTK incognito provider");
+        bindings.provider_endpoint.set_text(&external.endpoint);
+        bindings.provider_credential.set_text(EXPECTED_SECRET);
+        bindings.connect.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        eprintln!("GTK incognito: waiting for provider connection");
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Ready
+                && state.borrow().active_provider().is_some()
+                && !state.borrow().models().is_empty()
+        });
+        bindings.model.set_selected(1);
+        eprintln!("GTK incognito: waiting for model selection");
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().selected_model() == Some("fake-translator")
+        });
+
+        bindings.source.set_text("GTK incognito memory probe");
+        bindings.translate.emit_clicked();
+        eprintln!("GTK incognito: waiting for standard completion");
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Completed
+                && state.borrow().translation_history_count() == 1
+        });
+        let storage = Storage::open(&database_path).expect("open incognito UI storage");
+        assert_eq!(
+            storage
+                .translation_history_count()
+                .expect("history count after standard translation"),
+            1
+        );
+        assert_eq!(
+            storage
+                .translation_memory_count()
+                .expect("memory count after standard translation"),
+            1
+        );
+        drop(storage);
+        let first_chat_requests = external.chat_requests.load(Ordering::SeqCst);
+        assert!(first_chat_requests >= 1);
+
+        bindings.incognito.set_active(true);
+        eprintln!("GTK incognito: waiting for privacy toggle");
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            state.borrow().is_incognito()
+        });
+        bindings.source.set_text("GTK incognito memory probe");
+        bindings.translate.emit_clicked();
+        eprintln!("GTK incognito: waiting for private completion");
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Completed
+                && external.chat_requests.load(Ordering::SeqCst) > first_chat_requests
+        });
+        assert!(state.borrow().is_incognito());
+        assert!(bindings.incognito.is_active());
+        let storage = Storage::open(&database_path).expect("reopen incognito UI storage");
+        assert_eq!(
+            storage
+                .translation_history_count()
+                .expect("history count after incognito translation"),
+            1
+        );
+        assert_eq!(
+            storage
+                .translation_memory_count()
+                .expect("memory count after incognito translation"),
+            1
+        );
+        drop(storage);
+
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
+        let _ = fs::remove_dir_all(&database_directory);
+    }
+
+    #[allow(clippy::too_many_lines)]
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_interrupted_document_job_restores_and_resumes() {
+        const EXPECTED_SECRET: &str = "GTK_EXPECTED_DOCUMENT_RESTART_SECRET";
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.GtkDocumentRestartTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK document restart application");
+
+        let database_directory = std::env::temp_dir().join(format!(
+            "linguamesh-linux-gtk-document-restart-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&database_directory);
+        fs::create_dir_all(&database_directory).expect("create document restart directory");
+        fs::set_permissions(&database_directory, fs::Permissions::from_mode(0o700))
+            .expect("restrict document restart directory");
+        let database_path = database_directory.join("state.sqlite3");
+        let external = ExternalFakeProvider::start(EXPECTED_SECRET);
+        let profile_id = ProviderProfileId::parse("gtk-document-restart-provider")
+            .expect("document restart provider profile ID");
+        let context = glib::MainContext::default();
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn_with_database(&database_path));
+        let (window, bindings, theme, locale) = create_window(&application);
+        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
+        connect_action_handlers(&bindings, &state, &worker);
+        start_event_pump(&bindings, &state, &worker);
+        window.present();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().worker_ready()
+        });
+
+        bindings
+            .provider_name
+            .set_text("GTK document restart provider");
+        bindings.provider_endpoint.set_text(&external.endpoint);
+        bindings.provider_credential.set_text(EXPECTED_SECRET);
+        bindings.draft_profile_id.replace(Some(profile_id.clone()));
+        bindings.connect.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Ready
+                && state.borrow().active_provider().is_some()
+                && !state.borrow().models().is_empty()
+        });
+        bindings.model.set_selected(2);
+        eprintln!("GTK document restart: waiting for first model selection");
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().selected_model() == Some("fake-slow-translator")
+        });
+
+        let job_id = "gtk-document-restart-1".to_owned();
+        worker
+            .try_send(WorkerCommand::CreateDocumentJob {
+                job_id: job_id.clone(),
+                job: DocumentJob::from_text("notes.txt", DocumentFormat::Txt, "one\ntwo"),
+            })
+            .expect("create GTK document job");
+        eprintln!("GTK document restart: waiting for pending document job");
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            bindings.document_job_id.borrow().as_deref() == Some(job_id.as_str())
+                && bindings.document_job_state.get() == Some(DocumentJobState::Pending)
+        });
+        bindings.document_job_guard.set(true);
+        bindings.source.set_text("one\ntwo");
+        bindings.document_job_guard.set(false);
+        bindings.translate.emit_clicked();
+        eprintln!("GTK document restart: waiting for first segment");
+        spin_main_context_until(&context, Duration::from_secs(10), || {
+            state.borrow().status() == AppStatus::Translating
+                && bindings.document_job_state.get() == Some(DocumentJobState::Running)
+                && bindings
+                    .document_progress
+                    .get()
+                    .is_some_and(|(completed, total)| completed == 1 && total == 2)
+        });
+        assert!(bindings.pause_document.is_sensitive());
+        bindings.pause_document.emit_clicked();
+        eprintln!("GTK document restart: waiting for paused state");
+        spin_main_context_until(&context, Duration::from_secs(10), || {
+            bindings.document_job_state.get() == Some(DocumentJobState::Paused)
+        });
+        assert_eq!(bindings.document_progress.get(), Some((1, 2)));
+        let source_text = bindings.source.text(
+            &bindings.source.start_iter(),
+            &bindings.source.end_iter(),
+            true,
+        );
+        assert_eq!(source_text.as_str(), "one\ntwo");
+
+        worker
+            .try_send(WorkerCommand::Shutdown)
+            .expect("shutdown first GTK document worker");
+        eprintln!("GTK document restart: waiting for first worker shutdown");
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().worker_unavailable()
+        });
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
+
+        let restored_state = Rc::new(RefCell::new(AppState::default()));
+        let restored_worker = Rc::new(CoreWorker::spawn_with_database(&database_path));
+        let (restored_window, restored_bindings, restored_theme, restored_locale) =
+            create_window(&application);
+        connect_selection_handlers(
+            &restored_bindings,
+            &restored_theme,
+            &restored_locale,
+            &restored_state,
+            &restored_worker,
+        );
+        connect_action_handlers(&restored_bindings, &restored_state, &restored_worker);
+        start_event_pump(&restored_bindings, &restored_state, &restored_worker);
+        restored_window.present();
+        eprintln!("GTK document restart: waiting for restored paused job");
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            restored_state.borrow().worker_ready()
+                && restored_bindings.document_job_id.borrow().as_deref() == Some(job_id.as_str())
+                && restored_bindings.document_job_state.get() == Some(DocumentJobState::Paused)
+        });
+        assert_eq!(restored_bindings.document_progress.get(), Some((1, 2)));
+        let restored_source = restored_bindings.source.text(
+            &restored_bindings.source.start_iter(),
+            &restored_bindings.source.end_iter(),
+            true,
+        );
+        assert_eq!(restored_source.as_str(), "one\ntwo");
+
+        restored_bindings
+            .provider_name
+            .set_text("GTK document restart provider");
+        restored_bindings
+            .provider_endpoint
+            .set_text(&external.endpoint);
+        restored_bindings
+            .provider_credential
+            .set_text(EXPECTED_SECRET);
+        restored_bindings.draft_profile_id.replace(Some(profile_id));
+        restored_bindings.connect.emit_clicked();
+        assert!(restored_bindings.provider_credential.text().is_empty());
+        eprintln!("GTK document restart: waiting for restored provider connection");
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            restored_state.borrow().status() == AppStatus::Ready
+                && restored_state.borrow().active_provider().is_some()
+        });
+        restored_bindings.model.set_selected(2);
+        eprintln!("GTK document restart: waiting for restored model selection");
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            restored_state.borrow().selected_model() == Some("fake-slow-translator")
+        });
+        assert!(restored_bindings.resume_document.is_sensitive());
+        restored_bindings.resume_document.emit_clicked();
+        eprintln!("GTK document restart: waiting for resumed completion");
+        let resume_wait_started = Instant::now();
+        let mut resume_diagnostic_logged = false;
+        spin_main_context_until(&context, Duration::from_secs(15), || {
+            if !resume_diagnostic_logged && resume_wait_started.elapsed() >= Duration::from_secs(5)
+            {
+                let status_completed = restored_state.borrow().status() == AppStatus::Completed;
+                let safe_error = restored_state
+                    .borrow()
+                    .error_text()
+                    .map(|error| error.replace(EXPECTED_SECRET, "<redacted>"));
+                eprintln!(
+                    "GTK document restart: resume snapshot status_completed={status_completed}, job_state={:?}, progress={:?}, error={safe_error:?}",
+                    restored_bindings.document_job_state.get(),
+                    restored_bindings.document_progress.get(),
+                );
+                resume_diagnostic_logged = true;
+            }
+            restored_bindings.document_job_state.get() == Some(DocumentJobState::Completed)
+                && restored_bindings.document_progress.get() == Some((2, 2))
+                && restored_state.borrow().status() == AppStatus::Completed
+        });
+        assert_eq!(
+            restored_state.borrow().output(),
+            "你好，LinguaMesh！\n你好，LinguaMesh！"
+        );
+        assert_eq!(
+            restored_bindings.source.text(
+                &restored_bindings.source.start_iter(),
+                &restored_bindings.source.end_iter(),
+                true,
+            ),
+            "one\ntwo"
+        );
+
+        restored_worker
+            .try_send(WorkerCommand::Shutdown)
+            .expect("shutdown restored GTK document worker");
+        restored_window.close();
+        drop(restored_bindings);
+        drop(restored_theme);
+        drop(restored_locale);
+        drop(restored_state);
+        drop(restored_worker);
+        drop(external);
+        let _ = fs::remove_dir_all(database_directory);
+    }
+
+    // 验证生产文档任务对话框可以展示多个任务，并且显式选择不会混淆任务快照。
+    #[allow(clippy::too_many_lines)]
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_document_jobs_dialog_selects_between_multiple_jobs() {
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.GtkDocumentJobsTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK document jobs application");
+
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn());
+        let (window, bindings, theme, locale) = create_window(&application);
+        let first_job = DocumentJobSnapshot {
+            job_id: "gtk-queue-first".to_owned(),
+            state: DocumentJobState::Pending,
+            job: DocumentJob::from_text("first.txt", DocumentFormat::Txt, "first source"),
+            options: None,
+            created_at: 1,
+            updated_at: 1,
+        };
+        let second_job = DocumentJobSnapshot {
+            job_id: "gtk-queue-second".to_owned(),
+            state: DocumentJobState::Paused,
+            job: DocumentJob::from_text("second.md", DocumentFormat::Markdown, "second source"),
+            options: None,
+            created_at: 2,
+            updated_at: 2,
+        };
+        let cancelled_job = DocumentJobSnapshot {
+            job_id: "gtk-queue-cancelled".to_owned(),
+            state: DocumentJobState::Cancelled,
+            job: DocumentJob::from_text("cancelled.txt", DocumentFormat::Txt, "cancelled source"),
+            options: None,
+            created_at: 3,
+            updated_at: 3,
+        };
+        let context = glib::MainContext::default();
+        window.present();
+        show_document_jobs_dialog(
+            &bindings,
+            &state,
+            &worker.command_handle(),
+            vec![first_job.clone(), second_job.clone(), cancelled_job.clone()],
+        );
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Document jobs"))
+        });
+        let dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| candidate.title().as_deref() == Some("Document jobs"))
+            .expect("document jobs dialog");
+        let widgets = descendant_widgets(dialog.upcast_ref::<gtk::Widget>());
+        let metadata = widgets
+            .iter()
+            .filter_map(|widget| {
+                widget
+                    .downcast_ref::<gtk::Label>()
+                    .map(|label| label.text().to_string())
+            })
+            .collect::<Vec<_>>();
+        assert!(metadata.iter().any(|label| label.contains("3 files")));
+        assert!(metadata.iter().any(|label| label.contains("first.txt")));
+        assert!(metadata.iter().any(|label| label.contains("second.md")));
+        assert!(metadata.iter().any(|label| label.contains("cancelled.txt")));
+        // 验证每个持久化任务都暴露可聚焦且带有安全提示的报告导出动作。
+        let report_buttons = widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .filter(|button| {
+                button
+                    .label()
+                    .is_some_and(|label| label.contains("Export translation report"))
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        assert_eq!(report_buttons.len(), 3);
+        assert!(
+            report_buttons
+                .iter()
+                .all(adw::prelude::WidgetExt::is_focusable)
+        );
+        assert!(report_buttons.iter().all(|button| {
+            button
+                .tooltip_text()
+                .is_some_and(|tooltip| tooltip.contains("redacted TSV report"))
+        }));
+        // 验证每个持久化任务都暴露需要确认的元数据删除动作。
+        let delete_buttons = widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .filter(|button| button.label().is_some_and(|label| label.contains("Delete")))
+            .cloned()
+            .collect::<Vec<_>>();
+        assert_eq!(delete_buttons.len(), 3);
+        assert!(
+            delete_buttons
+                .iter()
+                .all(gtk::prelude::WidgetExt::is_focusable)
+        );
+        let select_buttons = widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .filter(|button| {
+                button
+                    .label()
+                    .is_some_and(|label| label.contains("Select document job"))
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        assert_eq!(select_buttons.len(), 3);
+        select_buttons[1].emit_clicked();
+        assert_eq!(
+            bindings.document_job_id.borrow().as_deref(),
+            Some("gtk-queue-second")
+        );
+        assert_eq!(
+            bindings.document_job_state.get(),
+            Some(DocumentJobState::Paused)
+        );
+        assert_eq!(
+            bindings.source.text(
+                &bindings.source.start_iter(),
+                &bindings.source.end_iter(),
+                true
+            ),
+            "second source"
+        );
+        assert!(
+            !application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Document jobs"))
+        );
+
+        // 验证暂停任务的 Resume 动作仍然绑定到同一个任务，并在发送命令后关闭队列窗口。
+        show_document_jobs_dialog(
+            &bindings,
+            &state,
+            &worker.command_handle(),
+            vec![first_job.clone(), second_job.clone(), cancelled_job.clone()],
+        );
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Document jobs"))
+        });
+        let resume_dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| candidate.title().as_deref() == Some("Document jobs"))
+            .expect("document jobs resume dialog");
+        let resume_buttons = descendant_widgets(resume_dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .filter(|button| {
+                button
+                    .label()
+                    .is_some_and(|label| label.contains("Resume document"))
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        assert_eq!(resume_buttons.len(), 1);
+        resume_buttons[0].emit_clicked();
+        assert_eq!(
+            bindings.document_job_id.borrow().as_deref(),
+            Some("gtk-queue-second")
+        );
+        assert_eq!(
+            bindings.document_job_state.get(),
+            Some(DocumentJobState::Paused)
+        );
+        assert!(
+            !application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Document jobs"))
+        );
+
+        // 验证取消任务的 Retry 动作绑定到同一个任务，并在发送命令后关闭队列窗口。
+        show_document_jobs_dialog(
+            &bindings,
+            &state,
+            &worker.command_handle(),
+            vec![first_job.clone(), second_job.clone(), cancelled_job.clone()],
+        );
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Document jobs"))
+        });
+        let retry_dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| candidate.title().as_deref() == Some("Document jobs"))
+            .expect("document jobs retry dialog");
+        let retry_buttons = descendant_widgets(retry_dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .filter(|button| {
+                button
+                    .label()
+                    .is_some_and(|label| label.contains("Retry document"))
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        assert_eq!(retry_buttons.len(), 1);
+        retry_buttons[0].emit_clicked();
+        assert_eq!(
+            bindings.document_job_id.borrow().as_deref(),
+            Some("gtk-queue-cancelled")
+        );
+        assert_eq!(
+            bindings.document_job_state.get(),
+            Some(DocumentJobState::Cancelled)
+        );
+        assert!(
+            !application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Document jobs"))
+        );
+
+        // 验证待处理任务的 Pause 动作绑定到同一个任务，并在发送命令后关闭队列窗口。
+        show_document_jobs_dialog(
+            &bindings,
+            &state,
+            &worker.command_handle(),
+            vec![first_job, second_job, cancelled_job],
+        );
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Document jobs"))
+        });
+        let pause_dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| candidate.title().as_deref() == Some("Document jobs"))
+            .expect("document jobs pause dialog");
+        let pause_buttons = descendant_widgets(pause_dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .filter(|button| {
+                button
+                    .label()
+                    .is_some_and(|label| label.contains("Pause document"))
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        assert_eq!(pause_buttons.len(), 1);
+        pause_buttons[0].emit_clicked();
+        assert_eq!(
+            bindings.document_job_id.borrow().as_deref(),
+            Some("gtk-queue-first")
+        );
+        assert_eq!(
+            bindings.document_job_state.get(),
+            Some(DocumentJobState::Pending)
+        );
+        assert!(
+            !application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Document jobs"))
+        );
+
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
+    }
+
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_connection_test_reports_models_and_redacts_credential() {
+        const EXPECTED_SECRET: &str = "GTK_EXPECTED_CONNECTION_TEST_SECRET";
+        const WRONG_SECRET: &str = "GTK_WRONG_CONNECTION_TEST_SECRET_CANARY";
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.GtkConnectionTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK test application");
+
+        let external = ExternalFakeProvider::start(EXPECTED_SECRET);
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn());
+        let (window, bindings, theme, locale) = create_window(&application);
+        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
+        connect_action_handlers(&bindings, &state, &worker);
+        start_event_pump(&bindings, &state, &worker);
+        let context = glib::MainContext::default();
+        window.present();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().worker_ready()
+                && bindings.provider_endpoint.text() != DEFAULT_PROVIDER_ENDPOINT
+        });
+
+        bindings.locale.set_selected(1);
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            state.borrow().locale() == UiLocale::SimplifiedChinese
+        });
+        bindings.provider_name.set_text("连接测试提供商");
+        bindings.provider_endpoint.set_text(&external.endpoint);
+        bindings.provider_credential.set_text(EXPECTED_SECRET);
+        bindings.test_connection.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            bindings.connection_test_notice.get()
+        });
+        let model_count = bindings
+            .connection_test_model_count
+            .get()
+            .expect("connection test model count");
+        assert!(model_count >= 1);
+        assert!(
+            bindings
+                .connection_test_profile_id
+                .borrow()
+                .as_deref()
+                .is_some_and(|profile_id| !profile_id.is_empty())
+        );
+        assert!(bindings.locale_note.label().contains("连接测试"));
+        assert!(!bindings.locale_note.label().contains(EXPECTED_SECRET));
+
+        bindings.provider_credential.set_text(WRONG_SECRET);
+        bindings.test_connection.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            !bindings.connection_test_notice.get() && bindings.error.is_visible()
+        });
+        let error_text = bindings.error.label().to_string();
+        assert!(error_text.contains("身份验证"));
+        assert!(!error_text.contains(WRONG_SECRET));
+        assert!(!error_text.contains("401"));
+        assert!(!error_text.contains("403"));
+
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
+    }
+
+    // 验证生产 GTK 配置列表可以在两个独立会话提供商之间切换，并把下一次请求送到新配置。
+    #[allow(clippy::too_many_lines)]
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_one_click_provider_switch_uses_new_session_and_isolates_credentials() {
+        const SECRET_A: &str = "GTK_SWITCH_PROVIDER_A_SECRET";
+        const SECRET_B: &str = "GTK_SWITCH_PROVIDER_B_SECRET";
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.GtkProviderSwitchTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK provider switch test application");
+
+        let provider_a = ExternalFakeProvider::start(SECRET_A);
+        let provider_b = ExternalFakeProvider::start(SECRET_B);
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn());
+        let (window, bindings, theme, locale) = create_window(&application);
+        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
+        connect_action_handlers(&bindings, &state, &worker);
+        start_event_pump(&bindings, &state, &worker);
+        let context = glib::MainContext::default();
+        window.present();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().worker_ready()
+        });
+
+        let profile_a = custom_provider_profile(
+            ProviderProfileId::parse("gtk-switch-provider-a").expect("provider A ID"),
+            "Provider A".to_owned(),
+            CUSTOM_PROVIDER_PRESET_ID.to_owned(),
+            OPENAI_ADAPTER_TYPE.to_owned(),
+            provider_a.endpoint.clone(),
+            Some(SecretRef::new(SecretRefNamespace::SecretService)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            30,
+            10,
+            60,
+            None,
+            None,
+            None,
+            None,
+        )
+        .expect("provider A profile");
+        let profile_b = custom_provider_profile(
+            ProviderProfileId::parse("gtk-switch-provider-b").expect("provider B ID"),
+            "Provider B".to_owned(),
+            CUSTOM_PROVIDER_PRESET_ID.to_owned(),
+            OPENAI_ADAPTER_TYPE.to_owned(),
+            provider_b.endpoint.clone(),
+            Some(SecretRef::new(SecretRefNamespace::SecretService)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            30,
+            10,
+            60,
+            None,
+            None,
+            None,
+            None,
+        )
+        .expect("provider B profile");
+        apply_worker_event(
+            &bindings,
+            &state,
+            &worker,
+            WorkerEvent::ProfilesRestored {
+                profiles: vec![profile_b.clone(), profile_a.clone()],
+                active_profile_id: None,
+            },
+        );
+        refresh_ui(&bindings, &state.borrow());
+
+        bindings.saved_profile.set_selected(1);
+        assert_eq!(
+            state
+                .borrow()
+                .selected_saved_profile_id()
+                .map(ProviderProfileId::as_str),
+            Some("gtk-switch-provider-a")
+        );
+        assert_eq!(bindings.provider_name.text(), "Provider A");
+        bindings.remember_profile.set_active(false);
+        bindings.provider_credential.set_text(SECRET_A);
+        bindings.connect.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Ready
+                && state
+                    .borrow()
+                    .active_provider()
+                    .is_some_and(|profile| profile.id().as_str() == "gtk-switch-provider-a")
+                && !state.borrow().models().is_empty()
+        });
+        bindings.model.set_selected(1);
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().selected_model() == Some("fake-translator")
+        });
+        bindings.source.set_text("Hello from provider A");
+        bindings.translate.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Completed
+        });
+        assert_eq!(provider_a.chat_requests.load(Ordering::SeqCst), 1);
+        assert_eq!(provider_b.chat_requests.load(Ordering::SeqCst), 0);
+
+        bindings.saved_profile.set_selected(2);
+        assert_eq!(
+            state
+                .borrow()
+                .selected_saved_profile_id()
+                .map(ProviderProfileId::as_str),
+            Some("gtk-switch-provider-b")
+        );
+        assert_eq!(bindings.provider_name.text(), "Provider B");
+        assert!(bindings.provider_credential.text().is_empty());
+        assert_eq!(
+            state
+                .borrow()
+                .active_provider()
+                .map(|profile| profile.id().as_str()),
+            Some("gtk-switch-provider-a")
+        );
+        bindings.remember_profile.set_active(false);
+        bindings.provider_credential.set_text(SECRET_B);
+        bindings.connect.emit_clicked();
+        assert!(bindings.provider_credential.text().is_empty());
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Ready
+                && state
+                    .borrow()
+                    .active_provider()
+                    .is_some_and(|profile| profile.id().as_str() == "gtk-switch-provider-b")
+                && !state.borrow().models().is_empty()
+        });
+        assert_eq!(provider_a.chat_requests.load(Ordering::SeqCst), 1);
+        assert_eq!(provider_b.chat_requests.load(Ordering::SeqCst), 0);
+        bindings.model.set_selected(1);
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().selected_model() == Some("fake-translator")
+        });
+        bindings.source.set_text("Hello from provider B");
+        bindings.translate.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Completed
+        });
+        assert_eq!(provider_a.chat_requests.load(Ordering::SeqCst), 1);
+        assert_eq!(provider_b.chat_requests.load(Ordering::SeqCst), 1);
+        assert_eq!(state.borrow().output(), "你好，LinguaMesh！");
+        assert!(bindings.provider_credential.text().is_empty());
+
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
     }
 
     #[allow(clippy::too_many_lines)]
@@ -5632,6 +14606,15 @@ mod tests {
         state.borrow_mut().set_locale(UiLocale::SimplifiedChinese);
         refresh_ui(&bindings, &state.borrow());
         assert_eq!(bindings.translate.label().as_deref(), Some("_翻译"));
+        assert_eq!(bindings.copy_output.label().as_deref(), Some("_复制译文"));
+        assert!(!bindings.copy_output.is_sensitive());
+        assert_eq!(
+            bindings.clear_workspace.label().as_deref(),
+            Some("_清空工作区")
+        );
+        assert!(!bindings.clear_workspace.is_sensitive());
+        assert_eq!(bindings.swap_locales.label().as_deref(), Some("_交换语言"));
+        assert!(!bindings.swap_locales.is_sensitive());
         assert_eq!(bindings.export_output.label().as_deref(), Some("_导出翻译"));
         assert!(!bindings.export_output.is_sensitive());
         assert_eq!(
@@ -5649,7 +14632,30 @@ mod tests {
             Some("_打开文本文件")
         );
         assert_eq!(bindings.provider_title.label(), "提供商配置");
+        assert_eq!(bindings.provider_preset.selected(), 0);
+        assert_labeled_control(bindings.provider_preset.upcast_ref::<gtk::Widget>());
+        let provider_preset_model = bindings
+            .provider_preset
+            .model()
+            .and_then(|model| model.downcast::<gtk::StringList>().ok())
+            .expect("provider preset labels");
+        assert_eq!(
+            provider_preset_model.string(0).as_deref(),
+            Some("OpenAI 兼容")
+        );
+        assert_eq!(
+            provider_preset_model.string(1).as_deref(),
+            Some("Ollama（原生 /api）")
+        );
+        assert_eq!(
+            provider_preset_model.string(4).as_deref(),
+            Some("Azure OpenAI")
+        );
         assert_eq!(bindings.connect.label().as_deref(), Some("_连接"));
+        assert_eq!(
+            bindings.test_connection.label().as_deref(),
+            Some("_测试连接")
+        );
         assert_eq!(
             bindings.remove_saved_profile.label().as_deref(),
             Some("移除已保存配置")
@@ -5676,6 +14682,17 @@ mod tests {
             .and_then(|model| model.downcast::<gtk::StringList>().ok())
             .expect("target language labels");
         assert_eq!(target_language_model.string(0).as_deref(), Some("简体中文"));
+        bindings.source_locale.set_selected(1);
+        refresh_ui(&bindings, &state.borrow());
+        assert!(bindings.swap_locales.is_sensitive());
+        bindings.swap_locales.emit_clicked();
+        assert_eq!(bindings.source_locale.selected(), 2);
+        assert_eq!(bindings.target_locale.selected(), 1);
+        bindings.swap_locales.emit_clicked();
+        assert_eq!(bindings.source_locale.selected(), 1);
+        assert_eq!(bindings.target_locale.selected(), 0);
+        state.borrow_mut().set_locale(UiLocale::SimplifiedChinese);
+        refresh_ui(&bindings, &state.borrow());
         let theme_model = bindings
             .theme
             .model()
@@ -5719,10 +14736,34 @@ mod tests {
             &bindings.error,
             gtk::AccessibleRole::Alert
         ));
+        assert!(gtk::test_accessible_has_role(
+            &bindings.progress,
+            gtk::AccessibleRole::ProgressBar
+        ));
+        assert!(!bindings.progress.is_visible());
+        bindings.document_progress.set(Some((2, 4)));
+        refresh_ui(&bindings, &state.borrow());
+        assert!(bindings.progress.is_visible());
+        assert!((bindings.progress.fraction() - 0.5).abs() < f64::EPSILON);
+        let expected_progress = localized_template(
+            UiLocale::English,
+            "status.document_progress",
+            "{completed} of {total} segments translated",
+            &[("{completed}", "2"), ("{total}", "4")],
+        );
+        assert_eq!(
+            bindings.progress.text().as_deref(),
+            Some(expected_progress.as_str())
+        );
+        bindings.document_progress.set(None);
+        refresh_ui(&bindings, &state.borrow());
+        assert!(!bindings.progress.is_visible());
         for control in [
             bindings.saved_profile.upcast_ref::<gtk::Widget>(),
+            bindings.provider_preset.upcast_ref::<gtk::Widget>(),
             bindings.provider_name.upcast_ref::<gtk::Widget>(),
             bindings.provider_endpoint.upcast_ref::<gtk::Widget>(),
+            bindings.manual_model.upcast_ref::<gtk::Widget>(),
             bindings.provider_credential.upcast_ref::<gtk::Widget>(),
             bindings.model.upcast_ref::<gtk::Widget>(),
             bindings.source_locale.upcast_ref::<gtk::Widget>(),
@@ -5734,9 +14775,14 @@ mod tests {
         }
         for button in [
             &bindings.remove_saved_profile,
+            &bindings.test_connection,
             &bindings.connect,
             &bindings.open_source,
             &bindings.translate,
+            &bindings.copy_output,
+            &bindings.clear_workspace,
+            &bindings.swap_locales,
+            &bindings.retry_translation,
             &bindings.export_output,
             &bindings.open_output,
             &bindings.stop,
@@ -5750,7 +14796,19 @@ mod tests {
         assert!(bindings.ocr_enabled.is_focusable());
         assert!(bindings.remember_profile.is_focusable());
         assert!(bindings.fallback_enabled.is_focusable());
+        assert!(gtk::test_accessible_has_property(
+            &bindings.fallback_enabled,
+            gtk::AccessibleProperty::Label
+        ));
         assert!(bindings.fallback_profile.is_focusable());
+        assert!(gtk::test_accessible_has_relation(
+            &bindings.fallback_profile,
+            gtk::AccessibleRelation::LabelledBy
+        ));
+        assert_eq!(
+            bindings.fallback_profile_label.mnemonic_widget(),
+            Some(bindings.fallback_profile.clone().upcast::<gtk::Widget>())
+        );
         assert!(bindings.source_view.is_focusable());
         assert!(bindings.output_view.is_focusable());
         assert!(gtk::test_accessible_has_role(
@@ -5849,6 +14907,52 @@ mod tests {
         assert!(!bindings.remove_saved_profile.is_sensitive());
         assert!(bindings.connect.is_sensitive());
         let demo_endpoint = bindings.provider_endpoint.text().to_string();
+        bindings.locale.set_selected(1);
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            state.borrow().locale() == UiLocale::SimplifiedChinese
+        });
+        show_new_profile_in_form(&bindings, &state.borrow())
+            .expect("initialize localized provider profile form");
+        assert_eq!(
+            bindings.provider_name.text().as_str(),
+            "本地 OpenAI 兼容提供商"
+        );
+        assert!(bindings.manual_model_row.is_visible());
+        bindings.provider_preset.set_selected(2);
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            bindings.manual_model_row.is_visible()
+        });
+        bindings
+            .provider_endpoint
+            .set_text(DEFAULT_ANTHROPIC_ENDPOINT);
+        bindings.manual_model.set_text("");
+        bindings.connect.emit_clicked();
+        assert_eq!(state.borrow().status(), AppStatus::Failed);
+        assert!(
+            state
+                .borrow()
+                .error_text()
+                .is_some_and(|text| text.contains("Anthropic model ID"))
+        );
+        assert!(state.borrow().active_provider().is_none());
+        show_new_profile_in_form(&bindings, &state.borrow())
+            .expect("restore custom provider profile after Anthropic validation");
+        bindings.provider_preset.set_selected(1);
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            bindings.provider_name.text().as_str() == "本地 Ollama 提供商"
+        });
+        assert_eq!(bindings.provider_name.text().as_str(), "本地 Ollama 提供商");
+        bindings.provider_name.set_text("用户自定义提供商");
+        bindings.provider_preset.set_selected(0);
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            bindings.provider_name.text().as_str() == "用户自定义提供商"
+        });
+        assert_eq!(bindings.provider_name.text().as_str(), "用户自定义提供商");
+        bindings.provider_endpoint.set_text(&demo_endpoint);
+        bindings.locale.set_selected(0);
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            state.borrow().locale() == UiLocale::English
+        });
         apply_worker_event(
             &bindings,
             &state,
@@ -6070,6 +15174,25 @@ mod tests {
         });
         assert_eq!(state.borrow().output(), "你好，LinguaMesh！");
         assert!(!state.borrow().has_partial_output());
+        assert!(bindings.copy_output.is_sensitive());
+        let copied_output = Rc::new(RefCell::new(None::<String>));
+        let copied_output_callback = Rc::clone(&copied_output);
+        bindings.copy_output.emit_clicked();
+        bindings.output_view.display().clipboard().read_text_async(
+            None::<&gtk::gio::Cancellable>,
+            move |result| {
+                if let Ok(Some(text)) = result {
+                    *copied_output_callback.borrow_mut() = Some(text.to_string());
+                }
+            },
+        );
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            copied_output.borrow().as_deref() == Some("你好，LinguaMesh！")
+        });
+        assert_eq!(
+            copied_output.borrow().as_deref(),
+            Some("你好，LinguaMesh！")
+        );
         assert_eq!(bindings.status.label(), "Status: Completed");
         assert!(!gtk::test_accessible_has_state(
             &bindings.workspace,
@@ -6089,6 +15212,39 @@ mod tests {
         );
         assert!(!bindings.remember_profile.is_sensitive());
         assert!(bindings.translate.is_sensitive());
+        assert!(!bindings.retry_translation.is_sensitive());
+        state
+            .borrow_mut()
+            .record_operation_failure(TranslationError::new(
+                ErrorKind::Network,
+                "The provider could not be reached.",
+            ));
+        refresh_ui(&bindings, &state.borrow());
+        assert!(bindings.retry_translation.is_sensitive());
+        bindings.retry_translation.emit_clicked();
+        assert_eq!(state.borrow().status(), AppStatus::Translating);
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().status() == AppStatus::Completed
+        });
+        assert_eq!(state.borrow().output(), "你好，LinguaMesh！");
+        assert!(!bindings.retry_translation.is_sensitive());
+        assert!(bindings.clear_workspace.is_sensitive());
+        bindings.clear_workspace.emit_clicked();
+        assert_eq!(state.borrow().source_text(), "");
+        assert_eq!(state.borrow().output(), "");
+        assert_eq!(
+            bindings
+                .source
+                .text(
+                    &bindings.source.start_iter(),
+                    &bindings.source.end_iter(),
+                    true,
+                )
+                .as_str(),
+            ""
+        );
+        assert!(!bindings.clear_workspace.is_sensitive());
+        assert_eq!(state.borrow().status(), AppStatus::Ready);
         apply_worker_event(&bindings, &state, &worker, WorkerEvent::Stopped);
         refresh_ui(&bindings, &state.borrow());
         assert!(state.borrow().worker_unavailable());
@@ -6131,10 +15287,22 @@ mod tests {
             OPENAI_ADAPTER_TYPE.to_owned(),
             "http://127.0.0.1:4242/v1/".to_owned(),
             None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            30,
+            10,
+            60,
+            None,
+            None,
+            None,
             Some("fake-translator".to_owned()),
         )
-        .map(|profile| profile.with_enabled(false))
         .expect("first restored profile");
+        let restored_profile_a_disabled = restored_profile_a.clone().with_enabled(false);
         let restored_profile_b = custom_provider_profile(
             ProviderProfileId::parse("profile-b").expect("second profile ID"),
             "Restored provider B".to_owned(),
@@ -6142,6 +15310,18 @@ mod tests {
             OPENAI_ADAPTER_TYPE.to_owned(),
             "http://127.0.0.1:4243/v1/".to_owned(),
             Some(SecretRef::new(SecretRefNamespace::SecretService)),
+            Some("Restored profile note".to_owned()),
+            Some("org-restored".to_owned()),
+            Some("project-restored".to_owned()),
+            Some("eu-west-1".to_owned()),
+            Some("tenant-restored".to_owned()),
+            None,
+            30,
+            10,
+            60,
+            None,
+            None,
+            None,
             Some("fake-slow-translator".to_owned()),
         )
         .expect("second restored profile");
@@ -6188,8 +15368,141 @@ mod tests {
             restored_bindings.provider_endpoint.text(),
             "http://127.0.0.1:4243/v1/"
         );
+        assert_eq!(
+            restored_bindings.provider_notes.text(),
+            "Restored profile note"
+        );
+        assert_eq!(
+            restored_bindings.provider_organization.text(),
+            "org-restored"
+        );
+        assert_eq!(
+            restored_bindings.provider_project.text(),
+            "project-restored"
+        );
+        assert_eq!(restored_bindings.provider_region.text(), "eu-west-1");
+        assert_eq!(
+            restored_bindings.provider_account_identifier.text(),
+            "tenant-restored"
+        );
         assert!(restored_bindings.remember_profile.is_active());
         assert_eq!(restored_bindings.model.selected(), 0);
+        let candidate_a = RoutingCandidate::new("profile-a", "fake-translator", true, 64 * 1024)
+            .expect("first routing candidate");
+        let candidate_b =
+            RoutingCandidate::new("profile-b", "fake-slow-translator", true, 64 * 1024)
+                .expect("second routing candidate");
+        let routing_profile = RoutingProfile::new(
+            "gtk-routing-fixture",
+            RoutingMode::Ordered,
+            vec![candidate_b, candidate_a],
+            RoutingConstraints::default(),
+        )
+        .expect("routing profile");
+        show_routing_profiles_dialog(
+            &restored_bindings,
+            &restored_state,
+            &restored_worker.command_handle(),
+            vec![RoutingProfileRecord {
+                id: "gtk-routing-fixture".to_owned(),
+                profile: routing_profile,
+                created_at: 0,
+                updated_at: 0,
+            }],
+        );
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Routing profiles"))
+        });
+        let routing_dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| candidate.title().as_deref() == Some("Routing profiles"))
+            .expect("routing profile dialog");
+        let routing_widgets = descendant_widgets(routing_dialog.upcast_ref::<gtk::Widget>());
+        let movement_tooltips = routing_widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .filter_map(gtk::prelude::WidgetExt::tooltip_text)
+            .collect::<Vec<_>>();
+        assert!(
+            movement_tooltips
+                .iter()
+                .any(|text| text == "Move candidate up")
+        );
+        assert!(
+            movement_tooltips
+                .iter()
+                .any(|text| text == "Move candidate down")
+        );
+        let candidate_labels = || {
+            descendant_widgets(routing_dialog.upcast_ref::<gtk::Widget>())
+                .iter()
+                .filter_map(|widget| widget.downcast_ref::<gtk::CheckButton>())
+                .filter_map(gtk::prelude::CheckButtonExt::label)
+                .map(|label| label.to_string())
+                .filter(|label| label.starts_with("Restored provider "))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            candidate_labels(),
+            vec![
+                "Restored provider A · fake-translator",
+                "Restored provider B · fake-slow-translator",
+            ]
+        );
+        let candidate_a_row = descendant_widgets(routing_dialog.upcast_ref::<gtk::Widget>())
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Box>())
+            .find(|row| {
+                row.first_child()
+                    .and_then(|child| child.downcast::<gtk::CheckButton>().ok())
+                    .and_then(|check| check.label())
+                    .is_some_and(|label| label == "Restored provider A · fake-translator")
+            })
+            .cloned()
+            .expect("first routing candidate row");
+        let candidate_a_check = candidate_a_row
+            .first_child()
+            .and_then(|child| child.downcast::<gtk::CheckButton>().ok())
+            .expect("candidate checkbox");
+        let candidate_a_up = candidate_a_check
+            .next_sibling()
+            .and_then(|child| child.downcast::<gtk::Button>().ok())
+            .expect("candidate up button");
+        let candidate_a_down = candidate_a_up
+            .next_sibling()
+            .and_then(|child| child.downcast::<gtk::Button>().ok())
+            .expect("candidate down button");
+        candidate_a_down.emit_clicked();
+        assert_eq!(
+            candidate_labels(),
+            vec![
+                "Restored provider B · fake-slow-translator",
+                "Restored provider A · fake-translator",
+            ]
+        );
+        candidate_a_up.emit_clicked();
+        assert_eq!(
+            candidate_labels(),
+            vec![
+                "Restored provider A · fake-translator",
+                "Restored provider B · fake-slow-translator",
+            ]
+        );
+        routing_dialog.close();
+        apply_worker_event(
+            &restored_bindings,
+            &restored_state,
+            &restored_worker,
+            WorkerEvent::ProfilesRestored {
+                profiles: vec![restored_profile_b.clone(), restored_profile_a_disabled],
+                active_profile_id: Some(restored_profile_b.id().clone()),
+            },
+        );
+        refresh_ui(&restored_bindings, &restored_state.borrow());
         apply_worker_event(
             &restored_bindings,
             &restored_state,
@@ -6335,11 +15648,63 @@ mod tests {
         );
         assert_eq!(restored_bindings.status.label(), "Status: Unavailable");
         assert!(!restored_bindings.connect.is_sensitive());
+        run_gtk_native_ollama_preset_flow(&application);
         let _ = restored_worker.try_send(WorkerCommand::Shutdown);
         restored_window.close();
-
         let _ = worker.try_send(WorkerCommand::Shutdown);
         window.close();
         let _ = fs::remove_dir_all(restored_database_directory);
+    }
+
+    // 验证 Linux 客户端沿用桌面高对比度和减少动画设置，不覆盖用户的系统偏好。
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_accessibility_preferences_follow_desktop_settings() {
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.AccessibilityPreferencesTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK accessibility test application");
+
+        let (window, bindings, theme, locale) = create_window(&application);
+        let settings = gtk::Settings::default().expect("GTK settings");
+        let previous_theme = settings.gtk_theme_name().map(|value| value.to_string());
+        let previous_animations = settings.is_gtk_enable_animations();
+        let previous_font = settings.gtk_font_name().map(|value| value.to_string());
+        settings.set_gtk_theme_name(Some("HighContrast"));
+        settings.set_gtk_enable_animations(false);
+        settings.set_gtk_font_name(Some("Sans 24"));
+
+        let display = gtk::prelude::RootExt::display(&window);
+        let manager = adw::StyleManager::for_display(&display);
+        assert!(
+            manager.is_high_contrast(),
+            "libadwaita did not detect the desktop high-contrast theme"
+        );
+        assert!(
+            !adw::is_animations_enabled(window.upcast_ref::<gtk::Widget>()),
+            "libadwaita did not follow the desktop reduced-motion setting"
+        );
+        let title_context = bindings.onboarding_title.pango_context();
+        title_context.changed();
+        let title_font = title_context
+            .font_description()
+            .expect("Pango title font description");
+        assert!(
+            title_font.size() >= 24 * gtk::pango::SCALE,
+            "GTK text scaling did not reach the title Pango context: {}",
+            title_font.size()
+        );
+
+        settings.set_gtk_theme_name(previous_theme.as_deref());
+        settings.set_gtk_enable_animations(previous_animations);
+        settings.set_gtk_font_name(previous_font.as_deref());
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
     }
 }

@@ -4,6 +4,7 @@ use crate::ocr::OcrPage;
 use linguamesh_document::{
     DocumentError, DocumentFormat, DocumentJob, DocumentSegment, DocumentSegmentKind,
 };
+use linguamesh_domain::FileLease;
 
 /// 限制通过原生文本导入进入编辑器的最大字节数。
 pub const MAX_TEXT_FILE_BYTES: usize = 4 * 1024 * 1024;
@@ -19,6 +20,8 @@ pub enum TextImportError {
     UnsupportedFormat,
     /// 文档的结构或字段无效。
     InvalidStructure,
+    /// 宿主在文档读取期间撤销了文件 lease。
+    LeaseExpired,
 }
 
 impl fmt::Display for TextImportError {
@@ -34,6 +37,7 @@ impl fmt::Display for TextImportError {
             Self::InvalidStructure => {
                 formatter.write_str("The selected document structure is invalid.")
             }
+            Self::LeaseExpired => formatter.write_str("The selected document lease expired."),
         }
     }
 }
@@ -61,6 +65,22 @@ pub fn decode_document_job(
     contents: &[u8],
 ) -> Result<DocumentJob, TextImportError> {
     let job = DocumentJob::from_utf8(source_name, contents).map_err(map_document_error)?;
+    Ok(job)
+}
+
+/// 只在宿主文件 lease 有效期间解析文档，避免继续使用已撤销的借用资源。
+pub fn decode_document_job_with_lease(
+    lease: &FileLease,
+    source_name: &str,
+    contents: &[u8],
+) -> Result<DocumentJob, TextImportError> {
+    lease
+        .ensure_active()
+        .map_err(|_| TextImportError::LeaseExpired)?;
+    let job = decode_document_job(source_name, contents)?;
+    lease
+        .ensure_active()
+        .map_err(|_| TextImportError::LeaseExpired)?;
     Ok(job)
 }
 
@@ -133,10 +153,207 @@ fn map_document_error(error: DocumentError) -> TextImportError {
 mod tests {
     use super::{
         MAX_TEXT_FILE_BYTES, TextImportError, decode_document_contents, decode_document_job,
-        decode_text_contents, document_job_from_ocr,
+        decode_document_job_with_lease, decode_text_contents, document_job_from_ocr,
     };
     use crate::ocr::OcrPage;
     use linguamesh_document::DocumentSegmentKind;
+    use linguamesh_domain::FileLease;
+    use std::io::{Cursor, Read, Write};
+    use zip::ZipArchive;
+    use zip::write::{SimpleFileOptions, ZipWriter};
+
+    fn docx_fixture() -> Vec<u8> {
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        let options = SimpleFileOptions::default();
+        writer
+            .start_file("[Content_Types].xml", options)
+            .expect("content types");
+        writer
+            .write_all(
+                b"<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"/>",
+            )
+            .expect("content types bytes");
+        writer
+            .start_file("word/document.xml", options)
+            .expect("document");
+        writer
+            .write_all(
+                br#"<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="urn:w"><w:body><w:p><w:r><w:t>Hello &amp; world</w:t></w:r></w:p><w:tbl><w:tr><w:tc><w:p><w:r><w:t>Cell</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:body></w:document>"#,
+            )
+            .expect("document bytes");
+        writer
+            .start_file("word/header1.xml", options)
+            .expect("header");
+        writer
+            .write_all(br#"<w:hdr xmlns:w="urn:w"><w:p><w:r><w:t>Header</w:t></w:r></w:p></w:hdr>"#)
+            .expect("header bytes");
+        writer
+            .start_file("word/media/image.bin", options)
+            .expect("image");
+        writer.write_all(&[1, 2, 3, 4]).expect("image bytes");
+        writer.finish().expect("docx archive").into_inner()
+    }
+
+    // 构造包含宏或签名部件的最小 OOXML 包，验证 Linux 导入边界复用 Core 拒绝规则。
+    fn unsupported_ooxml_fixture(part_name: &str) -> Vec<u8> {
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        let options = SimpleFileOptions::default();
+        writer
+            .start_file("[Content_Types].xml", options)
+            .expect("content types");
+        writer.write_all(b"<Types/>").expect("content types bytes");
+        writer
+            .start_file("word/document.xml", options)
+            .expect("document");
+        writer
+            .write_all(br#"<w:document xmlns:w="urn:w"><w:body><w:p><w:r><w:t>Hello</w:t></w:r></w:p></w:body></w:document>"#)
+            .expect("document bytes");
+        writer
+            .start_file(part_name, options)
+            .expect("unsupported part");
+        writer.write_all(b"unsupported").expect("unsupported bytes");
+        writer.finish().expect("OOXML archive").into_inner()
+    }
+
+    fn xlsx_fixture() -> Vec<u8> {
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        let options = SimpleFileOptions::default();
+        writer
+            .start_file("[Content_Types].xml", options)
+            .expect("content types");
+        writer.write_all(b"<Types/>").expect("content types bytes");
+        writer
+            .start_file("xl/workbook.xml", options)
+            .expect("workbook");
+        writer
+            .write_all(
+                br#"<workbook xmlns="urn:x"><sheets><sheet name="Sheet1"/></sheets></workbook>"#,
+            )
+            .expect("workbook bytes");
+        writer
+            .start_file("xl/sharedStrings.xml", options)
+            .expect("shared strings");
+        writer
+            .write_all(
+                br#"<sst xmlns="urn:x"><si><t>Hello &amp; world</t></si><si><t>Shared</t></si></sst>"#,
+            )
+            .expect("shared strings bytes");
+        writer
+            .start_file("xl/worksheets/sheet1.xml", options)
+            .expect("worksheet");
+        writer
+            .write_all(
+                br#"<worksheet xmlns="urn:x"><sheetData><row><c t="inlineStr"><is><t>Inline</t></is></c><c t="s"><v>0</v></c><c><f>SUM(A1:A2)</f><v>3</v></c><c><v>42</v></c></row></sheetData></worksheet>"#,
+            )
+            .expect("worksheet bytes");
+        writer
+            .start_file("xl/media/image.bin", options)
+            .expect("image");
+        writer.write_all(&[8, 9, 10]).expect("image bytes");
+        writer.finish().expect("xlsx archive").into_inner()
+    }
+
+    fn pptx_fixture() -> Vec<u8> {
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        let options = SimpleFileOptions::default();
+        writer
+            .start_file("[Content_Types].xml", options)
+            .expect("content types");
+        writer.write_all(b"<Types/>").expect("content types bytes");
+        writer
+            .start_file("ppt/presentation.xml", options)
+            .expect("presentation");
+        writer
+            .write_all(br#"<p:presentation xmlns:p="urn:ppt"><p:sldMasterIdLst/></p:presentation>"#)
+            .expect("presentation bytes");
+        writer
+            .start_file("ppt/slides/slide1.xml", options)
+            .expect("slide");
+        writer
+            .write_all(
+                br#"<p:sld xmlns:p="urn:ppt" xmlns:a="urn:dml"><p:cSld><p:spTree><a:p><a:r><a:t>Slide &amp; title</a:t></a:r></a:p><a:p><a:r><a:t>Body</a:t></a:r></a:p></p:spTree></p:cSld></p:sld>"#,
+            )
+            .expect("slide bytes");
+        writer
+            .start_file("ppt/notesSlides/notesSlide1.xml", options)
+            .expect("notes");
+        writer
+            .write_all(
+                br#"<p:notes xmlns:p="urn:ppt" xmlns:a="urn:dml"><a:p><a:r><a:t>Speaker note</a:t></a:r></a:p></p:notes>"#,
+            )
+            .expect("notes bytes");
+        writer
+            .start_file("ppt/media/image.bin", options)
+            .expect("image");
+        writer.write_all(&[5, 6, 7]).expect("image bytes");
+        writer.finish().expect("pptx archive").into_inner()
+    }
+
+    fn traversal_docx_fixture() -> Vec<u8> {
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        let options = SimpleFileOptions::default();
+        writer
+            .start_file("[Content_Types].xml", options)
+            .expect("content types");
+        writer.write_all(b"<Types/>").expect("content types bytes");
+        writer
+            .start_file("../outside.txt", options)
+            .expect("traversal entry");
+        writer.write_all(b"unsafe").expect("traversal bytes");
+        writer
+            .start_file("word/document.xml", options)
+            .expect("document");
+        writer
+            .write_all(br#"<w:document xmlns:w="urn:w"><w:body><w:p><w:r><w:t>Safe</w:t></w:r></w:p></w:body></w:document>"#)
+            .expect("document bytes");
+        writer.finish().expect("docx archive").into_inner()
+    }
+
+    fn oversized_docx_fixture() -> Vec<u8> {
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        let options =
+            SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+        writer
+            .start_file("[Content_Types].xml", options)
+            .expect("content types");
+        writer.write_all(b"<Types/>").expect("content types bytes");
+        writer
+            .start_file("word/document.xml", options)
+            .expect("document");
+        writer
+            .write_all(br#"<w:document xmlns:w="urn:w"><w:body><w:p><w:r><w:t>Safe</w:t></w:r></w:p></w:body></w:document>"#)
+            .expect("document bytes");
+        writer
+            .start_file("word/large.bin", options)
+            .expect("large resource");
+        writer
+            .write_all(&vec![b'x'; MAX_TEXT_FILE_BYTES + 1])
+            .expect("large resource bytes");
+        writer.finish().expect("docx archive").into_inner()
+    }
+
+    fn suspicious_compression_ratio_docx_fixture() -> Vec<u8> {
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        let options =
+            SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+        writer
+            .start_file("[Content_Types].xml", options)
+            .expect("content types");
+        writer.write_all(b"<Types/>").expect("content types bytes");
+        writer
+            .start_file("word/document.xml", options)
+            .expect("document");
+        writer
+            .write_all(br#"<w:document xmlns:w="urn:w"><w:body><w:p><w:r><w:t>Safe</w:t></w:r></w:p></w:body></w:document>"#)
+            .expect("document bytes");
+        writer
+            .start_file("word/repetitive.bin", options)
+            .expect("repetitive resource");
+        writer
+            .write_all(&vec![b'x'; 512 * 1024])
+            .expect("repetitive resource bytes");
+        writer.finish().expect("docx archive").into_inner()
+    }
 
     #[test]
     fn decodes_utf8_and_removes_bom() {
@@ -157,6 +374,16 @@ mod tests {
         assert_eq!(
             decode_text_contents(&contents),
             Err(TextImportError::TooLarge)
+        );
+    }
+
+    #[test]
+    fn document_decode_rejects_an_expired_file_lease() {
+        let lease = FileLease::desktop_path("file:///tmp/lease.txt").expect("lease");
+        lease.expire();
+        assert_eq!(
+            decode_document_job_with_lease(&lease, "lease.txt", b"Hello"),
+            Err(TextImportError::LeaseExpired)
         );
     }
 
@@ -293,5 +520,176 @@ mod tests {
         assert_eq!(job.segments[0].source_text, "[OCR page 1]");
         assert_eq!(job.pending_count(), 2);
         assert_eq!(job.segments[2].source_text, "[OCR page 2]");
+    }
+
+    #[test]
+    fn imports_docx_and_rebuilds_text_without_dropping_package_parts() {
+        let source = docx_fixture();
+        let mut job = decode_document_job("sample.docx", &source).expect("docx job");
+        assert_eq!(job.pending_count(), 3);
+        let prose_indices = job
+            .segments
+            .iter()
+            .enumerate()
+            .filter(|(_, segment)| segment.kind == DocumentSegmentKind::Prose)
+            .map(|(index, _)| index)
+            .collect::<Vec<_>>();
+        for (index, translated) in prose_indices
+            .into_iter()
+            .zip(["你好 & 世界", "单元格", "页眉"])
+        {
+            job.apply_translation(index, translated)
+                .expect("translation");
+        }
+        let rebuilt = job.reconstruct_bytes().expect("rebuild docx");
+        let mut archive = ZipArchive::new(Cursor::new(rebuilt)).expect("rebuilt archive");
+        let mut document = String::new();
+        archive
+            .by_name("word/document.xml")
+            .expect("document entry")
+            .read_to_string(&mut document)
+            .expect("document xml");
+        assert!(document.contains("你好 &amp; 世界"));
+        assert!(document.contains("单元格"));
+        let mut header = String::new();
+        archive
+            .by_name("word/header1.xml")
+            .expect("header entry")
+            .read_to_string(&mut header)
+            .expect("header xml");
+        assert!(header.contains("页眉"));
+        let mut image = Vec::new();
+        archive
+            .by_name("word/media/image.bin")
+            .expect("image entry")
+            .read_to_end(&mut image)
+            .expect("image bytes");
+        assert_eq!(image, [1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn imports_xlsx_and_preserves_unselected_values_and_formulas() {
+        let source = xlsx_fixture();
+        let mut job = decode_document_job("sample.xlsx", &source).expect("xlsx job");
+        assert_eq!(job.pending_count(), 3);
+        let prose_segments = job
+            .segments
+            .iter()
+            .enumerate()
+            .filter(|(_, segment)| segment.kind == DocumentSegmentKind::Prose)
+            .map(|(index, segment)| (index, segment.source_text.clone()))
+            .collect::<Vec<_>>();
+        for (index, source_text) in prose_segments {
+            let translated = if source_text == "Hello & world" {
+                "你好 & 世界"
+            } else {
+                source_text.as_str()
+            };
+            job.apply_translation(index, translated)
+                .expect("translation");
+        }
+        let rebuilt = job.reconstruct_bytes().expect("rebuild xlsx");
+        let mut archive = ZipArchive::new(Cursor::new(rebuilt)).expect("rebuilt archive");
+        let mut shared_strings = String::new();
+        archive
+            .by_name("xl/sharedStrings.xml")
+            .expect("shared strings entry")
+            .read_to_string(&mut shared_strings)
+            .expect("shared strings xml");
+        assert!(shared_strings.contains("你好 &amp; 世界"));
+        assert!(shared_strings.contains("Shared"));
+        let mut worksheet = String::new();
+        archive
+            .by_name("xl/worksheets/sheet1.xml")
+            .expect("worksheet entry")
+            .read_to_string(&mut worksheet)
+            .expect("worksheet xml");
+        assert!(worksheet.contains("Inline"));
+        assert!(worksheet.contains("<f>SUM(A1:A2)</f>"));
+        assert!(worksheet.contains("<v>42</v>"));
+        let mut image = Vec::new();
+        archive
+            .by_name("xl/media/image.bin")
+            .expect("image entry")
+            .read_to_end(&mut image)
+            .expect("image bytes");
+        assert_eq!(image, [8, 9, 10]);
+    }
+
+    #[test]
+    fn imports_pptx_and_preserves_notes_and_resources() {
+        let source = pptx_fixture();
+        let mut job = decode_document_job("sample.pptx", &source).expect("pptx job");
+        assert_eq!(job.pending_count(), 3);
+        let prose_indices = job
+            .segments
+            .iter()
+            .enumerate()
+            .filter(|(_, segment)| segment.kind == DocumentSegmentKind::Prose)
+            .map(|(index, _)| index)
+            .collect::<Vec<_>>();
+        for index in prose_indices {
+            job.apply_translation(index, "译文").expect("translation");
+        }
+        let rebuilt = job.reconstruct_bytes().expect("rebuild pptx");
+        let mut archive = ZipArchive::new(Cursor::new(rebuilt)).expect("rebuilt archive");
+        let mut slide = String::new();
+        archive
+            .by_name("ppt/slides/slide1.xml")
+            .expect("slide entry")
+            .read_to_string(&mut slide)
+            .expect("slide xml");
+        assert!(slide.contains("译文"));
+        let mut notes = String::new();
+        archive
+            .by_name("ppt/notesSlides/notesSlide1.xml")
+            .expect("notes entry")
+            .read_to_string(&mut notes)
+            .expect("notes xml");
+        assert!(notes.contains("译文"));
+        let mut image = Vec::new();
+        archive
+            .by_name("ppt/media/image.bin")
+            .expect("image entry")
+            .read_to_end(&mut image)
+            .expect("image bytes");
+        assert_eq!(image, [5, 6, 7]);
+    }
+
+    #[test]
+    fn rejects_docx_archive_path_traversal_before_import() {
+        assert_eq!(
+            decode_document_job("unsafe.docx", &traversal_docx_fixture()),
+            Err(TextImportError::InvalidStructure)
+        );
+    }
+
+    #[test]
+    fn rejects_docx_archive_with_oversized_uncompressed_entry() {
+        assert_eq!(
+            decode_document_job("oversized.docx", &oversized_docx_fixture()),
+            Err(TextImportError::TooLarge)
+        );
+    }
+
+    #[test]
+    fn rejects_docx_archive_with_suspicious_compression_ratio() {
+        assert_eq!(
+            decode_document_job(
+                "suspicious-ratio.docx",
+                &suspicious_compression_ratio_docx_fixture(),
+            ),
+            Err(TextImportError::TooLarge)
+        );
+    }
+
+    #[test]
+    fn rejects_macro_and_signature_ooxml_packages_before_import() {
+        for part_name in ["word/vbaProject.bin", "_xmlsignatures/sig1.xml"] {
+            assert_eq!(
+                decode_document_job("unsupported.docx", &unsupported_ooxml_fixture(part_name)),
+                Err(TextImportError::UnsupportedFormat)
+            );
+        }
     }
 }

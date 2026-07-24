@@ -1,16 +1,118 @@
 use crate::localization;
 use linguamesh_domain::{
-    ErrorKind, Glossary, ModelDescriptor, TranslationError, TranslationEvent,
-    TranslationPrivacyMode, TranslationRequest,
+    ErrorKind, Glossary, ModelDescriptor, TranslationError, TranslationEvent, TranslationPreset,
+    TranslationPrivacyMode, TranslationQualityMode, TranslationRequest, UsageRecord,
 };
-pub use linguamesh_domain::{ProviderProfile, ProviderProfileId};
-use linguamesh_protocol::PROTOCOL_VERSION;
+pub use linguamesh_domain::{ProviderProfile, ProviderProfileId, RoutingMode};
+use linguamesh_protocol::{ABI_VERSION_MAJOR, PROTOCOL_VERSION};
 use std::collections::HashSet;
 use std::error::Error;
 use std::fmt;
 
 /// 当前检查点提供的本地提供商标识。
 pub const LOCAL_FAKE_PROVIDER_ID: &str = "local-fake-provider";
+
+// 将 GTK 下拉框的稳定顺序映射到 Core 路由模式。
+#[must_use]
+pub const fn routing_mode_for_selection(index: u32) -> RoutingMode {
+    match index {
+        0 => RoutingMode::Manual,
+        1 => RoutingMode::Ordered,
+        _ => RoutingMode::Automatic,
+    }
+}
+
+// 按界面候选顺序筛选已保存的提供商标识，拒绝不存在的标识。
+#[must_use]
+pub fn ordered_routing_profile_ids(
+    saved_profiles: &[ProviderProfile],
+    selected_ids: &[ProviderProfileId],
+) -> Vec<ProviderProfileId> {
+    selected_ids
+        .iter()
+        .filter(|selected_id| {
+            saved_profiles
+                .iter()
+                .any(|profile| profile.id() == *selected_id)
+        })
+        .cloned()
+        .collect()
+}
+
+// 移动路由候选并保持边界安全，供 GTK 上下移动按钮复用。
+#[must_use]
+pub fn move_routing_profile_id(
+    ids: &mut [ProviderProfileId],
+    profile_id: &ProviderProfileId,
+    offset: isize,
+) -> bool {
+    let Some(index) = ids.iter().position(|id| id == profile_id) else {
+        return false;
+    };
+    let Ok(index) = isize::try_from(index) else {
+        return false;
+    };
+    let target = index.saturating_add(offset);
+    if target < 0 || target >= isize::try_from(ids.len()).unwrap_or(isize::MAX) {
+        return false;
+    }
+    let Ok(target) = usize::try_from(target) else {
+        return false;
+    };
+    ids.swap(index.cast_unsigned(), target);
+    true
+}
+
+// 将路由候选移动到另一个候选之前，供 GTK 拖放排序复用。
+#[must_use]
+pub fn move_routing_profile_id_before(
+    ids: &mut Vec<ProviderProfileId>,
+    dragged_id: &ProviderProfileId,
+    target_id: &ProviderProfileId,
+) -> bool {
+    if dragged_id == target_id {
+        return false;
+    }
+    let Some(dragged_index) = ids.iter().position(|id| id == dragged_id) else {
+        return false;
+    };
+    let Some(target_index) = ids.iter().position(|id| id == target_id) else {
+        return false;
+    };
+    let dragged = ids.remove(dragged_index);
+    let adjusted_target = if dragged_index < target_index {
+        target_index.saturating_sub(1)
+    } else {
+        target_index
+    };
+    ids.insert(adjusted_target, dragged);
+    true
+}
+
+/// 记录最近一次普通文本请求的非敏感路由决策摘要。
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RoutingDecisionSummary {
+    /// 使用的路由配置标识。
+    pub profile_id: String,
+    /// 选中的提供商标识。
+    pub provider_id: String,
+    /// 选中的模型标识。
+    pub model_id: String,
+    /// 通过约束的候选数量。
+    pub eligible_count: usize,
+    /// 被约束拒绝的候选数量。
+    pub rejected_count: usize,
+    /// 配置允许的显式回退候选数量。
+    pub fallback_count: usize,
+    /// 通过约束的候选稳定键，不包含端点、凭据或用户内容。
+    pub eligible_candidates: Vec<String>,
+    /// 被拒绝候选及其稳定原因代码。
+    pub rejected_candidates: Vec<String>,
+    /// 自动模式使用的稳定排名输入摘要。
+    pub ranking_inputs: Vec<String>,
+    /// 配置允许的显式回退候选稳定键顺序。
+    pub fallback_order: Vec<String>,
+}
 
 /// 描述原生客户端的可见操作状态。
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -138,11 +240,15 @@ pub enum UiLocale {
     Arabic,
     /// 使用印地语目录。
     Hindi,
+    /// 使用带扩展字符的伪英文目录进行布局测试。
+    PseudoAccentedEnglish,
+    /// 使用带 RTL 标记的伪阿拉伯语目录进行布局测试。
+    PseudoRtlArabic,
 }
 
 impl UiLocale {
     /// 返回原生界面下拉框使用的稳定顺序。
-    pub const ALL: [Self; 12] = [
+    pub const ALL: [Self; 14] = [
         Self::English,
         Self::SimplifiedChinese,
         Self::TraditionalChinese,
@@ -155,6 +261,8 @@ impl UiLocale {
         Self::Russian,
         Self::Arabic,
         Self::Hindi,
+        Self::PseudoAccentedEnglish,
+        Self::PseudoRtlArabic,
     ];
 
     /// 返回界面中显示的名称。
@@ -173,6 +281,8 @@ impl UiLocale {
             Self::Russian => "Russian",
             Self::Arabic => "Arabic",
             Self::Hindi => "Hindi",
+            Self::PseudoAccentedEnglish => "Pseudo English (Accented)",
+            Self::PseudoRtlArabic => "Pseudo Arabic (RTL)",
         }
     }
 
@@ -192,6 +302,8 @@ impl UiLocale {
             Self::Russian => "ru",
             Self::Arabic => "ar",
             Self::Hindi => "hi",
+            Self::PseudoAccentedEnglish => "en-XA",
+            Self::PseudoRtlArabic => "ar-XB",
         }
     }
 
@@ -208,7 +320,7 @@ impl UiLocale {
     /// 返回是否需要从右向左的文字方向。
     #[must_use]
     pub const fn is_rtl(self) -> bool {
-        matches!(self, Self::Arabic)
+        matches!(self, Self::Arabic | Self::PseudoRtlArabic)
     }
 }
 
@@ -355,17 +467,21 @@ pub struct AppState {
     target_locale: String,
     glossary: Option<Glossary>,
     privacy_mode: TranslationPrivacyMode,
+    quality_mode: TranslationQualityMode,
+    translation_preset: TranslationPreset,
     translation_history_count: usize,
     translation_history_enabled: bool,
     translation_memory_count: usize,
     translation_memory_enabled: bool,
     output: String,
     partial_output: bool,
+    usage: Option<UsageRecord>,
     status: AppStatus,
     error: Option<TranslationError>,
     theme: ThemePreference,
     locale: UiLocale,
     last_sequence: Option<u64>,
+    routing_decision: Option<RoutingDecisionSummary>,
 }
 
 impl Default for AppState {
@@ -389,17 +505,21 @@ impl Default for AppState {
             target_locale: "zh-CN".to_owned(),
             glossary: None,
             privacy_mode: TranslationPrivacyMode::Standard,
+            quality_mode: TranslationQualityMode::Balanced,
+            translation_preset: TranslationPreset::general(),
             translation_history_count: 0,
             translation_history_enabled: true,
             translation_memory_count: 0,
             translation_memory_enabled: true,
             output: String::new(),
             partial_output: false,
+            usage: None,
             status: AppStatus::Disconnected,
             error: None,
             theme: ThemePreference::System,
             locale: UiLocale::English,
             last_sequence: None,
+            routing_decision: None,
         }
     }
 }
@@ -415,6 +535,12 @@ impl AppState {
     #[must_use]
     pub const fn worker_unavailable(&self) -> bool {
         matches!(self.worker_startup, WorkerStartup::Failed)
+    }
+
+    /// 指示当前普通文本请求是否允许用户显式重试。
+    #[must_use]
+    pub const fn can_retry_translation(&self) -> bool {
+        matches!(self.status, AppStatus::Cancelled | AppStatus::Failed)
     }
 
     /// 标记工作线程已准备接受用户命令。
@@ -489,6 +615,29 @@ impl AppState {
             .and_then(|profile_id| saved_profile_by_id(&self.saved_profiles, profile_id))
     }
 
+    /// 更新已保存配置的非秘密健康状态。
+    pub fn update_saved_profile_health(
+        &mut self,
+        profile: ProviderProfile,
+    ) -> Result<(), StateError> {
+        let Some(index) = self
+            .saved_profiles
+            .iter()
+            .position(|saved_profile| saved_profile.id() == profile.id())
+        else {
+            return Err(StateError::InvalidSavedProfile);
+        };
+        self.saved_profiles[index] = profile.clone();
+        if self
+            .active_provider
+            .as_ref()
+            .is_some_and(|active| active.id() == profile.id())
+        {
+            self.active_provider = Some(profile);
+        }
+        Ok(())
+    }
+
     /// 返回兼容单配置调用方的当前表单配置。
     #[must_use]
     pub fn saved_profile(&self) -> Option<&ProviderProfile> {
@@ -549,6 +698,17 @@ impl AppState {
         self.selected_model.as_deref()
     }
 
+    /// 返回最近一次普通文本请求的非敏感路由决策摘要。
+    #[must_use]
+    pub const fn routing_decision(&self) -> Option<&RoutingDecisionSummary> {
+        self.routing_decision.as_ref()
+    }
+
+    /// 记录一次普通文本请求的路由决策摘要。
+    pub fn record_routing_decision(&mut self, decision: RoutingDecisionSummary) {
+        self.routing_decision = Some(decision);
+    }
+
     /// 返回正在等待工作线程确认的模型标识。
     #[must_use]
     pub fn pending_model_selection(&self) -> Option<&str> {
@@ -571,6 +731,12 @@ impl AppState {
     #[must_use]
     pub fn output(&self) -> &str {
         &self.output
+    }
+
+    /// 返回最近一次完成事件携带的归一化 usage。
+    #[must_use]
+    pub fn usage(&self) -> Option<&UsageRecord> {
+        self.usage.as_ref()
     }
 
     /// 指示输出是否为未完成结果。
@@ -1028,6 +1194,22 @@ impl AppState {
         self.source_text = source_text.into();
     }
 
+    /// 清空文本工作区内容并回到可继续编辑的空闲状态，不改变提供商与界面设置。
+    pub fn clear_workspace(&mut self) {
+        self.source_text.clear();
+        self.output.clear();
+        self.partial_output = false;
+        self.usage = None;
+        self.error = None;
+        self.last_sequence = None;
+        self.routing_decision = None;
+        self.status = if self.active_provider.is_some() {
+            AppStatus::Ready
+        } else {
+            AppStatus::Disconnected
+        };
+    }
+
     /// 更新可选源语言标签。
     pub fn set_source_locale(&mut self, source_locale: Option<String>) {
         self.source_locale = source_locale;
@@ -1053,6 +1235,18 @@ impl AppState {
     #[must_use]
     pub const fn privacy_mode(&self) -> TranslationPrivacyMode {
         self.privacy_mode
+    }
+
+    /// 返回当前请求的质量与调用策略。
+    #[must_use]
+    pub const fn quality_mode(&self) -> TranslationQualityMode {
+        self.quality_mode
+    }
+
+    /// 返回当前请求使用的无秘密语言风格预设。
+    #[must_use]
+    pub fn translation_preset(&self) -> &TranslationPreset {
+        &self.translation_preset
     }
 
     /// 指示当前请求是否启用隐身模式。
@@ -1120,6 +1314,16 @@ impl AppState {
         self.privacy_mode = privacy_mode;
     }
 
+    /// 更新当前请求的质量与调用策略。
+    pub const fn set_quality_mode(&mut self, quality_mode: TranslationQualityMode) {
+        self.quality_mode = quality_mode;
+    }
+
+    /// 更新当前请求使用的无秘密语言风格预设。
+    pub fn set_translation_preset(&mut self, preset: TranslationPreset) {
+        self.translation_preset = preset;
+    }
+
     /// 更新外观偏好。
     pub const fn set_theme(&mut self, theme: ThemePreference) {
         self.theme = theme;
@@ -1164,8 +1368,11 @@ impl AppState {
             request = request.with_glossary(glossary);
         }
         request = request.with_privacy_mode(self.privacy_mode);
+        request = request.with_quality_mode(self.quality_mode);
+        request = request.with_preset(self.translation_preset.clone());
         self.output.clear();
         self.partial_output = false;
+        self.usage = None;
         self.status = AppStatus::Translating;
         self.error = None;
         self.last_sequence = None;
@@ -1194,6 +1401,7 @@ impl AppState {
         }
         self.output.clear();
         self.partial_output = false;
+        self.usage = None;
         self.status = AppStatus::Translating;
         self.error = None;
         self.last_sequence = None;
@@ -1276,7 +1484,8 @@ impl AppState {
                 self.output.push_str(&text);
                 self.partial_output = true;
             }
-            TranslationEvent::Completed { .. } => {
+            TranslationEvent::Completed { usage, .. } => {
+                self.usage = usage;
                 self.status = AppStatus::Completed;
                 self.partial_output = false;
             }
@@ -1323,6 +1532,7 @@ impl AppState {
                 ErrorKind::Network => "Network",
                 ErrorKind::Timeout => "Timeout",
                 ErrorKind::Authentication => "Authentication",
+                ErrorKind::RateLimited => "Rate limited",
                 ErrorKind::ModelUnavailable => "Model unavailable",
                 ErrorKind::MalformedResponse => "Malformed response",
                 ErrorKind::Persistence => "Persistence",
@@ -1343,7 +1553,7 @@ impl AppState {
         self.error.as_ref().map(|error| {
             let (category_key, category_fallback) = error_category(error.kind);
             let category = localization::text(locale, category_key, category_fallback);
-            let message = localized_error_message(locale, &error.message);
+            let message = localized_error_message(locale, &error.message, error.retry_after_ms);
             format!("{category}: {message}")
         })
     }
@@ -1352,7 +1562,7 @@ impl AppState {
     #[must_use]
     pub fn diagnostics_text(&self) -> String {
         format!(
-            "Core protocol: {PROTOCOL_VERSION}\nOnboarding: {}\nProvider: {}\nProvider saved: {}\nProfile storage: {}\nSaved profiles: {}\nSaved profile: {}\nPersisted active profile: {}\nSaved model: {}\nModel selected: {}\nModel selection pending: {}\nProfile deletion pending: {}\nStatus: {}\nTheme: {}\nLocale: {}\nOutput bytes: {}",
+            "Core protocol: {PROTOCOL_VERSION}\nOnboarding: {}\nProvider: {}\nProvider saved: {}\nProfile storage: {}\nSaved profiles: {}\nSaved profile: {}\nPersisted active profile: {}\nSaved model: {}\nModel selected: {}\nModel selection pending: {}\nProfile deletion pending: {}\nRouting decision: {}\nStatus: {}\nTheme: {}\nLocale: {}\nOutput bytes: {}",
             self.onboarding_stage().label(),
             yes_no(self.active_provider.is_some()),
             yes_no(self.active_provider_is_saved()),
@@ -1375,12 +1585,298 @@ impl AppState {
                 "No"
             },
             yes_no(self.pending_profile_deletion.is_some()),
+            routing_decision_text(self.routing_decision.as_ref()),
             self.status.label(),
             self.theme.label(),
             self.locale.language_tag(),
             self.output.len()
         )
     }
+
+    /// 返回带有当前界面语言的非敏感诊断摘要。
+    #[must_use]
+    #[allow(clippy::too_many_lines)]
+    pub fn localized_diagnostics_text(&self, locale: UiLocale) -> String {
+        let summary = localization::text(
+            locale,
+            "diagnostics.summary",
+            "Core ABI {core_abi} · Protocol {protocol}",
+        )
+        .replace("{core_abi}", &ABI_VERSION_MAJOR.to_string())
+        .replace("{protocol}", &PROTOCOL_VERSION.to_string());
+        let mut lines = vec![summary];
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.onboarding",
+            "Onboarding",
+            localized_onboarding_stage(locale, self.onboarding_stage()),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.provider",
+            "Provider",
+            localized_yes_no(locale, self.active_provider.is_some()),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.provider_saved",
+            "Provider saved",
+            localized_yes_no(locale, self.active_provider_is_saved()),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.profile_storage",
+            "Profile storage",
+            localized_profile_storage(locale, self.profile_storage_status),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.saved_profiles",
+            "Saved profiles",
+            self.saved_profiles.len().to_string(),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.saved_profile",
+            "Saved profile",
+            localized_yes_no(locale, self.selected_saved_profile_id.is_some()),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.persisted_active_profile",
+            "Persisted active profile",
+            localized_yes_no(locale, self.persisted_active_profile_id.is_some()),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.saved_model",
+            "Saved model",
+            localized_yes_no(
+                locale,
+                self.selected_saved_profile()
+                    .is_some_and(|profile| profile.selected_model().is_some()),
+            ),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.model_selected",
+            "Model selected",
+            localized_yes_no(locale, self.selected_model.is_some()),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.model_selection_pending",
+            "Model selection pending",
+            localized_yes_no(locale, self.pending_model_selection.is_some()),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.profile_deletion_pending",
+            "Profile deletion pending",
+            localized_yes_no(locale, self.pending_profile_deletion.is_some()),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.routing_decision",
+            "Routing decision",
+            localized_routing_decision_text(locale, self.routing_decision.as_ref()),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.status",
+            "Status",
+            localized_status(locale, self.status),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.theme",
+            "Theme",
+            localized_theme(locale, self.theme),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.locale",
+            "Locale",
+            localized_locale(locale, self.locale),
+        ));
+        lines.push(diagnostic_line(
+            locale,
+            "diagnostics.output_bytes",
+            "Output bytes",
+            self.output.len().to_string(),
+        ));
+        lines.join("\n")
+    }
+}
+
+// 将路由决策限制为稳定标识、原因代码和排名分量，避免诊断摘要包含端点、秘密或文本内容。
+fn routing_decision_text(decision: Option<&RoutingDecisionSummary>) -> String {
+    decision.map_or_else(
+        || "None".to_owned(),
+        |decision| {
+            let (eligible, rejected, ranking, fallback) = routing_decision_detail_values(decision);
+            format!(
+                "{} -> {} (eligible {}, rejected {}, fallback {}): {} | {} | {} | {}",
+                decision.profile_id,
+                decision.provider_id,
+                decision.eligible_count,
+                decision.rejected_count,
+                decision.fallback_count,
+                eligible,
+                rejected,
+                ranking,
+                fallback
+            )
+        },
+    )
+}
+
+// 使用当前界面语言展示路由细节，但只传递已经校验过的非敏感候选标识。
+fn localized_routing_decision_text(
+    locale: UiLocale,
+    decision: Option<&RoutingDecisionSummary>,
+) -> String {
+    let Some(decision) = decision else {
+        return "None".to_owned();
+    };
+    let (eligible, rejected, ranking, fallback) = routing_decision_detail_values(decision);
+    localization::text(
+        locale,
+        "diagnostics.routing_decision_details",
+        "{profile} → {selected}; eligible: {eligible}; rejected: {rejected}; ranking: {ranking}; fallback: {fallback}",
+    )
+    .replace("{profile}", &decision.profile_id)
+    .replace(
+        "{selected}",
+        &format!("{}@{}", decision.provider_id, decision.model_id),
+    )
+    .replace("{eligible}", &eligible)
+    .replace("{rejected}", &rejected)
+    .replace("{ranking}", &ranking)
+    .replace("{fallback}", &fallback)
+}
+
+// 把空集合显式显示为 None，避免诊断面板产生歧义或暴露可变端点信息。
+fn routing_decision_detail_values(
+    decision: &RoutingDecisionSummary,
+) -> (String, String, String, String) {
+    let render = |values: &[String]| {
+        if values.is_empty() {
+            "None".to_owned()
+        } else {
+            values.join(", ")
+        }
+    };
+    (
+        render(&decision.eligible_candidates),
+        render(&decision.rejected_candidates),
+        render(&decision.ranking_inputs),
+        render(&decision.fallback_order),
+    )
+}
+
+// 使用目录中的标签拼接非敏感诊断字段。
+fn diagnostic_line(
+    locale: UiLocale,
+    key: &str,
+    fallback: &str,
+    value: impl fmt::Display,
+) -> String {
+    format!("{}: {value}", localization::text(locale, key, fallback))
+}
+
+// 将布尔诊断值映射到当前界面语言。
+fn localized_yes_no(locale: UiLocale, value: bool) -> String {
+    let (key, fallback) = if value {
+        ("diagnostics.yes", "Yes")
+    } else {
+        ("diagnostics.no", "No")
+    };
+    localization::text(locale, key, fallback)
+}
+
+// 将引导阶段映射到已有的本地化阶段标签。
+fn localized_onboarding_stage(locale: UiLocale, stage: OnboardingStage) -> String {
+    let (key, fallback) = match stage {
+        OnboardingStage::Starting => ("onboarding.stage.starting", "Provider setup · Starting"),
+        OnboardingStage::Unavailable => (
+            "onboarding.stage.unavailable",
+            "Provider setup · Unavailable",
+        ),
+        OnboardingStage::ConfigureProvider => {
+            ("onboarding.stage.configure", "Provider setup · Step 1 of 2")
+        }
+        OnboardingStage::Connecting => {
+            ("onboarding.stage.connecting", "Provider setup · Connecting")
+        }
+        OnboardingStage::SelectModel => (
+            "onboarding.stage.select_model",
+            "Provider setup · Step 2 of 2",
+        ),
+        OnboardingStage::Ready => ("onboarding.stage.ready", "Provider setup · Ready"),
+    };
+    localization::text(locale, key, fallback)
+}
+
+// 将应用状态映射到已有的本地化状态标签。
+fn localized_status(locale: UiLocale, status: AppStatus) -> String {
+    let (key, fallback) = match status {
+        AppStatus::Disconnected => ("status.disconnected", "Disconnected"),
+        AppStatus::Connecting => ("status.connecting", "Connecting"),
+        AppStatus::Ready => ("status.ready", "Ready"),
+        AppStatus::Translating => ("status.translating", "Translating…"),
+        AppStatus::Cancelling => ("status.cancelling", "Cancelling"),
+        AppStatus::Completed => ("status.completed", "Completed"),
+        AppStatus::Cancelled => (
+            "status.cancelled",
+            "Translation cancelled. Partial output was kept.",
+        ),
+        AppStatus::Failed => ("status.failed", "Failed"),
+    };
+    localization::text(locale, key, fallback)
+}
+
+// 将主题偏好映射到已有的本地化主题标签。
+fn localized_theme(locale: UiLocale, theme: ThemePreference) -> String {
+    let (key, fallback) = match theme {
+        ThemePreference::System => ("theme.system", "System"),
+        ThemePreference::Light => ("theme.light", "Light"),
+        ThemePreference::Dark => ("theme.dark", "Dark"),
+    };
+    localization::text(locale, key, fallback)
+}
+
+// 将界面语言映射到已有的本地化语言名称。
+fn localized_locale(locale: UiLocale, selected: UiLocale) -> String {
+    let (key, fallback) = match selected {
+        UiLocale::English => ("locale.name.en", "English"),
+        UiLocale::SimplifiedChinese => ("locale.name.zh_hans", "Simplified Chinese"),
+        UiLocale::TraditionalChinese => ("locale.name.zh_hant", "Traditional Chinese"),
+        UiLocale::Spanish => ("locale.name.es", "Spanish"),
+        UiLocale::French => ("locale.name.fr", "French"),
+        UiLocale::German => ("locale.name.de", "German"),
+        UiLocale::Japanese => ("locale.name.ja", "Japanese"),
+        UiLocale::Korean => ("locale.name.ko", "Korean"),
+        UiLocale::BrazilianPortuguese => ("locale.name.pt_br", "Portuguese (Brazil)"),
+        UiLocale::Russian => ("locale.name.ru", "Russian"),
+        UiLocale::Arabic => ("locale.name.ar", "Arabic"),
+        UiLocale::Hindi => ("locale.name.hi", "Hindi"),
+        UiLocale::PseudoAccentedEnglish => ("locale.name.en_xa", "Pseudo English (Accented)"),
+        UiLocale::PseudoRtlArabic => ("locale.name.ar_xb", "Pseudo Arabic (RTL)"),
+    };
+    localization::text(locale, key, fallback)
+}
+
+// 将配置存储状态映射到诊断专用目录标签。
+fn localized_profile_storage(locale: UiLocale, status: ProfileStorageStatus) -> String {
+    let (key, fallback) = match status {
+        ProfileStorageStatus::Pending => ("diagnostics.profile_storage_pending", "Pending"),
+        ProfileStorageStatus::Available => ("diagnostics.profile_storage_available", "Available"),
+        ProfileStorageStatus::Unavailable => {
+            ("diagnostics.profile_storage_unavailable", "Unavailable")
+        }
+    };
+    localization::text(locale, key, fallback)
 }
 
 fn error_category(kind: ErrorKind) -> (&'static str, &'static str) {
@@ -1390,6 +1886,7 @@ fn error_category(kind: ErrorKind) -> (&'static str, &'static str) {
         ErrorKind::Network => ("error.category.network", "Network"),
         ErrorKind::Timeout => ("error.category.timeout", "Timeout"),
         ErrorKind::Authentication => ("error.category.authentication", "Authentication"),
+        ErrorKind::RateLimited => ("error.category.rate_limited", "Rate limited"),
         ErrorKind::ModelUnavailable => ("error.category.model_unavailable", "Model unavailable"),
         ErrorKind::MalformedResponse => ("error.category.malformed_response", "Malformed response"),
         ErrorKind::Persistence => ("error.category.persistence", "Persistence"),
@@ -1513,6 +2010,10 @@ fn additional_state_error_message(message: &str) -> Option<(&'static str, &'stat
         "Secure credential storage is unavailable." => (
             "error.storage.secure_unavailable",
             "Secure credential storage is unavailable.",
+        ),
+        "The Secret Service prompt was dismissed." => (
+            "error.storage.prompt_dismissed",
+            "The Secret Service prompt was dismissed.",
         ),
         "Profile storage is unavailable; use session-only mode." => (
             "error.storage.session_only",
@@ -1662,7 +2163,31 @@ fn additional_state_error_message(message: &str) -> Option<(&'static str, &'stat
     })
 }
 
-fn localized_error_message(locale: UiLocale, message: &str) -> String {
+fn localized_error_message(locale: UiLocale, message: &str, retry_after_ms: Option<u64>) -> String {
+    if message.starts_with("Provider request failed with HTTP status 401")
+        || message.starts_with("Provider request failed with HTTP status 403")
+    {
+        return localization::text(
+            locale,
+            "error.authentication",
+            "Check the provider credential and try again.",
+        );
+    }
+
+    if message.starts_with("Provider request failed with HTTP status 429") {
+        let seconds = retry_after_ms
+            .map_or(1, |milliseconds| milliseconds.saturating_add(999) / 1_000)
+            .max(1);
+        return localization::text_plural(
+            locale,
+            "error.rate_limited",
+            "Try again in {seconds} second.",
+            "Try again in {seconds} seconds.",
+            seconds,
+        )
+        .replace("{seconds}", &seconds.to_string());
+    }
+
     if let Some((key, fallback)) = state_error_message(message) {
         return localization::text(locale, key, fallback);
     }
@@ -1753,11 +2278,14 @@ const fn yes_no(value: bool) -> &'static str {
 mod tests {
     use super::{
         AppState, AppStatus, OnboardingStage, ProfileStorageStatus, ProviderProfile,
-        ProviderProfileId, StateError, ThemePreference, UiLocale,
+        ProviderProfileId, RoutingDecisionSummary, RoutingMode, StateError, ThemePreference,
+        UiLocale, move_routing_profile_id, move_routing_profile_id_before,
+        ordered_routing_profile_ids, routing_mode_for_selection,
     };
     use linguamesh_domain::{
         ErrorKind, Glossary, GlossaryEntry, ModelDescriptor, ModelSource, SecretRef,
         SecretRefNamespace, TranslationError, TranslationEvent, TranslationPrivacyMode,
+        TranslationQualityMode, UsageRecord, UsageSource,
     };
 
     fn profile(
@@ -1787,6 +2315,100 @@ mod tests {
         .expect("profile")
         .with_selected_model(selected_model.map(str::to_owned))
         .expect("selected model")
+    }
+
+    #[test]
+    fn routing_mode_dropdown_preserves_core_mode_order() {
+        assert_eq!(routing_mode_for_selection(0), RoutingMode::Manual);
+        assert_eq!(routing_mode_for_selection(1), RoutingMode::Ordered);
+        assert_eq!(routing_mode_for_selection(2), RoutingMode::Automatic);
+        assert_eq!(routing_mode_for_selection(99), RoutingMode::Automatic);
+    }
+
+    #[test]
+    fn routing_candidate_selection_preserves_order_and_rejects_unknown_profiles() {
+        let saved = vec![
+            profile(
+                "provider-a",
+                "Provider A",
+                "http://127.0.0.1:11434",
+                Some("model-a"),
+            ),
+            profile(
+                "provider-b",
+                "Provider B",
+                "http://127.0.0.1:11435",
+                Some("model-b"),
+            ),
+        ];
+        let selected = vec![
+            ProviderProfileId::parse("provider-b").expect("provider ID"),
+            ProviderProfileId::parse("missing-provider").expect("provider ID"),
+            ProviderProfileId::parse("provider-a").expect("provider ID"),
+        ];
+        assert_eq!(
+            ordered_routing_profile_ids(&saved, &selected),
+            vec![
+                ProviderProfileId::parse("provider-b").expect("provider ID"),
+                ProviderProfileId::parse("provider-a").expect("provider ID"),
+            ]
+        );
+    }
+
+    #[test]
+    fn routing_candidate_reordering_is_bounded() {
+        let mut ids = vec![
+            ProviderProfileId::parse("provider-a").expect("provider ID"),
+            ProviderProfileId::parse("provider-b").expect("provider ID"),
+            ProviderProfileId::parse("provider-c").expect("provider ID"),
+        ];
+        let provider_b = ProviderProfileId::parse("provider-b").expect("provider ID");
+        assert!(move_routing_profile_id(&mut ids, &provider_b, 1));
+        assert_eq!(ids[1].as_str(), "provider-c");
+        assert!(!move_routing_profile_id(&mut ids, &provider_b, 1));
+        assert!(move_routing_profile_id(&mut ids, &provider_b, -1));
+        assert_eq!(ids[0].as_str(), "provider-a");
+        assert!(!move_routing_profile_id(
+            &mut ids,
+            &ProviderProfileId::parse("missing-provider").expect("provider ID"),
+            1
+        ));
+    }
+
+    #[test]
+    fn routing_candidate_drag_reordering_is_bounded() {
+        let provider_a = ProviderProfileId::parse("provider-a").expect("provider ID");
+        let provider_b = ProviderProfileId::parse("provider-b").expect("provider ID");
+        let provider_c = ProviderProfileId::parse("provider-c").expect("provider ID");
+        let mut ids = vec![provider_a.clone(), provider_b.clone(), provider_c.clone()];
+        assert!(move_routing_profile_id_before(
+            &mut ids,
+            &provider_c,
+            &provider_a
+        ));
+        assert_eq!(
+            ids,
+            vec![provider_c.clone(), provider_a.clone(), provider_b.clone()]
+        );
+        assert!(move_routing_profile_id_before(
+            &mut ids,
+            &provider_a,
+            &provider_b
+        ));
+        assert_eq!(
+            ids,
+            vec![provider_c.clone(), provider_a.clone(), provider_b.clone()]
+        );
+        assert!(!move_routing_profile_id_before(
+            &mut ids,
+            &provider_a,
+            &provider_a
+        ));
+        assert!(!move_routing_profile_id_before(
+            &mut ids,
+            &ProviderProfileId::parse("missing-provider").expect("provider ID"),
+            &provider_a,
+        ));
     }
 
     fn discovered_model(id: &str) -> ModelDescriptor {
@@ -1843,6 +2465,47 @@ mod tests {
             state.privacy_mode(),
             linguamesh_domain::TranslationPrivacyMode::Incognito
         );
+    }
+
+    #[test]
+    fn request_carries_quality_mode_without_changing_privacy_policy() {
+        let mut state = connected_state();
+        state.set_quality_mode(TranslationQualityMode::Best);
+        let request = state.begin_translation().expect("request");
+        assert_eq!(request.quality_mode, TranslationQualityMode::Best);
+        assert_eq!(request.privacy_mode, TranslationPrivacyMode::Standard);
+    }
+
+    #[test]
+    fn failed_text_translation_can_be_retried_with_the_original_request_state() {
+        let mut state = connected_state();
+        state.record_operation_failure(TranslationError::new(
+            ErrorKind::Network,
+            "The provider could not be reached.",
+        ));
+        assert!(state.can_retry_translation());
+        let request = state.begin_translation().expect("retry request");
+        assert_eq!(request.source_text, "Hello");
+        assert_eq!(request.target_locale, "zh-CN");
+        assert_eq!(request.model_id, "fake-translator");
+        assert!(!state.can_retry_translation());
+    }
+
+    #[test]
+    fn clear_workspace_removes_text_result_and_request_diagnostics() {
+        let mut state = connected_state();
+        state.record_operation_failure(TranslationError::new(
+            ErrorKind::Network,
+            "The provider could not be reached.",
+        ));
+        state.set_document_output("partial");
+        state.clear_workspace();
+        assert_eq!(state.source_text(), "");
+        assert_eq!(state.output(), "");
+        assert!(!state.has_partial_output());
+        assert!(state.usage().is_none());
+        assert!(state.error_text().is_none());
+        assert_eq!(state.status(), AppStatus::Ready);
     }
 
     #[test]
@@ -1995,6 +2658,44 @@ mod tests {
                 Some(expected)
             );
         }
+    }
+
+    #[test]
+    fn localized_diagnostics_use_catalog_summary_without_sensitive_values() {
+        let mut state = AppState::default();
+        state.set_source_text("diagnostic source must not appear");
+        let diagnostics = state.localized_diagnostics_text(UiLocale::SimplifiedChinese);
+        assert!(diagnostics.starts_with("Core ABI 1 · 协议 1"));
+        assert!(diagnostics.contains("引导: 提供商设置 · 正在启动"));
+        assert!(diagnostics.contains("提供商: 否"));
+        assert!(diagnostics.contains("配置存储: 待处理"));
+        assert!(!diagnostics.contains("diagnostic source must not appear"));
+    }
+
+    #[test]
+    fn routing_decision_diagnostics_keep_only_safe_identifiers_and_counts() {
+        let mut state = AppState::default();
+        state.record_routing_decision(RoutingDecisionSummary {
+            profile_id: "route-local".to_owned(),
+            provider_id: "provider-local".to_owned(),
+            model_id: "model-local".to_owned(),
+            eligible_count: 2,
+            rejected_count: 1,
+            fallback_count: 1,
+            eligible_candidates: vec!["provider-local@model-local".to_owned()],
+            rejected_candidates: vec!["provider-remote@model-remote (RemoteDisallowed)".to_owned()],
+            ranking_inputs: vec!["provider-local@model-local [1,0]".to_owned()],
+            fallback_order: vec!["provider-fallback@model-fallback".to_owned()],
+        });
+
+        let diagnostics = state.localized_diagnostics_text(UiLocale::SimplifiedChinese);
+        assert!(diagnostics.contains("路由决策: route-local → provider-local@model-local"));
+        assert!(diagnostics.contains("合格：provider-local@model-local"));
+        assert!(diagnostics.contains("拒绝：provider-remote@model-remote (RemoteDisallowed)"));
+        assert!(diagnostics.contains("排名：provider-local@model-local [1,0]"));
+        assert!(diagnostics.contains("回退：provider-fallback@model-fallback"));
+        assert!(!diagnostics.contains("127.0.0.1"));
+        assert!(!diagnostics.contains("secret"));
     }
 
     fn state_with_profile_storage() -> AppState {
@@ -2388,10 +3089,17 @@ mod tests {
             .expect("delta");
         assert!(state.has_partial_output());
         state
-            .apply_translation_event(TranslationEvent::Completed { sequence: 2 })
+            .apply_translation_event(TranslationEvent::Completed {
+                sequence: 2,
+                usage: Some(UsageRecord::locally_estimated("Hello", "你好")),
+            })
             .expect("completed");
         assert_eq!(state.output(), "你好");
         assert_eq!(state.status(), AppStatus::Completed);
+        assert_eq!(
+            state.usage().map(|usage| usage.source),
+            Some(UsageSource::LocallyEstimated)
+        );
         assert!(!state.has_partial_output());
     }
 
@@ -2455,10 +3163,50 @@ mod tests {
     }
 
     #[test]
+    fn http_authentication_failures_use_localized_actionable_copy() {
+        for message in [
+            "Provider request failed with HTTP status 401 Unauthorized.",
+            "Provider request failed with HTTP status 403 Forbidden.",
+        ] {
+            let mut state = AppState::default();
+            state.provider_failed(TranslationError::new(ErrorKind::Authentication, message));
+            let localized = state
+                .localized_error_text(UiLocale::SimplifiedChinese)
+                .expect("localized authentication error");
+            assert_eq!(localized, "身份验证: 请检查提供商凭据，然后重试。");
+            assert!(!localized.contains("401"));
+            assert!(!localized.contains("403"));
+        }
+    }
+
+    #[test]
+    fn http_rate_limit_uses_retry_hint_and_localized_actionable_copy() {
+        let mut state = AppState::default();
+        state.provider_failed(
+            TranslationError::new(
+                ErrorKind::RateLimited,
+                "Provider request failed with HTTP status 429 Too Many Requests.",
+            )
+            .with_retry_after_ms(Some(2_500)),
+        );
+        assert_eq!(
+            state
+                .localized_error_text(UiLocale::SimplifiedChinese)
+                .as_deref(),
+            Some("请求受限: 请在 3 秒后重试。")
+        );
+        assert_eq!(
+            state.error_text().as_deref(),
+            Some("Rate limited: Provider request failed with HTTP status 429 Too Many Requests.")
+        );
+    }
+
+    #[test]
     fn alpha_two_error_kinds_have_actionable_categories() {
         let cases = [
             (ErrorKind::InvalidConfiguration, "Invalid configuration"),
             (ErrorKind::UnsupportedCapability, "Unsupported capability"),
+            (ErrorKind::RateLimited, "Rate limited"),
             (ErrorKind::SecretUnavailable, "Secret unavailable"),
             (
                 ErrorKind::SecureStorageUnavailable,
@@ -2481,7 +3229,10 @@ mod tests {
         let mut state = connected_state();
         state.begin_translation().expect("request");
         assert_eq!(
-            state.apply_translation_event(TranslationEvent::Completed { sequence: 1 }),
+            state.apply_translation_event(TranslationEvent::Completed {
+                sequence: 1,
+                usage: None,
+            }),
             Err(StateError::UnexpectedFirstEvent)
         );
     }
@@ -3402,7 +4153,10 @@ mod tests {
             Some("local-fake-provider")
         );
         state
-            .apply_translation_event(TranslationEvent::Completed { sequence: 1 })
+            .apply_translation_event(TranslationEvent::Completed {
+                sequence: 1,
+                usage: None,
+            })
             .expect("completed");
         assert_eq!(state.status(), AppStatus::Completed);
     }

@@ -23,22 +23,47 @@ as `Starting`, `Unavailable`, `Configure provider`, `Connecting`, `Select model`
 parallel wizard state or persisted completion flag can race startup, restoration, pending model
 confirmation, or rollback.
 
+Every model entry rendered by the connected GTK selector includes its Core source provenance beside
+the display name: localized `Discovered`, `Catalog`, or `Manual`. The source is presentation-only;
+the selected model ID and provider profile remain the persisted non-secret contract, and a failed
+discovery never removes a manually configured model.
+
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `81be0b8be9d7115b98eae3f134b4fd0f25411bbb`; compared with the prior
-alpha.2 pin, it makes file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW` and adds streamed
-protected-span and request-level glossary restoration. The required contract
+functional revision is `9e69d01cbae1ca0421923e059aa3252c4ecbe1be`; compared with the prior
+pin, it adds the explicit source-language prompt hint and translation-prompt-v3 identity, while
+retaining the Linux-only non-locking `unix-none` VFS fail-closed regression and
+registry-backed ABI 1 opaque engine-handle lifetime hardening and making file-backed SQLite opens include `SQLITE_OPEN_NOFOLLOW`, adding streamed
+protected-span and request-level glossary restoration, and rejects suspicious OOXML compression
+ratios and unsupported macro/signature parts before XML inspection. Core now advertises the bounded
+`file_lease_v1` lifecycle, engine-scoped ABI lifecycle controls, and one-shot bounded document
+consumption. Its storage tests also cover replaying a committed provider profile from a WAL sidecar
+after a reader snapshot and writer disconnect. On Linux, the ABI can duplicate a registered POSIX descriptor for the bounded document
+snapshot; the direct GTK path still validates the lease around portal-backed reads and revokes it
+after the document bytes are copied into the bounded job. Provider adapters also carry
+bounded `Retry-After` hints into typed errors; Linux applies cancellation-aware bounded backoff
+and an in-memory circuit breaker before trying the next approved candidate. The required contract
 is exact Core `0.1.0-alpha.2`, ABI 1, protocol 1, provider catalog `0.1.0`, and these features:
 
 - `cancellation_v1`
 - `compatibility_negotiation_v1`
+- `file_lease_v1`
 - `typed_rust_host_secret_broker_v1`
 - `model_discovery_v1`
 - `protected_spans_v1`
+- `long_text_chunking_v1`
 - `bounded_text_document_v1`
+- `routing_planner_v1`
+- `translation_quality_modes_v1`
+- `translation_presets_v1`
 - `streaming_text_v1`
 - `text_translation_v1`
+- `usage_records_v1`
+
+HTTP 429 responses are normalized by Core to the shared `RateLimited` category. Linux keeps the
+bounded `Retry-After` hint, renders a localized category, and presents a plural retry instruction;
+it does not infer quota exhaustion or provider billing from response bodies.
 
 The worker loads every stored profile and the last activated ID before the development fake service
 starts on loopback and emits `DemoProviderReady`, which only supplies an endpoint when no restored
@@ -56,15 +81,116 @@ Translation commands receive ordered Core events, preserve partial output, and t
 typed terminal result. Provider URL policy, HTTP, SSE parsing, prompts, credential use, and
 translation cancellation remain in Core.
 
+The current Linux storage checkpoint also registers a distinct test VFS name over Core's validated
+`unix-excl` callbacks, then proves schema migration, provider-profile persistence/reopen, and the
+symlink/no-follow rejection through that registration path. This validates host registration and
+callback wiring only; arbitrary third-party VFS implementations and physical power-loss behavior
+remain outside the evidence.
+
 The pinned Core also protects common URLs, email addresses, Markdown code, and placeholders before
 prompt construction. The adapter restores those spans across split streamed deltas and rejects
 missing, duplicate, or changed markers as typed malformed responses; Linux therefore never renders
 provider output that structurally drops one of these spans.
 
-The Linux text workspace adds an in-memory request-level glossary field. Core validates duplicate
+The text workspace exposes Core's `Fast`, `Balanced`, and `Best` quality modes as a request-scoped
+selector. Fast uses one direct pass, Balanced adds deterministic output checks, and Best asks the
+model for an internal critique and revision before final text. Core does not add hidden paid
+follow-up calls. Document jobs persist the selected mode in schema 17 and reuse it for each segment
+after pause, retry, or restart. Schema 18 persists the selected translation preset with the same
+bounded, non-secret validation.
+
+The same workspace exposes native **Copy translation**, **Swap languages**, and **Clear workspace**
+actions. Copy sends only the current output buffer to GTK's system clipboard; it is disabled when
+output is empty, and clipboard contents never enter Core storage, diagnostics, or notifications. Swap
+exchanges the supported English/Chinese selector pair locally without sending a worker command or
+changing editor contents; unsupported Auto-source and Japanese-target combinations remain disabled.
+Clear removes source/output text, request diagnostics, and transient file notices locally without
+sending a worker command or changing provider, locale, glossary, or history settings. It also exposes localized `General`, `Technical`, `Marketing`, `English (United States)`,
+and `Chinese (Simplified, Mainland China)` translation presets. The last two carry bounded
+`en-US`/`Latn` and `zh-CN`/`Hans` regional-locale and script preferences. The reducer stores the
+selected Core `TranslationPreset` and attaches it to ordinary text and document requests;
+compatibility negotiation requires `translation_presets_v1`. Presets are bounded request metadata,
+not executable instructions or credentials, and document jobs persist and reuse the selected preset
+through schema 18 after pause, retry, or restart.
+
+Completed ordinary text requests may carry Core's optional `UsageRecord`. Linux persists normalized
+usage metadata through Core schema 32 in the same transaction as translation history and renders a
+localized output line with a provider-reported, locally estimated, or unknown source label. The
+record contains only bounded token counts, source, model ID, and a sanitized provider ID; source
+text, translated text, endpoints, and credentials are excluded. Translation-memory hits use a
+local estimate, while provider billing semantics and pricing remain outside this slice. Incognito and
+disabled-history requests write neither history nor usage, and history trimming, deletion, and
+clear-history remove corresponding usage rows. Core's ABI 1 command now also projects
+bounded non-secret organization, project, and custom-header metadata for native clients; Linux's
+direct Rust path continues to use its typed application contract.
+
+The Linux GTK form consumes the bundled Core provider catalog for adapter compatibility and model
+listing policy before creating a window; a stale mapping fails closed. Its localized labels and
+endpoint defaults remain native UI data. The provider catalog's `local-loopback` preset uses the
+OpenAI-compatible `/v1/` adapter, while its loopback-only `ollama` preset uses Core's native `/api/` adapter. The Linux form also exposes the
+localized Anthropic Messages preset backed by Core's `anthropic_messages` manual-model adapter and
+the Google Gemini preset backed by `gemini_generate_content`. Gemini discovers only models that
+advertise `generateContent`, streams `/v1beta/` SSE candidates, and sends an optional credential as
+`x-goog-api-key`; its deterministic fixture does not represent live account/quota validation.
+The Linux worker also runs the same contract through `ProviderManager` and the GTK-facing worker
+path, deliberately selecting the discovered `gemini-2.0-flash` model before translation.
+Anthropic defaults to HTTPS `/v1/`, requires a non-empty Model ID before Connect, and validates that
+ID before resolving any host SecretRef. The worker's deterministic native
+fixture covers `/api/tags` model discovery and `/api/chat` NDJSON streaming with explicit model
+selection. The GTK provider form now exposes all six presets, restores the selected preset for saved
+profiles, and changes untouched default fields when the user switches protocol. The opt-in harness
+also passed against an independently running Docker Ollama daemon and an installed Qwen GGUF model;
+GPU execution remains outside this prerelease evidence. Azure OpenAI uses Core's
+`azure_openai_chat` adapter: the resource endpoint is validated before the session secret is
+resolved, the deployment name is supplied manually as the selected model, API version `2024-10-21`
+is pinned, and the credential is sent only as the `api-key` header. Azure deployment enumeration is
+not attempted. The serialized GTK protocol-preset fixture drives both Gemini and Azure through the
+production Connect, model-selection, and streamed Translate handlers. Anthropic is also driven
+through the production fixture with its manual model and `/v1/messages` stream, proving native
+request shaping and session-secret clearing without claiming live provider account or quota
+interoperability. The GTK form exposes all six presets and restores the selected preset for saved
+profiles.
+
+OpenAI Responses uses Core's `openai_responses` adapter with the shared `/v1/models` discovery
+endpoint and `/v1/responses` translation endpoint. The client sends the credential only through
+the Bearer header and consumes typed SSE events, including `response.output_text.delta` and
+`response.completed`; metadata events are not treated as translated text.
+
+All GTK presets expose an optional manual model field. Core uses provider-native or
+protocol-compatible model discovery first, then keeps a validated selected model as a `Manual`
+entry when discovery returns no models or a typed `ModelUnavailable` response. Authentication,
+network, and timeout failures are not converted into a manual-model success.
+
+The Linux text workspace accepts an in-memory request-level glossary field. Core validates duplicate
 rules and credential-shaped terms, selects only locale-matching entries, protects immutable names,
-and restores required target terms after streaming; glossary content is not part of saved provider
-profiles or SQLite persistence.
+and restores required target terms after streaming. Reusable glossary libraries are now persisted
+by Core schema 33 as bounded `glossaries` and `glossary_terms` rows; the Linux worker exposes
+validated save/list/delete commands, while credentials and endpoints remain outside the schema. The
+GTK text workspace exposes a modal **Glossary libraries** selector and **Save glossary library**
+action: loading a record copies its validated terms into the request editor, and deletion uses the
+stable Core-owned ID. TBX import and cross-client library parity remain outside this Linux slice.
+
+The GTK routing-profile dialog maps a stable dropdown order to Core's `Manual`, `Ordered`, and
+`Automatic` modes. A separate **Allow approved fallback** checkbox records explicit consent and is
+disabled by default; the worker still applies Core's policy that manual and document dispatches do
+not fall through to another candidate. Saved provider/model pairs are exposed as focusable
+candidate checkboxes with adjacent up/down controls; the icon controls use catalog-backed accessible
+labels, rows can be dragged before another candidate. Manual mode normalizes the saved selection to
+the first displayed provider/model pair, while Ordered and Automatic persist the selected chain in
+displayed order. Existing records load their mode, explicit fallback consent,
+candidate order, and stable ID back into the same editor; saving replaces that ID through the
+storage upsert without exposing secrets. New profiles use Core-compatible 1–128 byte ASCII IDs;
+edit mode locks the existing ID so references remain stable, and new profiles reject duplicate IDs
+before reaching the upsert path.
+The serialized GTK lifecycle fixture also deselects a saved candidate, persists the edited record,
+reloads it through the worker, and confirms the reduced chain and locked ID remain intact. It then
+uses and deletes that record through the production dialog, applies `RoutingProfileDeleted`, clears
+the selected profile ID, and verifies the worker's refreshed profile list is empty.
+
+The same dialog imports and exports a bounded JSON exchange format. Core serializes only validated
+profile fields (candidate capabilities and privacy constraints); endpoint, credential, user-content,
+unknown-field, malformed, non-UTF-8, and over-64-KiB payloads are rejected. Imports never overwrite
+an existing ID, so replacing a profile remains an explicit in-app edit.
 
 Core also performs bounded long-text chunking before provider calls. It prefers paragraph, sentence,
 and whitespace boundaries, treats protected markers as indivisible, streams chunks in source order,
@@ -83,17 +209,25 @@ persisted **Save translation memory** policy independently gates a bounded Core 
 identity includes normalized source, locales, provider/model, chunking options, glossary,
 protected-span policy, prompt-template version, and quality mode. Incognito bypasses lookup and
 write; **View translation memory** supports inspection, escaped TSV export, exact deletion, and
-clear-all.
+clear-all. **Clear temporary files** is a bounded Linux-only privacy action: after native
+confirmation it removes only direct children of the system temporary directory whose names begin
+with `linguamesh-ocr-` or `.linguamesh-export-`; it does not follow unrelated paths or run during
+active translation/OCR work.
 
 The native text-file path delegates TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF format detection and bounded UTF-8/BOM handling to
 Core's `bounded_text_document_v1` contract. It preserves the original LF/CRLF/CR line endings and
 classifies Markdown fenced code and blank structure as verbatim segments before the editor receives
-the source text. Core schema 14 and the worker persist bounded pending/running/paused job snapshots
+the source text. Core schema 18 and the worker persist bounded pending/running/paused job snapshots
 and segment progress without source paths or credentials. Schema 8 also stores validated non-secret
 source/target locales, provider/model IDs, and optional glossary rules. Imported TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF files
 become these snapshots before translation; the worker translates pending prose segments sequentially,
-writes each completed segment, and routes safe reconstruction back to the editor. Resume and Retry
-reuse saved options only after the active runtime matches. DOCX/PPTX/XLSX/EPUB package resources remain intact while
+writes each completed segment through the confirmed provider or selected saved document-capable
+routing candidate, emits a typed non-sensitive routing decision, and routes safe reconstruction back
+to the editor. Document jobs keep fallback disabled even when a routing profile permits explicit
+fallback. Resume and Retry reuse saved options, including quality mode and translation preset, only after the active runtime matches; routed jobs
+also persist the non-secret routing-profile ID and reconnect that profile before selecting the next
+candidate after restart.
+DOCX/PPTX/XLSX/EPUB package resources remain intact while
 supported text parts are rewritten under the same 4 MiB package and 512-entry limits. PDF extraction
 keeps page association, coordinates where available, and uncertain reading-order boundaries; ASCII
 text streams are rewritten when safe and other text encodings use a structured page-aware HTML
@@ -101,8 +235,23 @@ alternative. Core also exposes configurable subtitle line-length and reading-spe
 cue number; the Linux UI renders only those numbers and fixed guidance text. EPUB preserves
 metadata, navigation, CSS, and binary resources while rewriting visible XHTML/HTML text and updating
 OPF language metadata at export. Encrypted, malformed, traversal, and DTD-bearing packages are rejected.
-Multi-job queue presentation remains outside
-this slice.
+The GTK surface presents multiple persisted jobs for explicit selection. The worker runs up to four
+document jobs concurrently, with per-job bounded event delivery, cancellation, pause state, and
+segment persistence isolated by job ID. A fifth start, or a duplicate start for an active job, is
+rejected with a typed configuration error without changing the persisted job snapshot. The UI still
+uses explicit selection for queue actions. Each saved row also exposes a localized destructive
+confirmation that deletes only the persisted job and segment metadata; the worker rejects deletion
+while any document job is active, and the editor keeps its source/output buffers unchanged after a
+successful deletion. The broader release gate remains prerelease.
+
+Local exports use a same-directory temporary file and a non-overwriting move. Linux synchronizes
+the completed temporary file and its parent directory before the move, then synchronizes the parent
+again after finalization; a failed barrier is reported as an output-write error. Non-local URIs use
+exclusive creation because the application cannot verify a remote parent or atomic rename. This is a
+bounded crash-durability barrier, not physical power-loss or alternate-VFS evidence. The focused
+`local_export_sync_barrier_accepts_file_and_parent_directory` regression exercises the local file
+and nested parent-directory descriptors directly; the serialized GTK writer fixture remains the
+authoritative end-to-end path.
 
 Image-only PDF pages are a separate, explicit opt-in path. The GTK toggle is only used when Core
 reports a PDF with no extractable text. The worker then invokes `pdftoppm` and `tesseract` through
@@ -114,8 +263,31 @@ breaches become fixed localized errors, and the default path remains unchanged w
 
 With `gui`, `src/main.rs` binds this state and worker to GTK 4/libadwaita widgets. GTK objects remain
 on the main context, which processes at most 64 queued events per timer tick without performing
-network work. The shell exposes a saved-profile dropdown, provider name, endpoint, optional session
-credential, explicit Connect, **Remember profile, model, and credential in Secret Service**,
+network work. The shell exposes a saved-profile dropdown, provider name, endpoint, optional
+non-secret profile notes, bounded non-secret custom request headers, bounded secret custom request
+headers, optional organization identifier, optional proxy URL without embedded credentials,
+optional session credential, explicit
+Connect, **Remember profile, model, and credential in Secret Service**. Core forwards bounded
+custom headers, Secret Service-backed secret custom headers, and the organization identifier only to
+OpenAI-compatible Chat/Responses requests;
+authorization, credential-shaped, and built-in metadata headers are rejected before persistence.
+The validated HTTP/HTTPS/SOCKS5 proxy URL is persisted as non-secret profile metadata and applied
+to every Core provider transport without changing provider request logic. Core schema 26 persists
+a bounded total provider request timeout from 1 to 600 seconds, schema 27 persists a bounded
+connection-establishment timeout from 1 to 120 seconds (default 10), and schema 28 persists a
+bounded streaming idle timeout from 1 to 300 seconds (default 60). All three are applied
+independently to the OpenAI Chat/Responses/Azure, Anthropic, Gemini, and Ollama transports; the
+streaming idle budget resets after each received response chunk. Schema 29 persists an optional
+bounded PEM trust bundle that augments system roots; malformed bundles and private-key material are
+rejected, and TLS verification is never disabled.
+
+The optional client-certificate identity is a combined PEM value resolved once through the host
+secret broker. The Linux test-only HTTPS fixture requires that identity during a real rustls
+handshake and returns model discovery only after client authentication succeeds; companion
+untrusted-server, wrong-SAN, and untrusted-client-CA fixtures prove that the configured trust
+bundle, hostname verification, and mutual client authentication remain enforced. Generated test
+keys remain in a private temporary directory and are never part of profile storage or diagnostics.
+Other adapters ignore the OpenAI-specific metadata,
 **Remove saved profile**,
 model selection, source and target locales, source and streamed output editors, native **Open text
 file** import, single-file drag-and-drop onto the source editor, Translate/Stop,
@@ -153,14 +325,20 @@ directory. The X11 path also runs `tools/run-gtk-keyboard-focus-test.sh` under `
 Tab/Shift+Tab traversal for the tested controls; an application-window Capture-phase handler keeps
 the provider fields in an explicit order while preserving modified shortcuts. The
 `tools/run-gtk-atspi-test.sh` fixture separately reads the live tree through `python3-pyatspi` and
-checks the named Stop control plus both text-editor roles. These are headless protocol/backend and
-AT-SPI semantic gates, not claims about physical compositors, GPU rendering, desktop integration,
-physical desktop keyboard coverage, or Orca speech.
+checks the named Stop control plus both text-editor roles. Native CI also runs
+`tools/run-orca-atspi-test.sh`, which starts Orca with Speech Dispatcher, inspects that named control
+through AT-SPI, and checks Orca's speech-generator debug record for the Linux application tree. These remain headless
+protocol/backend and Orca-integration gates, not claims about physical compositors, GPU rendering,
+desktop integration, physical desktop keyboard coverage, human listening, or speech quality.
 
 The user-facing endpoint example is loopback. Under its shared endpoint policy, Core accepts
 loopback HTTP and also accepts HTTPS endpoints; the Linux client does not duplicate URL parsing.
-Automated client evidence covers the built-in provider and an external LinguaMesh fake provider on
-loopback, not Ollama or another third-party server.
+Automated client evidence covers the built-in provider and a deterministic Ollama-compatible
+OpenAI `/v1/` fixture on loopback. `tools/run-ollama-interop-test.sh` provides an explicit
+real-daemon path that starts an isolated local daemon when needed and runs the worker regression
+against a caller-selected installed model; the test remains opt-in because model installation is
+an external prerequisite. The Linux checkpoint passed this path against Docker
+`ollama/ollama:0.11.10` with `qwen2.5-0.5b-instruct:latest`.
 
 ## Secret lifecycle and persistence boundary
 
@@ -180,6 +358,11 @@ their random stable IDs remain distinct. Selecting a new model updates only the 
 before the in-memory confirmation is emitted, even when another row is displayed in the form. A
 failed candidate or cancellation observed before the persistence commit leaves the active manager,
 every saved row, and the restart default unchanged; a session-only switch does the same.
+
+The production GTK provider-switch fixture restores two independent saved rows, performs a streamed
+translation through A, then deliberately selects and connects B. It verifies that switching does not
+issue an inference request, that the next request reaches only B, and that each one-shot credential is
+cleared without copying A's secret into B's session.
 
 Profile deletion is a separate exact-ID command. Core commits its transactional row deletion first,
 then the worker emits success. Removing a non-default row leaves the persisted default unchanged.
@@ -202,37 +385,59 @@ directory. The Linux worker creates a private `0700` parent directory or accepts
 restrictive parent with no group or other access. It requires a regular, single-link `0600`
 database file, rejecting relative paths, symbolic links, hard links, and non-private directories.
 Core is responsible for the schema,
-migrations, transactions, and SQLite open flags. On Linux's default Unix VFS, Core's
+migrations, transactions, SQLite `synchronous=FULL` durability, and SQLite open flags. On Linux's default Unix VFS, Core's
 `SQLITE_OPEN_NOFOLLOW` open rejects any symbolic-link component in the resolved path; such a path
 produces a typed storage failure and leaves explicit session-only connections available. This
 behavior is a Linux security prerequisite for the integration and is not claimed for other VFS
 implementations.
 
 Before creating or opening the database, the host checks every existing path component for a
-symbolic link and prevalidates an existing leaf as a regular single-link file. It rechecks the
-directory after creation and the file's identity after open. This static preflight does not claim a
-directory-descriptor or `openat2` guarantee against concurrent same-UID path replacement; Core's
-no-follow open remains the final database-use gate.
+symbolic link and prevalidates an existing leaf as a regular single-link file. It then opens the
+parent with Linux `openat2(RESOLVE_NO_SYMLINKS)`, opens the final component with
+`O_NOFOLLOW | O_CLOEXEC`, and keeps that file descriptor alive while Core opens the exact
+`/proc/self/fd/<fd>` path. Core's ordinary path open remains the no-follow SQLite gate; the
+descriptor-backed API rejects paths outside that exact form. This prevents a concurrent parent
+path replacement from redirecting the migration/open operation; the regression suite also rejects
+regular-file or alternate-directory parent replacement, distinct regular-file final leaves, and
+hard-linked final leaves. A missing final leaf is created only with an exclusive open, so a file
+created after preflight is rejected. Broader filesystem and VFS guarantees remain platform-specific.
 
-Neither credential values nor session references are persisted. A runtime session reference is
-stripped before the profile reaches SQLite. When the user chooses Remember with a credential, the
-Linux GIO Secret Service adapter stores the value and SQLite retains only its persistent
-`secret-service:` reference. Restored profiles resolve that reference on explicit Connect; missing,
+Neither credential or secret custom-header values nor session references are persisted. Runtime
+session references are stripped before the profile reaches SQLite. When the user chooses Remember
+with either secret, the Linux GIO Secret Service adapter stores the value and SQLite retains only
+its persistent `secret-service:` reference. Restored profiles resolve those references on explicit Connect; missing,
 locked, unavailable, or interactive-only keyring states fail closed. There is no plaintext fallback,
 startup does not auto-connect, and the UI keeps an explicit session-only path.
 
 Native CI exercises this onboarding boundary with an authenticated loopback provider: the GTK form
-clears the credential immediately, persists only the SecretRef, reconnects after worker restart, and
-checks that the credential canary is absent from SQLite. A separate prompt fixture returns non-root
+clears credential and secret custom-header values immediately, persists only SecretRefs, reconnects
+after worker restart, and checks that secret canaries are absent from SQLite. A separate prompt fixture returns non-root
 prompt paths for store and delete and verifies the adapter fails closed; user approval and unlock UI
 remain outside the automated boundary.
 
 `l10n/linux/` is a byte-for-byte consumer snapshot of the canonical PO/MO catalogs at the revision
 enforced by `tools/sync-l10n.sh`. The GTK host parses all twelve official MO catalogs at runtime,
-switches translated action, workspace-widget, active-provider, status summary/partial-output, text-file import, provider-profile, source/target language, and onboarding stage/detail controls plus System/Light/Dark theme
+switches translated action, workspace-widget, active-provider, status summary/partial-output, text-file import, provider-profile, source/target language, editor text-metrics, routing preference/privacy/document constraints, provider/model allowlists and denylists, and quality/request-size limits plus onboarding stage/detail controls and System/Light/Dark theme
 labels without replacing active source text, applies RTL root direction for Arabic, and maps stable
 worker startup, Core compatibility, and profile-storage error sentences through the same catalog.
 Provider-specific diagnostic detail remains an explicit English fallback.
+
+The Linux source also runs two dependency-free localization audits. The key audit verifies every
+literal catalog key and its supplemental dynamic-key table against the canonical catalog. The
+visible-control audit scans GTK labels, titles, tooltips, placeholders, dialog actions, and list
+options and rejects non-empty literals that bypass the localization helper. Empty reset labels are
+allowed because they remove transient text rather than present user-facing copy.
+
+The Linux source exposes an Open-source licenses action in the main action row. It opens a modal,
+focusable `TextView` dialog loaded from the bundled `THIRD_PARTY_NOTICES.md`; no network or
+privileged access is used to build it, and legal notices remain separate from translated UI copy.
+The regression suite checks that the notice bundle contains representative names for GTK 4,
+LGPL-2.1-or-later, MIT, and LinguaMesh Core.
+
+The main action row also exposes a localized About action. Its modal read-only view shows only the
+Linux application version and the shared Core version, ABI, and protocol dimensions; when Core
+compatibility is unavailable it shows bounded `unavailable` values and never includes endpoints,
+credentials, model IDs, or translation content.
 
 The application state and worker command/event wrappers intentionally do not derive `Debug`, so
 source text and streamed output are not exposed through routine debug formatting. Diagnostics omit
@@ -247,7 +452,10 @@ not block it. UI state changes cross bounded, cancellable channels and preserve 
 The client calls the public Rust application layer directly while preserving the same observable
 event behavior as FFI clients. It must not fork provider, routing, translation, document,
 persistence, or error-domain logic. This checkpoint implements the exact compatibility gate above;
-release-manifest integration and broader product compatibility remain required before release.
+release-manifest integration and broader product compatibility remain required before release. The
+regression `reviewed_core_contract_is_required_exactly` covers every gate dimension and requires
+Core-version, ABI, protocol, provider-catalog, and required-feature mismatches to fail closed before
+provider work begins.
 
 The client owns native lifecycle, accessibility, appearance, keyboard behavior, file dialogs,
 portals, drag-and-drop, clipboard, notifications, XDG paths, desktop metadata, display-server
@@ -268,5 +476,13 @@ profile fields does not weaken that boundary. File and directory handling
 must follow XDG locations, restrictive permissions, portal leases, and cleanup rules. Wayland is
 required; the headless Wayland gate and practical X11/Xvfb gate cover the current real-widget slice,
 while physical compositor and broader desktop coverage remain incomplete.
+
+Before Core opens the pinned profile descriptor, Linux inspects any existing SQLite `-wal` and
+`-shm` sidecars through the pinned parent descriptor and rejects symbolic links, non-regular files,
+and hard-linked aliases. The pinned parent descriptor and pre-open sidecar identities are retained
+through Core migration/open; existing sidecars are inspected again afterward and a changed identity
+fails closed. SQLite-created sidecars that were absent at preflight are still required to be private
+regular files. Replacement after the second inspection and non-default SQLite VFS behavior remain
+outside the current claim.
 
 Changes affecting shared contracts, the security model, display support, GTK/libadwaita policy, or distribution packaging require central compatibility review. GTK and other LGPL dependencies require documented license compliance before distribution.

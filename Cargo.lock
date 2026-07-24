@@ -982,6 +982,10 @@ version = "0.1.0-alpha.2"
 dependencies = [
  "linguamesh-domain",
  "linguamesh-engine",
+ "linguamesh-provider-anthropic",
+ "linguamesh-provider-api",
+ "linguamesh-provider-gemini",
+ "linguamesh-provider-ollama",
  "linguamesh-provider-openai",
  "tokio",
  "tokio-util",
@@ -1003,8 +1007,10 @@ dependencies = [
 name = "linguamesh-domain"
 version = "0.1.0-alpha.2"
 dependencies = [
+ "quick-xml",
  "secrecy",
  "serde",
+ "serde_json",
  "thiserror",
  "url",
  "uuid",
@@ -1034,10 +1040,13 @@ dependencies = [
  "linguamesh-domain",
  "linguamesh-engine",
  "linguamesh-protocol",
+ "linguamesh-provider-catalog",
  "linguamesh-storage",
  "linguamesh-testkit",
+ "rustix",
  "tokio",
  "tokio-util",
+ "zip",
 ]
 
 [[package]]
@@ -1048,11 +1057,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "linguamesh-provider-anthropic"
+version = "0.1.0-alpha.2"
+dependencies = [
+ "async-stream",
+ "async-trait",
+ "bytes",
+ "futures-util",
+ "linguamesh-domain",
+ "linguamesh-provider-api",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-util",
+]
+
+[[package]]
 name = "linguamesh-provider-api"
 version = "0.1.0-alpha.2"
 dependencies = [
  "async-trait",
  "futures-core",
+ "httpdate",
  "linguamesh-domain",
  "tokio-util",
 ]
@@ -1064,6 +1091,40 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+]
+
+[[package]]
+name = "linguamesh-provider-gemini"
+version = "0.1.0-alpha.2"
+dependencies = [
+ "async-stream",
+ "async-trait",
+ "bytes",
+ "futures-util",
+ "linguamesh-domain",
+ "linguamesh-provider-api",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-util",
+]
+
+[[package]]
+name = "linguamesh-provider-ollama"
+version = "0.1.0-alpha.2"
+dependencies = [
+ "async-stream",
+ "async-trait",
+ "bytes",
+ "futures-util",
+ "linguamesh-domain",
+ "linguamesh-provider-api",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-util",
 ]
 
 [[package]]
@@ -1105,6 +1166,12 @@ dependencies = [
  "tokio",
  "tokio-util",
 ]
+
+[[package]]
+name = "linux-raw-sys"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32a66949e030da00e8c7d4434b251670a91556f4144941d37452769c25d58a53"
 
 [[package]]
 name = "litemap"
@@ -1457,6 +1524,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cfcb3a22ef46e85b45de6ee7e79d063319ebb6594faafcf1c225ea92ab6e9b92"
 dependencies = [
  "semver",
+]
+
+[[package]]
+name = "rustix"
+version = "1.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6fe4565b9518b83ef4f91bb47ce29620ca828bd32cb7e408f0062e9930ba190"
+dependencies = [
+ "bitflags",
+ "errno",
+ "libc",
+ "linux-raw-sys",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

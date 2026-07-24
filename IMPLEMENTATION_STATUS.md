@@ -1,15 +1,4050 @@
 # Implementation Status
 
-Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics, live AT-SPI tree export checks, a headless GTK keyboard traversal fixture for tested controls, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF document-job translation with sequential segment persistence, bounded DOCX/PPTX/XLSX/EPUB package reconstruction and resource retention, bounded optional image-only PDF OCR with page-marked text output, page-aware text-PDF reconstruction with structured HTML fallback, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; Orca speech, end-user prompt acceptance, complete visible-string gettext coverage, other clients, and release artifacts remain open
+## 2026-07-24 — Linux contributor pin alignment
+
+Assumption: contributor instructions must name the same immutable Core revision consumed by the
+Native workflow, Flatpak source manifest, and central release manifest; this documentation-only
+correction does not change the Linux runtime or compatibility contract.
+
+- Updated `AGENTS.md` from the superseded `77c6bf` reference to Core
+  `9e69d01cbae1ca0421923e059aa3252c4ecbe1be`.
+- Local `git diff --check`, localization synchronization/audits, Flatpak metadata validation,
+  Rust formatting, strict demo-provider Clippy, no-default and demo-provider test suites,
+  `cargo-deny`, and the private-mount storage-fault regression passed.
+- Release remains `unreleased`; this correction does not add artifact, signing, rollback, or
+  stable-release evidence.
+
+## 2026-07-24 — Linux Flatpak release-pin documentation alignment
+
+Assumption: the release guide must identify the exact Flatpak Linux source revision in the
+packaging manifest; the current `af680cee7fd696d859debc896c1136ba002bda89` pin is an ancestor of
+the current documentation-only head and does not change the packaged runtime.
+
+- Corrected `docs/releasing.md` from the superseded historical `c03c7e` source pin to the reviewed
+  `af680ce` pin used by `packaging/flatpak/dev.linguamesh.LinguaMesh.yml`.
+- `git diff --check` and Flatpak metadata validation passed; release remains `unreleased`.
+
+## 2026-07-24 — Linux registered custom VFS compatibility probe
+
+Assumption: Linux may consume a host-registered SQLite VFS only when it preserves the Core
+storage contract; this probe uses a test-registered alias over the already validated `unix-excl`
+callbacks and does not claim arbitrary third-party VFS or physical power-loss coverage.
+
+- Core `9e69d01cbae1ca0421923e059aa3252c4ecbe1be` adds a Linux storage regression that registers a
+  distinct custom VFS name, opens the full schema through that name, persists and reopens a provider
+  profile, and retains the symlink/no-follow rejection boundary.
+- The exact Core commit passed local Rust 1.93.0 storage/full-workspace tests, strict Clippy,
+  cargo-deny, and hosted CI/Fuzz/ASAN/Native SDK runs `30097756099`/`30097756186`/`30097756137`.
+- Linux Native and Flatpak now consume this immutable Core revision. The registration probe is
+  deterministic callback-wiring evidence; arbitrary external VFS implementations, power-loss
+  recovery, manual review, signing, rollback, and stable-release authorization remain open.
+
+Release remains `unreleased`.
+
+## 2026-07-24 — Linux bounded temporary-file cleanup
+
+Assumption: the Linux privacy control should remove only direct children of the system temporary
+directory that LinguaMesh creates with the `linguamesh-ocr-` or `.linguamesh-export-` prefix;
+user-selected output directories and unrelated temporary files remain outside this action.
+
+- Added a native-confirmed **Clear temporary files** action. It is disabled during translation,
+  connection, cancellation, and OCR work, reports the number of removed items, and never traverses
+  unrelated names. The focused `temporary_cleanup_removes_only_linguamesh_owned_items` regression
+  removes two owned fixtures while preserving an unrelated file.
+- Linux implementation commit `1547485795e75c8b1a0fcffb16ef1b72f0374496` contains the bounded
+  action and generated catalog resources. Localization-test completion `e15f19b66b73dd0d146af769dbfd18ca139c7c65`
+  adds the five-key source audit coverage, and the final Flatpak pin follows the consolidated status
+  commit below.
+- A first hosted Native attempt exposed a stale `L10N_REVISION` workflow pin rather than a runtime
+  failure; commit `7ce5c60e423f5489f7158ca77ba9cdc3547ddd22` corrects it to the published l10n
+  revision. The consolidated final pin head passed push Native/Flatpak/Foundation
+  `30082200770`/`30082200768`/`30082200795` and PR Native/Flatpak/Foundation
+  `30082204230`/`30082204209`/`30082204280`.
+- Added five Linux catalog messages in l10n commit
+  `7fd210692bb269ef52f7453bfeb2b0f0759b1d4c`; the 511-message generated bundle passed l10n
+  schema/lint/tests/generation/build/foundation validation. Linux sync and all three localization
+  audits passed, as did Flatpak metadata and `git diff --check`.
+- Rust 1.93.0 formatting, locked all-target check, strict all-feature Clippy, no-default tests
+  (`85 passed; 1 ignored`), and demo-provider library tests (`166 passed; 7 ignored`) passed.
+  The focused GUI binary test compiled but local linking remains blocked by the host's incomplete
+  GTK runtime symbols; Native CI is required for the display-backed fixture. Release remains
+  `unreleased`.
+
+## 2026-07-24 — Native CI Core pin alignment
+
+Assumption: the approved Linux runtime contract is Core `77c6bf426ace65c6bd960120b253e10e59a70a13`,
+so Native CI must check out the same immutable revision used by Flatpak, docs, and the central release
+manifest; no behavior change is intended.
+
+- Commit `b02d3853791f06ff4b042fed430a0e4ab5947b3a` changes `.github/workflows/native.yml` from the
+  stale Core `b29067b78d420c96f57d670d3dd860cba3abc703` to the approved `77c6bf...` pin.
+- Local `git diff --check` and `bash tools/validate-flatpak-metadata.sh` passed. Existing Linux
+-  worker/UI validation for the unchanged runtime is recorded below. Corrected push Native/Flatpak/
+  Foundation runs `30078310878`/`30078310868`/`30078310871` and corrected PR Native/Flatpak/
+  Foundation runs `30078307212`/`30078307159`/`30078307167` all passed, including the full GTK,
+  Wayland, portal, Secret Service, accessibility, Flatpak, checksum/SBOM, and performance gates.
+- The earlier docs-only run `30077157435` remains an obsolete in-progress hosted job for superseded
+  head `7d0970c`; it is not part of the current PR head or current check set.
+- Release remains `unreleased`; this correction does not promote a stable artifact.
+
+## 2026-07-24 — Linux persisted document-job metadata deletion
+
+Assumption: deleting a saved document job removes only its persisted snapshot and segment metadata;
+the source/output buffers already shown in the editor remain untouched, and an active job must never
+be deleted through this control.
+
+- Linux implementation commit `99a446b0306ffa79dc67fa4d55460a3c60f0c237` adds a worker delete
+  command/event backed by Core storage, rejects deletion while document work is active, and clears
+  only the selected job association after a successful event.
+- The GTK Document jobs dialog now exposes a localized destructive button with an explicit GTK
+  confirmation. The serialized `gtk_document_jobs_dialog_selects_between_multiple_jobs` fixture
+  checks one focusable delete action per saved row, and the worker regression
+  `document_job_list_and_delete_saved_job_for_queue_selection` verifies that one snapshot and its
+  segments disappear while another saved job remains.
+- Local Linux validation passed localization synchronization and all three audits, Flatpak metadata,
+  Rust 1.93.0 formatting, locked all-target check, strict Clippy, demo-provider library tests
+  (`166 passed; 7 ignored`), no-default tests (`85 passed; 1 ignored`), demo-provider build, and
+  cargo-deny. The host lacks `gtk4.pc` and `graphene-gobject-1.0`, so the GTK build remains CI-backed.
+- Code/pin head `94f1cda185babbb228299e543b21cbed40797613` passed push Native/Flatpak/Foundation
+  runs `30076646874`/`30076646866`/`30076646852` and PR Native/Flatpak/Foundation runs
+  `30076649572`/`30076649617`/`30076649625`; the Native jobs were `89428748112` and `89428757429`.
+- Release remains `unreleased`; cross-client parity, live-provider qualification, physical/manual
+  review, signing, rollback, and stable-release evidence remain open.
+
+## 2026-07-24 — Explicit source-language prompt hint pin
+
+Assumption: Core `77c6bf426ace65c6bd960120b253e10e59a70a13` preserves the Linux ABI and provider
+contracts while making an explicitly selected source locale available to every built-in provider;
+automatic detection quality and live-provider language coverage remain separate evidence gates.
+
+- Linux documentation, native report metadata, Flatpak source, and validation commands now consume
+  Core `77c6bf426ace65c6bd960120b253e10e59a70a13`, which versions the shared prompt and translation
+  memory identity as `translation-prompt-v3`.
+- Core local format/check/Clippy/tests/build/cargo-deny validation passed, and Core CI `30073841816`,
+  Fuzz/ASAN `30073841796`, and Native SDK `30073841790` all passed for this exact revision.
+- Linux local synchronization, localization audits, Flatpak metadata, toolkit-independent tests,
+  demo-provider tests, formatting, strict Clippy, demo-provider build, and cargo-deny checks passed
+  for this pin. The no-default suite reports `85 passed; 1 ignored`; the demo-provider suite reports
+  `166 passed; 7 ignored`.
+- The host still lacks `gtk4.pc` and `graphene-gobject-1.0`; the all-feature GTK build remains
+  unverified locally and is covered by the passed Native SDK workflow rather than being simulated.
+- Release remains `unreleased`; GTK host headers, live provider credentials, cross-client parity,
+  signed artifacts, rollback, and stable-release evidence remain open.
+
+## 2026-07-24 — Linux pin for Core non-locking VFS rejection
+
+Assumption: Core `f5b818c3598d78e7cac30604577fa8057d380737` preserves the ABI 1 and Linux
+application contracts while adding a Linux-only `unix-none` fail-closed storage regression; custom
+VFS implementations and physical power-loss behavior remain separate evidence gates.
+
+- Linux Native, Flatpak, documentation, and release checks now consume Core
+  `f5b818c3598d78e7cac30604577fa8057d380737`. The Core push passed CI `30070685571`,
+  Fuzz/ASAN `30070685557`, and Native SDK `30070685594`.
+- Core's `unix-none` regression rejects the bundled non-locking VFS before migrations when required
+  WAL mode is unavailable, and the rejected database remains free of schema tables. Core local
+  storage validation reports `59 passed; 0 failed`; the full workspace check, strict Clippy, tests,
+  build, and cargo-deny checks also passed.
+- Linux local validation passed localization synchronization and all three audits, Flatpak metadata,
+  the exact Core source-diff/clean check, formatting, locked all-target check, strict Clippy,
+  no-default tests (`85 passed; 1 ignored`), and demo-provider tests (`166 passed; 7 ignored`).
+- Linux packaging/status head `40bd1b3f8dbf6c9f8764add1cffeea8e03fe03c0` passed push Native,
+  Flatpak, and Foundation runs `30071037163`, `30071037165`, and `30071037151`, plus PR Native,
+  Flatpak, and Foundation runs `30071038957`, `30071038931`, and `30071038937`. Native completed
+  the pinned Core SDK smoke, full GTK/X11/Wayland/portal/Secret Service/accessibility matrix,
+  optional OCR, release evidence, and performance baseline; Flatpak completed the GNOME 49 build,
+  checksum/SBOM validation, and sandbox smoke.
+- This is bundled alternate-VFS evidence only; physical power-loss, custom/third-party VFS,
+  cross-client, signing, rollback, and stable-release evidence remain open.
+
+## 2026-07-24 — Linux bundled alternate SQLite VFS pin
+
+Assumption: Core `900b0a90113b75dd0f49e535900b9af8e75ef0f3` preserves the ABI 1 and Linux
+application contracts while adding Linux-only `unix-excl` storage regressions; custom VFS and
+physical power-loss behavior remain separate evidence gates.
+
+- Linux Native, Flatpak, documentation, and release checks now consume Core
+  `900b0a90113b75dd0f49e535900b9af8e75ef0f3`.
+- The Core storage tests open the bundled `unix-excl` VFS with `SQLITE_OPEN_NOFOLLOW`, verify
+  schema/WAL/profile reopen and process-crash replay behavior, and reject file and parent-path
+  symbolic-link aliases.
+  Core local full tests passed `57 passed; 0 failed`; Core CI, Fuzz/ASAN, and Native SDK gates are
+  passed for this pin; the Linux local no-default-feature suite passed 85 tests with one external
+  OCR fixture ignored, and the demo-provider suite passed 166 tests with seven environment-gated
+  fixtures ignored.
+- This is bundled alternate-VFS evidence only; physical power-loss, custom/third-party VFS,
+  cross-client, signing, rollback, and stable-release evidence remain open.
+
+## 2026-07-24 — Linux Core handle-lifetime pin synchronization
+
+Assumption: Core `b54ab4ab7ebcd3a439678ead9c0af1e6b5c5dae8` preserves ABI 1 wire compatibility while
+adding registry-backed opaque engine-handle lifetime hardening; the Linux compatibility contract is
+unchanged for existing clients.
+
+- Native CI, Flatpak metadata, architecture/testing/release documentation, and contributor commands
+  now use the central Core pin `b54ab4ab7ebcd3a439678ead9c0af1e6b5c5dae8`; the l10n pin remains
+  `c2526bfb3f6ff57895bdc3eeed743e26c8783613`.
+- The Core diff was checked before editing and is confined to the FFI handle registry, stale-handle
+  regression/fuzz coverage, fuzz CI, and ABI evidence documentation; no Linux UI or dependency
+  contract was changed.
+- Local validation passed: `bash tools/sync-l10n.sh --check`, all three dependency-free
+  localization audits, `bash tools/validate-flatpak-metadata.sh`, `cargo fmt --all -- --check`,
+  `cargo check --features demo-provider --all-targets --locked --offline`,
+  `DOCS_RS=1 cargo clippy --all-targets --all-features --locked --offline -- -D warnings`,
+  `cargo test --no-default-features --locked --offline` (`85 passed; 1 ignored`), and
+  `cargo test --features demo-provider --lib --locked --offline` (`166 passed; 7 ignored`) all
+  passed. `cargo deny --manifest-path Cargo.toml --all-features check` passed with its documented
+  duplicate-version and unmatched-license warnings.
+- The native all-feature Clippy command was also attempted and remains blocked locally because the
+  host lacks `gtk4.pc` and `graphene-gobject-1.0`; this is not treated as a successful GUI result.
+  Core runtime-source diff and clean-check plus `git diff --check` passed. The Core push runs
+  `30064410443` (CI), `30064410428` (Fuzz/ASAN), and `30064410436` (Native SDK) all passed; Fuzz
+  job `89392449201` exercised stale handles and Native Linux job `89392449213` passed the fake-
+  provider, C ABI, package, and checksum smoke tests. Release remains `unreleased`.
+
+## 2026-07-23 — Linux mTLS client-authentication rejection
+
+Assumption: a temporary endpoint that trusts a different client CA is the smallest
+reproducible evidence that the Linux worker does not silently authenticate with an
+untrusted client certificate; enterprise-provider interoperability and cross-client
+certificate handling remain separate qualification gates.
+
+- Linux runtime/test commit `7513d983011fdd81374cfb879b23647aef388f7e` adds a fourth ignored
+  worker regression. The session-only client certificate succeeds against the trusted
+  endpoint, while an endpoint with a different client-CA trust chain rejects the identity at
+  the TLS handshake; diagnostics remain a network error without the secret name.
+- The exact local runner passed once for all four cases (`1 passed; 0 failed` each): trusted
+  endpoint, unrelated server CA, trusted CA with wrong SAN, and untrusted client CA. The
+  library suite passed `166 passed; 0 failed; 7 ignored`; formatting, locked checks, strict
+  Clippy, localization synchronization, Flatpak metadata, and diff checks also passed.
+- Source-pin correction commit `deffb80df01cb9f6c76a8b46e0ad725080e07ea6` aligns the Flatpak
+  source and release documentation with the tested runtime after the stale-pin validation
+  failure. Its push Native/Flatpak/Foundation runs `30051807943`/`30051807946`/`30051807944`
+  and PR Native/Flatpak/Foundation runs `30051810997`/`30051811154`/`30051811003` all passed.
+- No provider credential or production certificate is stored. Release remains `unreleased`;
+  this does not claim enterprise interoperability, interactive prompt approval, human review,
+  cross-client parity, signing, rollback, or stable-release authorization.
+
+## 2026-07-23 — Linux mTLS hostname verification
+
+Assumption: a server certificate signed by the trusted test CA but carrying a wrong SAN is the
+smallest reproducible evidence that hostname verification remains enabled; enterprise-provider
+interoperability and cross-client certificate handling remain separate qualification gates.
+
+- Linux runtime/test commit `ec6c9971e0271e5eddc89bdc64121761a9cb46df` adds a third ignored
+  worker regression and extends the temporary HTTPS runner. The trusted endpoint succeeds, the
+  unrelated-CA endpoint is rejected, and the wrong-SAN endpoint is rejected with a network error;
+  the surfaced diagnostics contain no secret name. The exact local runner passed once for all three
+  cases (`1 passed; 0 failed` each), and the library suite passed `166 passed; 0 failed; 6 ignored`.
+- Source-pin correction commit `9fc633feeca328b356b8f98eead03e29d28d0d46` aligns the Flatpak
+  source and release documentation with the tested runtime after the first stale-pin validation
+  failure. Its push Native/Flatpak/Foundation runs `30050382741`/`30050382624`/`30050382686`
+  and PR Native/Flatpak/Foundation runs `30050385469`/`30050385504`/`30050385454` all passed.
+- No provider credential or production certificate is stored. Release remains `unreleased`; this
+  does not claim enterprise interoperability, interactive prompt approval, human review,
+  cross-client parity, signing, rollback, or stable-release authorization.
+
+## 2026-07-23 — Linux mTLS trust-bundle rejection
+
+Assumption: a second local HTTPS endpoint signed by an unrelated CA is the smallest
+reproducible evidence that the configured trust bundle is enforced; enterprise-provider
+interoperability and cross-client certificate handling remain separate qualification gates.
+
+- Linux runtime/test commit `896cd2352aef73a86ca80d7d92e2b5c7850af7d7` extends the client-certificate
+  fixture runner with a trusted endpoint and an untrusted-server endpoint. The worker's
+  session-only certificate identity succeeds against the trusted endpoint and is rejected with
+  a network error by the untrusted endpoint; the rejection diagnostic contains no secret name.
+  The exact local runner passed once for each regression (`1 passed; 0 failed` each), and the
+  library suite passed `166 passed; 0 failed; 5 ignored`.
+- Source-pin correction commit `cb6a3b166344c240c135a829ef32d14e6b5214e6` aligns the Flatpak
+  source and release documentation with the tested head after the first stale-pin validation
+  failure. Its push Native/Flatpak/Foundation runs `30048916581`/`30048916829`/`30048916743`
+  and PR Native/Flatpak/Foundation runs `30048918982`/`30048919026`/`30048918938` all passed.
+- No provider credential or production certificate is stored. Release remains `unreleased`; this
+  does not claim enterprise interoperability, interactive prompt approval, human review,
+  cross-client parity, signing, rollback, or stable-release authorization.
+
+## 2026-07-23 — Linux client-certificate HTTPS transport
+
+Assumption: a temporary local mutual-TLS endpoint is the smallest reproducible Linux evidence
+that the session-only client-certificate identity reaches the real provider transport; live
+enterprise endpoints and cross-client certificate handling remain separate qualification gates.
+
+- Runtime/test commit `4b5a3f2ec0e65060d104068be6a6f31446007ee4` adds an ignored worker regression and
+  a Python HTTPS fixture. The fixture generates a private temporary CA, requires a client
+  certificate during the TLS handshake, and serves `/v1/models`; the worker supplies only a
+  session SecretRef identity plus the bounded trust bundle. `bash tools/run-client-certificate-interop-test.sh`
+  passed exactly once (`1 passed; 0 failed`) locally, and all generated key material was removed.
+- Packaging/docs commit `7b69933e1b0b92e1ee2136e01b6d39fa765ec761` pins Flatpak to the tested runtime
+  and documents the fixture. Certificate-hardening commit `e9406d56e1345be765c01ecfe2600e8e0d10dde9`
+  adds explicit CA, server-authentication, and client-authentication extensions after the first
+  remote Native runs rejected the handshake. The corrected head passed push Native/Flatpak/Foundation
+  `30047090436`/`30047090114`/`30047090789` and PR Native/Flatpak/Foundation
+  `30047093336`/`30047093253`/`30047093305`; Native completed the same fixture in CI. No provider
+  credential or production certificate is stored.
+- This is Linux rustls wiring and server-side client-authentication evidence only. It does not claim
+  enterprise-provider interoperability, human review, other-client parity, signing, rollback, or
+  stable-release authorization; release remains `unreleased`.
+
+## 2026-07-23 — Linux session proxy authentication transport
+
+Assumption: a local HTTP proxy fixture is the smallest reproducible Linux evidence that a
+session-only proxy credential reaches the selected provider transport; live proxy deployment and
+provider interoperability remain separate qualification gates.
+
+- Runtime test commit `911994eb3f4c364af3ea043b783f2aff18e09888` adds a worker-level loopback proxy
+  fixture. It verifies the absolute provider request target, the exact Basic authorization header,
+  and a successful model response while the profile carries only a session SecretRef.
+- Packaging/docs commit `968b5c88cdda64ae69a2c80add729bb37ca7548b` pins the Flatpak source to the
+  tested runtime and records the release pin. Local formatting, locked all-target/all-feature and
+  test-target checks, strict Clippy, 166 demo-provider library tests (3 documented environment-
+  gated ignores), localization synchronization, Flatpak metadata, and diff checks passed.
+- Push Native/Flatpak/Foundation runs `30044751505`/`30044751508`/`30044751102` and PR
+  Native/Flatpak/Foundation runs `30044753533`/`30044753653`/`30044753546` all passed. Native
+  completed the existing display-backed GTK validation suite.
+
+This strengthens unreleased Linux proxy-secret transport evidence without claiming live provider
+accounts, interactive prompt approval, human visual review, other-client parity, signed artifacts,
+rollback authorization, or stable-release approval.
+
+## 2026-07-23 — Linux session SecretRef validation paths
+
+Assumption: worker-level provider rejection tests are the smallest reproducible evidence that
+session-only proxy-authentication and client-certificate identity values reach Core validation
+without being persisted; real proxy and certificate interoperability remains a separate gate.
+
+- Runtime test commit `f0a65c0d7bd1ddfda6e531db1b93c6be0096d491` adds session-only proxy-authentication
+  and client-certificate identity regressions. Each test requires Core to reject the deliberately
+  invalid value while proving the canary is absent from the surfaced diagnostic.
+- Packaging/docs commit `dcd3f49620b427d460c98082acaf97498f2b98ff` pins the Flatpak source to the
+  tested runtime and records the release pin. Local formatting, locked all-target/all-feature and
+  test-target checks, strict Clippy, 165 demo-provider library tests (3 documented environment-
+  gated ignores), localization synchronization, Flatpak metadata, and diff checks passed.
+- Push Native/Flatpak/Foundation runs `30043013677`/`30043013730`/`30043013752` and PR
+  Native/Flatpak/Foundation runs `30043017215`/`30043017137`/`30043017157` all passed. Native
+  completed the existing display-backed GTK validation suite.
+
+This strengthens unreleased Linux secret-boundary evidence without claiming live proxy or
+certificate interoperability, interactive prompt approval, human visual review, other-client
+parity, signed artifacts, rollback authorization, or stable-release approval.
+
+## 2026-07-23 — Linux all-SecretRef persistence filtering
+
+Assumption: a worker-level persistence regression is the smallest reproducible evidence that
+session-only secret references cannot reach SQLite; the GTK Secret Service fixture remains the
+runtime integration boundary.
+
+- Runtime test commit `bb6bc5bef572eb19d7c066e24a2d48546bf4fb08` extends the profile filter test
+  across the primary credential, secret custom headers, proxy authentication, and client
+  certificate identity SecretRefs. Persistent references are retained, while all three
+  session-only references are removed before persistence.
+- Packaging/docs commit `9dc863eeb9fc5825c7354863c59bb21bf4447381` pins the Flatpak source to the
+  tested runtime and documents the expanded persistence boundary. Local formatting, locked
+  all-target/all-feature checks, test-target checks, strict Clippy, 163 demo-provider library
+  tests (3 documented environment-gated ignores), localization synchronization, Flatpak metadata,
+  and diff checks passed. The focused GTK binary remains compile-checked but cannot link on this
+  host because the installed GTK/GDK/Graphene runtime lacks symbols required by the pinned gtk-rs
+  version.
+- Push Native/Flatpak/Foundation runs `30040675056`/`30040674974`/`30040675116` and PR
+  Native/Flatpak/Foundation runs `30040679787`/`30040679862`/`30040679848` all passed. Native
+  explicitly completed the existing real GTK Secret Service integration fixture.
+
+This strengthens unreleased Linux secure-onboarding evidence without claiming interactive prompt
+approval, human visual review, other-client parity, signed artifacts, rollback authorization, or
+stable-release approval.
+
+## 2026-07-23 — Linux Secret Service custom-header onboarding
+
+Assumption: the existing authenticated loopback and private Secret Service fixture is the
+smallest reproducible evidence for the second GTK secret editor path; interactive desktop
+prompts, human visual review, and other clients remain separate qualification gates.
+
+- Runtime test commit `f6cdb44dd6e411c2fab1c9f39cd3cd63361a1352` extends the GTK
+  Remember/clear-form fixture with bounded secret custom-header JSON. It verifies a second
+  persistent SecretRef, active-profile restoration, immediate clearing of both sensitive fields,
+  SQLite canary absence, and deletion of both Secret Service items.
+- Packaging/docs commit `d1e7368edcf8426d3986165fc5b2adbd33cabe48` pins the Flatpak source to the
+  tested runtime and documents the expanded fixture. Local formatting, locked all-target/all-
+  feature checks, test-target checks, strict Clippy, 163 demo-provider library tests (3
+  documented environment-gated ignores), localization synchronization, Flatpak metadata, and
+  diff checks passed. The focused GTK binary remains compile-checked but cannot link on this
+  host because the installed GTK/GDK/Graphene runtime lacks symbols required by the pinned
+  gtk-rs version.
+- Push Native/Flatpak/Foundation runs `30038921698`/`30038921694`/`30038921802` and PR
+  Native/Flatpak/Foundation runs `30038924945`/`30038924960`/`30038924950` all passed. Native
+  explicitly completed the real GTK Secret Service integration fixture.
+
+This strengthens unreleased Linux secure-onboarding evidence without claiming interactive
+prompt approval, human accessibility review, other-client parity, signed artifacts, rollback
+authorization, or stable-release approval.
+
+## 2026-07-23 — Linux process-interruption export regression
+
+Assumption: a process-kill fixture is the smallest reproducible evidence for the export
+boundary; physical power-loss, filesystem-specific recovery, and alternate GIO/VFS behavior
+remain separate qualification gates.
+
+- Runtime commit `361ac7ba9d6a18c26de4487ab424d6500fbbeafd` adds a test-only barrier immediately
+  after the same-directory temporary export is closed and synchronized, before the final
+  non-overwriting move. A child test process is terminated at that barrier and the parent
+  verifies that the final destination is absent while the synced `.linguamesh-export-*` bytes
+  remain intact.
+- Local `cargo fmt --all -- --check`, locked all-target/all-feature check, test-target check,
+  strict Clippy, and 163 demo-provider library tests (3 documented environment-gated ignores)
+  passed. The focused GTK binary test is compile-checked but cannot link on this host because
+  the installed GTK/GDK/Graphene runtime lacks symbols required by the pinned gtk-rs version.
+- Packaging/docs commit `16b25991777ba586737bf31eb1ae2e4260563a4e` pins the Flatpak input to the
+  runtime commit and documents the process-interruption boundary. Push Native/Flatpak/Foundation
+  runs `30036385861`/`30036385766`/`30036385853` and PR Native/Flatpak/Foundation runs
+  `30036389272`/`30036389273`/`30036389204` all passed; Native explicitly completed the
+  `Run GTK interrupted export writer fixture` step.
+
+This strengthens unreleased Linux Scenario 18 crash-durability evidence without claiming physical
+power-loss simulation, alternate VFS guarantees, signed artifacts, rollback authorization, or
+stable-release approval.
+
+## 2026-07-23 — Linux local-export durability barriers
+
+Assumption: Linux local exports must make a bounded best effort to persist both file bytes and
+directory metadata before reporting success, while physical power-loss and alternate-VFS behavior
+remain separate evidence boundaries.
+
+- Runtime commit `cf4246c24e087de870adae4878379512cbaf2b8a` synchronizes each completed local
+  temporary export file and its parent directory before the non-overwriting move, then synchronizes
+  the parent directory again after finalization. A failed barrier reports an output-write failure;
+  non-local URIs retain their exclusive-create boundary.
+- Runtime regression `local_export_sync_barrier_accepts_file_and_parent_directory` directly checks
+  the local file and parent-directory barrier with a nested temporary export. `cargo check
+  --tests --all-features --locked` and strict Clippy pass; the focused GTK binary test remains
+  compile-checked but cannot link on this host because GTK/GDK/Graphene symbols are incomplete.
+- The existing serialized GTK fixture `gtk_atomic_output_writer_never_replaces_existing_file`
+  now exercises this writer path, preserving occupied destinations and cleaning failed temporary
+  artifacts. Local formatting, all-target/all-feature check, strict Clippy, 163 demo-provider
+  library tests (3 documented environment-gated ignores), localization audits, synchronization,
+  Flatpak metadata validation, and diff checks passed. The display-backed fixture remains Native-CI
+  authoritative because this host lacks the matching GTK/GDK/Graphene linker runtime.
+- Packaging/status head `4a211ce038098f91bf21b4a59b086e82084787ce` pins the tested Flatpak input
+  and records the remote evidence. Push Native/Flatpak/Foundation runs
+  `30033584939`/`30033584833`/`30033584837` and PR Native/Flatpak/Foundation runs
+  `30033590597`/`30033590542`/`30033587548` all passed, including the real GTK writer fixture.
+
+This strengthens unreleased Linux Scenario 18 crash-durability evidence without claiming physical
+power-loss simulation, alternate SQLite or GIO VFS behavior, other clients, signing, rollback, or
+stable-release authorization.
+
+## 2026-07-23 — Linux routing candidate-management evidence reconciliation
+
+Assumption: the automated Linux candidate-management slice is complete for the tested GTK and
+worker boundaries; visual, translated-copy, end-user Orca, and distributable-release review remain
+separate qualification gates.
+
+- The current Linux head `d52ab2f7bd339f360a26497d5a42bb7184b742e9` contains the candidate editor
+  lineage `c0cdee8b729a6800904f67535430221feb55f78e` (drag ordering),
+  `a4dd4aa644335a3b6539db4d40473423c6292c71` (same-ID edit/save), and
+  `5c49a3a18c448542bc9cf055cd81b4a0b5f01e15` (serialized GTK lifecycle coverage).
+- The worker fallback chain and approval boundary are covered by
+  `0e2ae25c321cef243275d1322f2b8271f0602d06` and
+  `af200122e4862f6230d89268f5292f16438449bb`; Manual keeps one candidate, Ordered/Automatic
+  preserve the selected chain, and fallback remains explicit and one-shot.
+- Push Native/Flatpak/Foundation `30034083462`/`30034083390`/`30034083610` and PR
+  Native/Flatpak/Foundation `30034086699`/`30034087655`/`30034086738` passed, including the
+  routing candidate and fallback GTK fixtures. This is unreleased Linux evidence; human visual,
+  translated-copy, end-user Orca, cross-client, signing, rollback, and stable-release gates remain.
+
+## 2026-07-23 — Linux localized language swap action
+
+Assumption: Linux remains the active implementation priority; the swap action is a local,
+request-free control for the supported English/Chinese pair, while Auto-source and Japanese-target
+combinations remain intentionally disabled.
+
+- Linux code `4e5a94feef09bbe382a0b6690dc8e8f7b138656f` adds a localized, focusable **Swap languages**
+  button, a reducer-safe selection helper, sensitivity gating, runtime locale refresh, and GTK/unit
+  regression coverage. It exchanges only the supported selector pair and preserves editor contents.
+- l10n `c2526bfb3f6ff57895bdc3eeed743e26c8783613` adds the action and tooltip to all twelve official
+  packs and generated pseudo-locales; `make check` passed 506 messages and 26 tests. Linux resources
+  are synchronized at that exact revision, and Native workflow `L10N_REVISION` is updated.
+- Local `cargo fmt`, GUI/all-target checks, strict Clippy, 163 demo-provider library tests with three
+  documented environment-gated ignores, localization audits, sync checks, and diff checks passed.
+  The GTK binary test could not link on this workstation because its installed GTK symbols are
+  incomplete; the Native CI display gate remains authoritative for that boundary.
+- Release remains `unreleased`; Flatpak/package and remote CI evidence are pending for this head.
+
+## 2026-07-23 — Linux explicit Clear workspace action
+
+Assumption: Linux remains the active implementation priority; the text workspace `clear` action
+must be local and network-free, while provider, locale, glossary, history, and cross-client work
+remain outside this checkpoint.
+
+- Linux code `38275fd96f0b9ed00b7d3269974780fd61874936` adds a localized, focusable **Clear workspace**
+  button and reducer operation. It clears source/output text, partial usage/error/routing diagnostics,
+  transient export and document notices, and file URIs without sending a worker command; it stays
+  disabled during active work or a persisted document job. The GTK regression verifies Simplified
+  Chinese labels, focusability, sensitivity, state reset, and empty editors after completion.
+- l10n `99e0e04d200a03b2de79a8dd4a8d018847519ea2` adds the action and tooltip to all twelve official
+  packs and generated pseudo-locales; `make check` passed 504 messages and 26 tests. Linux resources
+  are synchronized at the same revision, and Native workflow pin `L10N_REVISION` is updated.
+- Local Linux formatting, GUI/all-target checks, strict Clippy, 163 demo-provider tests with 3
+  documented environment-gated ignores, three localization audits, l10n synchronization, Flatpak
+  metadata, and diff checks passed. The Flatpak source pin is `f832a2a04b502c06b6df606d5d6eb4d99b8cbf15`;
+  final packaging/workflow head is `54b9a29b6a72db38ae8eabcb91e1cf98dd73ecab`.
+- Current-head push Native/Flatpak/Foundation runs `30027666940`/`30027665976`/`30027665616` and
+  PR Native/Flatpak/Foundation runs `30027667935`/`30027667025`/`30027666925` all passed for Linux
+  `54b9a29b6a72db38ae8eabcb91e1cf98dd73ecab`. An earlier run was correctly superseded after it
+  exposed the stale workflow l10n pin; no failed run is used as evidence.
+- Release remains `unreleased`; human visual/Orca review, cross-client parity, signing, rollback,
+  and stable-release authorization remain open.
+
+## 2026-07-23 — Linux native clipboard copy action
+
+Assumption: the Linux client should expose an explicit native clipboard action for completed
+translations; GTK's display clipboard is the only destination, and clipboard contents must never
+enter Core persistence, diagnostics, notifications, or logs. Other clients and stable-release
+evidence remain deferred.
+
+- Linux `e56e56bec0bcea9fe963ca326e3918da54f50790` adds a localized, focusable **Copy translation**
+  action. It stays disabled for empty output, copies the current read-only GTK output buffer through
+  `GdkClipboard`, and has a headless GTK regression that reads the copied text back asynchronously.
+- l10n `0ee87720a8613d3dc130dfb379ab4dc7bc1e1f62` adds the action and tooltip to all twelve official
+  packs plus pseudo-locales; the bundle contains 502 messages and generated resources are synced.
+- Local Linux formatting, GUI/all-target checks, strict Clippy, 162 demo-provider tests (3 documented
+  environment-gated ignores), localization key/placeholder/visible audits, Flatpak metadata, and
+  diff checks passed. The GTK binary test remains Native-CI authoritative because this host lacks the
+  required GTK/GDK/Graphene linker symbols.
+- Release remains `unreleased`; no source text or translated output is persisted by the copy action.
+
+## 2026-07-23 — Linux typed provider rate-limit handling
+
+Assumption: Linux remains the active client priority; HTTP 429 is the stable provider signal for
+temporary throttling, while quota/billing semantics, other clients, and stable release remain open.
+
+- Core `8623b2c8829e4d9cf7299c74440dcfabb4e320db` adds shared `RateLimited` normalization for all
+  supported adapters, preserves bounded `Retry-After`, and persists the category safely. The
+  provider-api mapping test covers authentication, model-unavailable, rate-limited, and network
+  statuses.
+- Linux renders a localized `Rate limited` category and converts a provider 429 diagnostic plus its
+  retry hint into actionable plural copy. l10n `630a8f36d96be358d81b72e2efc87cd527e66974` adds
+  the category to all official packs and synchronized PO/MO resources.
+- Release remains `unreleased`; human visual/Orca review, live quota behavior, cross-client parity,
+  signing, rollback, and stable-release authorization are not claimed.
+
+## 2026-07-23 — Linux manual model discovery fallback
+
+Assumption: Linux remains the active client priority; this slice preserves an explicitly validated
+manual model when discovery is unavailable and does not claim Android, Windows, macOS, stable-release,
+or human acceptance evidence.
+
+- Core `7d0f61ee528d32a5671c65d3c253c12368cf40c4` keeps a selected model as a `Manual` descriptor
+  when native/protocol discovery returns an empty list or typed `ModelUnavailable` (including a 404).
+  Authentication, network, and timeout failures remain typed errors. A manual-only fake server and
+  end-to-end translation test cover the fallback without storing credentials.
+- Linux `871c2da4e5f41cfb8197c7688ee0dd9f11b245fe` exposes the optional manual model field for every provider preset, forwards a
+  non-empty value into session and saved-profile connection tests, and retains mandatory validation
+  only for catalog entries that require manual deployment/model identifiers.
+- Local Core Clippy and all-workspace tests passed; Linux GUI/all-target checks, 161 demo-provider
+  library tests (3 documented ignores), localization audits, Flatpak metadata validation, and diff
+  checks passed. The exact GTK binary remains compile-verified but host linking lacks GTK/GDK/Graphene
+  symbols; Native CI is authoritative for display-backed execution.
+- Release remains `unreleased`; cross-client parity, human review, signing, rollback, and stable
+  release authorization remain open.
+
+## 2026-07-23 — Linux Provider Hub health label GTK lifecycle
+
+Assumption: Linux remains the active client priority; this regression exercises only persisted,
+non-secret health metadata and does not claim Android, Windows, macOS, stable-release, or human
+acceptance evidence.
+
+- Linux `1155a224f74da8b2e2b201ad01139ef1df97a2e2` adds a serialized GTK fixture covering the
+  selected saved profile lifecycle: hidden state, successful UTC timestamp, normalized failure,
+  cleared health, and no selected profile. The fixture verifies localized output without exposing
+  credentials or raw provider diagnostics.
+- Native CI now invokes this display-backed test under Xvfb and D-Bus with all targets and features.
+  The Flatpak source pin advances to this implementation revision while Core remains
+  `460728d79b0e2373445c3d8994793d069b8057b9` and l10n remains `74f773774bdf01ca5d2ab61ce199dbd76cdadb04`.
+- Local formatting, GUI/all-target compilation, demo-provider library tests (`161 passed; 0 failed;
+  3 ignored`), localization audits, Flatpak metadata validation, and diff checks passed. The exact
+  GTK binary test is compile-verified but cannot link on this host because GTK/GDK/Graphene symbols
+  are unavailable; Native CI is authoritative for display-backed execution.
+- Release remains `unreleased`; cross-client parity, human review, signing, rollback, and stable
+  release authorization remain open.
+
+## 2026-07-23 — Linux Provider Hub health status
+
+Assumption: Linux remains the active client priority; this UI slice exposes only persisted,
+non-secret health metadata and does not claim Android, Windows, macOS, stable-release, or human
+acceptance evidence.
+
+- Linux `8a913b263475bec70639c55550bdf9717ded4012` adds a dim Provider Hub label that follows the
+  selected saved profile (or active profile), renders the last successful check as a UTC ISO-8601
+  timestamp, and renders normalized failure categories through existing localized error-category
+  keys. The label hides when no health result exists; raw provider error text and credentials never
+  enter the UI.
+- Localization `74f773774bdf01ca5d2ab61ce199dbd76cdadb04` adds the success/failure templates across
+  all 12 packs and regenerates 499-message PO/MO resources. The Flatpak source manifest now pins
+  the Linux implementation above and Core `460728d79b0e2373445c3d8994793d069b8057b9`.
+- Local Linux formatting, strict all-feature Clippy, GUI cargo check, 163 all-feature library tests
+  (12 documented environment-gated ignores), localization synchronization and audits, Flatpak
+  metadata validation, and diff checks passed. The host cannot link GTK/GDK/Graphene test binaries;
+  Native CI remains authoritative for display-backed UI and packaging gates.
+
+## 2026-07-23 — Linux provider health persistence
+
+## 2026-07-23 — Linux provider health persistence
+
+Assumption: Linux remains the active client priority; health metadata is non-secret local state,
+while Android, Windows, macOS, stable release, and human/physical evidence remain out of scope.
+
+- Core `460728d79b0e2373445c3d8994793d069b8057b9` adds schema-34 `ProviderProfile` health fields:
+  the last successful Unix-second check and the last normalized `ErrorKind`. Raw provider error
+  text and credentials are never persisted; successful checks clear the previous failure category.
+- Linux `fb9b1e6c9bb3703ade5c4b8e4c1993f716d3126c` records health after explicit cancellable
+  connection tests, refreshes saved-profile state, and covers success/failure/restart behavior in
+  the worker fixture. Flatpak packaging `4784764b50b4362833e26a1e88b3792a811ae768` pins both
+  Core and Linux inputs to these health-aware revisions.
+- Local Core workspace tests passed; Linux `cargo test --lib --all-features` passed 163 tests with
+  12 documented environment-gated ignores. Final-head push Native/Flatpak/Foundation runs
+  `30010795356`/`30010795221`/`30010795318` and PR Native/Flatpak/Foundation runs
+  `30010798544`/`30010798478`/`30010798760` passed, including the full GTK/portal/accessibility,
+  release-evidence, and performance steps. Release remains `unreleased` until broader project
+  acceptance conditions exist.
+
+## 2026-07-23 — Linux model provenance labels
+
+Assumption: Linux remains the active client priority; Core's `ModelSource` contract is authoritative
+and this selector change does not claim cross-client or human-review completion.
+
+- Core `dffa07eca2b006279f99673edff5bd0ae1b24a0f` supplies `Discovered`, `Catalog`, and `Manual`.
+  Linux code `00186c29fc4e3e6682114ee29cd587d31610a1d6` renders a localized source beside every
+  connected model entry and tests all three values; packaging pin `73051b70028359c56654e1260621ada77def67e9`
+  points to that code.
+- Localization `7c2cb9fd71835ea0f9c6605d82dac87c0df012f0` adds the three keys across 12 packs
+  (497 messages). Local l10n `make check` passed, as did Linux synchronization, formatting, 163
+  library tests (160 passed, 3 documented ignores), strict Clippy, GUI cargo check, localization
+  audits, Flatpak metadata, and diff checks.
+- The full GTK test binary could not link on this host because GTK/GDK/Graphene symbols are
+  unavailable; Native CI is authoritative. Push and PR Native/Flatpak/Foundation gates
+  `30006418545`/`30006418485`/`30006418554` and `30006415855`/`30006415873`/`30006415861`
+  all passed. Release remains `unreleased`.
+
+## 2026-07-23 — Linux bounded TBX glossary import
+
+Assumption: Linux is the active client priority; the GTK client adopts Core's restricted TBX
+contract while Android, Windows, and macOS remain unchanged and cross-client parity is unverified.
+
+- Core `dffa07eca2b006279f99673edff5bd0ae1b24a0f` adds bounded UTF-8 TBX parsing with first-source
+  language mapping, target-language expansion, locale/note preservation, XML entity handling, and
+  fail-closed DTD, malformed, missing-term, conflict, credential-shape, size, and entry limits.
+- The GTK glossary chooser now accepts CSV/TBX MIME types and suffixes, applies the 4 MiB partial
+  read bound, and dispatches `.tbx` by filename to Core. l10n `d8d9084cdf0448039ad0aa7612e8725c6c875036`
+  supplies the revision-62 chooser/error copy and synchronized PO/MO resources.
+- Local validation passed Flatpak metadata, all three localization audits, `cargo fmt --all --check`,
+  strict all-feature Clippy, and `cargo test --features demo-provider --lib --locked -- --nocapture`
+  (`160 passed; 0 failed; 3 ignored`). Release remains `unreleased`; display-backed chooser,
+  manual accessibility, physical VFS/power-loss, signing, rollback, and other-client evidence remain
+  open.
+
+## 2026-07-23 — Linux regional-locale and script translation presets
+
+Assumption: the existing translation-preset selector is the smallest complete Linux surface for
+Core's bounded regional-locale and script preferences; other-client parity and human translation
+review remain open.
+
+- Core `53eee86ce0862bcb0b86f86da5e91257b07fe6d7` adds validated `english_us` and
+  `chinese_simplified` presets with `en-US`/`Latn` and `zh-CN`/`Hans` preferences. Linux
+  `745ee36ce0f14664f44aa209a7613f6f9588d318` exposes both choices in the GTK translation-preset
+  selector and preserves them through ordinary and document requests.
+- Localization `1de68c9568b5c380845089efc9282ff6edd04bc1` adds the two catalog-backed labels to
+  the 494-message bundle. Local Linux tests passed `160 passed; 0 failed; 3 ignored`, with format,
+  localization sync, strict Clippy, Flatpak metadata, and diff checks passing. Push
+  Native/Flatpak/Foundation runs `30000751775`/`30000751755`/`30000751799` and PR runs
+  `30000748043`/`30000747816`/`30000747915` all completed successfully for the final packaging
+  and status head.
+- The release remains `unreleased`; cross-client parity, qualified human accessibility review,
+  signing, rollback, and stable-release authorization remain open.
+
+## 2026-07-23 — Linux GTK glossary-library selector and localization
+
+Assumption: the existing request-level glossary editor is the source of truth; a bounded GTK
+selector is the smallest Linux UI slice that makes Core schema 33 libraries usable without adding
+TBX or cross-client behavior.
+
+- The text workspace now exposes **Glossary libraries** and **Save glossary library** actions. The
+  modal selector lists validated local libraries, loads one back into the request editor, and
+  deletes by stable ID. Saving uses the same Core validation path and never stores credentials,
+  endpoints, or provider metadata.
+- Localization revision `1de68c9568b5c380845089efc9282ff6edd04bc1` adds the canonical Linux keys
+  (494 messages), regenerated PO/MO resources, and synchronized pseudo-locales. Focus probes,
+  localized action refresh, storage-availability gating, and worker event handling cover the new
+  controls.
+- `bash tools/sync-l10n.sh --check`, `cargo fmt --all --check`, `cargo test --features
+  demo-provider --lib --locked -- --nocapture` (`160 passed; 0 failed; 3 ignored`), strict Clippy,
+  Flatpak metadata validation, and `git diff --check` pass locally. Linux implementation is
+  `6407cabb6b3842c8972d89c88f1a2cdaab17179c`; final packaging head is `e13c0dfd2710ef124209c4ed49eddff055574a8a`.
+- A display-backed selector fixture remains Native-CI authoritative; TBX import, other clients,
+  manual accessibility review, signing, rollback, and stable release evidence remain open.
+  Release stays `unreleased`.
+
+## 2026-07-23 — Linux persistent glossary-library slice
+
+Assumption: a bounded Core-owned glossary library store and Linux worker CRUD path are the
+smallest complete persistence slice; a GTK library selector and TBX import remain separate work.
+
+- Core schema 33 adds normalized `glossaries` and `glossary_terms` tables, validates stable IDs and
+  term rules, caps libraries at 32, and atomically replaces terms on save. Reads revalidate stored
+  rules, deletion cascades terms, and no credentials, endpoints, or provider secrets are stored.
+- Linux worker commands expose validated save/list/delete operations. The worker regression
+  `glossary_library_commands_persist_and_delete_across_worker_restart` passes; request-level GTK
+  glossary input remains unchanged and still does not silently persist content.
+- Core revision `1bd150b3063b6471dbf8a279db1fccb03d2c916c` is pinned in Native and Flatpak inputs.
+  Local storage/full Core suites and Linux demo-provider tests pass; release remains `unreleased`.
+
+## 2026-07-23 — Linux normalized usage-record persistence
+
+Assumption: usage metadata is safe to retain only as bounded, non-secret accounting metadata; the
+history policy and Incognito mode are the persistence controls, and no provider pricing is inferred.
+
+- Linux now passes completed usage metadata to Core schema 32, which persists a normalized record
+  atomically with translation history. Provider identities are reduced to a safe stable ID; source
+  text, translated text, endpoints, and credentials are never stored.
+- Translation-memory hits persist a local estimate, while Incognito and disabled-history requests
+  persist neither history nor usage. History trimming, deletion, and clear operations remove usage
+  rows with their owning history entries.
+- Worker regressions cover provider-reported and locally estimated usage, policy gating, Incognito,
+  restart visibility, and cleanup. Pricing remains intentionally unimplemented; release remains
+  `unreleased`.
+- Core CI/Fuzz/Native SDK `29992377731`/`29992376984`/`29992377385` passed. Linux push
+  Native/Flatpak/Foundation `29992795496`/`29992795837`/`29992795547` and PR
+  `29992800736`/`29992800675`/`29992800292` passed for the pinned implementation.
+
+## 2026-07-23 — Linux PR gate result for status head `90a2753`
+
+Assumption: the completed workflow jobs are authoritative for this documentation head; GitHub's
+summary check may lag even after the job API reports success.
+
+- Push Native `29990602946`, Flatpak `29990602971`, and Repository Foundation `29990602947`
+  completed successfully.
+- PR Native `29990604854`, Flatpak `29990604856`, and Repository Foundation `29990604877`
+  completed successfully. The Rust/GTK job finished at `2026-07-23T08:21:06Z`; `gh pr checks`
+  may briefly continue to display Native as pending while the check-run aggregation catches up.
+- The PR remains Draft/Open; no merge or release promotion was performed, and release remains
+  `unreleased`.
+
+## 2026-07-23 — Linux PR documentation-head gate refresh
+
+Assumption: the documentation-only head `18c019f49965a9e758a0b292748dd38adeafb0e7` is the
+current review target; completed workflow steps are evidence even while GitHub's Flatpak check
+aggregation is still pending.
+
+- PR Native run `29990141179` completed successfully. Its Rust/GTK validation job finished at
+  `2026-07-23T08:11:23Z`.
+- PR Flatpak run `29990141186` completed its build, checksum, SBOM, sandbox-smoke, and cleanup
+  steps successfully, but the check run still reports `in_progress` at documentation time.
+- PR Foundation run `29990141145` completed successfully. The PR remains Draft/Open and
+  `UNSTABLE/MERGEABLE`; no merge or release promotion is inferred from pending check aggregation.
+
+## 2026-07-23 — Linux PR gate finalization record
+
+Assumption: the workflow results below are authoritative for the documentation-only head; a
+temporary Flathub fetch failure is recorded as an infrastructure retry, not hidden as a source
+failure.
+
+- Push Native/Flatpak/Foundation gates passed as `29989088159`, rerun `29989088223`, and
+  `29989088163`. PR Native/Foundation passed as `29989286385` and `29989286425`.
+- PR Flatpak workflow `29989286410` completed every build, checksum, SBOM, sandbox-smoke, and
+  cleanup step successfully. GitHub's check-run aggregation briefly lagged behind that completed
+  workflow; no merge or release action is inferred from the lag.
+- Central coordination commit `101f5b7f5f13654e5f1e4eecb779baabc7310caf` passed run
+  `29989857847`; release remains `unreleased`.
+
+## 2026-07-23 — Linux demo-provider regression rerun
+
+Assumption: the current Linux implementation head is the authoritative local target for this
+portable regression; environment-gated GUI, OCR, storage-fault, and third-party-daemon fixtures
+remain separately reported and are not inferred from this suite.
+
+- `cargo test --features demo-provider --lib --locked -- --nocapture` passed all 162 tests that
+  can run without the external fixtures: `159 passed; 0 failed; 3 ignored`. The ignored tests are
+  the explicit OCR, third-party Ollama, and private storage-fault runners.
+- This rerun confirms the current PR head has no portable demo-provider regression. Release stays
+  `unreleased`; no stable or cross-client evidence is claimed.
+
+## 2026-07-23 — Linux third-party Ollama interoperability refresh
+
+Assumption: a pinned Docker Ollama daemon with a small local model is sufficient for a repeatable
+third-party native `/api` interoperability checkpoint; it does not claim live provider account,
+quota, GPU, or distribution behavior.
+
+- A temporary host-network Docker daemon `ollama/ollama:0.11.10` pulled
+  `smollm:135m` and served real `/api/tags` and `/api/chat` requests. The opt-in
+  `running_third_party_ollama_provider_translates_without_secret` regression passed exactly once
+  (`1 passed; 0 failed`) without a credential.
+- The container and its model store were removed after the test. This is deterministic third-party
+  daemon evidence only; live provider account behavior, human review, other clients, signing,
+  rollback, and stable-release authorization remain open. Release remains `unreleased`.
+
+## 2026-07-23 — Linux optional OCR and storage-fault runner refresh
+
+Assumption: the explicit OCR fixture and controlled ENOSPC mount runner are reproducible Linux
+prerelease evidence; neither emulates physical power loss, alternate SQLite VFS behavior, or live
+provider account interoperability.
+
+- `bash tools/run-ocr-test.sh` passed exactly one image-only PDF OCR fixture (`1 passed`) with the
+  installed `pdftoppm` and `tesseract` tools. OCR remains opt-in, bounded, and page-marked text
+  output only; it is not a pixel-identical PDF reconstruction claim.
+- `bash tools/run-storage-fault-test.sh` passed exactly one private-mount ENOSPC regression
+  (`1 passed`), covering session-only degradation and rejection of false persistent commits.
+- The ordinary no-default suite remains `83 passed; 1 ignored` because the OCR unit test is
+  intentionally environment-gated. The dedicated runner results are the authoritative evidence for
+  the optional OCR and storage-fault boundaries. Release remains `unreleased`.
+
+## 2026-07-23 — Linux GTK candidate-chain and fallback-consent evidence audit
+
+Assumption: the existing routing-profile editor is the authoritative Linux UI for user-approved
+candidate chains; this audit records its verified lifecycle without claiming cross-client parity or
+stable-release readiness.
+
+- The production GTK fixture `gtk_routing_profile_candidate_controls_have_accessible_lifecycle`
+  creates a profile from saved provider/model pairs, exercises Manual/Ordered/Automatic mode,
+  candidate selection and ordering, Edit/Save, Use, and Delete, then verifies the worker refresh
+  and selected-profile cleanup. It also checks localized accessible names and explicit fallback
+  consent. Native run `29983438263` reports `1 passed; 0 failed`; the corresponding Flatpak and
+  Foundation gates `29983438252` and `29983438279` passed.
+- The serialized fixture `gtk_fallback_approval_dialog_requires_an_explicit_one_shot_action`
+  verifies Close leaves approval and dispatch untouched, while one approval dispatches exactly one
+  request. The same Native run reports `1 passed; 0 failed` for this fixture.
+- This closes the Linux deterministic candidate-chain editing and fallback-consent evidence gap.
+  Live provider behavior, human visual/copy/Orca review, other clients, signing, rollback, and
+  stable-release authorization remain open; release stays `unreleased`.
+
+## 2026-07-23 — GTK Anthropic Messages preset transport evidence
+
+Assumption: Linux is the active client scope; a deterministic loopback Messages service is the
+smallest complete evidence for the production Anthropic preset, while live account, quota, model,
+and external-network interoperability remain unverified.
+
+- The ignored production GTK fixture `gtk_provider_protocol_presets_use_native_transports` now
+  drives Anthropic through Connect, manual `claude-test` selection, and streamed Translate. The
+  Core testkit revision `2f91f313025b189df237294485fd47bafc1f1f53` supplies `/v1/messages`, checks
+  the one-shot `x-api-key`, emits usage and `message_stop`, and returns deterministic
+  `你好，Anthropic！` output.
+- The fixture keeps the credential field empty immediately after capture and does not issue
+  inference before deliberate model selection. Linux implementation `2f12c7482a4d0376bbdd7ea86fd7f25557fea75f`
+  adds the GTK flow, final packaging pin is `0a77a14d35fad42d66c812398827b2ca50edb51c`, and the
+  current status head is this commit. Push Native/Flatpak/Foundation `29983065597`/
+  `29983065439`/`29983065493` and PR Native/Flatpak/Foundation `29983067229`/`29983067261`/
+  `29983067222` all passed; the protocol-preset fixture reported `1 passed`. Release remains
+  `unreleased`.
+
+## 2026-07-23 — GTK Gemini and Azure preset transport evidence
+
+Assumption: Linux is the active client scope; deterministic loopback providers are sufficient to
+verify native request shaping and UI lifecycle, but do not imply live account, quota, or deployment
+interoperability.
+
+- The ignored production GTK fixture `gtk_provider_protocol_presets_use_native_transports` drives
+  the Gemini and Azure preset rows through Connect, model selection, and streamed Translate. Gemini
+  discovers and uses `gemini-2.0-flash` through `/v1beta/`; Azure uses the manually entered
+  `fake-deployment`, fixed API version, and one-shot `api-key` session credential.
+- The new serialized Xvfb/DBus Native workflow step keeps both protocol flows in one process and
+  proves the GTK credential field is cleared immediately after capture. No provider inference is
+  issued before deliberate model selection.
+- Implementation head `8006f7a37b81db7c547be717b72860ee610ca7d7` adds the fixture and docs; final
+  packaging/status head `5f1634c615f9e1a7ca3de8e37a99e4efc1f02b9e` repins the Flatpak source
+  exactly to the fixture source. Local formatting, GUI source check, strict Clippy, core-library
+  tests (`83 passed; 1 ignored`), and diff checks passed. The full GTK test binary remains
+  host-limited by missing GTK linker symbols; `xvfb-run` is unavailable locally. Final push
+  Native/Flatpak/Foundation runs `29981441794`/`29981441765`/`29981441767` and PR runs
+  `29981443146`/`29981443162`/`29981443177` all passed, including the serialized fixture. Release
+  remains `unreleased`.
+
+## 2026-07-23 — GTK one-click provider switch evidence
+
+Assumption: Linux remains the active client scope; the switch fixture uses two one-shot session
+credentials so it can run without touching a developer keyring while still proving credential
+isolation.
+
+- The production GTK test `gtk_one_click_provider_switch_uses_new_session_and_isolates_credentials`
+  restores two saved provider rows, connects and translates through A, deliberately selects B, and
+  connects again. It verifies that the form selection does not issue inference, the active provider
+  remains A until B succeeds, the next request reaches only B, and both credential fields are
+  cleared immediately after capture.
+- The Native workflow now runs this serialized fixture under Xvfb/DBus. Local GUI compilation,
+  formatting, strict Clippy, core-library tests (`83 passed; 1 ignored`), and Flatpak metadata
+  validation passed; the full GTK fixture is verified remotely because `xvfb-run` is unavailable
+  on this workstation. Push Native/Flatpak/Foundation runs `29980182737`/`29980182712`/
+  `29980182800` and PR Native/Flatpak/Foundation runs `29980184753`/`29980184796`/`29980184751`
+  all passed for implementation head `b64d064be48a4440bcbeb68432459a3d8bab302c`. Release remains
+  `unreleased` pending the broader cross-client evidence.
+
+## 2026-07-23 — Linux client-certificate identity settings
+
+Assumption: Linux is the active client scope and enterprise mutual-TLS credentials must be
+reference-only; the smallest complete UI accepts one combined PEM certificate/private-key identity.
+
+- The GTK provider form adds a masked client-certificate identity field, clears it immediately
+  after capture, restores only its `SecretRef`, and stores the value in Secret Service only when
+  the user explicitly remembers the profile. Session-only profiles keep the identity in memory.
+- Core `2a3534faa9a2531cbbc6cc06d325ad7c82c69394` (schema 31) validates and stores only the
+  identity reference; all built-in provider adapters apply the one-shot identity through reqwest
+  rustls while retaining system roots and TLS verification. l10n `552d87e88a8df42055b1ac76e4dfbaadca92e291`
+  supplies source revision 59 and the 480-message generated bundle.
+- Local validation passed: Core workspace tests/strict Clippy/secret-pattern scan, Linux demo-
+  provider tests (`159 passed; 3 ignored`), strict Clippy, GUI `cargo check`, formatting,
+  localization sync/audits, and Flatpak metadata validation all pass. Linux push Native/Flatpak/
+  Foundation `29978367171`/`29978367181`/`29978367167` and PR Native/Flatpak/Foundation
+  `29978368905`/`29978368870`/`29978368862` pass for the exact pin head
+  `b4bd13c1ec778e62ef466b7fa9d106de87731f29`; the earlier `60d2257` Flatpak failures were
+  superseded by the source-pin correction. Release stays `unreleased`.
+
+## 2026-07-23 — Linux proxy authentication SecretRef settings
+
+Assumption: Linux is the only client in scope for this slice; other native clients and live
+provider interoperability remain follow-up work. Proxy credentials must never be embedded in the
+proxy URL or persisted as a credential value.
+
+- The GTK provider form adds a password-style proxy credential field, clears it after capture,
+  restores only the reference-bearing profile state, and supports session-only or explicit
+  Secret Service persistence through the existing host secret service.
+- Core `cee5bd8abc5b35a50640c484bc4fbeedeb426745` (schema 30) and the shared provider adapters
+  accept the same reference-only contract; l10n `f0b1c507d73f540f298a534303d0e6e63d44e87b`
+  supplies source revision 58 and regenerated resources. Linux runtime/packaging
+  `3264b93b1da7b49ea6fc636729f7a178eef1b436` wires the GTK form, worker, host-secret persistence
+  path, localization sync, and final Flatpak pin. They
+  apply proxy Basic authentication without exposing credentials in SQLite, URLs, diagnostics, or
+  logs.
+- Local Core workspace tests/Clippy, Linux demo-provider tests (162 with 3 environment-dependent
+  ignores), GUI `cargo check`, strict Clippy, l10n `make check`/audits/sync, and Flatpak metadata
+  validation pass. Linux push Native/Flatpak/Foundation `29975524486`/`29975524483`/`29975524491`
+  and PR Native/Flatpak/Foundation `29975526119`/`29975526053`/`29975526074` pass for the exact
+  implementation head; release stays `unreleased`.
+
+## 2026-07-23 — Linux provider custom trusted certificate settings
+
+Assumption: an optional bounded PEM certificate bundle is the smallest Linux-first TLS slice. It
+augments system roots, never disables certificate verification, and rejects private-key material or
+malformed/control-heavy input before a provider client is built.
+
+- Core `60bd3d5c9c79358f80c47da391141342e9cf5712` adds schema 29 persistence, validation, and
+  reqwest root-certificate wiring for OpenAI Chat/Responses/Azure, Anthropic, Gemini, and Ollama.
+- l10n `d315efe808e05ce2fb0ee24c0247076298d57947` adds the Linux label, placeholder, and tooltip;
+  generated resources report 474 messages and pass `make check`.
+- Linux `b5709c84dfe1bca4766c395dfd7313bc689b7bde` exposes the PEM field, saved-profile restore,
+  connection/test forwarding, and updated Flatpak/source pins.
+- Local evidence: `cargo test --no-default-features --lib` (83 passed, 1 ignored), `cargo clippy
+  --all-targets --all-features -- -D warnings`, localization sync `--write/--check`, and Flatpak
+  metadata validation passed. Full GTK test linking remains host-limited by missing GTK symbols;
+  remote Ubuntu gates are required for final native/release evidence.
+
+## 2026-07-23 — Linux provider streaming idle timeout settings
+
+Assumption: a bounded streaming idle timeout of 1–300 seconds (default 60) is the smallest
+complete follow-up to connection timeout; the budget resets after each received response chunk,
+while TLS policy remains separate.
+
+- Core `b247155ad429639fdb65d3b063c3efc580ce46a4` adds schema 28 persistence, range validation,
+  and typed per-chunk timeout handling across OpenAI Chat/Responses/Azure, Anthropic, Gemini, and
+  Ollama. l10n `2e223f9a416f4b461b72224f12c31cbf7981dae3` supplies the 471-message bundle. Linux
+  `53d7bb5` includes the GTK control, saved-profile restore/default behavior, exact source pins,
+  and release documentation.
+- Local Core workspace checks, Linux tests and strict Clippy, l10n `make check`, synchronization,
+  Flatpak metadata, and diff checks passed. Remote gate evidence is recorded after the current
+  push/PR runs settle. Release remains `unreleased`.
+
+## 2026-07-23 — Linux provider connection timeout settings
+
+Assumption: this slice adds only the bounded connection-establishment timeout (1–120 seconds,
+default 10); streaming-idle timeout and TLS policy remain separate follow-up work.
+
+- Linux adds a localized integer control, restores it with saved profiles, defaults new profiles to
+  10 seconds, and validates it before Test connection or Connect.
+- Core `e9a569f8bb6d66db4fdb1c9bd1d6834e93d10f39` schema 27 persists the timeout and applies it
+  independently of the total request timeout to OpenAI Chat/Responses/Azure, Anthropic, Gemini,
+  and Ollama. l10n `46ca70b2863fa951b417eda7ce5848e152c46605` source revision 55 supplies the
+  469-message bundle; Core CI/Fuzz/Native SDK `29969609373`/`29969609372`/`29969609379` passed.
+- Local Core workspace tests (domain 50, storage 44, application 15), Linux demo-provider tests
+  (`159 passed; 3 ignored`), strict Clippy, l10n checks, localization audits, and diff checks pass.
+  Linux push Native/Flatpak/Foundation `29969721769`/`29969721764`/`29969721796` and PR
+  `29969720587`/`29969720599`/`29969720634` passed. Release remains unreleased pending the
+  documented cross-client, human-review, signing, rollback, and stable-release boundaries.
+
+## 2026-07-23 — Linux provider request timeout settings
+
+Assumption: this slice implements only the bounded total request timeout. Separate connection
+timeout, streaming-idle timeout, and TLS policy fields remain follow-up work.
+
+- Linux adds a localized integer control for a 1–600 second provider request timeout, restores it
+  with saved profiles, defaults new profiles to 30 seconds, and validates it before Test connection
+  or Connect.
+- Core schema 26 persists the timeout and applies it to OpenAI Chat/Responses/Azure, Anthropic,
+  Gemini, and Ollama transports. Core revision `7e78cb0086d85eb5c218d8863b7f11f506bae016` and
+  l10n revision `65bf0c8772f75649b2be2e2f9cea610772657c93` (467 messages) are pinned in Native and
+  Flatpak inputs.
+- Local Core workspace tests, strict Clippy, Linux demo-provider tests (`159 passed; 3 ignored`),
+  localization audits, synchronization, Flatpak metadata, and diff checks pass. Release remains
+  unreleased pending remote gates and the documented human, cross-client, signing, rollback, and
+  stable-release boundaries.
+
+## 2026-07-22 — Linux proxy settings checkpoint
+
+Assumption: proxy authentication remains out of scope for this prerelease slice; persisted proxy
+URLs must not contain userinfo, query strings, or paths.
+
+- Linux now exposes a localized optional proxy URL field, restores it with saved profiles, clears
+  it for new profiles, and includes it in Test connection/Connect without changing provider logic.
+- Core schema 25 validates HTTP, HTTPS, SOCKS5, and SOCKS5H proxy URLs, persists only the bounded
+  non-secret URL, and applies the selected proxy to OpenAI Chat/Responses/Azure, Anthropic,
+  Gemini, and Ollama transports. Domain, storage, and explicit loopback-proxy regressions pass.
+- Core `7a9da3f467c5dec539dd8f7850b90b54ae712331` and l10n
+  `bba90a89089c954bdfe1dcda19c210e6ea230b9e` are pinned in Native and Flatpak inputs. Local
+  Core workspace tests (all passing), Linux demo-provider tests (`159 passed; 3 ignored`),
+  strict Clippy, localization audits, synchronization, Flatpak metadata, and diff checks pass.
+  Release remains unreleased pending remote gates and the documented human, cross-client, signing,
+  rollback, and stable-release boundaries.
+
+## 2026-07-22 — Linux Core ABI metadata pin
+
+Assumption: Linux's direct typed Rust path remains the production-facing integration for this
+slice, while the shared Core ABI projection is pinned now so future native clients consume the
+same non-secret provider metadata contract.
+
+- Native and Flatpak inputs now pin Core revision `28baaa2f85bb70b4fc6ecc4c07566e7004a659c5`, which
+  adds optional ABI 1 `organization`, `project`, and bounded `custom_headers_json` fields without
+  changing the envelope or protocol version. Core validates credential-shaped metadata before any
+  host-secret request and forwards accepted values to the OpenAI-compatible adapter.
+- Linux GUI behavior is unchanged and continues to validate the typed application contract; this
+  pin supplies compatibility evidence for the Android/raw-envelope consumers. Release remains
+  unreleased pending cross-client integration, human review, signing, and rollback evidence.
+
+## 2026-07-22 — Linux provider custom-header checkpoint
+
+Assumption: custom request headers are optional, bounded, non-secret provider metadata. Linux
+does not expose proxy settings or secret custom headers in this slice; authorization,
+credential-shaped, and built-in metadata names are rejected before persistence or adapter use.
+Azure OpenAI uses the same safe header application path, while organization/project headers remain
+limited to the Chat Completions and Responses contracts.
+
+- Added localized Custom headers field to the provider form. Saved profiles restore the canonical
+  JSON value, new profiles clear it, and Test connection/Connect pass it through Core.
+- Core schema 23 persists the value with a 16-header, 128-byte-name, and 2 KiB-value bound. Core
+  domain and OpenAI adapter regressions reject credential-shaped/reserved headers and prove safe
+  headers are applied without replacing Chat/Responses authentication or Azure `api-key` metadata.
+  The application regression proves an Azure profile's saved headers reach the live loopback request.
+- Core revision `cf08384c829ca1b95ecfc79d23bc5b0feb3a701f` and l10n revision
+  `294e593ab2c71b9ab0ea3475c35ebc61bca2bbc6` (source revision 51, 459 messages) are pinned in
+  Native and Flatpak inputs. Local Core workspace tests (`cargo test --workspace --all-targets`),
+  strict Clippy, Linux GUI check, Linux demo-provider tests (`158 passed; 3 ignored`),
+  localization audits, l10n synchronization, Flatpak metadata, and diff checks passed.
+
+Human translation review, native visual/RTL/Orca review, live-provider interoperability, and
+stable-release qualification remain open; release remains unreleased.
+
+## 2026-07-22 — Linux provider-project application wiring correction
+
+Assumption: Linux's persisted non-secret `project` field must reach both OpenAI-compatible Chat
+Completions and Responses requests; storing and restoring the field alone is insufficient.
+
+- Core correction `8717251375290cc3f825cee86d467ab1c60dd508` forwards `ProviderProfile.project`
+  through `ProviderManager` into both adapter configurations. Core's header-enforced Chat and
+  Responses regressions passed locally (application suite: 14 tests).
+- Linux repins Native and Flatpak to the corrected Core revision while retaining l10n revision
+  `ec538de57c1edc198fa13d3dfc1de576ee9b2c12`. Local `cargo fmt`, GUI `cargo check`, strict
+  Clippy, demo-provider tests (`158 passed; 3 ignored`), localization synchronization, Flatpak
+  metadata, and diff checks passed. Code head `69b2d4510c51e9f34d7807687e6536ec411b1611` passed
+  push Native/Flatpak/Foundation `29953555497`/`29953555335`/`29953555493` and pull-request
+  Native/Flatpak/Foundation `29953558037`/`29953558082`/`29953558045`. Status-only evidence
+  refresh is pending; release remains unreleased.
+
+## 2026-07-22 — Linux provider region/account checkpoint
+
+Assumption: `region` and `account_identifier` are optional bounded, non-secret provider metadata;
+Linux stores and restores them but does not send them to adapters until provider-specific semantics
+are defined.
+
+- Added localized Region and Account identifier fields to the provider form. New profiles clear both;
+  saved profiles restore both; Test connection and Connect validate and pass them through Core.
+- Runtime profile/session copies preserve both fields, and the serialized GTK restore fixture checks
+  the values without exposing credentials in diagnostics.
+- Core schema 22 revision `158ade12cf1e3284d4b8a0883e771dd62abcff97` and l10n revision
+  `ec538de57c1edc198fa13d3dfc1de576ee9b2c12` (456 messages, source revision 50) are pinned in
+  Native and Flatpak inputs. Local GUI check, l10n audits, l10n sync, Flatpak metadata validation,
+  and `git diff --check` pass. Runtime/packaging head `761a931538fc49c30d759089185cdf21cf2015ab`
+  passed push Native/Flatpak/Foundation runs `29951714545`/`29951713816`/`29951713476` and
+  pull-request Native/Flatpak/Foundation runs `29951717533`/`29951717528`/`29951717487`.
+  An earlier Flatpak attempt (`29951517923` push, `29951520086` pull request) was superseded
+  after its stale source pin was corrected in this head. Release remains unreleased pending
+  cross-client compatibility and provider-specific evidence.
+
+## 2026-07-22 — Linux provider project checkpoint
+
+Assumption: `project` is an optional bounded non-secret OpenAI-compatible identifier. Linux
+passes it through Core only for OpenAI Chat/Responses requests; it is not a credential and remains
+excluded from diagnostics.
+
+- Added localized Project field to the provider form. Saved profiles restore it, new profiles clear
+  it, and Test connection/Connect validate and pass it through Core.
+- Runtime profile/session copies preserve the field. Core schema 21 persists it and the OpenAI
+  adapter sends `OpenAI-Project` for Chat Completions and Responses only.
+- Core revision `17342ba0bf19dd4978707a7875bc7dbe85efae54` and l10n revision
+  `fea84439f035f30b009532b40d7f67a30049846c` are pinned in Native and Flatpak inputs. The l10n
+  source revision 49 bundle contains 450 messages. Linux status head
+  `36a06b664e06a29e1c6bcf81308dd812492d3c47` passed all six remote gates: push Native/Flatpak/
+  Foundation `29948859790`/`29948861048`/`29948860788` and pull-request Native/Flatpak/Foundation
+  `29948862178`/`29948862595`/`29948862093`. An earlier Flatpak attempt (`29948646035` push,
+  `29948648676` pull request) was superseded after its stale source pin was corrected in this head.
+  Release remains unreleased pending cross-client and human evidence.
+
+## 2026-07-22 — Linux provider organization checkpoint
+
+Assumption: `organization` is an optional bounded non-secret OpenAI-compatible identifier. Linux
+passes it through Core only for OpenAI Chat/Responses requests; it is not a credential and remains
+excluded from diagnostics.
+
+- Added a localized Organization field to the provider form. Saved profiles restore it, new profiles
+  clear it, and Test connection/Connect validate and pass it through Core.
+- Runtime profile/session copies preserve the field. Core schema 20 persists it and the OpenAI adapter
+  sends `OpenAI-Organization` for Chat Completions and Responses only.
+- Core revision `17342ba0bf19dd4978707a7875bc7dbe85efae54` and l10n revision
+  `fea84439f035f30b009532b40d7f67a30049846c` are pinned in Native and Flatpak inputs. The l10n
+  source revision 49 bundle contains 450 messages. Release remains unreleased pending cross-client
+  and human evidence.
+- Linux runtime/packaging/workflow head `82ff59132ddcd444856d496f12e635a084b9a385` contains the
+  GTK binding, updated Core/l10n checkout pins, and reproducible Flatpak source pin. Push Native,
+  Flatpak, and Foundation runs `29946235481`/`29946235488`/`29946235499` passed; pull-request
+  Native, Flatpak, and Foundation runs `29946238655`/`29946238640`/`29946238604` also passed.
+- Core revision `17342ba0bf19dd4978707a7875bc7dbe85efae54` passed CI/Fuzz/Native SDK runs
+  `29945917593`/`29945917625`/`29945917579`; l10n revision `fea84439f035f30b009532b40d7f67a30049846c`
+  passed Localization/Foundation runs `29945592293`/`29945590422`.
+
+## 2026-07-22 — Linux provider profile notes checkpoint
+
+Assumption: an optional, single-line, bounded non-secret note was the smallest Linux-first slice of
+the ProviderProfile metadata contract at the time of this checkpoint; later fields are tracked
+independently.
+
+- Added a localized **Profile notes** field to the saved-provider form. Saved profiles restore the
+  note, new profiles clear it, and both explicit **Test connection** and **Connect** pass it through
+  Core without sending it to providers.
+- Core schema 19 persists the note with a 2 KiB bound, rejects credential-shaped values, and keeps
+  the value out of redacted diagnostics. Runtime profile/session transformations preserve it.
+- Core revision `072d6b92df875153a60a9d1256ab814891fe775b` and l10n revision
+  `6aa074e48058bb411d09b2783cd27ba415dc7c55` are pinned in Native and Flatpak inputs. The l10n
+  bundle contains 444 messages.
+- Runtime commit `6dc26e67f0bf4fc63300604df1d3d381aeda1532` is the reviewed Linux head; the
+  Flatpak manifest is pinned to this exact commit for reproducible packaging.
+- Local `cargo fmt`, GUI check, strict all-feature Clippy, demo-provider tests (`158 passed; 3
+  ignored`), localization audits, Flatpak metadata validation, and `git diff --check` passed.
+- Remote evidence for status head `3c1a4ad5e9f8d8ae613c5b2f8aa447d057212de0` (runtime code and
+  packaging unchanged from `eaa9dc3e6bf07222fe3b2da5c078d39e9419b88d`) passed all six gates:
+  push Native/Flatpak/Foundation `29942842016`/`29942841964`/`29942842049` and PR
+  Native/Flatpak/Foundation `29942844853`/`29942844878`/`29942848089`. The existing human
+  visual/copy, Orca, Secret Service prompt, physical VFS/power-loss, signing, rollback, and
+  stable-release boundaries remain open.
+
+## 2026-07-22 — Linux About compatibility dialog
+
+Assumption: About information is a user-visible Linux surface and must remain localized, read-only,
+and limited to non-sensitive build and Core compatibility fields.
+
+- Added a localized About action and modal GTK dialog. The dialog reports the application version,
+  Core semantic version, ABI major, and protocol version, with bounded `unavailable` values if Core
+  compatibility cannot be read. Endpoints, credentials, model IDs, and translation content are not
+  included.
+- Added a pure formatter regression and a serialized GTK fixture that checks the details label,
+  modal state, focusable Close control, and omission of endpoint/secret markers. Native CI now runs
+  `tests::gtk_about_dialog_shows_version_and_core_compatibility` explicitly.
+- l10n revision `a65a327a8418332e50d9ab302fca24508e7266ef` contains 441 messages. Local formatting,
+  GUI all-target check, strict Clippy, localization key/placeholder/visible audits, l10n sync, and
+  the demo-provider suite (`158 passed; 3 ignored`) passed. The full GUI test binary remains
+  linker-limited on this host by missing GTK4/Graphene symbols; CI supplies the executable GUI
+  evidence.
+- Runtime/packaging head `0d7b3927fb98e461317feaefeb4c806676e6acc0` includes the corrected GTK
+  mnemonic-aware Close assertion. The first About push Native run `29937178278` failed because
+  the workflow still pinned the previous l10n revision; after that pin was corrected, Native run
+  `29937509002` failed only on the mnemonic assertion. Corrected push Native `29938498949`, PR
+  Native `29938501797`, push/PR Flatpak `29938498660`/`29938501835`, and push/PR Foundation
+  `29938498667`/`29938501772` all passed, including About, accessibility, release, checksum/SBOM,
+  performance, Flatpak sandbox, and localization checks. Earlier stale-pin Flatpak run
+  `29937961470` was superseded by the corrected pin in `0d7b392`.
+- Linux PR #1 remains Draft/Open/mergeable with no submitted reviews or unresolved threads.
+  Human visual/copy/Orca review, physical VFS and power-loss evidence, signing, rollback
+  authorization, and stable release acceptance remain open; release status stays `unreleased`.
+
+## 2026-07-22 — Current-head Linux regression refresh
+
+Assumption: a status-only checkpoint may refresh reproducible local evidence without changing the
+reviewed Linux runtime or release posture.
+
+- The runtime/packaging head `4154aaef160a0578624f581063dbd62a29cadb79` passed `cargo fmt --all -- --check`,
+  GUI all-target `cargo check --features gui --offline`, strict all-feature Clippy, and
+  `cargo test --features demo-provider --locked --offline` (`158 passed; 3 ignored`).
+- Status head `ad46609159c830579551923228211414450df130` records the same local results. Push
+  Native/Flatpak/Foundation runs `29934332522`/`29934332455`/`29934332613` and PR
+  Native/Flatpak/Foundation runs `29934338922`/`29934338014`/`29934336973` all passed, including
+  the full GTK, portal, accessibility, release, checksum/SBOM, and performance suites.
+- `./tools/sync-l10n.sh --check`, `bash tools/validate-flatpak-metadata.sh`, and `git diff --check`
+  passed. The only Flatpak output is the existing advisory desktop-category hint.
+- The ignored tests remain environment-bound OCR, third-party Ollama, and private storage-fault
+  fixtures; no unavailable local display, keyring, or physical-desktop evidence is claimed.
+
+## 2026-07-22 — Linux LM Studio-style compatibility fixture
+
+Assumption: LM Studio-style local servers are covered by the required generic OpenAI-compatible
+`/v1/` Chat Completions contract; this fixture does not require a particular desktop server.
+
+- The Linux worker now has `lm_studio_style_openai_compatible_provider_translates_without_secret`,
+  a deterministic loopback regression for `/v1/` model discovery, deliberate model selection,
+  streaming translation, and credential-free local operation.
+- `README.md` and `docs/testing.md` describe the protocol boundary and distinguish fixture evidence
+  from live LM Studio installation or desktop integration evidence.
+- Native CI remains authoritative for the full GUI target; human visual review, Secret Service and
+  portal prompts, physical VFS/power-loss behavior, other clients, signing, rollback, and stable
+  release approval remain open.
+
+## 2026-07-22 — Linux bundled open-source notices action
+
+Assumption: bundled `THIRD_PARTY_NOTICES.md` is the authoritative legal source for production
+license text in this Linux checkpoint; no runtime network fetch is required to render the dialog.
+
+- Runtime commit `909083dee4c436d0f343785a4c95f1cda4207e35` adds a catalog-backed
+  **Open-source licenses** action and an always-read-only bundled `THIRD_PARTY_NOTICES.md` dialog.
+  It also adds a unit check for representative entries (`GTK 4`, `LGPL-2.1-or-later`, `MIT`,
+  `LinguaMesh Core`) and keeps a `bundle`-bound l10n path for the notice label/tooltip/title.
+- Packaging/docs head `909083dee4c436d0f343785a4c95f1cda4207e35` pins this tested runtime and updates
+  `README.md`, `docs/testing.md`, `docs/architecture.md`, l10n sync provenance (`3724cc9d...`),
+  localization audit automation, and workflow localization pins to the same manifest.
+- Flatpak manifest commit `909083d` updates the Linux source reference in
+  `packaging/flatpak/dev.linguamesh.LinguaMesh.yml` to the same runtime input.
+- `cargo fmt --all -- --check`, `cargo check --locked --features gui --bin linguamesh-linux`,
+  localization audits (`check-localization-keys|placeholders|visible-localization`),
+  `bash tools/sync-l10n.sh --check`, and flatpak metadata validation passed.
+- The first Flatpak runs for code head `909083dee4c436d0f343785a4c95f1cda4207e35`
+  (`29926503929`/`29926504980`) failed because the manifest briefly referenced a non-existent
+  commit. The corrected packaging head `08aa7498cb1ba677cd7aa72f3b9b7495094bb4b0` passed all six
+  current-head gates: push Native/Flatpak/Foundation `29926552567`/`29926553613`/`29926552554`
+  and pull-request Native/Flatpak/Foundation `29926556769`/`29926557149`/`29926556671`.
+
+This adds Linux Scenario 18 legal-notice evidence to the prerelease pipeline. Human visual/copy/
+Orca review, cross-client approval, stable release signing/rollout authorization, rollback,
+power-loss recovery, and repository-wide release evidence remain open; release status is
+`unreleased`.
+
+## 2026-07-22 — Linux CI evidence integrity verification
+
+Assumption: prerelease evidence is useful only when the uploaded checksum and SBOM sidecars are
+validated in the same job that produced them; this does not replace signing or release approval.
+
+- Native and Flatpak workflows now verify every `SHA256SUMS` entry and parse `SBOM.spdx.json` before
+  upload. Native source-archive checksum paths are normalized to the evidence directory so the
+  verification covers both the release binary and repository-only source archive.
+- The first Native attempt (`29902104277`/`29902106668`) exposed the path mismatch; the corrected
+  final head `48ccbca9523fb4c633e3d806c23104c34b5fa623` passed push Native/Flatpak/Foundation
+  `29903015347`/`29903015532`/`29903015352` and PR `29903018444`/`29903018422`/`29903018395`.
+  Flatpak and Foundation also passed on the intermediate correction; only the final six-gate set is
+  authoritative.
+- Local workflow diff, Python evidence-script compilation, shell syntax, and diff checks passed.
+
+This strengthens unreleased Linux Milestone 8 artifact evidence. Sidecars remain unsigned CI
+prerelease evidence; signing, distributable promotion, rollback authorization, and stable release
+approval remain open.
+
+## 2026-07-22 — Linux document report usage estimate
+
+Assumption: persisted document segments are the only local, non-sensitive source available for a
+report usage field; retry attempt history remains unavailable and is not inferred.
+
+- Runtime commit `ae4750beec1d9aa1c2d53c96754a6ca5a4e55c66` serializes a bounded
+  `UsageRecord::locally_estimated` JSON object from persisted source and translated segment lengths.
+  The report contains only the source marker and token counts, never document text, credentials, or
+  paths; `retried_count` remains explicit `unknown`.
+- Regression commit `89de426c6fcfce77a395fc066017c01a5bb7c247` makes the report test assert that both
+  translated and pending source-segment bodies are absent. The Flatpak manifest pins this tested head.
+- Local formatting, locked all-target/all-feature check, strict Clippy, localization audits, Flatpak
+  metadata, and diff checks pass. The focused GUI test remains a CI boundary because this host lacks
+  the GTK/GDK/Graphene linker symbols.
+
+This advances the Linux Milestone 3/6 document report requirement. Provider-reported usage, retry
+history, human visual/copy/Orca review, other clients, signed artifacts, rollback authorization, and
+stable release approval remain open.
+
+## 2026-07-22 — Linux non-local source-alias protection
+
+Assumption: source-preservation checks must reject an identical non-local URI before export even
+when the GIO backend cannot expose a local path, inode, or hard-link identity.
+
+- Runtime commit `dc5304c679feedce407981ea67d832979d81157e` adds
+  `non_local_source_alias_is_rejected_by_uri_identity`, proving the production
+  `destination_matches_source` guard rejects the same SMB URI and allows a distinct sibling URI.
+- Packaging pin and testing documentation are updated to the runtime head. Local formatting,
+  locked all-target/all-feature check, strict Clippy, localization audits, Flatpak metadata, and
+  diff checks passed. The focused GUI test target remains linker-limited on this host; Native CI
+  is authoritative for the display-backed binary suite.
+
+This strengthens unreleased Linux Scenario 18 source-preservation evidence without claiming remote
+VFS atomicity, physical power-loss recovery, human visual/copy/Orca review, other clients, signing,
+rollback authorization, or stable-release evidence.
+
+## 2026-07-22 — Linux non-local GIO export policy guard
+
+Assumption: a non-local destination URI must retain the exclusive-create safety boundary because
+the application cannot verify a local parent directory or an atomic rename-capable VFS.
+
+- Runtime commit `54003159107919f5c9c55b4637aa45054d457c4d` makes the `ExportWriteStrategy` split
+  explicit. Local paths with a parent continue through same-directory temporary-file finalization;
+  non-local or parentless URIs use GIO exclusive creation, and collision selection leaves the URI
+  unchanged. The `non_local_export_uses_exclusive_create_fallback` regression covers the policy.
+- Local `cargo fmt --all -- --check`, locked all-target/all-feature `cargo check`, strict Clippy,
+  and diff checks passed. The focused GUI test target reaches the linker but cannot run on this
+  host because its installed GTK/GDK/Graphene libraries lack symbols required by the current Rust
+  bindings; Native CI is authoritative for the display-backed binary tests.
+
+This narrows the unreleased Linux Scenario 18 non-local VFS boundary without claiming remote
+atomicity, physical power-loss recovery, human visual/copy/Orca review, other clients, signing,
+rollback authorization, or stable-release evidence.
+
+## 2026-07-22 — Linux Secret Service session-only recovery UX
+
+Assumption: a failed persistent Secret Service write must preserve the user's Remember intent
+until an explicit recovery action is selected; closing the warning cannot silently downgrade the
+connection to session-only mode.
+
+- Runtime test commit `64909399aa55de6b3dc70b69b46e01ae34bc0606` adds the serialized GTK fixture
+  `gtk_secret_storage_fallback_dialog_requires_explicit_session_only_action`. It verifies the
+  localized modal warning, focusable recovery controls, explicit Remember clearing on the
+  session-only action, and unchanged Remember state when the dialog is closed. The production
+  callback still requests focus on the credential field; the exact active-window focus owner is
+  left to the window manager.
+- Packaging/docs commit `6ca9f4ee41dd2c70690565fdfe1dbfc3243cd284` pins the Flatpak source to the
+  runtime commit and documents the UI evidence boundary. Local formatting, locked all-target
+  check, strict Clippy, localization key/placeholder/visible-control audits, Flatpak metadata,
+  and diff checks passed. This host lacks `xvfb-run`, so the display-backed fixture is CI evidence.
+- Push Native/Flatpak/Foundation runs `29896152664`/`29896152686`/`29896152678` and PR
+  Native/Flatpak/Foundation runs `29896154969`/`29896154998`/`29896154971` all passed. Native
+  executed the exact fixture and the complete GTK, Secret Service, accessibility, release, and
+  evidence suites.
+
+This closes the automatable Linux session-only recovery UX boundary without claiming real end-user
+Secret Service prompt approval or visual review. Human translated-copy/visual/Orca review,
+non-local VFS and power-loss evidence, other clients, signing, rollback authorization, and stable
+release remain open; release status is `unreleased`.
+
+## 2026-07-22 — Linux auxiliary export overwrite protection
+
+Assumption: every user-visible export must fail closed on an occupied destination, not only
+translated document and report output.
+
+- Runtime commit `c11e80bbb69b869b1d021d07e1f97247cf0ae7b4` routes glossary CSV, routing-profile
+  JSON, translation-history TSV, and translation-memory TSV exports through the same GIO exclusive
+  create, asynchronous write, and close helper already used by translated output and reports.
+  The source contains no remaining `replace_contents_bytes_async` export call sites.
+- The ignored GTK fixture `gtk_exclusive_output_writer_never_replaces_existing_file` now covers
+  both occupied-file failure with preserved sentinel contents and successful creation of a new file.
+  Local formatting, locked all-target/all-feature checks, strict Clippy, demo-provider tests
+  (`157 passed; 3 ignored`), localization audits, Flatpak metadata, diff checks, and the static
+  no-replacement audit passed; full GTK linking remains unavailable on this host.
+- Packaging/docs commit `c7afb4c351b5a092318dda3ea93f1a1c1043c097` pins the Flatpak source and
+  documents all protected export paths. Code-head push Native/Flatpak/Foundation runs
+  `29892239963`/`29892239946`/`29892239987` and PR runs `29892242173`/`29892242176`/`29892242188`
+  all passed; Native executed the exclusive fixture and completed release, checksum/SBOM,
+  performance, and accessibility suites.
+
+This closes the Linux user-visible export overwrite call-site gap for unreleased Scenario 18
+evidence. Human visual/copy/Orca review, other clients, signed artifacts, rollback authorization,
+and stable release approval remain open; release status is `unreleased`.
+
+## 2026-07-22 — Linux exclusive translation output writer
+
+Assumption: collision-safe output naming must remain safe if another process creates the selected
+destination after the deterministic sibling-path check but before the asynchronous write starts.
+
+- Runtime commit `a48dafe259b794211ed2d1bec0a858b647dcd3d3` replaces export `replace_contents` calls
+  for plain text, document reports, and binary document outputs with GIO exclusive creation,
+  asynchronous `write_all`, and explicit stream close. A race that occupies the path now reports a
+  localized save error while leaving the existing file unchanged; no overwrite fallback is used.
+- The ignored GTK regression `gtk_exclusive_output_writer_never_replaces_existing_file` proves
+  the occupied-file boundary and preserves the sentinel contents. Native CI runs it as a dedicated
+  serialized DBus/Xvfb step. Local formatting, locked all-target/all-feature checks, strict Clippy,
+  demo-provider tests (`157 passed; 3 ignored`), Flatpak metadata, and diff checks passed; the full
+  GTK binary remains linker-limited on this host by incomplete GTK/GDK/Graphene symbols.
+- Packaging/workflow commit `95a47ef6dcec45bb55feb967076cc2bfcb5f5919` pins the runtime input.
+  Push Native/Flatpak/Foundation runs `29891347377`/`29891347329`/`29891347335` and PR
+  Native/Flatpak/Foundation runs `29891349140`/`29891349152`/`29891349162` all passed; Native
+  completed the exclusive fixture, full GTK suite, release build, checksum/SBOM, and performance
+  baseline.
+
+This strengthens unreleased Linux Milestones 3 and 6 export safety. Human visual/copy/Orca review,
+other clients, signed artifacts, rollback authorization, and stable release approval remain open;
+release status is `unreleased`.
+
+## 2026-07-22 — Linux collision-safe translation output naming
+
+Assumption: the output contract applies to plain-text and persisted document exports, while the
+report export uses the same source/target stem with a `.report.tsv` suffix.
+
+- Runtime commits `c8ff5be178d4f85709d8f6e4efe991dd180b3837` and
+  `193ca90b94302f7ae42e2b919576d2ffd68f0aae` derive defaults as
+  `<original-base-name>.<target-bcp47-tag>.<extension>`, sanitizes control characters and path
+  separators, carries the persisted document target locale through the worker event, and reports
+  the stable default output identifier instead of `<not-exported>`.
+- Existing local destinations are never replaced: the GTK save callback selects the first available
+  deterministic `-1`, `-2`, ... sibling path for translated output and reports. Unit regressions
+  cover multi-dot stems, invalid names, unknown locale fallback, and two occupied collision slots.
+- Local `cargo fmt --all`, locked all-target/all-feature check, strict Clippy, and demo-provider
+  tests passed (`157 passed; 3 ignored` in the 160-test library suite). The full-feature binary
+  test target is link-limited on this host by incomplete GTK/GDK/Graphene symbols; Native CI
+  remains authoritative for those fixtures. Packaging/docs commit
+  `6db0d8723b3907b4b8a673e64a5d2f1887b01c8d` pins the runtime input, and final push
+  Native/Flatpak/Foundation runs `29890242568`/`29890242544`/`29890242538` plus PR runs
+  `29890244011`/`29890244000`/`29890244013` all passed. Native completed the full GTK fixture,
+  release-build, checksum/SBOM, and performance-baseline suite; the display-backed chooser fixture
+  remains a CI boundary because this host lacks the required GTK/GDK/Graphene linker symbols.
+
+This advances the Linux Milestone 3/6 output requirement. Human visual/copy/Orca review, other
+clients, signed artifacts, rollback authorization, and stable release approval remain open.
+
+## 2026-07-22 — Linux document translation report export
+
+Assumption: the first report surface is a Linux-only, redacted TSV snapshot; document-job
+persistence does not currently retain provider usage or retry counts, so those fields are explicit
+unknowns rather than inferred values.
+
+- The production Document jobs dialog now exposes a localized Export translation report action
+  for every persisted job. The generated TSV contains source/output identifiers, locales,
+  provider/model, routing decision, preset, glossary presence, application/Core/prompt versions,
+  segment counts, warnings, state, and Unix timestamps without source text, credentials, or local
+  paths.
+- Report fields are single-line escaped and the save callback reuses source-alias protection so a
+  report cannot overwrite the imported source file. The
+  document_translation_report_is_redacted_and_counts_segments regression covers deterministic
+  counts and redaction.
+- Runtime commit `cc5beeea530e500ee2d42b6d05d26dc34a26c7ab` adds the report builder and GTK action;
+  Flatpak source pin commit `4407ce947f86af070f986e4c4ee0fee6b2305683` and workflow localization
+  pin commit `c14760c4c14fe26681c2f11a22a5dd8e9af6b1e9` consume the same tested inputs. Local
+  formatting, locked all-target/all-feature check, strict Clippy, demo-provider tests
+  (157 passed; 3 ignored), localization audits, l10n synchronization at revision
+  88765d3358450ccfac12f396caf5290230a83577, Flatpak metadata, and diff checks passed. Push
+  Native/Flatpak/Foundation runs `29887890227`/`29887890202`/`29887890226` and PR runs
+  `29887892891`/`29887892948`/`29887892894` all passed; Native completed the full GTK fixture
+  suite and native release evidence.
+
+This advances the Linux document-workspace report requirement for Milestone 3. Output identifiers
+remain <not-exported> until a document output is exported, retry counts remain explicitly unknown,
+and usage now reports a bounded local estimate. Human visual/copy/Orca review, physical interruption
+behavior, other clients, signed artifacts, rollback authorization, and stable release approval remain
+open.
+
+## 2026-07-22 — Linux GTK document report action fixture
+
+Assumption: each persisted queue row must expose the same safe report action at the production GTK
+boundary, not only through the report-builder unit test.
+
+- Extended `gtk_document_jobs_dialog_selects_between_multiple_jobs` to require exactly one
+  focusable **Export translation report** button per pending, paused, and cancelled row, with the
+  catalog-backed redacted-TSV tooltip. The fixture still verifies queue selection and lifecycle
+  actions without opening a native chooser.
+- Local formatting, locked all-target/all-feature check, strict Clippy, demo-provider tests
+  (`157 passed; 3 ignored`), localization audits, l10n synchronization, Flatpak metadata, and diff
+  checks passed. The full GTK fixture binary cannot link on this host because installed GTK/GDK/
+  Graphene symbols are incomplete; Native CI remains the authoritative display-backed gate.
+
+This strengthens unreleased Linux Milestone 3/6 report evidence. Native CI must execute the exact
+fixture before this boundary is considered remotely verified; visual copy, chooser interaction,
+Orca review, other clients, signing, rollback, and stable release remain open.
+
+## 2026-07-22 — Linux GTK pending document-job Pause action
+
+Assumption: a pending row in the production document queue must dispatch Pause for that exact
+snapshot, not merely expose a visually identical button or select a different job.
+
+- Runtime commit `8c05797011a04cdc11988cfbe9c35c2d05d2269b` extends
+  `gtk_document_jobs_dialog_selects_between_multiple_jobs` so the pending, paused, and cancelled
+  snapshots each expose their single queue action. The fixture activates `Pause document` for
+  `gtk-queue-first` and proves the pending job remains selected with `Pending` state while the dialog
+  closes after sending the command.
+- Packaging/docs commit `4bc6da51ac6510503e41234bfb3eea5e794fe1e7` pins the Flatpak source to this
+  runtime head. Local formatting, locked all-target/all-feature check, strict Clippy, demo-provider
+  tests (`157 passed; 3 ignored`), localization audits, l10n synchronization, Flatpak metadata,
+  and diff checks passed.
+- Code-head push Native/Flatpak/Foundation runs `29885792891`/`29885792900`/`29885792902` and PR
+  runs `29885795224`/`29885795226`/`29885795242` all passed; Native executed the exact serialized
+  queue fixture and reported `1 passed`.
+
+This advances unreleased Linux document queue evidence for Milestones 3 and 6. Human visual/copy/
+Orca review, physical interruption behavior, other clients, signed artifacts, rollback authorization,
+and stable release approval remain open.
+
+## 2026-07-22 — Linux GTK cancelled document-job Retry action
+
+Assumption: a cancelled row in the production document queue must dispatch Retry for that exact
+snapshot, not merely expose a visually identical button or select a different job.
+
+- Runtime commit `819eff7cff79b8e6514120d550f72658ff276bf9` extends
+  `gtk_document_jobs_dialog_selects_between_multiple_jobs` with a cancelled third snapshot. The
+  fixture verifies the localized three-file count, requires exactly one `Retry document` action,
+  activates it, and proves `gtk-queue-cancelled` remains selected with `Cancelled` state while the
+  dialog closes after sending the command.
+- Packaging/docs commit `8fae49ee451c5df22ec766eabe14c1ad0dc71ee2` pins the Flatpak source to this
+  runtime head and documents the Retry assertion. Local formatting, locked all-target/all-feature
+  check, strict Clippy, demo-provider tests (`157 passed; 3 ignored`), localization audits, l10n
+  synchronization, Flatpak metadata, and diff checks passed.
+- Push Native/Flatpak/Foundation runs `29884616494`/`29884616511`/`29884616504` and PR runs
+  `29884618885`/`29884618826`/`29884618821` all passed. Native executed the exact serialized queue
+  fixture and reported `1 passed`.
+
+This advances unreleased Linux document queue evidence for Milestones 3 and 6. Human visual/copy/
+Orca review, physical interruption behavior, other clients, signed artifacts, rollback authorization,
+and stable release approval remain open.
+
+## 2026-07-22 — Linux GTK paused document-job Resume action
+
+Assumption: a paused row in the production document queue must dispatch Resume for that exact
+snapshot, not merely expose a visually identical button or select a different job.
+
+- Runtime commit `7b92bd43915ebefde3e29463252aacb94d064691` extends
+  `gtk_document_jobs_dialog_selects_between_multiple_jobs`: after selecting the paused second
+  snapshot, the fixture reopens the production queue, requires exactly one `Resume document`
+  action, activates it, and verifies the same job ID/state remains selected while the dialog closes
+  after sending the command.
+- Packaging/docs commit `ea5bf4768a9f8b40fd04fbc929d8ea788ead32bc` pins the Flatpak source to this
+  runtime head and documents the Resume assertion. Local formatting, locked all-target/all-feature
+  check, strict Clippy, demo-provider tests (`157 passed; 3 ignored`), localization audits, l10n
+  synchronization, Flatpak metadata, and diff checks passed.
+- Push Native/Flatpak/Foundation runs `29883463058`/`29883463047`/`29883463039` and PR runs
+  `29883464806`/`29883464810`/`29883464848` all passed; Native executed the exact serialized
+  queue fixture successfully.
+
+This advances unreleased Linux document queue evidence for Milestones 3 and 6. Human visual/copy/
+Orca review, physical interruption behavior, other clients, signed artifacts, rollback authorization,
+and stable release approval remain open.
+
+## 2026-07-22 — Linux GTK multi-document queue selection boundary
+
+Assumption: the Linux document queue must prove explicit selection at the production GTK boundary,
+not only through worker-level list tests, so selecting one persisted job cannot replace another
+job's source or state.
+
+- Added the serialized ignored fixture `gtk_document_jobs_dialog_selects_between_multiple_jobs`.
+  It opens the production Document jobs window with pending and paused snapshots, verifies both rows
+  and the localized two-file count, selects the second row, and asserts its stable job ID, paused
+  state, and source text are loaded while the dialog closes.
+- Flatpak source pin is synchronized to `c652232196f09ee9a2cbf69f7eaa9e01ca7672e7`. Local
+  formatting, locked all-target/all-feature check, strict Clippy, demo-provider tests
+  (`157 passed; 3 ignored`), localization audits, l10n synchronization, Flatpak metadata, and diff
+  checks passed. The display-backed fixture remains CI-authoritative on this host; release status is
+  `unreleased`.
+
+This advances unreleased Linux document queue evidence for Milestones 3 and 6. Human visual/copy/
+Orca review, power-loss recovery, other clients, signed artifacts, rollback authorization, and stable
+release approval remain open.
+
+## 2026-07-22 — Linux GTK OOXML macro and signature import boundary
+
+Assumption: the production GTK import boundary must reject unsupported OOXML macro and digital
+signature parts before any document job is created, not only through Core unit coverage.
+
+- Extended the serialized `gtk_malicious_archive_import_fails_closed_before_document_job` fixture
+  to drive DOCX packages containing `word/vbaProject.bin` and `_xmlsignatures/sig1.xml` through the
+  asynchronous GIO loader, alongside traversal and suspicious-compression fixtures. Each case
+  requires a fixed visible import error, no document-job snapshot, an unchanged empty source editor,
+  and no forbidden extracted filename in the private fixture directory.
+- Flatpak source pin is synchronized to `1e9219d3edf8cbeb4397f0a7872eb8e33ab97b60`; Native CI
+  remains authoritative for the display-backed test on this host. Local formatting, locked checks,
+  strict Clippy, and non-GTK suites are required before push. Release status remains `unreleased`.
+
+This strengthens unreleased Linux evidence for mandatory Scenario 15 and Milestone 6. Human macro,
+signature, visual/copy/Orca review, other clients, signed artifacts, rollback authorization, and
+stable release approval remain open.
+
+## 2026-07-22 — Linux GTK malicious archive import boundary
+
+Assumption: Scenario 15 requires the production asynchronous GTK/GIO import path to reject both
+archive path traversal and suspicious compression before any document job is created or extracted
+content can reach the source editor.
+
+- Runtime code `acb15c2b17bc58f311a31edd57f8793fb7f90e7f` adds the serialized ignored fixture
+  `gtk_malicious_archive_import_fails_closed_before_document_job`. It creates private
+  DOCX fixtures containing `../outside.txt` and a highly compressed `word/repetitive.bin` entry,
+  calls the real `load_source_file` callback, and asserts a fixed import error, no document-job
+  snapshot, an unchanged empty source buffer, and no forbidden extracted filename in the fixture
+  directory. The production loader now preserves that fixed error after its UI refresh; the
+  fixture is serialized with the existing GTK tests and runs in Native CI under DBus/Xvfb.
+- Local `cargo fmt --all -- --check`, locked all-target/all-feature check, strict Clippy,
+  no-default tests (`83 passed; 1 ignored`), demo-provider tests (`157 passed; 3 ignored`),
+  localization key/placeholder/visible audits, l10n synchronization, Flatpak metadata, diff
+  checks, and `cargo deny --all-features check` passed. The display-backed fixture could not link
+  on this host because `xvfb-run` and the required GTK development symbols are unavailable;
+  remote Native CI remains authoritative for that execution.
+- Final Flatpak source pin is synchronized to `acb15c2b17bc58f311a31edd57f8793fb7f90e7f` in
+  packaging/status head `1457e02`; push Native/Flatpak/Foundation runs
+  `29880411119`/`29880411085`/`29880411222` and PR runs
+  `29880413449`/`29880413493`/`29880413527` all passed. Native explicitly reports the exact
+  malicious-archive fixture successful.
+
+This advances unreleased Linux evidence for mandatory Scenario 15. Full macro/signature review,
+human visual/copy/Orca review, other clients, signed artifacts, rollback authorization, and stable
+release approval remain open.
+
+## 2026-07-21 — Linux Incognito translation-memory isolation
+
+Assumption: Incognito requests must bypass local translation-memory lookup as well as history and
+memory writes, so an existing cached result cannot satisfy a private request or change its privacy
+boundary.
+
+- The worker now skips the translation-memory lookup branch whenever the request is Incognito;
+  standard requests retain the existing cache behavior. The serialized GTK fixture
+  `gtk_incognito_translation_bypasses_memory_and_persistence` drives the production toggle,
+  authenticated connection, model selection, and Translate action. It proves a standard request
+  creates one history and one translation-memory entry, the identical Incognito request reaches the
+  loopback provider again, and both persisted counts remain at one.
+- Regression `incognito_translation_bypasses_existing_memory_and_persists_nothing` first stores a
+  standard result, then sends the same source in Incognito mode through an authenticated loopback
+  provider. It requires a second provider request and verifies that the database still contains
+  exactly one history row and one memory row.
+- Local formatting, all-target/all-feature check, strict Clippy, no-default tests (`83 passed; 1
+  ignored`), demo-provider tests (`157 passed; 3 ignored`), localization key/placeholder/visible
+  audits, l10n synchronization, Flatpak metadata, and diff checks passed.
+- Linux runtime code head is `47bbe58bf16ecac11976828575c5964f511198fb`; final packaging/status head
+  is `1e2f63fd33da08028618706c7ce004645866d861`, with the Flatpak source pin synchronized to the
+  runtime code head. Push Native/Flatpak/Foundation runs `29878096890`/`29878096881`/`29878096973`
+  and PR runs `29878099306`/`29878099203`/`29878099227` passed; Native explicitly ran the GTK
+  Incognito fixture.
+
+This advances unreleased Linux evidence for mandatory Scenario 14. Human privacy review, other
+clients, signed artifacts, rollback authorization, and stable-release approval remain open; no
+stable-release claim is made.
+
+## 2026-07-21 — Linux GTK interrupted document-job restart/resume lifecycle
+
+Assumption: Linux Scenario 12 is evidenced at the production GTK boundary when a persisted
+multi-segment document pauses after committed progress, a second worker restores the same database,
+and Resume completes only the remaining segments without duplicating output.
+
+- Runtime code `ca67c8b6b50cd79700c6be505bd7a950c73ed870` adds the serialized ignored fixture
+  `gtk_interrupted_document_job_restores_and_resumes`. It creates a real two-segment TXT job,
+  drives GTK Translate/Pause, confirms one completed segment and an unchanged source buffer, shuts
+  down the first worker, starts a second GTK worker on the same private database, reconnects the
+  same non-secret provider identity with a fresh session credential, and uses the real Resume action
+  to complete the remaining segment. The Flatpak source pin is synchronized at
+  `dabe8254a0cda36d56b7b4aad10240e81131d3dc`.
+- Local `cargo fmt --all -- --check`, all-target/all-feature check, strict Clippy, no-default tests
+  (`83 passed; 1 ignored`), demo-provider tests (`156 passed; 3 ignored`), localization key,
+  placeholder, visible-string, l10n synchronization, Flatpak metadata, and diff checks passed.
+  Display-backed execution remains CI-authoritative on this host.
+- Evidence documentation head `6710c641b8aa4ae39135b948d93452445bbdc245` passed push
+  Native/Flatpak/Foundation gates `29874337974`/`29874337743`/`29874337869` and PR gates
+  `29874339972`/`29874339969`/`29874339977`; Native explicitly reports the exact interrupted
+  document-job fixture successful.
+
+This advances unreleased Linux evidence for mandatory Scenario 12. Physical power-loss recovery,
+live-provider interoperability, human visual/copy/Orca review, other clients, signing, rollback,
+and stable-release approval remain open.
+
+## 2026-07-21 — Linux GTK glossary and protected-span lifecycle
+
+Assumption: Linux Scenario 9 is evidenced at the production GTK boundary when a request-level
+glossary entry protects a source term before dispatch, the provider receives only the opaque
+protected marker, and the reducer restores the glossary translation even when that marker is split
+across streamed deltas.
+
+- Linux runtime `aa0e0206c20e325bf0dd340dab039eea400a9ab0` adds the serialized ignored fixture
+  `gtk_glossary_and_protected_terms_preserve_translation`. It enters a real glossary mapping through
+  the GTK form, inspects the loopback request to confirm `LinguaMesh` is replaced by a protected
+  marker, streams that marker in two fragments, and verifies the completed output is `你好，凌瓦网！`.
+  Flatpak source pin `aa0e0206c20e325bf0dd340dab039eea400a9ab0` remains synchronized in final
+  status/docs head `a544d025a2a23ab18b0cac65b3ee5423d71ac165`.
+- Local `cargo test --all-targets --features demo-provider --locked` passed (`156 passed; 3
+  ignored`), alongside formatting, all-target/all-feature checks, strict Clippy, no-default tests
+  (`83 passed; 1 ignored`), localization audits, l10n synchronization, Flatpak metadata, and diff
+  checks. Display-backed execution remains CI-authoritative on this host.
+- Code-head push Native/Flatpak/Foundation gates `29868747478`/`29868747474`/`29868747461` and PR
+  gates `29868750361`/`29868750281`/`29868750341` all passed. Native explicitly reports the exact
+  serialized glossary/protected-span fixture successful before the remaining accessibility and
+  release matrix. Final status-head push Native/Flatpak/Foundation gates
+  `29869372767`/`29869372826`/`29869372830` and PR gates
+  `29869375704`/`29869375716`/`29869375648` also passed.
+
+This advances unreleased Linux evidence for mandatory Scenario 9. Provider-specific glossary
+semantics, human visual/copy/Orca review, other clients, signed artifacts, rollback authorization,
+and stable release remain open.
+
+## 2026-07-21 — Linux GTK translation cancellation lifecycle
+
+Assumption: Linux Scenario 6 is satisfied at the GTK boundary when the production Stop action
+cancels a streamed request after a confirmed delta, preserves that partial output, reaches the
+`Cancelled` state without retrying, and leaves Retry available for an explicit user action.
+
+- Linux runtime code `2730a24bc67f9c424b3cce845ced895d9f2710b2` adds the serialized ignored fixture
+  `gtk_cancel_translation_preserves_partial_output`. It connects the deterministic bearer-token
+  loopback provider through the production form, selects `fake-slow-translator`, starts a streamed
+  translation, clicks the real Stop button after the first `你好` delta, and asserts the partial
+  output remains unchanged after cancellation, the status is `Cancelled`, Stop is disabled, Retry
+  is enabled, and no error is rendered. Packaging source pin `2730a24bc67f9c424b3cce845ced895d9f2710b2`
+  is synchronized in final head `9322e3d6360611cbf57c9f9b4a23db3af1889c54`.
+- Local `cargo fmt --all -- --check`, all-target/all-feature check, strict Clippy, no-default
+  tests (`83 passed; 1 ignored`), Flatpak metadata validation, and diff checks passed. The host's
+  installed GTK symbols are older than the Rust bindings, so display-backed execution remains
+  CI-authoritative.
+- Final push Native/Flatpak/Foundation gates `29866519789`/`29866519798`/`29866519885` and PR
+  gates `29866523643`/`29866523637`/`29866523644` all passed. Native explicitly ran the exact GTK
+  cancellation fixture successfully before the remaining accessibility and release matrix.
+- The final status-only push/PR Native, Flatpak, and Foundation gates
+  `29867053795`/`29867053954`/`29867053823` and `29867057379`/`29867057259`/`29867057497` also
+  passed; these reruns cover the evidence head without changing runtime behavior.
+
+This advances unreleased Linux evidence for mandatory Scenario 6. Physical provider transport
+cancellation, human visual/copy/Orca review, other clients, signed artifacts, rollback
+authorization, and stable release remain open.
+
+## 2026-07-21 — Linux GTK provider connection-test lifecycle
+
+Assumption: the explicit GTK **Test connection** action must validate a provider without committing
+an active session, clear the entered credential immediately, and preserve the typed authentication
+category for localized redacted errors.
+
+- Linux runtime revision `2d5f625067fb84af260b664e5e2d9c027095e6d8` adds the serialized ignored
+  fixture `gtk_connection_test_reports_models_and_redacts_credential`. Through the production GTK
+  button it authenticates a bearer-token loopback provider, reports a bounded discovered-model
+  count in the localized status note, clears the credential field, then retries with a wrong canary
+  and asserts catalog-backed authentication copy without the canary or HTTP 401/403 details.
+- The `ConnectionTestRejected` reducer now keeps the full `TranslationError` instead of collapsing
+  it to an internal client string, so authentication failures retain their category and redaction
+  mapping. Flatpak source pin `2d5f625067fb84af260b664e5e2d9c027095e6d8` is synchronized at the
+  evidence head.
+- Local formatting, all-target/all-feature check, strict Clippy, no-default tests (`83 passed;
+  1 ignored`), demo-provider tests (`156 passed; 3 ignored`), localization audits, l10n sync,
+  Flatpak metadata, and diff checks passed. The host cannot link the GTK test binary against its
+  older installed GTK symbols; display-backed execution is CI-authoritative.
+- Final push Native/Flatpak/Foundation gates `29864126692`/`29864126477`/`29864126449` and PR
+  gates `29864129440`/`29864129517`/`29864129120` all passed. Native explicitly reports the new
+  provider connection-test fixture successful before the remaining accessibility and release
+  matrix.
+
+This advances unreleased Linux Provider Hub and Scenario 8 evidence. Live-provider interoperability,
+human visual/copy/Orca review, other clients, signed artifacts, rollback authorization, and stable
+release remain open.
+
+## 2026-07-21 — Linux GTK offline session preservation
+
+Assumption: Linux Scenario 17 must prove that an unavailable provider does not replace a previously
+confirmed session, lose the selected model, or discard the source buffer at the GTK boundary.
+
+- Linux code revision `3242133acbf77a7e72374ab680a83f4ff676ff0c` adds the ignored serialized fixture
+  `gtk_offline_connection_failure_preserves_confirmed_session`. It connects the deterministic
+  bearer-token provider through the production GTK form, selects `fake-translator`, captures the
+  active provider/models/source, releases a loopback port, and submits a second connection attempt
+  with an offline endpoint. The fixture asserts that the credential field is cleared, the
+  localized network `Alert` contains no canary, status returns to Ready, and the confirmed
+  provider, model, and source text remain unchanged.
+- Local `cargo fmt --all -- --check`, all-target/all-feature `cargo check`, no-default tests
+  (`83 passed; 1 ignored`), demo-provider tests (`156 passed; 3 ignored`), localization audits,
+  Flatpak metadata validation, and diff checks passed. The host lacks `xvfb-run`, so the
+  display-backed fixture is CI-authoritative here.
+- The Linux Native workflow explicitly runs this exact fixture with
+  `--exact --ignored --test-threads=1`. Packaging/source pin `c81aae6935922f1b309834ebd963b82e7d962f58`
+  passed push Native/Flatpak/Foundation gates `29861352913`/`29861352803`/`29861352991` and PR
+  gates `29861357585`/`29861356699`/`29861357514`; the Native job recorded the offline fixture as
+  successful before completing the remaining GTK, Wayland, AT-SPI, Orca, portal, and release
+  matrix.
+
+This advances unreleased Linux evidence for mandatory Scenario 17. Human offline/visual/copy/Orca
+review, physical outage simulation, other clients, live-provider interoperability, signing,
+rollback, and stable release remain open.
+
+## 2026-07-21 — Linux GTK authentication-failure presentation
+
+Assumption: the Linux client must prove the complete wrong-credential path from the GTK Connect
+button through the worker's provider rejection event, while keeping the credential and backend
+status detail out of the visible alert.
+
+- Linux code revision `bd3487461e725ec5718636b3c2057aa1edd3315b` adds the ignored serialized fixture
+  `gtk_authentication_failure_shows_localized_redacted_error`.
+  It starts the deterministic bearer-token provider, enters a wrong session credential through the
+  real GTK form, waits for the worker's 401/403 rejection, switches the form to Simplified Chinese,
+  and asserts that the visible `Alert` contains the catalog-backed actionable copy without the
+  wrong credential or `401`/`403` status numbers. The credential entry is empty immediately after
+  Connect and no active provider is committed after failure.
+- Local `cargo fmt --all -- --check`, all-target/all-feature `cargo check`, no-default tests
+  (`83 passed; 1 ignored`), and demo-provider tests (`156 passed; 3 ignored`) passed. The GTK
+  fixture remains CI-authoritative because this host lacks the matching display-backed runtime.
+- Linux packaging/docs/status head `6fe43e46dc775382e585727cbdbd9f669d1e3fa6` passed push
+  Native/Flatpak/Foundation gates `29859140143`/`29859138719`/`29859138628` and PR gates
+  `29859143187`/`29859143402`/`29859142690`. Native explicitly executed the serialized
+  authentication-failure GTK fixture before the remaining GTK, Wayland, AT-SPI, Orca, Secret
+  Service, portal, and release-evidence matrix.
+
+This advances Linux evidence for mandatory Scenario 8 at the UI/worker boundary. Human
+translated-copy/visual/Orca review, other clients, live-provider interoperability, signing,
+rollback, and stable release remain open.
+
+## 2026-07-21 — Linux actionable authentication-error localization
+
+Assumption: HTTP 401/403 responses are authentication failures; the client should replace backend
+status detail with a localized retry instruction while retaining the typed error category and never
+rendering a credential value.
+
+- Linux code head `c66f6df42fd03c67b3991c5b7fb4229dccadce97` maps provider HTTP 401/403 failures to the catalog-backed
+  `error.authentication` message before GTK renders `AppState::localized_error_text`. The mapping
+  covers both Unauthorized and Forbidden status text and removes those backend status numbers from
+  the user-facing copy.
+- The regression `http_authentication_failures_use_localized_actionable_copy` verifies Simplified
+  Chinese output `身份验证: 请检查提供商凭据，然后重试。` for both statuses and confirms 401/403
+  details are absent. Existing worker authenticated-session tests continue to verify wrong
+  credentials are rejected without leaking the canary.
+- Local formatting and the focused demo-provider test passed. This is a Linux client error-copy
+  improvement; the remote provider remains a deterministic loopback fixture.
+
+This advances Linux evidence for mandatory Scenario 8. Human translated-copy/visual/Orca review,
+other clients, live-provider interoperability, signing, rollback, and stable release remain open.
+
+## 2026-07-21 — Linux WAL process-crash recovery pin
+
+Assumption: the Linux profile database should request SQLite `synchronous=FULL` for every
+file-backed connection so committed WAL transactions receive the strongest default durability
+available from the bundled Unix VFS; this does not claim to emulate physical power loss or every
+alternate SQLite VFS.
+
+- Core `8837e59395742b5385af5037aa36a2596af3b025` changes the shared storage connection pragma from
+  `synchronous=NORMAL` to `synchronous=FULL`, adds the Unix process-crash WAL regression, and
+  updates the migration/architecture contract and pragma regression to require SQLite mode `2`.
+  Core local formatting, workspace check, strict Clippy, and full workspace tests passed; Core CI,
+  Fuzz/sanitizers, and Native SDK runs `29854340447`/`29854339357`/`29854340140` passed.
+- Linux Native and Flatpak now consume that exact Core revision; the runtime code is unchanged and
+  the existing Linux storage/WAL tests remain the behavioral boundary. Local Linux formatting,
+  all-target/all-feature check, strict Clippy, no-default tests (`82 passed; 1 ignored`),
+  demo-provider tests (`155 passed; 3 ignored`), localization audits, synchronization, and
+  Flatpak metadata validation passed. Push Native/Flatpak/Foundation gates
+  `29854770351`/`29854770380`/`29854770404` and PR gates
+  `29854773408`/`29854773406`/`29854773414` all passed.
+
+This is unreleased Linux durability hardening evidence. The process-crash regression does not claim
+physical power-loss simulation, alternate SQLite VFS behavior, signing, rollback authorization,
+other clients, and stable release remain open.
+
+## 2026-07-21 — Linux normalized usage metadata
+
+Assumption: Linux exposes token usage as bounded, non-sensitive metadata; provider-reported,
+locally estimated, and unknown sources remain visibly distinct, and no pricing is inferred.
+
+- Core functional revision `117a72ea80f40258a0abf582ffe1fae93c155786` adds the backward-compatible
+  `UsageRecord` completion field, provider-stream usage events, and wire normalization for OpenAI
+  Chat/Responses, Anthropic, Gemini, and Ollama while advertising `usage_records_v1`. The engine
+  merges partial provider records and falls back to conservative local estimates when metadata is
+  absent. The stable C ABI/protobuf projection is intentionally unchanged.
+- Linux code revision `5d59646adeed72750964fa628eb0a3088911ac24` stores usage in `AppState`, clears
+  it for each new request, preserves it through the worker remap and translation-memory path, and
+  shows a localized source-marked line below completed output. Unknown records show no fabricated
+  count and no source or translated text is sent to diagnostics.
+- Localization revision `b817ba911c2ffafb35b7a29755681ab39e950368` adds the five Linux usage labels;
+  `bash tools/sync-l10n.sh --check` passes.
+- Local `cargo fmt --all`, all-target/all-feature check and strict Clippy, no-default tests
+  (`82 passed; 1 ignored`), demo-provider tests (`155 passed; 3 ignored`), localization key and
+  placeholder audits, Flatpak metadata validation, demo build, and `git diff --check` passed.
+
+This is unreleased Linux/Rust-host evidence. Provider billing equivalence, pricing estimates, GTK
+visual/RTL/Orca review, other clients, signed artifacts, and stable-release approval remain open.
+
+## 2026-07-21 — Linux GTK routing profile deletion cleanup lifecycle
+
+Assumption: deleting the currently selected routing profile must clear the GTK selection and
+refresh the persisted list through the existing worker event boundary before another profile can
+be used.
+
+- Linux code `7f3ed8dcbed3f6e2eeda72b1c271992e36af65e5` extends the serialized
+  `gtk_routing_profile_candidate_controls_have_accessible_lifecycle` fixture: after the existing
+  edit/save/reload assertions, it uses the profile, deletes it through the real dialog action,
+  applies `RoutingProfileDeleted`, verifies the selected profile ID is cleared, and consumes the
+  worker refresh confirming an empty list. The fixture keeps its private temporary database and
+  worker shutdown boundary; it remains ignored locally because this host lacks the full GTK/Xvfb
+  runtime.
+- Flatpak source pin `e4682e4ce4c8bd1d0b1874939b2a00fe698ea469` records the exact packaging input.
+  Push Native/Flatpak/Foundation runs `29844751533`/`29844750810`/`29844750926` and PR runs
+  `29844754143`/`29844754151`/`29844754090` all passed.
+- Local formatting, locked all-target/all-feature check, strict GUI Clippy, demo-provider tests
+  (`155 passed; 3 ignored`), no-default tests (`82 passed; 1 ignored`), localization audits,
+  l10n synchronization, Flatpak metadata, and diff checks passed.
+
+This is unreleased Linux candidate-management automation evidence only. Human visual, translated-
+copy, and end-user Orca review; broader candidate-management release criteria; other clients;
+signed artifacts; rollback authorization; and stable-release approval remain open.
+
+## 2026-07-21 — Linux GTK routing candidate edit persistence lifecycle
+
+Assumption: the existing GTK routing-profile editor is the smallest complete Linux slice for
+proving candidate deselection and stable-ID editing without expanding the shared Core protocol or
+other clients.
+
+- Linux test code `dda682d0690be77e93d551fcd31d9318f9c741bd` extends the serialized GTK fixture
+  `gtk_routing_profile_candidate_controls_have_accessible_lifecycle`: edit mode locks the profile
+  ID, deselects Candidate B, saves the same profile, waits for `RoutingProfileSaved`, lists the
+  record through the worker, and reopens the editor to verify only Candidate A remains selected.
+  The fixture uses a unique private temporary database directory and shuts the worker down before
+  cleanup; the ignored GTK test remains Native CI evidence because this host lacks the full GTK/Xvfb
+  runtime boundary.
+- Flatpak source pin `70e6074242f58385207884ac8966d4be89a2fa9f` records the exact packaging input.
+  Corrected push Native/Flatpak/Foundation runs `29842604602`/`29842604156`/`29842607411` and PR
+  runs `29842605446`/`29842605764`/`29842605418` all passed.
+- Local formatting, locked all-target/all-feature check, strict GUI Clippy, demo-provider tests
+  (`155 passed; 3 ignored`), no-default tests (`82 passed; 1 ignored`), localization audits,
+  l10n synchronization, Flatpak metadata, and diff checks passed.
+
+This is unreleased Linux candidate-management automation evidence only. Human visual, translated-
+copy, and end-user Orca review; broader candidate-management release criteria; other clients;
+signed artifacts; rollback authorization; and stable-release approval remain open.
+
+## 2026-07-21 — Linux SQLite sidecar identity recheck after Core open
+
+Assumption: checking SQLite `-wal` and `-shm` sidecar identities only before Core opens leaves a
+residual replacement window, so the pinned parent descriptor and any pre-existing sidecar
+identities must remain available for a second check after Core migration/open.
+
+- Linux code `c6c5528314ddef98f2ac5f24aac8202b0e0d62d1` retains the parent descriptor and sidecar
+  identity snapshot through `Storage::open_from_trusted_descriptor`, then fails closed when an
+  existing sidecar changes identity or becomes an invalid alias. Sidecars absent at preflight may
+  be created by SQLite, but the post-open inspection still rejects non-regular or hard-linked files.
+  `replaced_database_sidecar_is_rejected_after_snapshot` uses an atomic rename from a pre-existing
+  different inode so the race regression is deterministic; the earlier CI attempt
+  `29839491260` exposed inode reuse in the test and was corrected rather than counted as evidence.
+- Flatpak pin `1432242c96fad806094bf295703dc0df992d882a` and docs head
+  `ea136745cee789f7798346cfd0cec775e5d273e6` record the exact build and boundary. Corrected push
+  Native/Flatpak/Foundation runs `29839920685`/`29839920594`/`29839920501` and PR runs
+  `29839923879`/`29839924044`/`29839923994` all passed.
+- Local formatting, locked all-target/all-feature checks, strict GUI Clippy, demo-provider tests
+  (`155 passed; 3 ignored`), no-default tests (`82 passed; 1 ignored`), both sidecar regressions,
+  localization audits, l10n synchronization, Flatpak metadata, and diff checks passed.
+
+This is unreleased Linux storage hardening evidence only. Replacement after the second inspection,
+broader filesystem/VFS behavior, abrupt power-loss recovery, other clients, signed artifacts,
+rollback authorization, and stable-release approval remain outside the claim.
+
+## 2026-07-21 — Linux SQLite WAL/SHM sidecar hard-link guard
+
+Assumption: a pre-existing SQLite journal or shared-memory sidecar must not alias a second inode
+before Core opens the pinned profile database, while replacement races after inspection remain an
+explicit unverified boundary.
+
+- Linux code `2077efb3349505b1125c8f0c686fd707ba439628` inspects existing `-wal` and `-shm`
+  entries through the pinned parent descriptor with `O_PATH|O_NOFOLLOW`, rejecting symlinks,
+  non-regular files, and hard-linked aliases before Core opens the database. The regression
+  `hard_linked_database_sidecars_are_rejected_without_modifying_targets` covers both sidecars and
+  confirms the external target remains unchanged. An isolated pre-fix SQLite probe demonstrated
+  that an existing sidecar hard link could otherwise be modified.
+- Packaging head `a220b18cfadffdcc39d40b9739cc510c66d45880` repins the Flatpak source manifest to
+  the exact code head. The first code-head Flatpak push/PR runs `29837248939`/`29837255929`
+  failed only on the stale source pin; corrected push Native/Flatpak/Foundation runs
+  `29837460916`/`29837461045`/`29837460822` and PR runs `29837463776`/`29837464358`/
+  `29837464171` all passed.
+- Local formatting, locked all-target/all-feature check, strict GUI Clippy, demo-provider tests
+  (`154 passed; 3 ignored`), no-default tests (`82 passed; 1 ignored`), the focused sidecar
+  regression, localization audits, l10n synchronization, Flatpak metadata, and diff checks passed.
+
+This is unreleased Linux storage hardening evidence only. Sidecar replacement after inspection,
+broader same-UID filesystem/VFS variants, abrupt power-loss recovery, other clients, signed
+artifacts, rollback authorization, and stable-release approval remain outside the claim.
+
+## 2026-07-21 — Linux final database-leaf identity and creation race hardening
+
+Assumption: the final profile-database leaf must remain the exact preflight inode, and a missing
+leaf must be created exclusively so a same-UID replacement cannot be accepted between validation
+and descriptor open.
+
+- Linux code `a7cee699bd973c8f05893c37b5583dd8c4998471` records the parent and existing-leaf
+  device/inode, opens an existing leaf without creation flags, rejects distinct regular-file
+  replacement after `fstat`, and uses `O_CREAT|O_EXCL|O_NOFOLLOW` when the leaf was absent.
+  Regression tests cover distinct regular-file replacement and creation between preflight and open;
+  existing symlink and hard-link rejection tests remain green.
+- Packaging head `87361ec9fbe37417dbf83f64b181cb834a5a4aa7` repins the Flatpak source manifest to
+  the exact code head after the expected stale-pin failure `29834999139`.
+- Local `cargo fmt --all -- --check`, locked all-target/all-feature check, strict GUI Clippy,
+  demo-provider tests (`153 passed; 3 ignored`), no-default tests (`82 passed; 1 ignored`),
+  targeted replacement/database/parent tests (`3`/`5`/`1` passed), localization audits,
+  l10n synchronization, Flatpak metadata, and diff checks passed. Corrected source-pin push
+  Native/Flatpak/Foundation runs `29835149907`/`29835149914`/`29835149955` and pull-request
+  runs `29835154608`/`29835154630`/`29835155142` all passed.
+
+This is unreleased Linux storage hardening evidence only. Broader same-UID filesystem/VFS
+variants, abrupt power-loss recovery, other clients, signed artifacts, rollback authorization,
+and stable-release approval remain outside the claim.
+
+## 2026-07-21 — Linux alternate-directory replacement race hardening
+
+Assumption: replacing a validated private database parent with a distinct private directory must
+fail closed even when the replacement keeps the same owner, permissions, and directory type.
+
+- Linux code `14bb30e814d6d4ffcbf55c5a409d3729db2af967` retains the preflight parent device/inode,
+  compares both values after `openat2(RESOLVE_NO_SYMLINKS)`, and adds
+  `replaced_parent_with_alternate_directory_is_rejected_between_preflight_and_descriptor_open`.
+  Existing symlink/regular-file parent and symlink/hard-link final-component regressions remain.
+- Local `cargo fmt --all -- --check`, all-target/all-feature locked offline check, strict GUI
+  Clippy, demo-provider tests (`151 passed; 3 ignored`), targeted storage tests (3/2/1 passed),
+  localization key/placeholder/visible audits, l10n synchronization, Flatpak metadata, and diff
+  checks passed.
+- The first code-head Flatpak push/PR runs `29833169613`/`29833171987` failed only because the
+  manifest still referenced `3b2b69c`; corrected pin `2dc3e49db9489eeaa2f9f3ec8fd70eb639bfb118`
+  passed push Native/Flatpak/Foundation `29833316179`/`29833316220`/`29833316231` and PR
+  `29833318520`/`29833318770`/`29833318526`.
+
+This is unreleased Linux storage hardening evidence only. Broader same-UID filesystem/VFS variants,
+abrupt power-loss recovery, other clients, signed artifacts, rollback authorization, and stable
+release approval remain outside the claim.
+
+## 2026-07-21 — Linux provider mnemonic focus fixture
+
+Assumption: Linux keyboard accessibility must verify both the provider form's explicit Tab order
+and a visible-label mnemonic activation on the real GTK binary, including the Arabic fixture whose
+catalog keeps this label in English fallback.
+
+- Code head `3b2b69c020eb6cc9f18488702916de175cb92700` records the `provider_preset` focus event in
+  the existing X11/xfwm4 keyboard probe; the fixture's `Alt+P` input now requires that mnemonic
+  focus before continuing its Tab/Shift+Tab traversal assertions.
+- Packaging head `1030e88fe5cfdac39681404fa767901915a9b2c4` repins the Flatpak source manifest to the
+  exact code head after the first stale-pin failure.
+- Local formatting, locked all-target/all-feature checks, strict Clippy, shell syntax, and diff
+  checks passed. The real display-backed fixture is CI-only on this host.
+- The first code-head push/PR Flatpak runs `29830652002`/`29830655585` failed only because the
+  manifest still referenced `c25bd31`; Native push/PR runs `29830652010`/`29830655820` passed.
+  Corrected push Native/Flatpak/Foundation runs `29830916108`/`29830916150`/`29830916154` and PR
+  runs `29830918743`/`29830918767`/`29830918756` all passed.
+
+This is automated Linux keyboard evidence only; physical keyboard, visual/RTL, Orca listening,
+other-client, signing, rollback, and stable-release review remain separate gates.
+
+## 2026-07-21 — Linux fallback-provider label relation
+
+Assumption: every focusable provider-selection control must expose the visible label through both
+the GTK mnemonic path and the exported `LabelledBy` relation, including the disabled fallback
+selector used before a provider is connected.
+
+- Code head `c25bd3142644ebe00a1609ca17f4ac7438326126` connects the fallback-provider label to its
+  dropdown and extends the serialized GTK accessibility regression with relation and mnemonic
+  assertions. Production behavior and fallback consent semantics are unchanged.
+- Packaging head `febb89f96cfb669f8638b66099b47ecc787a7b36` repins the Flatpak source manifest to the
+  exact code head after the first stale-pin validation failure.
+- Local formatting, all-target/all-feature locked offline checks, strict Clippy, no-default tests
+  (`82 passed; 1 ignored`), demo-provider tests (`150 passed; 3 ignored`), localization audits,
+  Flatpak metadata, and diff checks passed. Display-backed GTK assertions remain CI-linked on this
+  host because the matching GTK runtime cannot link locally.
+- The first code-head push/PR Flatpak checks `29829170197`/`29829173528` failed only because the
+  manifest still referenced `62c72fa`; corrected push Native/Flatpak/Foundation runs
+  `29829323120`/`29829323118`/`29829323030` and pull-request runs
+  `29829327152`/`29829327077`/`29829327239` all passed, including the serialized GTK relation and
+  mnemonic assertions.
+
+## 2026-07-21 — Linux runtime pseudo-localization
+
+Assumption: the existing generated `en-XA` and `ar-XB` Linux PO/MO packs are the authoritative
+pseudo-localization inputs; exposing them in the GTK locale selector is a test-only layout and
+direction capability, not qualified translation evidence.
+
+- `UiLocale::ALL` now includes the generated accented English (`en-XA`) and RTL Arabic (`ar-XB`)
+  catalogs after the twelve official packs. Runtime catalog lookup, locale names, plural rules,
+  and RTL direction metadata cover both pseudo-locales without changing the existing official
+  locale order or persisted language tags.
+- The localization unit suite verifies expanded accented output, bidi-isolated RTL output, and
+  Arabic plural-slot selection. Headless fixtures may select either pack with
+  `LINGUAMESH_TEST_LOCALE=en-XA` or `LINGUAMESH_TEST_LOCALE=ar-XB`.
+- This is automated pseudo-localization evidence only; human translated-copy, plural, visual,
+  compositor, and screen-reader review remain separate release gates.
+
+## 2026-07-21 — Linux pseudo-localized GTK/AT-SPI fixtures
+
+Assumption: pseudo-locales must exercise the same live accessibility tree as the official locale
+fixtures, while process-based window discovery keeps the test independent of expanded window titles.
+
+- `tools/gtk-atspi-inspect.py` now asserts the expanded `en-XA` control names and bidi-isolated
+  `ar-XB` control names, including button/checkbox roles and the five text-editor labels. Native CI
+  runs both fixtures with `LINGUAMESH_TEST_LOCALE=en-XA` and `LINGUAMESH_TEST_LOCALE=ar-XB`.
+- The first fixture commit `0c6151a` failed only because the shell harness searched for the literal
+  `LinguaMesh` title; corrective head `304e683bf9f3b6aa5fca2625ead671e7cc0f92fa` locates the visible
+  application window by process and passes the local syntax checks.
+- Corrected push Native/Flatpak/Foundation runs `29825878061`/`29825878027`/`29825878160` and
+  pull-request Native/Flatpak/Foundation runs `29825880504`/`29825880581`/`29825880584` passed,
+  including both pseudo-locale AT-SPI outputs. The first PR Flatpak retry was transiently blocked by
+  a Flathub network fetch and passed on rerun; this remains automation evidence, not human review.
+
+## 2026-07-21 — Linux desktop text-scaling preference fixture
+
+Assumption: the Linux client must inherit desktop text scaling through GTK/Pango without replacing
+the user's font preference, just as it inherits high contrast and reduced motion.
+
+- The serialized `gtk_accessibility_preferences_follow_desktop_settings` fixture now applies a
+  process-local `Sans 24` GTK font and asserts that the production onboarding title's Pango context
+  receives at least the requested 24-point size, alongside the existing high-contrast and reduced-
+  motion assertions. Theme, animation, and font settings are restored before the fixture exits.
+- The Flatpak source pin follows code head `62c72fa7ffe11a6367ce2a0dce9c9866a0eaf1c7`; docs/head
+  `ed196d1b4c88bf8a42ce2840519f2353b1e8f508` includes the fixture instructions. Local formatting,
+  all-target/all-feature offline check, strict Clippy, Flatpak metadata, shell syntax, and diff checks
+  passed. The real GTK run is CI-only on this host because `xvfb-run` and the matching GTK runtime
+  linker are unavailable locally.
+- Push Native/Flatpak/Foundation runs `29827623757`/`29827623766`/`29827623800` and pull-request
+  Native/Flatpak/Foundation runs `29827626425`/`29827626423`/`29827626507` all passed, including
+  the isolated GTK accessibility-preference fixture. Manual visual and text-scaling review remains
+  separate release evidence.
+
+## 2026-07-21 — Linux visible GTK localization audit scope
+
+Assumption: the source audit must cover every Rust UI module, including file-filter names, while
+allowing empty label resets used to clear transient state.
+
+- `tools/check-visible-localization.py` now discovers every `src/**/*.rs` file instead of a fixed
+  pair of modules and checks `set_name` alongside labels, titles, tooltips, placeholders, dialog
+  actions, and direct list literals. The current source passes with three intentional empty/reset
+  call sites and no non-empty hard-coded GTK strings.
+- This is stronger repeatable source evidence, not a claim that translated copy, plural forms, or
+  visual locale review has been completed; non-English catalogs remain machine-generated drafts.
+- Local validation passed the three localization audits, l10n synchronization, Flatpak metadata,
+  formatting, locked offline checks, strict Clippy, and 81/149 library tests (with the existing
+  environment-dependent ignores). Code head `56a081272ed3fb6b42dcd3111616a620763f51c8` passed
+  push Native/Flatpak/Foundation runs `29823219039`/`29823218980`/`29823219144` and pull-request
+  runs `29823221964`/`29823221885`/`29823221874`.
+
+## 2026-07-21 — Linux Arabic headless Orca fixture
+
+Assumption: the Linux screen-reader automation should exercise the same production Stop control in
+Arabic as the semantic and keyboard fixtures, while keeping human speech-quality review separate.
+
+- `tools/orca-atspi-inspect.py` now maps the test locale to the production Stop accessible name for
+  English and Arabic; the shell fixture keeps all diagnostics in English and checks the locale-neutral
+  success marker before requiring Orca's application-tree and `SPEECH GENERATOR` records.
+- Native CI adds a second private Xvfb/private-D-Bus Orca run with `LINGUAMESH_TEST_LOCALE=ar`.
+  The Arabic run requires the localized Stop tree and focus path while leaving speech-generation
+  assertion disabled for the unstable CI speech backend. Local Python compile, shell syntax,
+  rustfmt, locked offline check, and diff checks passed. The initial `7c9b7e4` attempt correctly
+  failed because Arabic Orca did not emit a stable speech-generator record; corrected head
+  `490657b0751527e5c7fae3ab89993b90bb97f575` passed push Native/Flatpak/Foundation
+  `29821349008`/`29821349052`/`29821349030` and pull-request
+  `29821346477`/`29821346416`/`29821346504`.
+
+This strengthens automated Linux Scenario 13 headless screen-reader evidence only; human Orca
+listening, speech quality, translated-copy/RTL, physical visual/compositor review, other clients,
+signing, and stable-release approval remain open.
+
+## 2026-07-21 — Linux Arabic AT-SPI semantic fixture
+
+Assumption: the Arabic accessibility tree must expose localized names and stable roles for the
+same production controls used by the English and Simplified Chinese fixtures, including explicit
+English fallbacks where the pinned Arabic catalog remains untranslated.
+
+- `tools/gtk-atspi-inspect.py` now defines Arabic expectations for Open (`فتح ملف نصي`), Translate
+  (`ترجمة`), and Stop (`إيقاف الترجمة`), while requiring the catalog's English Retry and fallback
+  names; all expected controls remain push-button or checkbox roles and two text-editor roles.
+- Native CI adds a private Xvfb/AT-SPI run with `LINGUAMESH_TEST_LOCALE=ar`. Local Python compile,
+  shell syntax, and diff checks passed; the display-backed fixture is remote-only on this host and
+  push Native/Flatpak/Foundation runs `29819765571`/`29819765594`/`29819765609` and the matching
+  pull-request runs `29819762498`/`29819762505`/`29819762534` all passed, including the Arabic fixture.
+
+This strengthens automated Linux Scenario 13 accessibility evidence only; human Orca speech,
+translated-copy/RTL, visual/compositor, other clients, signing, and stable-release review remain
+open.
+
+## 2026-07-21 — Linux Arabic RTL keyboard-focus fixture
+
+Assumption: Scenario 13 requires keyboard traversal to remain usable after the production GTK
+workspace switches to Arabic RTL, not only a unit-level direction flag.
+
+- The keyboard-focus probe now accepts an isolated locale override and records `__rtl__` only when
+  the production workspace reports `gtk::TextDirection::Rtl`.
+- Native CI keeps the English fixture and adds a second real-binary Xvfb/xfwm4 run with
+  `LINGUAMESH_TEST_LOCALE=ar`; both runs inject Tab/Shift+Tab and require the onboarding and
+  workspace focus IDs. No ordinary startup default or user configuration is changed.
+- Local rustfmt, all-target/all-feature locked offline check, shell syntax, and diff checks passed.
+  The display-backed fixture is CI-only on this host. The first push/PR Flatpak gates for the
+  preceding code head failed because its manifest still referenced `59b57c0`; final head
+  `fedc1a9` repins the manifest and passed push Native/Flatpak/Foundation
+  `29818596872`/`29818597026`/`29818596824` plus PR Native/Flatpak/Foundation
+  `29818599326`/`29818599257`/`29818599479`.
+
+This strengthens automated Linux Scenario 13 keyboard evidence only; manual translated-copy/RTL,
+screen-reader, visual/compositor, other clients, signing, and stable-release review remain open.
+
+## 2026-07-21 — Linux post-preflight regular-file and hard-link race regressions
+
+Assumption: the Linux storage boundary must reject same-UID replacement of a validated parent or
+database leaf even when the replacement is not a symbolic link.
+
+- Added `replaced_parent_with_regular_file_is_rejected_between_preflight_and_descriptor_open`,
+  which replaces the validated parent directory with a regular file before descriptor pinning and
+  requires fail-closed rejection.
+- Added `replaced_database_file_with_hard_link_is_rejected_between_preflight_and_descriptor_open`,
+  which replaces the validated database leaf with a hard link before descriptor opening and
+  requires rejection without modifying the linked target.
+- Local `cargo fmt --all -- --check`, targeted regressions, demo-provider tests (`149 passed; 3
+  ignored`), no-default tests (`81 passed; 1 ignored`), strict Clippy, and `git diff --check`
+  passed. The first push/PR Flatpak gates correctly failed because the manifest still pointed at
+  ancestor `f53c44d`; after repinning to `751ac1e`, final push Native/Flatpak/Foundation runs
+  `29817292493`/`29817292344`/`29817292390` and pull-request Native/Flatpak/Foundation runs
+  `29817295183`/`29817295210`/`29817295244` all passed.
+
+This expands automated Linux storage-race evidence only; broader filesystem/VFS variants, power
+loss, human review, other clients, signing, and stable release remain open.
+
+## 2026-07-21 — Linux Core incompatibility rejection matrix
+
+Assumption: Linux must refuse an unreviewed Core before provider work when any compatibility
+dimension changes, not only when the ABI major changes.
+
+- Expanded `reviewed_core_contract_is_required_exactly` to exercise Core semantic version, ABI
+  major, protocol version, provider-catalog version, and required-feature mismatches independently.
+  Every mismatch returns the typed `ProtocolIncompatible` error.
+- Local `cargo fmt --all -- --check`, all-target/all-feature check, strict Clippy, no-default tests
+  (`81 passed; 1 ignored`), demo-provider tests (`147 passed; 3 ignored`), localization audits,
+  Flatpak metadata, synchronization, and diff checks passed. The first push/PR Flatpak checks
+  correctly failed because the manifest still pointed at ancestor `12e810b`; the source pin was
+  corrected to this exact test head before the replacement gate.
+- Final push Native/Flatpak/Foundation runs `29814933452`/`29814933509`/`29814933444` and
+  pull-request Native/Flatpak/Foundation runs `29814936270`/`29814936251`/`29814936212` passed all
+  jobs, including the compatibility matrix, Core SDK smoke, GTK, accessibility, and Flatpak
+  checks.
+
+This strengthens Linux Scenario 16 fail-closed evidence only; it does not authorize an unreviewed
+Core, cross-client compatibility, or a stable release.
+
+## 2026-07-21 — Core SQLite WAL replay compatibility
+
+Assumption: Linux's bounded writer-disconnect recovery should be verified through the shared Core
+storage contract without expanding the release claim to arbitrary power-loss or VFS failures.
+
+- Linux now pins Core `4badabe735499a50265a1260a838df3254622c15`, which adds a regression proving
+  that a committed provider profile is restored after a reader snapshot holds the SQLite WAL open,
+  the writer disconnects, and the next `Storage::open` replays the sidecar.
+- The Native workflow and Flatpak source both consume this exact Core revision. Local validation
+  passed: Core package smoke SHA-256 `9857c972ce16ae3d0243fecfe76755f301abe94ca3a3c10f880f62a2836914f`,
+  Linux no-default/demo-provider suites (`81 passed; 1 ignored` / `147 passed; 3 ignored`),
+  strict Clippy, localization audits, Flatpak metadata, and diff checks.
+- Push Native/Flatpak/Foundation runs `29812780773`/`29812780784`/`29812780805` and pull-request
+  Native/Flatpak/Foundation runs `29812783783`/`29812783760`/`29812783759` passed all jobs,
+  including the Core SDK package smoke and GTK accessibility/persistence fixtures.
+
+This is bounded Linux-first persistence evidence only; abrupt power loss, alternate SQLite VFS
+behavior, and cross-client persistence remain open.
+
+## 2026-07-21 — Linux system accessibility preference fixture
+
+Assumption: Linux should inherit desktop accessibility preferences through the pinned
+GTK/libadwaita runtime; the application must not replace those settings with a private animation
+or contrast policy.
+
+- Added the serialized `gtk_accessibility_preferences_follow_desktop_settings` component test.
+  It applies a process-local `HighContrast` theme and disables `gtk-enable-animations`, then
+  asserts libadwaita detects high contrast and reduced motion before restoring both settings.
+- Added `tools/run-gtk-accessibility-preferences-test.sh` and a Native CI step. The fixture uses a
+  private Xvfb/DBus session and never writes the developer's desktop configuration.
+- Local `cargo fmt --all -- --check`, `cargo check --all-targets --all-features --locked --offline`,
+  strict Clippy, no-default tests (`81 passed; 1 ignored`), shell syntax, and `git diff --check`
+  passed. The full GTK fixture was not run locally because `xvfb-run` is not installed.
+- Remote push Native/Flatpak/Foundation runs `29810992461`/`29810992536`/`29810992539` and
+  pull-request Native/Flatpak/Foundation runs `29810995307`/`29810995345`/`29810995322` all
+  passed. The Native logs include the new high-contrast and reduced-motion fixture.
+
+This is automated Linux accessibility evidence, not a replacement for manual high-contrast,
+reduced-motion, screen-reader, RTL, and compositor review before a supported release.
+
+## 2026-07-21 — Linux dependency and provenance gate
+
+Assumption: Linux must enforce the same dependency advisory, license, and source policy as Core
+before a release candidate is considered, while duplicate versions remain warnings during GTK
+dependency convergence.
+
+- `deny.toml` reuses the reviewed Core policy and adds the Apache LLVM exception required by the
+  GTK dependency graph. Native CI runs the pinned `cargo-deny-action` for advisories, bans,
+  licenses, and sources; Foundation checks the policy file is present.
+- Local `cargo deny --manifest-path Cargo.toml --all-features check` passed using the repository
+  `deny.toml`. It reports duplicate `getrandom`, `hashbrown`, and `windows-sys`
+  versions as warnings; advisories, licenses, and sources passed.
+- Remote push gates passed: Native `29806301170`, Flatpak `29806301077`, Foundation `29806301086`.
+  Pull-request gates passed: Native `29806303917`, Flatpak `29806303924`, Foundation `29806303896`.
+  The Native logs show the dependency audit step completed successfully before the GTK fixtures.
+
+This adds a Linux prerelease gate only; it does not authorize signed artifacts or a stable release.
+
+## 2026-07-21 — Linux Native CI pinned Core SDK package smoke
+
+Assumption: the Linux client gate should verify the exact Core revision it consumes before running
+client tests, while package output remains CI evidence until the central release process authorizes
+an artifact.
+
+- Native CI now runs `bash tools/verify-linux-sdk-package.sh` from the checked-out Core tree at
+  `CORE_REVISION=19229184a21a6725326a3d30dea9bc72e5ac999f`.
+- The verifier builds the SDK twice in release mode, compares the complete archive checksum,
+  validates the external and per-file SHA-256 manifests, checks pkg-config metadata, and compiles
+  the packaged static library with the C header smoke consumer.
+- Native push run `29808320946` (job `88563526947`) passed the verifier at the pinned Core
+  revision and reported archive SHA-256
+  `3b42d10a347a32e45abb63f3ddb4bf052f90da26f940d2436256f66baae0c9f5`; the matching PR Native
+  run `29808324340` also passed. Push Flatpak/Foundation runs `29808320963`/`29808320962` and
+  PR Flatpak/Foundation runs `29808324366`/`29808324395` passed all packaging and foundation
+  checks for this head.
+- This gate proves reproducible compatibility inputs for Linux; it does not publish, sign, or
+  promote the generated archive.
+
+## 2026-07-21 — Linux localized live AT-SPI fixture
+
+Assumption: the live accessibility tree should prove catalog-backed names in at least one
+non-English locale while retaining the English baseline and the existing role checks.
+
+- The test-only `LINGUAMESH_TEST_LOCALE` override initializes the GTK fixture in a selected BCP 47
+  locale without changing ordinary startup defaults. The AT-SPI inspector now has explicit English
+  and Simplified Chinese expectations for Open, Translate, Retry, fallback consent, and Stop.
+- Native CI runs the existing English fixture and a second `zh-CN` fixture. Both continue to
+  require two text-editor roles and the expected control roles; unknown fixture locales fail closed.
+- Local formatting, strict Clippy, no-default tests (`81 passed; 1 ignored`), demo-provider tests
+  (`147 passed; 3 ignored`), Python compilation, shell syntax, localization audits, Flatpak metadata,
+  and diff checks passed. Final head `346b9499261da31d092c04703918195ba2678b14` repins the
+  Flatpak build input to the reviewed locale-test head after the stale-pin validator failure on the
+  preceding commit. Push Native/Flatpak/Foundation `29804861125`/`29804861156`/`29804861132` and
+  PR Native/Flatpak/Foundation `29804863422`/`29804863440`/`29804863421` passed all jobs; the
+  Native log records the five expected Simplified Chinese names and their roles.
+
+This remains unreleased Linux-first accessibility evidence. Human Orca listening, translated-copy/
+RTL review, physical desktop rendering, other clients, signing, distributable artifacts, and stable
+release remain open.
+
+## 2026-07-21 — Linux AT-SPI status-role fixture boundary
+
+Assumption: a live AT-SPI role assertion must match the roles actually exported by the pinned GTK
+runtime; GTK unit-level semantic roles remain the authoritative check when the bridge normalizes
+empty regions.
+
+- An attempted live-tree extension required `ROLE_STATUS` and `ROLE_ALERT`, but push Native
+  `29803564933` and PR Native `29803567256` both failed with the GTK/AT-SPI runtime exporting the
+  empty status/error regions as `ROLE_LABEL`. The failure was retained as evidence rather than
+  weakening the assertion to a false semantic pass.
+- The incompatible live-tree requirement is reverted; `tools/gtk-atspi-inspect.py` again checks
+  the named controls and text-editor roles, while the existing GTK unit test remains authoritative
+  for `AccessibleRole::Status` and `AccessibleRole::Alert`.
+- The Linux branch remains unreleased. Human Orca listening, translated-copy/RTL review, physical
+  desktop rendering, and a future runtime-compatible status/error fixture remain open.
+
+## 2026-07-21 — Linux final database-component race regression
+
+Assumption: the profile database must reject a final-path replacement that occurs after pathname
+preflight but before the descriptor is opened, not only a replaced parent directory.
+
+- `src/worker.rs` adds `replaced_database_file_is_rejected_between_preflight_and_descriptor_open`,
+  which creates a post-preflight symlink at the final database component, opens the validated
+  parent by descriptor, and requires the production `O_NOFOLLOW` path to reject it without
+  modifying the target.
+- `docs/testing.md` records both parent and final-component race regressions and keeps broader
+  filesystem/VFS and power-loss behavior explicitly outside the current claim.
+- Local targeted and full demo-provider tests passed (`147 passed; 3 ignored`), the no-default suite
+  passed (`81 passed; 1 ignored`), strict Clippy, localization audits, formatting, and diff checks
+  passed. Code head `93fd6f2b7d258c2c9902386ee1edb7a94c45fd9b` and packaging/docs head
+  `2ce550da4c195ad6e93d0fb7a6924b1aafa6b008` passed push Native/Flatpak/Foundation
+  `29802227111`/`29802227034`/`29802227032` and PR Native/Flatpak/Foundation
+  `29802228939`/`29802228801`/`29802228807`.
+
+## 2026-07-21 — Linux validation boundary refresh
+
+Assumption: the testing guide must distinguish completed automated evidence from the manual,
+platform, and release work that still prevents a supported Linux release.
+
+- `docs/testing.md` now records the automated GTK/AT-SPI, headless Orca, portal, Flatpak,
+  localization-invariant, and storage-boundary coverage already exercised by this branch.
+- The remaining list is limited to human screen-reader and translated-copy/RTL review, physical
+  compositor/GPU and broader X11 coverage, prompted Secret Service approval, broader filesystem
+  races, dependency/license/advisory automation, signed artifacts, stable-release authorization,
+  and the other native clients.
+- This documentation-only correction does not expand the release claim: the Linux branch remains
+  prerelease until those residual checks and the project-wide compatibility work are complete.
+
+## 2026-07-21 — Linux fallback-consent accessible name
+
+Assumption: the explicit fallback-consent checkbox should expose its localized accessible name on
+the checkbox node itself, while retaining the mnemonic label and updating both when the runtime
+locale changes.
+
+- `src/main.rs` now sets `AccessibleProperty::Label` on the production fallback checkbox during
+  construction and refreshes it whenever the interface locale changes; the GTK semantic test
+  asserts the property in addition to focusability.
+- `tools/gtk-atspi-inspect.py` now requires `Allow approved fallback` to resolve to the checkbox
+  role, closing the label-node-only ambiguity observed in the previous fixture run.
+- Local validation: no-default tests (`81 passed; 1 ignored`), demo-provider tests (`146 passed;
+  3 ignored`), formatting, strict Clippy, localization key/placeholder/visible audits, and diff
+  checks are required before remote gates; the live GTK/AT-SPI fixture remains CI-authoritative on
+  this host.
+- The first `6c1d89f` push/PR Flatpak runs (`29800606848`/`29800608418`) failed only because the
+  manifest still pinned the earlier `b463e5b` ancestor while `src/main.rs` changed. The manifest is
+  now repinned to this exact code head before the replacement gate.
+- Packaging head `e0eb47119cd63a3c9521af13e833b9051cacf43e` carries that exact Flatpak pin. Push
+  Native/Flatpak/Foundation runs `29800752697`/`29800752699`/`29800752707` passed; the first PR
+  Native run failed at the existing keyboard-focus fixture (`29800755130`), then rerun job
+  `88541746697` passed. Final PR Flatpak/Foundation runs `29800755122`/`29800755121` and the
+  rerun Native result all passed.
+
+This remains unreleased Linux-first accessibility evidence. Human Orca listening, translated-copy/
+RTL review, physical desktop rendering, other clients, signing, distributable artifacts, and stable
+release remain open.
+
+## 2026-07-21 — Linux error-mapping localization coverage
+
+Assumption: every user-visible error category and catalog-backed error mapping must be checked
+against the canonical catalog, including mappings that are later passed through a localized helper
+instead of appearing directly in a localization call.
+
+- `tools/check-localization-keys.py` now extracts `error.*` keys declared in the Linux error
+  category/state mapping and verifies them against the pinned canonical catalog, in addition to
+  direct localization calls and diagnostics keys.
+- `docs/testing.md` documents the expanded coverage. This is a source-level catalog invariant; it
+  does not claim human translation review or prove that provider-generated dynamic detail is
+  translatable.
+- Local validation: key audit passed with the expanded set, placeholder audit passed, visible-string
+  audit passed, no-default tests (`81 passed; 1 ignored`), and demo-provider tests (`146 passed;
+  3 ignored`).
+
+This remains unreleased Linux-first evidence. Human translated-copy/RTL review, other clients,
+signing, distributable artifacts, and stable release remain open.
+
+## 2026-07-21 — Linux AT-SPI action-name coverage
+
+Assumption: the smallest useful automated accessibility follow-up is to extend the existing live
+AT-SPI tree fixture for controls that are always present in the main window; this does not claim
+human screen-reader listening, translated-copy review, high-contrast rendering, or physical-desktop
+coverage.
+
+- `tools/gtk-atspi-inspect.py` now requires the production `Open text file`, `Translate`, `Retry
+  translation`, and `Stop translation` controls to export non-empty names with their expected
+  AT-SPI roles. The `Allow approved fallback` label/control is also required; GTK exports its
+  accessible name on the associated label node, so the live tree accepts the label role while the
+  GTK relation/role unit checks remain authoritative for the checkbox itself.
+- `docs/testing.md` records the expanded control set. The fixture remains CI-authoritative on hosts
+  that provide Xvfb, AT-SPI, and `python3-pyatspi`; this host does not provide those runtime packages.
+- Local validation for this documentation/script-only slice: `python3 -m py_compile tools/gtk-atspi-inspect.py`,
+  `bash -n tools/run-gtk-atspi-test.sh`, and `git diff --check`.
+- The first remote run for commit `9bda65b` failed in the AT-SPI fixture because the checkbox name
+  was assumed to be on the checkbox node; the failure log showed the expected label export. This
+  correction is intentionally kept as a regression record and requires a fresh gate run.
+
+This remains unreleased Linux-first evidence. Broader filesystem/VFS races, manual visual and Orca
+review, other clients, signing, distributable artifacts, and stable-release authorization remain open.
+
+## 2026-07-21 — Linux preflight parent-replacement regression
+
+Assumption: Linux profile storage must reject a parent-directory replacement that occurs after
+pathname preflight but before the descriptor is opened.
+
+- Added `replaced_parent_is_rejected_between_preflight_and_descriptor_open`, which validates the
+  production database path, replaces its parent with a symlink to an alternate private directory,
+  and requires `openat2(RESOLVE_NO_SYMLINKS)` to fail before creating a database file. The existing
+  descriptor-pinned migration test still proves a replacement after a successful open remains on
+  the original inode.
+- Local targeted regression, no-default tests (`81 passed; 1 ignored`), demo-provider tests
+  (`146 passed; 3 ignored`), strict Clippy, formatting, and diff checks passed. Push Native,
+  Flatpak, and Foundation runs `29798394839`/`29798394838`/`29798394846` and PR runs
+  `29798396546`/`29798396642`/`29798396614` passed all jobs, including the GTK, portal, Orca,
+  packaging, checksum, rollback-evidence, and sandbox fixtures.
+- The Flatpak source manifest is pinned to the exact code head
+  `b463e5b94ed6b46ef24aee89ff9887d9dd5c038c`; the metadata validator rejects the prior pin when
+  `src/worker.rs` changes, so no stale-build exception is used.
+
+The Flatpak source pin remains `b463e5b94ed6b46ef24aee89ff9887d9dd5c038c`, an ancestor with no
+build-input changes for the docs-only head `7355824`; the metadata validator passed this lineage.
+This closes the deterministic preflight replacement boundary only; broader filesystem/VFS races,
+other clients, human review, signing, rollback authorization, and stable release remain open.
+
+## 2026-07-21 — Core POSIX document-descriptor consumption pinned
+
+Assumption: Linux's portal-backed document path should have a native ABI handoff that duplicates a
+registered POSIX descriptor, applies the same bounded parser, and consumes the lease exactly once.
+
+- Pinned Core `19229184a21a6725326a3d30dea9bc72e5ac999f`, which keeps the document-decoder fuzz and
+  sanitizer gate and adds `lm_engine_file_lease_consume_posix_document`. The function duplicates
+  the registered descriptor, reads at most `MAX_DOCUMENT_BYTES + 1`, validates the shared document
+  contract, and consumes the lease only after successful parsing.
+- Core local workspace tests, strict Clippy, and Native SDK C/C++ smoke passed. Exact Core CI,
+  Fuzz and sanitizers, and Native SDK runs `29795469293`, `29795469253`, and `29795469275` passed
+  across their Linux, Android, Windows, and Apple jobs.
+- Linux head `126699a1eb93fbecafcbb73f79d83c680652ce00` now appears exactly in the Flatpak source
+  manifest, so the package gate and central release manifest consume the same reviewed revision.
+  Flatpak metadata validation and formatting checks passed locally; the corresponding Native,
+  Flatpak, and Foundation PR gates are `29795527184`, `29795527194`, and `29795527187`.
+- Linux's direct Rust GTK path remains the production portal-read path and continues to enforce the
+  same bounded lease lifetime locally. The new native API is a Linux-first compatibility slice and
+  does not claim Android ParcelFileDescriptor or Windows handle transfer.
+- ABI Android/Windows handle transfer, visual/GPU review, Orca speech and end-user prompt review,
+  signing, rollback, and stable release remain open.
+
+Local Linux validation and the PR's Native/Flatpak/Foundation gates are required before this pin is
+considered verified. The PR remains Draft/Open and this is unreleased Linux-first evidence.
+
+## 2026-07-20 — Core ABI FileLease lifecycle controls pinned
+
+Assumption: Linux must consume the exact Core revision that defines the native ABI lease lifecycle,
+even though this client continues to use the direct typed Rust lease path until document commands
+can consume ABI resource tokens.
+
+- Updated the Native workflow, Flatpak source manifest, host testing instructions, release notes,
+  and architecture pin to Core `9a959f142f6660f4a736174cb17f8bea6ff332c1`. This revision adds
+  bounded engine-scoped create, active-state, expire, revoke, and destroy calls for validated
+  paths and platform descriptors without returning resource values across the ABI.
+- Linux continues to validate `file_lease_v1` around portal-backed reads and to revoke after the
+  bounded document bytes are copied. It does not yet call the C ABI lease functions; document-command
+  resource consumption and OS-handle transfer remain open.
+
+## 2026-07-20 — Core ABI malformed-input stress corpus pinned
+
+Assumption: Linux's exact Core pin must include the ABI decoder regression corpus before the next
+native compatibility checkpoint, while sanitizer and coverage-guided fuzzing remain separate gates.
+
+- Core revision `9a959f142f6660f4a736174cb17f8bea6ff332c1` adds a deterministic 4,096-case malformed
+  input corpus through the real `lm_engine_submit` boundary, capped at the existing 1 MiB protocol
+  limit and requiring controlled rejection or busy results without a panic or provider request.
+- Linux updates its native workflow, Flatpak source manifest, host test instructions, architecture
+  snapshot, and release notes to consume this exact revision. No Linux runtime API change is made;
+  document-command resource consumption and OS-handle transfer remain open.
+
+The Core CI and Native SDK gates passed for this pin. Linux local validation and PR gates are required
+before this compatibility checkpoint is considered verified; no stable release or fuzz completion is
+claimed.
+
+Local Linux validation and the PR's Native/Flatpak/Foundation gates are required before this pin is
+considered verified. The PR remains Draft/Open and this is unreleased Linux-first evidence.
+
+## 2026-07-20 — Linux FileLease document-import boundary
+
+Assumption: Linux portal-backed document reads must borrow a Core file lease only for the bounded
+read and must fail closed if the host lease expires before decoding completes.
+
+- Core revision `8b096478b1623bdaf5105e8a8f59e55e2fa8015d` adds the validated `file_lease_v1` feature
+  and monotonic expiry/revocation contract. Linux now creates a lease for each selected file URI,
+  checks it in the asynchronous GIO read callback and document decoder, and revokes it after bytes
+  are copied into the bounded `DocumentJob`.
+- Added a regression proving an expired lease rejects document decoding. The existing localized
+  file-open error path handles lease expiry without exposing paths or introducing untranslated UI
+  text. The worker compatibility list now requires `file_lease_v1` before provider work.
+- Local no-default tests passed (`81 passed; 1 ignored`) after the lease integration; demo-provider,
+  strict Clippy, localization, packaging, and remote CI evidence are recorded after the pinned
+  revision completes its workflow.
+
+This is unreleased Linux-first evidence. Native ABI lease transport, other clients, visual and Orca
+review, signing, rollback, and stable release remain open.
+
+## 2026-07-20 — Core compatibility snapshot pin
+
+Assumption: the Linux client must pin and validate the same Core compatibility contract that native
+clients query before provider work; this checkpoint keeps Linux on the direct typed Rust layer.
+
+- Core revision `c559b32d3869e01983f2bbf32f1386bad99c3290` adds the versioned
+  `CompatibilitySnapshot` and C ABI query while preserving the typed Rust compatibility check used
+  by Linux. Native and Flatpak workflow pins now consume this exact revision.
+- Local Linux no-default tests (`80 passed; 1 ignored`), demo-provider tests
+  (`144 passed; 3 ignored`), strict Clippy, localization key/placeholder/visible audits, Flatpak
+  metadata validation, and diff checks passed against the new Core checkout.
+- The Linux PR remains Draft/Open and this is unreleased Linux-first evidence; file-lease projection,
+  native UI review, signing, rollback, and stable release remain open.
+
+## 2026-07-20 — Core ABI host-secret contract pin
+
+Assumption: the Linux repository must consume the same Core protocol revision as the native SDK,
+even though this client currently uses the direct typed Rust host-secret broker rather than the C
+ABI wrapper.
+
+- Core revision `adc1e26f37db3761406bb30aa7515003a8bd2717` adds the versioned `secret_ref`,
+  `secret_required`, and one-shot `host_secret_response` contract. Linux updates its path pin and
+  Flatpak source manifest without storing or exposing secret values.
+- Local no-default tests passed (`80 passed; 1 ignored`), demo-provider tests passed
+  (`144 passed; 3 ignored`), strict Clippy, localization audits, Flatpak metadata validation, and
+  diff checks passed. The direct Linux worker's existing typed broker behavior remains unchanged;
+  Core FFI authenticated-loopback evidence is recorded in the Core repository.
+
+The Linux PR remains Draft/Open and this is unreleased Linux-first evidence; native UI, other
+clients, file-lease projection, human review, signing, rollback, and stable release remain open.
+
+## 2026-07-20 — Linux bounded routing retry and circuit-breaker policy
+
+Assumption: a retryable provider failure may advance only through the configured routing chain;
+backoff and circuit state must be bounded, cancellation-aware, and free of sensitive inputs.
+
+- Core revision `adc1e26f37db3761406bb30aa7515003a8bd2717` carries the validated `RetryPolicy` deserialization and
+  optional `retry_after_ms`
+  field on `TranslationError`. The shared parser accepts delta-seconds or HTTP-date values,
+  caps them at sixty seconds, and all four HTTP providers preserve the hint without changing
+  legacy error JSON when it is absent.
+- Linux applies the hint with an eight-second maximum, otherwise uses bounded exponential backoff
+  and deterministic candidate-key jitter. A candidate opens after two retryable failures and is
+  skipped for a thirty-second in-memory cooldown; successful connection clears its state, and
+  shutdown cancels the wait. Candidate keys contain only the reviewed provider/model identifiers.
+- `routing_backoff_prefers_retry_hint_and_stays_bounded` and
+  `routing_circuit_breaker_opens_after_repeated_failures_and_resets` cover the policy. Local Core
+  workspace formatting, check, strict Clippy, all-target/all-feature tests, and locked offline
+  build passed; Linux GUI all-target check, strict Clippy, no-default tests (`80 passed; 1
+  ignored`), demo-provider tests (`144 passed; 3 ignored`), Flatpak metadata, and diff checks
+  passed. Core CI/Native SDK runs `29778375725`/`29778375728` passed. Linux source/pin head
+  `3ff10f4c9f54d82b7c43a0204946033cb063b92f` and documentation head
+  `eb7e57869580917494d719ac61ec861c1c8bcff4` passed push Native/Flatpak/Foundation
+  `29778624703`/`29778624674`/`29778624715` (jobs `88474104174`/`88474104142`/`88474104194`)
+  and PR Native/Flatpak/Foundation `29778626906`/`29778626865`/`29778626849` (jobs
+  `88474110557`/`88474110496`/`88474110539`). GTK runtime evidence remains CI-only on this host
+  because `xvfb-run` is unavailable.
+
+The PR remains Draft/Open and the release train remains unreleased; provider quota behavior,
+physical desktop review, other clients, signing, rollback, and stable-release authorization remain
+open.
+
+## 2026-07-20 — Linux explainable routing decision diagnostics
+
+Assumption: Linux routing decisions must be inspectable without exposing provider endpoints,
+credentials, request text, or model output; Core's bounded candidate keys, reason codes, and score
+components are safe diagnostic inputs.
+
+- Linux now carries eligible candidates, rejected candidates with stable reasons, ranking inputs,
+  and configured fallback order from each Core `RoutingDecision` through `WorkerEvent` and
+  `AppState` into the localized GTK diagnostics panel. Empty collections render as `None`.
+- The model and worker regressions assert the complete redacted summary for Manual, Ordered, and
+  Automatic routing, including quality-ranked candidates and fallback order. The serialized GTK
+  candidate lifecycle test also asserts that the diagnostics label displays these details.
+- Canonical l10n revision `737d890e60fd34f15fd8708698448ef9ab96299f` adds the localized detail
+  template and regenerated PO/MO resources for all twelve packs. Local formatting, GUI all-target
+  check, strict Clippy, no-default tests (`80 passed; 1 ignored`), demo-provider tests
+  (`142 passed; 3 ignored`), l10n synchronization, Flatpak metadata, and diff checks passed.
+- Source/pin head `ab82f36963a63f43091d94e960541fc173175724` passed push Native/Flatpak/Foundation
+  `29773735297`/`29773735296`/`29773735294` and PR Native/Flatpak/Foundation
+  `29773738883`/`29773738887`/`29773738924`. Documentation head `2b97fd8f9dd7f60955a09cf1a516b7f81d590cf3`
+  then passed push Native/Flatpak/Foundation `29774208247`/`29774208158`/`29774208115` and PR
+  `29774212826`/`29774212386`/`29774212439`. The host lacks `xvfb-run`, so GTK runtime evidence
+  remains CI-only.
+- The PR remains Draft/Open and the release train remains unreleased; human visual/translated-copy
+  review, Orca acceptance, other clients, signing, rollback, and stable-release authorization stay
+  open.
+
+## 2026-07-20 — Linux routing candidate dialog accessibility lifecycle
+
+Assumption: candidate-management acceptance requires the production GTK dialog to expose
+focusable, screen-reader-labelled controls and to preserve the selected profile through close/use.
+
+- `gtk_routing_profile_candidate_controls_have_accessible_lifecycle` constructs the real Routing
+  profiles dialog with two saved provider/model candidates, verifies the labelled profile ID field,
+  stable Manual/Ordered/Automatic mode order, explicit fallback control, focusable candidate
+  checkboxes, and accessible up/down labels. It exercises row reordering, Manual-mode single-
+  candidate enforcement, and the Use action's close-and-select lifecycle.
+- The test remains ignored in the parallel Rust suite because GTK initialization is thread-bound;
+  Native CI runs it as a dedicated serialized DBus/Xvfb fixture. Local formatting, GUI all-target
+  check, strict Clippy, no-default-feature tests (`80 passed; 1 ignored`), demo-provider tests
+  (`142 passed; 3 ignored`), Flatpak metadata validation, and diff checks passed. This host has no
+  `xvfb-run`, so the GTK runtime result is CI-only here.
+- Source/pin head `1c47ff9b6b103ee16d564480d3dd3cdfcda5e083` passed push Native/Flatpak/Foundation
+  `29771475803`/`29771475775`/`29771475669` and PR Native/Flatpak/Foundation
+  `29771479057`/`29771478869`/`29771478884`, including the new candidate fixture. The PR remains
+  Draft/Open and the release train remains unreleased; visual/translated-copy review, Orca
+  end-user acceptance, other clients, signing, rollback, and stable-release authorization remain
+  open.
+
+## 2026-07-20 — Linux fallback approval dialog lifecycle
+
+Assumption: an approved fallback may be used only after an explicit, one-shot user action;
+closing the confirmation must leave the translation request untouched.
+
+- The GTK fallback dialog introduced in `6996e5b9c97a53311790dc9c44859e9e170720a5` is covered
+  by `gtk_fallback_approval_dialog_requires_an_explicit_one_shot_action`. The regression inspects
+  the production dialog's modal state, fixed warning copy, and focusable actions; `Close` leaves
+  approval disabled and dispatch count at zero, while `Translate` closes the dialog, records
+  approval, and dispatches exactly once. The approval flag is consumed by the existing
+  `fallback_confirmation_needed` gate.
+- The test runs as a dedicated serialized GTK fixture because GTK initialization is thread-bound
+  in the Rust test harness. The full suite keeps the lifecycle test ignored; Native CI runs it
+  under DBus/Xvfb as a separate step. Mnemonic labels are asserted by their visible text.
+
+Local `cargo fmt --all -- --check`, GUI all-target `cargo check --features gui --offline`, strict
+Clippy with `demo-provider`, Flatpak metadata validation, and `git diff --check` passed. This host
+does not provide `xvfb-run`, so the GUI lifecycle execution is CI-only here; the Native fixture
+passed remotely.
+
+Final source/pin head `62d70b1c57662515fadb447aa625cabe1b5d74e9` passed push Native/Flatpak/Foundation
+`29769540559`/`29769540441`/`29769540542` and PR Native/Flatpak/Foundation
+`29769543788`/`29769543782`/`29769543814`. Earlier corrective failures are retained: Native
+thread-bound GTK initialization `29768782136`/`29768784889`, Flatpak stale-pin checks
+`29768781689`/`29768786334`, and the mnemonic-label assertion `29769089675`/`29769095258`.
+The PR remains Draft/Open and the release train remains unreleased.
+
+## 2026-07-20 — Linux automatic routing fallback integration
+
+Assumption: Automatic routing must be verified at the client worker boundary, not only by Core
+unit tests; a retryable failure may continue only through the profile's explicitly approved chain.
+
+- Linux `0e2ae25c321cef243275d1322f2b8271f0602d06` adds
+  `automatic_routing_prefers_quality_and_falls_back_along_approved_chain`. The regression creates
+  two saved providers, verifies Core's quality preference selects the higher-quality candidate,
+  shuts that candidate down before dispatch, and asserts the worker emits the typed decision and
+  fallback events before completing through the lower-quality candidate. No unapproved provider,
+  credential, or document-job fallback is introduced.
+- Local `cargo fmt --all -- --check`, GUI all-target `cargo check --features gui --offline`, strict
+  Clippy with `demo-provider`, full `cargo test --no-default-features --locked --offline`
+  (`80 passed; 1 ignored`), full `cargo test --features demo-provider --locked --offline`
+  (`142 passed; 3 ignored`), Flatpak metadata validation, and `git diff --check` passed. The
+  feature-gated GTK binary is linker-limited on this host by installed GTK symbols; Native CI
+  executed the runtime regression successfully.
+
+Remote push Native/Flatpak/Foundation runs `29767242226`/`29767242244`/`29767242325` and PR
+Native/Flatpak/Foundation runs `29767246017`/`29767246202`/`29767246112` all passed. The initial
+Flatpak pin failures `29767075134`/`29767080595` are retained as corrective evidence; the source
+pin now follows the test head. The PR remains Draft/Open and the release train remains unreleased.
+
+## 2026-07-20 — Linux explicit provider connection test
+
+Assumption: an explicit connection test may discover models with a temporary provider session,
+but must never switch or persist the active profile, model, or credential.
+
+- Worker exposes cancellable `TestConnection` command/events. The GTK provider form validates the
+  draft, clears the credential field immediately, and reports the discovered model count without
+  changing the active translation session or saved profile.
+- Failure paths are typed and localized; tests while translation/document work is active are
+  rejected, and shutdown cancellation is reported without persisting draft data.
+- Canonical l10n `7e8c987737444d4e0f8f2642b108eee4c7801f58` adds the Linux test action, tooltip, and
+  success status template across all generated locale resources.
+
+Local validation: cargo formatting/check, worker connection-test coverage, localization
+format/lint/generator tests, and generated-resource checks passed. Remote Native/Flatpak/Foundation
+gates remain authoritative for GTK runtime fixtures.
+
+## 2026-07-20 — Linux routing profile exchange
+
+Assumption: imported profiles must be new IDs; replacing an existing profile remains an explicit
+editor action so an exchange file cannot silently change a document job's routing reference.
+
+- Core `115535c76d804020f045708867af7798b8d0294a` exposes bounded routing-profile JSON codecs. The
+  codec validates the profile, rejects unknown fields (including endpoint/credential-shaped data),
+  enforces the 64 KiB limit, and keeps the exchange payload to non-secret routing metadata.
+- Linux adds worker export/import commands and GTK file chooser actions. Export serializes only the
+  validated Core profile; import requires UTF-8 JSON, rejects duplicate IDs, malformed/oversized
+  files, and persistence failures without logging file contents.
+- Canonical l10n `7e8c987737444d4e0f8f2642b108eee4c7801f58` adds Linux-only exchange strings and a
+  JSON file-filter label, with regenerated PO/MO resources for all official and pseudo-locale packs; non-English values remain
+  machine-generated drafts.
+
+Local validation: Core workspace tests (all targets/features, 33 storage tests and 29 domain tests),
+Linux all-target check, localization check/generate-check, localization key/visible/placeholder
+audits, and Flatpak metadata validation passed. Remote Linux GUI/Flatpak gates remain authoritative
+for the GTK file chooser path.
+
+## 2026-07-20 — Linux request-level translation presets
+
+Assumption: Linux is the first active client target; the GTK surface exposes the three bounded
+Core built-ins and document jobs persist the selected preset through schema 18.
+
+- Core `f79631fd3e83a55077000c888aee6c0fc580c115` adds the validated request contract and
+  `translation_presets_v1`. The text workspace now offers localized `General`, `Technical`, and `Marketing` presets. The
+  selected Core `TranslationPreset` is carried into ordinary requests and is disabled while work
+  is blocked, with state mapping tests covering all stable IDs.
+- Worker compatibility negotiation now requires Core feature `translation_presets_v1`; stale cores
+  fail closed before provider work. The request-level preset is independent of quality mode and
+  does not add provider calls or persist credentials.
+- Canonical l10n `7e8c987737444d4e0f8f2642b108eee4c7801f58` adds five Linux-only source keys and
+  regenerated PO/MO resources for all official locale packs; non-English values remain
+  machine-generated drafts.
+
+Local validation: GUI all-target check, strict Clippy, full demo-provider tests (`140 passed;
+3 ignored`), locked build, localization format/lint/test/generate-check, and diff checks passed.
+Remote Native/Flatpak/Foundation evidence is recorded after the pinned commits are pushed.
+
+## 2026-07-20 — Linux Provider Catalog compatibility guard
+
+Assumption: the Core provider catalog is the authoritative non-secret source for adapter type and
+model-listing policy; Linux keeps localized labels and endpoint defaults native, but must reject a
+stale or incompatible preset mapping before creating the GTK window.
+
+- Linux now consumes Core's `linguamesh-provider-catalog` crate at the pinned Core revision
+  `f62f2df91584eeebdf5c30bd06c5e0893f2345d8`, caches the bundled catalog, derives manual-model
+  visibility from its `model_listing`, and validates all six GTK preset adapter mappings at startup.
+- The regression `provider_presets_map_to_stable_native_and_compatible_defaults` covers the stable
+  GTK order and catalog compatibility without credentials or network access. A catalog mismatch
+  fails closed with an English diagnostic and does not start the window.
+- Local `cargo fmt --all`, GUI all-target check, strict Clippy, and demo-provider tests (`140 passed;
+  3 ignored`) passed. The GUI test binary remains linker-limited on this host by installed GTK
+  symbols; Native CI is authoritative for the startup guard and GTK test execution.
+
+## 2026-07-20 — Linux document quality-mode persistence
+
+Assumption: a document job captures the selected quality policy at dispatch time and reuses it for
+every segment after pause, retry, or process restart; older Core rows default to `Balanced`.
+
+- Core `f62f2df91584eeebdf5c30bd06c5e0893f2345d8` adds schema 17 and the validated
+  `DocumentJobOptions.quality_mode` field. Linux passes the mode into every document request,
+  persists it for plain and routed jobs, restores it from queued snapshots, and keeps the GTK
+  selector enabled while a document job is selected.
+- The routed restart regression now selects `Best`, shuts down after dispatch, resumes through the
+  saved routing profile, and asserts the completed snapshot retains `Best`.
+- Local GUI check, strict Clippy, full demo-provider tests (`140 passed; 3 ignored`), locked build,
+  targeted restart test, formatting, localization audits, Flatpak metadata, and diff checks passed.
+  The GUI test binary remains linker-limited on this host by installed GTK symbols; remote Native CI
+  remains authoritative for the GTK path.
+
+## 2026-07-20 — Linux translation quality-mode control
+
+Assumption: Linux is the first active client target; `Best` requests an internal provider critique
+and revision in one call, while Core's deterministic validation rejects malformed completion and no
+hidden paid follow-up call is introduced.
+
+- Core `f62f2df91584eeebdf5c30bd06c5e0893f2345d8` adds `TranslationQualityMode`, the versioned
+  `translation-prompt-v2` helper, `translation_quality_modes_v1`, and deterministic output checks.
+- Linux adds localized Fast/Balanced/Best selection to the text workspace and propagates the choice
+  into both ordinary and persisted document `TranslationRequest` values.
+- Canonical l10n `e03d8ccc548d7d2eeeef9163b4b12b8204e68d6d` contains 410 messages and generated
+  Linux resources. Local Linux validation passed format, GUI check, strict Clippy, and 140 demo-
+  provider tests (3 ignored). Stable release and human prompt/copy review remain open.
+
+## 2026-07-20 — Linux OpenAI Responses typed-SSE slice
+
+Assumption: Linux is the first active client target; the OpenAI Responses preset uses the shared
+`/v1/models` discovery path and a session-only credential while live account, quota, and model
+availability remain external gates.
+
+- Core `d304afe01e21023a1e1f37ad8f674d49a23b5d42` adds the `openai_responses` adapter, typed
+  `response.output_text.delta`/`response.completed` decoding, and the `openai_responses_v1`
+  compatibility feature.
+- Linux adds the localized `openai-responses` preset and a worker regression that discovers
+  `fake-translator`, makes one authenticated `/v1/responses` request, and streams
+  `你好，Responses！` through the real `ProviderManager` path.
+- Canonical l10n `e03d8ccc548d7d2eeeef9163b4b12b8204e68d6d` contains 405 messages and generated Linux
+  resources. This checkpoint does not claim a stable release.
+
+## 2026-07-20 — Linux Azure OpenAI end-to-end worker fixture
+
+Assumption: Linux is the first active client target; deterministic Azure loopback coverage proves
+request shaping and session-secret handling while live Azure account, quota, deployment, and other
+client behavior remain unverified.
+
+- Core `e46066ccafcd81e50b004c84d7eb8734e77f3279` adds the `azure_openai_chat` adapter with a
+  pinned `2024-10-21` API version, resource/deployment URL validation, `api-key` authentication,
+  manual deployment selection, and a deterministic testkit fixture.
+- Linux adds the localized Azure OpenAI preset and worker regression
+  `azure_openai_provider_uses_manual_deployment_and_api_key`; it selects `fake-deployment`, makes
+  no model-list request, and streams `你好，Azure！` through the real `ProviderManager` path.
+- Canonical l10n `8e0e50577f8714b90bcc08a0d22cc790319f9239` contains 401 messages and generated Linux
+  PO/MO resources. Local and remote gate evidence is recorded below after the final push.
+
+## 2026-07-20 — Linux Gemini end-to-end worker fixture
+
+Assumption: deterministic loopback coverage is sufficient for the Linux/Core integration gate,
+while live Gemini account, quota, and credential behavior remain explicitly unverified.
+
+- Core `232881263f4f523ce54b3713d83513f2d0170ff2` adds a Gemini Generate Content test server with
+  `/v1beta/models` filtering and fragmented SSE candidates ending in `finishReason`.
+- Linux adds `gemini_provider_discovers_and_streams_without_secret`, which exercises the real
+  `ProviderManager` and worker path, deliberately selects `gemini-2.0-flash`, and completes
+  `你好，Gemini！` without a credential. The Flatpak and Native workflows pin this Core revision.
+- Local Core workspace tests passed (including 7 testkit tests); Linux formatting, GUI check,
+  strict Clippy, demo-provider tests (`137 passed; 3 ignored`), localization audits, Flatpak
+  metadata, and diff checks passed. Core CI/Native SDK `29735977442`/`29735977484` passed.
+- Linux push Native/Flatpak/Foundation `29736052299`/`29736052289`/`29736052336` and PR
+  `29736054831`/`29736054822`/`29736054819` all passed. The PR remains Draft/Open and CLEAN;
+  live Gemini account/quota behavior, human review, other clients, signing, rollback, and stable
+  release remain open.
+
+## 2026-07-20 — Linux Google Gemini Generate Content provider
+
+Assumption: Linux remains the only active client target for this slice; Android, Windows, and macOS
+remain frozen while the shared provider contract is validated through deterministic loopback tests.
+
+- Core `638713c34ce7d5bcc8003bb0d7e54c514ab49ea7` adds the `gemini_generate_content` adapter,
+  model discovery, fragmented SSE streaming, cancellation, bounded protected-span/glossary
+  restoration, endpoint policy, and redacted diagnostics. The provider uses the documented
+  `/v1beta/models` and `:streamGenerateContent?alt=sse` shapes with an optional `x-goog-api-key`.
+- Linux `67554cec96ff5774d9bfe4d99790d29a205cdc62` exposes a localized Google Gemini preset,
+  preserves custom endpoint edits, keeps manual-model controls Anthropic-only, and restores the
+  selected preset for saved profiles. Canonical l10n `f9d74a8f83a89540a58bba65477a5031031bd619`
+  contains 396 messages and generated Linux PO/MO resources.
+- Local validation passed Core formatting, strict Clippy, and workspace tests (all passing); Linux
+  formatting, GUI all-target check, strict Clippy, demo-provider tests (`136 passed; 3 ignored`),
+  localization synchronization and three audits, Flatpak metadata validation, and diff checks.
+  The deterministic fixture does not claim live Gemini credentials, quota, or account coverage.
+- Native/Flatpak/Foundation push and PR checks for this head are pending; the PR remains Draft/Open,
+  the release train remains unreleased, and stable signing, rollback, human accessibility/visual
+  review, and the other clients remain open.
+
+## 2026-07-20 — Linux bounded concurrent document execution
+
+Assumption: Linux is the first delivery target, so bounded worker concurrency can advance without
+unfreezing the other clients or claiming a stable release.
+
+- The worker now runs up to four document jobs concurrently. Each job owns its event pump,
+  cancellation handle, partial output, provider manager, and segment index; a fifth or duplicate
+  start is rejected before persistence changes the job to Running.
+- Added regression coverage for independent concurrent completion and targeted cancellation of one
+  job while its survivor completes. Full local validation passed: formatting, GUI all-target check,
+  strict Clippy, demo-provider tests (`136 passed; 3 ignored`), and `git diff --check`.
+- Native/Flatpak/Repository Foundation push runs `29732668572`, `29732668556`, and `29732668568`
+  passed; the matching PR runs `29732671353`, `29732671354`, and `29732671362` also passed. These
+  are the authoritative GTK, packaging, and sandbox evidence for code head `42b5ff3`. Cross-platform
+  clients, human accessibility/visual review, signing, rollback, and stable-release authorization
+  remain open.
+
+## 2026-07-20 — Linux document-job concurrency isolation regression
+
+Assumption: until bounded concurrent document execution is implemented, Linux must fail closed on
+an overlapping document start rather than interrupting the active job or mutating the queued job.
+
+- Added `concurrent_document_start_is_rejected_without_interrupting_active_job`, which starts a
+  slow document translation, submits a second job while the first is streaming, asserts the typed
+  configuration rejection, cancels the active job, and verifies the second job remains pending.
+- Local targeted validation passed: `cargo fmt --all -- --check` and the filtered demo-provider test
+  (`1 passed; 0 failed`). The Flatpak source pin now follows the code head
+  `36b81586b8b148d7adc08ecfc46203b2ef94af4d`; no Core, l10n, workspace-manifest, or
+  release-manifest pin changed. True concurrent document execution, cross-platform clients,
+  signing, rollback, and stable-release authorization remain open.
+- Full local Linux validation also passed: formatting, GUI all-target check, strict Clippy,
+  demo-provider tests (`135 passed; 3 ignored`), Flatpak metadata, l10n synchronization, three
+  localization audits, and diff checks. The first code-head Flatpak pin failures
+  `29729850476` (push) and `29729852622` (PR) are retained; after pinning the code head,
+  Native/Flatpak/Foundation push runs `29730049695`/`29730049744`/`29730049648` and PR runs
+  `29730052583`/`29730052576`/`29730052602` all passed.
+
+## 2026-07-20 — Linux GTK routing candidate reorder behavior
+
+Assumption: candidate-management evidence must exercise the button callbacks and resulting row
+order through the serialized GTK dialog lifecycle, not only assert that accessible controls exist.
+
+- `0658f0f31083e0eb90259784dc2bfd0e642412ed` extends the restored-profile GTK regression to expose
+  two enabled provider/model candidates, click the first sorted candidate's down and up controls,
+  assert the visible candidate order changes and returns to its original order, then restore the
+  disabled-profile fixture state for the remaining lifecycle assertions. The Flatpak source
+  manifest is pinned to this exact Linux head; no provider endpoint, credential, or release pin
+  changed.
+- Local `cargo fmt --all -- --check`, `cargo check --features gui --all-targets --offline`, strict
+  Clippy, demo-provider tests (`134 passed; 3 ignored`), Flatpak metadata validation, localization
+  audits, l10n synchronization, and `git diff --check` passed. The host still cannot link the
+  all-feature GTK test binary because its installed GTK runtime lacks gtk-rs symbols; Native CI is
+  authoritative for GTK runtime execution.
+- The first PR Native run `29727820986` correctly caught an ordering assumption in the new fixture
+  (`left: A,B`, `right: B,A`); the test now follows the sorted saved-profile order and moves A down
+  then back up. That failure remains recorded as regression evidence.
+- The next PR Native run `29728076058` caught the temporary fixture-state change at the later disabled
+  profile assertion; the corrected test restores the disabled profile before continuing the existing
+  lifecycle checks. That failure also remains recorded as regression evidence.
+- Final push Native/Flatpak/Foundation runs `29728346052`/`29728346055`/`29728346087` and final PR
+  Native/Flatpak/Foundation runs `29728348382`/`29728348395`/`29728348472` all passed, including
+  the real GTK lifecycle, release build, Flatpak bundle, sandbox smoke, and repository validation.
+- This remains prerelease evidence. Human visual/translated-copy review, physical desktop review,
+  other clients, signing, rollback, and stable-release authorization remain open.
+
+## 2026-07-20 — Linux GTK routing candidate control regression
+
+Assumption: candidate movement controls must be exercised through the real GTK dialog lifecycle,
+not only through pure routing helpers; the existing serialized GTK lifecycle test is the safe
+fixture because GTK initialization is thread-affine.
+
+- `23abaf7b09adf2017bcedbdce9b521ca07b42b98` adds a GTK regression that constructs the Routing
+  profiles dialog after restored provider profiles are available and verifies the localized
+  keyboard-focusable up/down controls through their tooltips. The test then continues through the
+  existing GTK flow; no provider endpoint, credential, or production routing contract changed.
+- Local `cargo fmt --all -- --check`, GUI all-target check, strict Clippy, demo-provider tests
+  (`134 passed; 3 ignored`), Flatpak metadata validation, and `git diff --check` passed. The host
+  still cannot link the all-feature GTK test binary because its installed GTK runtime lacks the
+  gtk-rs symbols; Native CI is authoritative for GTK runtime execution.
+- The first remote test attempt failed on the new assertion (`29725417555`); moving the check to
+  the healthy restored-profile phase fixed it. The next source-pin attempt failed only because
+  Flatpak still referenced the previous Linux head (`29725940665`). Final push and PR
+  Native/Flatpak/Foundation checks for `9c1fa0b9ed32782f67a4dbb10b1d7f58be6d7df8` all passed:
+  push `29726187490`/`29726187520`/`29726187565`, PR `29726189998`/`29726189990`/`29726189988`.
+- This is prerelease evidence. Human visual/translated-copy review, physical desktop review,
+  other clients, signing, rollback, and stable-release authorization remain open.
+
+## 2026-07-20 — Linux Secret Service prompt protocol evidence
+
+Assumption: automated prompt fixtures may prove Secret Service signal/response handling, but they
+must not be presented as evidence of a real user's desktop approval or visual review.
+
+- `bash tools/run-secret-service-prompt-test.sh` passed all four private-D-Bus cases: approved and
+  dismissed `CreateItem` prompts, plus approved and dismissed `Delete` prompts. The accepted cases
+  complete the operation; dismissed cases return the typed `SecureStorageUnavailable` error.
+- Updated `docs/testing.md` to distinguish adapter protocol coverage from the still-manual end-user
+  prompt approval and unlock-UX gate. No credential value, production source pin, or release status
+  changed.
+
+## 2026-07-20 — Linux document queue documentation consistency
+
+Assumption: the existing GTK queue-selection surface should be described as implemented, while
+bounded single-active-job execution remains an explicit validation boundary.
+
+- Corrected the architecture description to match the existing `document_job_list_returns_multiple_saved_jobs_for_queue_selection`
+  regression and GTK job-selection dialog.
+- No runtime behavior, provider routing, persistence schema, or release pin changed. Concurrent
+  document execution, human accessibility/visual review, other clients, signing, rollback, and
+  stable-release evidence remain open.
+
+## 2026-07-20 — Linux Anthropic Messages provider preset
+
+Assumption: Anthropic Messages remains a manual-model provider on Linux until a provider catalog
+service is intentionally introduced; the UI must collect the model ID before any SecretRef is
+resolved.
+
+- Added the localized Anthropic Messages preset with the HTTPS `/v1/` default endpoint, manual
+  Model ID field, saved-model restoration, and the existing session-only/Secret Service credential
+  flow. Empty model IDs fail locally before a worker connection or host-secret request.
+- Added the GTK focus/accessibility path for the conditional manual-model field and the regression
+  `anthropic_preset_requires_manual_model_before_connecting`.
+- Canonical l10n revision `e1ee15a5e9470e2c49077e52b4969597a5c8283f` contains 393 messages and all
+  generated PO/MO resources. Local l10n tests, generation, build, Linux localization audits,
+  formatting, all-target/all-feature check, strict Clippy, demo-provider tests (`134 passed; 3
+  ignored`), synchronization, and diff checks passed.
+- The host cannot link the all-feature GTK test binary because its installed GTK runtime lacks
+  symbols required by gtk-rs; Native CI remains the authoritative GUI/Secret Service/Flatpak gate.
+  The first push/PR run `29720882684`/`29720886129` and `29720882696`/`29720886096` were recorded
+  as failures because the Flatpak source pin used a malformed commit name; the next Native run
+  exposed the standalone GTK test's cross-thread initialization and was corrected by folding the
+  regression into the existing GTK lifecycle test. Final push Native/Flatpak/Foundation
+  `29721394859`/`29721394882`/`29721394847` (jobs `88284977586`/`88284977776`/`88284977563`)
+  and PR Native/Flatpak/Foundation `29721397504`/`29721397510`/`29721397543` (jobs
+  `88284984553`/`88284984617`/`88284984699`) all passed. The PR remains Draft/Open and the
+  release train remains unreleased.
+
+## 2026-07-20 — Linux Core Anthropic compatibility pin
+
+Assumption: the Linux-first client should consume the verified Core Anthropic Messages adapter even
+before the Linux GTK form exposes an Anthropic-specific preset. The shared Core revision is pinned
+to `a87aaf2bef7cca287c4a6faa8addd340e0245b0e`; this adds the manual-model `anthropic_messages`
+adapter while preserving the existing Linux provider choices and exact compatibility contract.
+
+- Updated the Native Linux workflow, Flatpak source manifest, local documentation, and lockfile to
+  the new Core revision. The lockfile now records the Core provider package without adding a Linux
+  production dependency outside the shared workspace.
+- Local `cargo fmt --all --check`, demo-provider check, strict Clippy, no-default-feature tests
+  (`79 passed; 1 ignored`), demo-provider tests (`134 passed; 3 ignored`), demo-provider build,
+  localization key/placeholder/visible-string audits, l10n synchronization, Flatpak metadata
+  validation, and diff checks passed.
+- Local all-feature check and Clippy passed. The all-feature test binary could not link on this
+  workstation because the installed GTK runtime lacks symbols required by the gtk-rs headers;
+  this is an environment linker limitation, not a Rust test assertion. Native CI remains the
+  authoritative full GTK/Flatpak gate.
+- The first pin-refresh head `0b7696e65b322a0ba948c207fe3b10599e7b6f86` correctly failed only
+  Flatpak source-manifest validation because its Linux source entry still named the prior commit.
+  The manifest was refreshed to the final head `a381d726cb163b8c0546d77e99ef2704898d58ce`.
+  Final push and PR Native/Flatpak/Foundation runs all passed: push `29719144958`/
+  `29719144935`/`29719144961` (jobs `88278214130`/`88278214125`/`88278214202`) and PR
+  `29719143513`/`29719143521`/`29719143509` (jobs `88278209789`/`88278209742`/
+  `88278209753`). `gh pr checks 1` reports all six checks passing.
+- The Linux UI now claims the Anthropic preset at the source and automated GTK-regression level;
+  human visual review, end-user Secret Service prompt approval, other native clients, signing,
+  rollback, and stable-release evidence remain open.
+
+## 2026-07-20 — Linux Secret Service session-only fallback guidance
+
+Assumption: a declined or unavailable Secret Service prompt must not silently change a user's
+request to remember credentials; the Linux client must provide an explicit session-only recovery.
+
+- The provider connection flow now presents a localized modal warning after a persistent
+  Secret Service store failure. **Use session-only mode** disables Remember and returns focus to the
+  credential field; **Close** leaves the connection unsubmitted. No credential is persisted in the
+  fallback path, and the existing typed error remains visible in the workspace.
+- Local Linux formatting, all-target/all-feature check, strict Clippy, demo-provider tests
+  (`134 passed; 3 ignored`), Flatpak metadata validation, and diff checks passed. End-user approval
+  of the desktop keyring prompt and physical visual review remain manual boundaries.
+- The first `7c2fe0a` push/PR Native and Flatpak runs (`29717314361`/`29717314328` and
+  `29717312990`/`29717312998`) correctly failed on the canonical placeholder audit and stale
+  Flatpak source pin; the fallback text and pin were corrected without weakening either check.
+- Final source-pin head `89e2b534d3efb3c6719eb4c731ab22820419f0b9` passed push
+  Native/Flatpak/Foundation `29717505522`/`29717505525`/`29717505575` (jobs
+  `88273550108`/`88273550195`/`88273550212`) and PR Native/Flatpak/Foundation
+  `29717506936`/`29717506979`/`29717506956` (jobs `88273554142`/`88273554144`/
+  `88273554114`).
+
+## 2026-07-20 — Linux read-only profile storage fallback
+
+Assumption: a profile database directory mounted or configured read-only must fail closed for
+persistent mutations while preserving session-only translation.
+
+- The regression `read_only_database_directory_reports_error_but_session_mode_still_works` runs
+  the worker against a private `0500` database directory, verifies a typed persistence failure,
+  completes a session-only fake-provider translation, and confirms that no database file is
+  created. Directory permissions are restored before test cleanup.
+- Local format/check/Clippy/full-test validation and Flatpak metadata/source validation passed.
+- Push Native/Flatpak/Foundation `29716560386`/`29716560397`/`29716560392` (jobs
+  `88270888992`/`88270889198`/`88270889141`) and PR Native/Flatpak/Foundation
+  `29716561843`/`29716561828`/`29716561907` (jobs `88270892907`/`88270892905`/
+  `88270893106`) all completed successfully. Corruption and `ENOSPC` boundaries remain
+  separately documented; power-loss and broader SQLite VFS behavior are still open.
+
+## 2026-07-20 — Linux descriptor-pinned database open
+
+Assumption: Linux profile storage must keep the exact validated database inode fixed through the
+Core migration/open call, not merely preflight a pathname.
+
+- Linux opens the parent directory with `openat2(RESOLVE_NO_SYMLINKS)`, opens the final regular
+  file with `O_NOFOLLOW | O_CLOEXEC`, and hands Core the live `/proc/self/fd/<fd>` descriptor path.
+  Core's ordinary path open remains no-follow; only the validated descriptor form is accepted by
+  `Storage::open_from_trusted_descriptor`.
+- The regression `pinned_database_parent_survives_path_replacement` renames the validated parent,
+  replaces its visible path with a symlink to an alternate directory, and verifies migrations
+  still land in the pinned inode's directory. Local format/check/Clippy/full-test validation and
+  Flatpak metadata/source validation passed.
+- Source pin correction `3b26c0795ecd369aee2b99a211c8e6408ed208ac` passed all six Linux gates after
+  the first code push's expected stale-pin failures: push Native/Flatpak/Foundation
+  `29715284721`/`29715284671`/`29715284678` (jobs `88267263432`/`88267263349`/`88267263588`) and
+  PR Native/Flatpak/Foundation `29715287347`/`29715287327`/`29715287399` (jobs
+  `88267269342`/`88267269231`/`88267269534`) all completed successfully.
+- The final status-document head `c5d36eb354d115047d5da84fe02d36da57586e30` also passed push
+  Native/Flatpak/Foundation `29715545070`/`29715545071`/`29715545056` (jobs
+  `88268027779`/`88268027804`/`88268027728`) and PR Native/Flatpak/Foundation
+  `29715546522`/`29715546521`/`29715546520` (jobs `88268031921`/`88268031905`/`88268031836`).
+
+## 2026-07-20 — Linux final database no-follow hardening remote verification
+
+- Source revision `39712ab0dabe26980a076a9068d6fb7282364d94` passed all six required GitHub checks.
+- Push evidence: Native `29713770948` (job `88262506277`), Flatpak `29713770918` (job
+  `88262506137`), and Foundation `29713770942` (job `88262506324`) all completed successfully.
+- Pull-request evidence: Native `29713772062` (job `88262510191`), Flatpak `29713772061` (job
+  `88262510201`), and Foundation `29713772058` (job `88262510179`) all completed successfully.
+- The final database component is opened with Linux `O_NOFOLLOW | O_CLOEXEC`; local regression and
+  full validation passed. Parent-directory replacement races still require a future
+  directory-descriptor or `openat2` design and remain outside this checkpoint.
+
+## 2026-07-20 — Linux Manual routing candidate cardinality
+
+Assumption: Manual routing must identify exactly one provider/model; candidate chains belong to
+Ordered and Automatic modes.
+
+- The GTK editor now deactivates extra Manual selections when a profile is loaded or the mode changes,
+  and the save path normalizes Manual selections to the first displayed candidate. Ordered and
+  Automatic retain their selected chains.
+- Local `cargo fmt --all -- --check`, `cargo check --all-targets --all-features --locked --offline`,
+  `cargo clippy --all-targets --all-features --locked --offline -- -D warnings`,
+  `cargo test --features demo-provider --offline` (`131 passed; 3 ignored`),
+  `bash tools/validate-flatpak-metadata.sh`, and `git diff --check` passed. Source revision
+  `a75468a6666a1954b85a8dbc646b4cb07144bf93` then passed all six GitHub checks: push Native
+  `29712945266` (job `88260013464`), push Flatpak `29712945264` (job `88260013439`), push
+  Foundation `29712945321` (job `88260013652`), PR Native `29712946196` (job `88260016618`),
+  PR Flatpak `29712946158` (job `88260016478`), and PR Foundation `29712946166`
+  (job `88260016565`). `gh pr checks` reports all six as pass.
+
+## 2026-07-20 — Linux final database component no-follow hardening
+
+Assumption: the Linux host should reject a final database path component swapped to a symbolic
+link during open, while the existing Core no-follow gate remains authoritative for SQLite.
+
+- Linux now opens the profile database with `O_NOFOLLOW | O_CLOEXEC` in addition to the existing
+  static path checks and post-open inode comparison. A regression proves a symlinked database file
+  is rejected without following or modifying its target.
+- Local `cargo fmt --all -- --check`, targeted and full demo-provider tests (`132 passed; 3 ignored`),
+  all-target/all-feature offline check, strict Clippy, Flatpak metadata validation, and diff checks
+  passed. Parent-directory replacement races still require a future directory-descriptor or
+  `openat2` design; this checkpoint does not claim that stronger guarantee.
+
+## 2026-07-20 — Linux third-party Ollama interop harness
+
+Assumption: the deterministic `/api` fixture is not evidence of interoperability with an
+independently running Ollama daemon, so the external path must be opt-in and model-explicit.
+
+- Linux adds `tools/run-ollama-interop-test.sh` and an ignored worker regression that performs real
+  `/api/tags` discovery and `/api/chat` translation through the `ollama` preset without a secret.
+  The script can start an isolated daemon and only pulls a model when `LINGUAMESH_OLLAMA_PULL=1`.
+- Local default validation passed with `131 passed; 3 ignored`, including the new external test.
+  External validation then passed with `LINGUAMESH_OLLAMA_MODEL=qwen2.5-0.5b-instruct:latest`
+  through a temporary Docker `ollama/ollama:0.11.10` daemon: the harness reported `1 passed;
+  0 failed`. The source GGUF was fetched from the public Qwen repository with SHA-256
+  `9ee36184e616dfc76df4f5dd66f908dbde6979524ae36e6cefb67f532f798cb8`; the Ollama model digest was
+  `91a334af822cdceab2234d673b0099d726d4944e1997b275744f4418e8b6a254`. The model and daemon were
+  removed after the run. This closes the Linux third-party Ollama daemon/model interoperability
+  gate for this prerelease checkpoint; it does not claim GPU or stable-release evidence.
+
+## 2026-07-20 — Linux fallback-send confirmation checkpoint
+
+Assumption: explicit fallback consent must be visible at the moment content could cross to the
+approved provider, not only when the checkbox is configured.
+
+- Linux now opens a localized, modal confirmation window before an ordinary text request with
+  fallback enabled is dispatched. **Translate** grants one request and **Close** cancels without
+  queueing a worker command; the existing retryable-error and partial-output policy is unchanged.
+- The one-shot approval state is reset after dispatch, and a focused unit regression covers enabled,
+  approved, and disabled combinations. Local `cargo fmt --all -- --check` and
+  `cargo test --features demo-provider --offline` passed (`131 passed; 2 ignored`).
+- Secret Service and portal unlock prompts, physical desktop review, other clients, signing,
+  rollback, and stable release remain open.
+
+## 2026-07-20 — Linux headless Orca remote gate evidence
+
+- Source revision `94e98e71eeb9edd9d0196230e1864ba2a63a9644` passed all six required GitHub checks.
+- Push evidence: Native `29710341677` (job `88253271782`), Flatpak `29710341643` (job
+  `88253271710`), and Foundation `29710341660` (job `88253271731`) all completed successfully.
+- Pull-request evidence: Native `29710342976` (job `88253274294`), Flatpak `29710342978` (job
+  `88253274312`), and Foundation `29710342987` (job `88253274307`) all completed successfully.
+- The Native log records `Orca AT-SPI fixture passed`, the named control inspection, and the
+  Linux application-tree `SPEECH GENERATOR` assertion. This is reproducible process evidence only;
+  the remote GTK4/Orca focus handoff limitation and human-listening boundary remain documented above.
+
+## 2026-07-20 — Linux headless Orca/AT-SPI integration checkpoint
+
+Assumption: the next accessibility gate should exercise the installed Orca process against the live
+GTK accessibility tree while keeping human listening and physical desktop review as separate gates.
+
+- Linux adds `tools/run-orca-atspi-test.sh` and `tools/orca-atspi-inspect.py`. The fixture starts
+  Orca with Speech Dispatcher in an isolated Xvfb/private-D-Bus session, confirms the production
+  `Stop translation` control through AT-SPI, and requires Orca's debug stream to contain the Linux
+  application tree plus a `SPEECH GENERATOR` record. The remote runner exposed a GTK4/Orca focus
+  handoff limitation: the control is confirmed by the AT-SPI inspector, while Orca's recorded
+  speech-generator evidence is for the application tree rather than a human-listened label.
+- Native CI installs the test-only Orca and Speech Dispatcher packages and runs this fixture after
+  the existing AT-SPI semantic export check; Foundation protects both fixture files from omission.
+- Local execution is unavailable on this host because `xvfb-run` and `python3-pyatspi` are not
+  installed. Shell syntax and Python bytecode compilation were checked; remote Native CI is required
+  before this checkpoint is treated as verified.
+- This advances headless Orca process and speech-dispatch evidence only. Human listening, translated-copy/RTL review,
+  physical desktop behavior, other clients, signing, rollback, and stable release remain open.
+
+## 2026-07-20 — Linux Orca fixture focus correction
+
+- Native push run `29709041999` reached the new Orca fixture but failed at job `88250409247` because
+  the production Stop button is intentionally disabled while idle, so AT-SPI correctly rejected
+  `grabFocus()` with an accessibility error. The existing AT-SPI semantic fixture passed first.
+- The fixture now sets `LINGUAMESH_TEST_ORCA_ATSPI=1`; `refresh_ui` enables only that named control
+  for the isolated test process, leaving normal idle production behavior unchanged. The exact
+  headless Orca and speech-generator assertions remain unchanged and require a rerun.
+
+## 2026-07-19 — Linux localization fallback-template consistency checkpoint
+
+Assumption: a catalog-backed key must use its canonical English source text as the literal runtime
+fallback; placeholder-only checks are insufficient when copy drifts between Rust and l10n.
+
+- Linux aligns literal fallback strings for document-job controls/progress, glossary import errors,
+  routing-profile tooltips, and document-job selection with the canonical catalog. The routing mode
+  tooltip now uses the dedicated `tooltip.routing_profiles` key instead of overloading the dialog
+  title key.
+- `tools/check-localization-placeholders.py` now rejects canonical-text drift in addition to malformed
+  braces and placeholder identity drift. The dependency-free audit still skips dynamic keys and
+  non-literal constants, which remain covered by the key audit and runtime tests.
+- The initial full local suite had one transient HTTP 502 in an unrelated profile-restore test; the
+  exact test rerun passed, and the final full suite completed with `131 passed; 2 ignored`.
+
+## 2026-07-19 — Linux localization fallback-template consistency remote verification
+
+- Linux `c3aaedfb60f4f65bab4abc67c019b0e3be3538e8` passed push Native/Flatpak/Foundation
+  `29708171935`/`29708171940`/`29708171993` and PR Native/Flatpak/Foundation
+  `29708173277`/`29708173249`/`29708173224`.
+- An earlier Flatpak push `29708101383` correctly failed because the source-pin validator detected
+  build-path changes at `25011190fbb4522a6d2c39407b88177d39bac71e`; updating the manifest pin fixed
+  the gate without weakening validation. Final Native/Flatpak evidence artifacts were non-expired.
+- This verifies canonical fallback copy and placeholder enforcement in CI; translated-copy/visual/Orca
+  review, third-party daemon interoperability, other clients, signing, rollback, and stable release
+  remain open.
+
+## 2026-07-19 — Linux localization placeholder audit checkpoint
+
+Assumption: catalog-backed fallback templates are part of the Linux visible-string contract, so
+their placeholder identities must be checked at source level before GTK or release validation.
+
+- Linux adds `tools/check-localization-placeholders.py`, a dependency-free parser for literal
+  `text`, `text_plural`, mnemonic, and template calls. It rejects malformed braces and placeholder
+  drift against the canonical l10n catalog while ignoring dynamic keys and non-literal constants.
+- Native and Foundation CI run this audit beside the existing key and visible-string audits; the
+  foundation required-file list now protects the checker from disappearing during repository work.
+- Local validation passed Python compilation, l10n synchronization, all three localization audits,
+  formatting, and `cargo test --features demo-provider --offline` (`131 passed; 2 ignored`).
+- This closes source-level fallback-template validation only; human translated-copy review, Orca
+  speech, broader runtime locale coverage, other clients, signing, and stable release remain open.
+
+## 2026-07-19 — Linux localization placeholder audit remote verification
+
+- Linux `3a20620eb95806baadb1b22ef4833302d0438fea` passed push Native/Flatpak/Foundation
+  `29707410914`/`29707410888`/`29707410893` and PR Native/Flatpak/Foundation
+  `29707412487`/`29707412476`/`29707412474`.
+- The push Native evidence artifact was non-expired at 5,589,644 bytes; the push Flatpak bundle and
+  evidence artifacts were non-expired at 3,021,899 and 4,936 bytes. PR Native and Flatpak artifacts
+  were also non-expired. This verifies CI enforcement of the source-level placeholder audit without
+  claiming reviewed translations, Orca speech, other clients, signing, or a stable release.
+
+## 2026-07-19 — Linux localization placeholder audit documentation verification
+
+- Documentation-only head `c1ddd0f4b3055dd18f93b44b55d2666629044aa0` passed push
+  Native/Flatpak/Foundation `29707583865`/`29707583895`/`29707583879` and PR
+  Native/Flatpak/Foundation `29707585705`/`29707585670`/`29707585669`.
+- The Native push evidence artifact was non-expired at 5,587,305 bytes; push and PR Flatpak bundle
+  and evidence artifacts were also non-expired. This records CI verification of the documentation
+  checkpoint and does not promote the unsigned artifacts to a stable release.
+
+## 2026-07-19 — Linux performance baseline checkpoint
+
+Assumption: release hardening needs reproducible, machine-contextual measurements before a stable
+performance budget can be set; no portable number is inferred from one runner.
+
+- Linux adds `tools/run-performance-baseline.sh`, which times exact DOCX reconstruction, XLSX
+  reconstruction, and saved-routing dispatch tests and records kernel, CPU, memory, Rust, Core, and
+  localization context in `LINUX-PERFORMANCE-BASELINE.tsv`.
+- Native CI runs this baseline beside the release binary and uploads it in the non-expired native
+  evidence artifact. The output is a trend baseline only, not a cross-machine claim or stable-release
+  performance guarantee.
+- Local baseline evidence on this host measured DOCX reconstruction at `0.404s`, XLSX reconstruction
+  at `0.382s`, and saved-routing dispatch at `0.399s`; these values are retained only as host context.
+- Linux `a511ea4ab5e95d3c94c6076b740471242fc4670c` passed push Native/Flatpak/Foundation
+  `29706528034`/`29706528033`/`29706528037` and PR Native/Flatpak/Foundation
+  `29706529098`/`29706529114`/`29706529109`. Native push/PR artifacts were non-expired (5,585,827
+  and 5,587,044 bytes); downloaded push evidence contained the binary, source archive, checksums,
+  SBOM, build context, and `LINUX-PERFORMANCE-BASELINE.tsv`.
+
+## 2026-07-19 — Linux performance baseline remote verification
+
+- Documentation-only head `c01b86ed49587c46ea4c8172bea7741f9d995919` passed push
+  Native/Flatpak/Foundation `29706725013`/`29706726466`/`29706726471` and PR
+  Native/Flatpak/Foundation `29706726505`/`29706724981`/`29706724970`.
+- The current-head Native push artifact was non-expired at 5,587,469 bytes; its downloaded contents
+  include the release binary, repository-only source archive, checksums, SPDX SBOM, build context,
+  and all three exact performance-baseline rows. This remains machine-specific prerelease evidence.
+
+## 2026-07-19 — Linux native release-mode evidence checkpoint
+
+Assumption: the next Linux release-engineering slice should make the native binary reproducible in
+CI and expose integrity metadata without implying that an unsigned build is stable or distributable.
+
+- Linux adds `tools/create-native-evidence.py`, a dependency-free generator for a release-mode
+  binary's SHA-256 sidecar and deterministic SPDX 2.3 SBOM from `Cargo.lock`. Native CI builds
+  `linguamesh-linux` with `--release`, uploads the binary with `SHA256SUMS`, `SBOM.spdx.json`, and
+  a fixed-context `BUILD-INFO.txt`, and the foundation gate requires the generator.
+- Local self-checks validate Python compilation, the SHA-256 sidecar, SPDX schema, and the 230-package
+  locked dependency set. Remote Native/Flatpak/Foundation and PR gates are required before this
+  checkpoint is considered verified.
+- This remains unsigned prerelease evidence; source archives, signing, rollback, and stable-release
+  authorization remain open.
+
+## 2026-07-19 — Linux source-archive evidence checkpoint
+
+Assumption: a repository-only source snapshot is useful release evidence when its external Core and
+localization pins remain explicit, but it must not be presented as a standalone source release.
+
+- Native CI now adds `linguamesh-linux-source.tar.gz` for the reviewed commit and appends its SHA-256
+  to `SHA256SUMS` beside the native binary evidence. The archive intentionally contains only this
+  Linux repository and still requires the pinned sibling Core and l10n repositories to build.
+- This source snapshot is unsigned CI evidence; stable source archives, signing, rollback, and
+  distributable release authorization remain open until the coordinated release train is complete.
+
+## 2026-07-19 — Linux source-archive remote verification
+
+- The first source-archive push run `29705840151` failed after all AT-SPI assertions passed because
+  asynchronous portal files made the fixture's final `rm` return non-zero. The cleanup now retries
+  bounded deletion of its exact temporary directory; no product assertion was weakened.
+- Linux `0edefcf464d4a81a4f4ae76595a750225eca887d` then passed push Native/Flatpak/Foundation
+  `29705945663`/`29705945669`/`29705945658` and PR Native/Flatpak/Foundation
+  `29705946524`/`29705946525`/`29705946526`. Native push and PR evidence artifacts were non-expired
+  (5,584,223 and 5,584,054 bytes) and include the binary, source archive, checksum, SBOM, and
+  build context; Flatpak bundle/evidence artifacts were also non-expired.
+
+## 2026-07-19 — Linux native evidence remote verification
+
+- Linux `8896aaa6e91e9ee482590701c925dabab96435de` passed the complete push gates: Native
+  `29705286112`, Flatpak `29705286140`, and Foundation `29705286105`; the duplicate PR gates
+  Native `29705287404`, Flatpak `29705287405`, and Foundation `29705287416` also passed.
+- The push Native run uploaded the non-expired artifact
+  `linguamesh-linux-native-evidence-8896aaa6e91e9ee482590701c925dabab96435de` (4,933,797 bytes).
+  The PR Native run uploaded its corresponding non-expired artifact (4,933,798 bytes). Each
+  contains the release-mode binary, `SHA256SUMS`, `SBOM.spdx.json`, and `BUILD-INFO.txt`.
+- The push Flatpak run also retained non-expired bundle and evidence artifacts. This validates
+  Linux CI packaging evidence only; the build is unsigned, unreleased, and not a stable artifact.
+
+## 2026-07-19 — Flatpak checksum and SBOM evidence checkpoint
+
+Assumption: Linux prerelease packaging should emit reproducible integrity evidence without implying
+that an unsigned CI artifact is a stable release.
+
+- Added `tools/create-flatpak-evidence.py`, which hashes the generated Flatpak bundle and emits a
+  deterministic SPDX 2.3 SBOM from the checked-in `Cargo.lock` package set.
+- The Flatpak workflow uploads the bundle's `SHA256SUMS` and `SBOM.spdx.json` as CI-only sidecars;
+  the foundation check requires the generator. No release, signature, or notarization is claimed.
+- Local metadata and source-level localization checks remain passing. Remote evidence is pending
+  for the new artifact-evidence steps.
+
+## 2026-07-19 — Flatpak source-pin integrity checkpoint
+
+Assumption: a passing Flatpak gate is only evidence for the Linux revision under review; the
+manifest must not silently build an older remote commit.
+
+- Updated `packaging/flatpak/dev.linguamesh.LinguaMesh.yml` to pin the Linux source to the current
+  checkout `2386d495123d3aeacf2b5815d0c45577808c7a44`.
+- `tools/validate-flatpak-metadata.sh` now verifies that the manifest's `linguamesh-linux` git
+  source commit equals the current checkout or an ancestor with unchanged build inputs; the
+  Flatpak workflow runs this check before building.
+- Local metadata validation and diff checks passed. Remote evidence is pending for this packaging
+  pin correction; no distributable or stable release artifact is claimed.
+
+## 2026-07-19 — Linux visible-string localization audit checkpoint
+
+Assumption: complete Linux gettext coverage requires a repeatable source check that rejects
+non-empty visible GTK literals, while empty labels used to clear transient state remain valid.
+
+- Added `tools/check-visible-localization.py`, a dependency-free audit for GTK labels, titles,
+  tooltips, placeholders, dialog actions, and direct list options. It passes the current source
+  and its self-check detects both direct literals and localized helper calls correctly.
+- Native and Foundation workflows now run the visible-control audit beside the catalog-key audit;
+  the repository foundation check requires the new script. The l10n consumer pin is synchronized
+  to `3362732be198450ff1ca00f30ec092aab2cf4189`, whose generated resources remain the verified
+  387-message bundle.
+- Local formatting, GUI-feature check, strict Clippy, 131 demo-provider tests with 2 ignored,
+  both localization audits, l10n synchronization, Flatpak metadata, and diff checks passed.
+- Remote Linux and central evidence will be recorded after the current head passes its gates.
+
+## 2026-07-19 — Linux complete routing-constraint editor checkpoint
+
+Assumption: the Linux routing-profile editor should expose every non-secret Core constraint that a
+user can safely configure, while blank numeric inputs mean no profile-level limit.
+
+- Linux working revision adds comma-separated provider/model allowlists and denylists, optional
+  minimum quality tier, and optional maximum request bytes to the existing routing editor. Edit
+  restores these values; Save rejects empty list items, unsafe identifiers, zero limits, and values
+  outside the Core quality-tier range.
+- l10n `3362732be198450ff1ca00f30ec092aab2cf4189` contains 387 messages and all 59 generated
+  resources; Linux consumes the immutable revision and audits the new dynamic labels plus error
+  key against the canonical catalog.
+- Remote evidence will be recorded after the Linux and l10n pins pass their current-head gates.
+
+## 2026-07-19 — Linux routing constraint controls checkpoint
+
+Assumption: Core's non-secret routing constraints must be user-editable in the native Linux
+profile dialog; editing visible controls must preserve future Core fields that the GTK surface does
+not yet expose.
+
+- Linux adds localized controls for Automatic preference (none/local/quality/latency/cost), local-only
+  routing, remote-candidate permission, privacy-sensitive request protection, streaming capability,
+  and document capability. Local-only and remote permission are mutually exclusive in the UI.
+- Existing profile edits restore these controls and preserve hidden allow/model lists, minimum quality,
+  and request-size limits when saving; pure helper tests cover preference mapping and preservation.
+- l10n `b871a881f0eaf88cdda67a50f9221375f4c814ce` contains 377 messages and all 59 generated resources;
+  Linux consumes the immutable revision and audits 253 catalog-backed source keys.
+- Remote Linux/l10n evidence will be recorded after the pinned-resource validation completes.
+
+## 2026-07-19 — Linux editor text-metrics checkpoint
+
+Assumption: users need a non-sensitive size summary while editing, but tokenization remains
+provider/model dependent, so the UI must label the token value as approximate and never log text.
+
+- Linux now shows localized source and output character counts plus a clearly approximate token
+  estimate; source-buffer changes update immediately and output metrics refresh with translated UI.
+- l10n `8adb1f4558e4b1d93a00ce03cf026a98d4a1a5ed` adds `status.text_metrics` to all twelve official
+  packs; the deterministic bundle contains 360 messages and the Linux source audit covers 236 keys.
+- Local validation passed formatting, GUI all-target checks, strict Clippy, demo-provider tests,
+  localization synchronization/key audit, Flatpak metadata, and diff checks.
+
+This improves editing feedback without claiming provider-specific token accuracy, full Orca speech,
+manual visual review, other clients, release artifacts, or a stable release.
+
+## 2026-07-19 — Linux duplicate routing-profile ID checkpoint
+
+Assumption: allowing multiple profile IDs must not turn a new-profile action into an accidental
+upsert of an existing record; only explicit Edit may replace a saved ID.
+
+- Linux rejects a new routing profile when its validated ID already exists, with a catalog-backed
+  error; explicit Edit continues to update the selected record.
+- l10n `712c4b1ac814ffbab265e4d0d40629d9d2bba02d` adds the duplicate-ID error to all twelve official
+  packs; the deterministic bundle contains 359 messages and the Linux source audit covers 235 keys.
+- Local validation passed formatting, GUI all-target check, strict Clippy, 131 demo-provider tests
+  with 2 ignored, localization synchronization/key audit, Flatpak metadata, and diff checks.
+
+This closes accidental new-profile replacement without claiming complete fallback-chain editing,
+full Orca speech, manual visual review, other clients, release artifacts, or a stable release.
+
+## 2026-07-19 — Linux routing profile identifier checkpoint
+
+Assumption: multiple saved routing profiles require a user-provided stable identifier, while edits
+must keep the persisted ID immutable so document-job and selection references remain valid.
+
+- Linux adds a localized routing-profile ID entry, validates it with Core's 1–128 byte ASCII
+  identifier rule, and allows distinct IDs for new profiles. Existing-profile edits lock the ID.
+- l10n `7b832d765788e5ca64d7ba483b8ad12b3dd382d2` adds the label and invalid-ID error to all twelve
+  official packs; the deterministic bundle contains 358 messages and the Linux source audit
+  covers 234 keys.
+- Local validation passed `cargo fmt --all -- --check`, GUI all-target `cargo check`, strict Clippy,
+  131 demo-provider tests with 2 ignored, l10n synchronization, localization-key audit, Flatpak
+  metadata validation, and `git diff --check` before the remote checkpoint commit.
+
+This enables multiple Linux routing-profile IDs without claiming complete fallback-chain editing,
+full Orca speech, manual visual review, other clients, release artifacts, or a stable release.
+
+## 2026-07-19 — Linux routing profile edit checkpoint
+
+Assumption: complete Linux routing-profile management requires loading an existing non-secret
+profile back into the same editor and replacing its stable ID, while preserving any constraints
+that the UI does not expose.
+
+- Linux adds an **Edit** action to each saved routing-profile row. The editor restores the persisted
+  Manual/Ordered/Automatic mode, explicit fallback consent, candidate selection/order, and stable
+  profile ID; **Save routing profile** upserts that ID instead of creating a duplicate.
+- Existing profile constraints are retained while the visible mode and fallback controls are
+  applied. The worker regression `routing_profiles_persist_without_provider_endpoints_or_secrets`
+  now verifies same-ID replacement and a single updated record.
+- l10n `aea172c15f421da09a0c848accae7c443820fb27` adds the edit/save actions to all twelve official
+  packs; the bundle contains 356 messages and the Linux source audit covers 232 keys.
+- Local targeted checks passed; full Linux and remote gates will be recorded after the checkpoint
+  commit.
+
+This closes the saved-profile edit/upsert slice without claiming complete fallback-chain editing,
+full Orca speech, manual visual review, other clients, release artifacts, or a stable release.
+
+## 2026-07-19 — Linux routing candidate drag-order checkpoint
+
+Assumption: Ordered routing needs both keyboard-accessible bounded moves and a direct pointer
+gesture for placing a selected candidate before another; the persisted candidate list remains the
+only source of truth and invalid drag payloads must fail closed.
+
+- Linux adds GTK text drag sources and row drop targets to the routing-profile dialog. Dropping a
+  candidate before another row rebuilds the visible list and preserves the resulting order used by
+  profile creation; the existing localized icon labels and keyboard controls remain available.
+- Core-facing helper `move_routing_profile_id_before` rejects self, unknown, and missing target IDs;
+  `routing_candidate_drag_reordering_is_bounded` covers forward, reverse, self, and unknown cases.
+- Local targeted test and GUI all-target check passed. Full Linux and remote CI validation will be
+  recorded after the checkpoint commit.
+
+This advances Linux candidate management without claiming complete profile editing, full Orca
+speech, manual visual review, other clients, release artifacts, or a stable release.
+
+## 2026-07-19 — Linux routing candidate accessibility-label checkpoint
+
+Assumption: icon-only candidate movement controls must expose catalog-backed accessible names in
+addition to tooltips, while full screen-reader speech and visual review remain separate manual gates.
+
+- Linux GTK up/down controls now use `action.move_candidate_up` and `action.move_candidate_down`
+  labels for both tooltips and the GTK accessible `Label` property.
+- Localization revision `0d2d8c08f3dec5cd3044558b0b7c75f669a9535d` adds the two Linux-only keys to
+  all twelve official packs and regenerated PO/MO resources; the source audit now covers 230 keys.
+- Local Linux validation passed with GUI check, strict Clippy, 132 tests (`130 passed; 2 ignored`),
+  localization sync/audit, Flatpak metadata, and diff checks. The l10n repository passed its 26 tests,
+  generated-resource checks, and Foundation validation at commit `0d2d8c0`.
+- Final Linux push gates passed at `0894b87`: Foundation `29698567260`, Native `29698567247`, and
+  Flatpak `29698567253`; PR gates passed with Foundation `29698569197`, Native `29698569232`, and
+  Flatpak `29698569229`. The preceding `3d60123` run stopped only because CI still pinned the old
+  l10n revision; `0894b87` updates that workflow pin before the successful gates.
+
+This strengthens icon-control semantics without claiming complete candidate management, Orca speech,
+manual visual review, other clients, release artifacts, or a stable release.
+
+## 2026-07-19 — Linux routing candidate-order checkpoint
+
+Assumption: Ordered routing needs an explicit, keyboard-focusable way to change the sequence of
+selected candidates; drag/drop and screen-reader copy review remain separate accessibility work.
+
+- Candidate rows now include focusable up/down controls. The in-memory order is rebuilt before
+  persistence, so the Core profile receives the exact Ordered-mode sequence the user selected.
+- The bounded `move_routing_profile_id` helper rejects unknown IDs and out-of-range moves; its
+  regression covers forward, reverse, boundary, and missing-candidate behavior.
+- Commit `251cdbe99bb5a347a7a7d77f56ba1e35712c063f` passed local GUI compilation, strict Clippy,
+  132 tests (`130 passed; 2 ignored`), localization synchronization/key audit, Flatpak metadata
+  validation, and diff checks.
+- Push gates passed: Foundation `29697585211`, Native Linux `29697585189`, and Flatpak Linux
+  `29697585215`. PR gates passed: Foundation `29697586335`, Native Linux `29697586345`, and
+  Flatpak Linux `29697586336`. The preceding `e939c0a` Native runs exposed only strict Clippy's
+  `type_complexity`; the follow-up type alias is included in this validated commit.
+
+This advances Ordered-mode candidate editing without claiming drag/drop semantics, complete candidate
+management, other clients, visual/Orca review, release artifacts, or a stable release.
+
+## 2026-07-19 — Linux routing candidate-selection checkpoint
+
+Assumption: a routing profile must let the user restrict dispatch to explicitly approved saved
+provider/model pairs; the displayed candidate order is the Ordered-mode order, while full drag/drop
+editing remains a later accessibility-reviewed slice.
+
+- The GTK routing-profile dialog now renders enabled saved provider/model pairs as focusable
+  checkboxes. Only checked candidates are serialized into the Core profile, in the displayed order.
+- Unknown candidate IDs are filtered before profile construction, and an empty selection is rejected
+  through the existing fixed, catalog-backed no-candidate error.
+- Regression `routing_candidate_selection_preserves_order_and_rejects_unknown_profiles` covers
+  deterministic filtering and order preservation without exposing endpoints, credentials, or content.
+- Remote push Native/Flatpak/Foundation runs `29696815328`/`29696815363`/`29696815337` and PR
+  Native/Flatpak/Foundation runs `29696816705`/`29696816704`/`29696816734` all passed for this
+  candidate-selection head.
+
+This advances Linux candidate inclusion without claiming drag/drop reordering, complete candidate
+management, other clients, visual/Orca review, release artifacts, or a stable release.
+
+## 2026-07-19 — Linux routing mode and fallback-consent checkpoint
+
+Assumption: routing mode is a user-visible Core contract, while fallback remains opt-in and must
+default to disabled for newly created profiles.
+
+- The GTK routing-profile dialog now exposes Core `Manual`, `Ordered`, and `Automatic` modes in a
+  stable dropdown order and persists the selected mode with the profile.
+- **Allow approved fallback** is a separate, focusable checkbox and is off by default; Core still
+  rejects fallback for manual mode and document jobs.
+- No new localization keys were added; existing catalog-backed routing and fallback labels are
+  reused.
+- Local Linux validation passed: GUI all-target check, 130 demo-provider tests (`128 passed; 2
+  ignored`), strict Clippy, formatting, localization sync/audit, Flatpak metadata, and diff checks.
+  Remote push Native/Flatpak/Foundation runs `29696147534`/`29696147536`/`29696147528` and PR
+  Native/Flatpak/Foundation runs `29696149519`/`29696149493`/`29696149499` all passed for this
+  published head.
+
+This advances the Linux routing configuration surface without claiming complete candidate editing,
+third-party-provider interoperability, other clients, visual/Orca review, release artifacts, or a
+stable release.
+
+## 2026-07-19 — Linux routed document restart checkpoint
+
+Assumption: a routed document job must persist only its non-secret routing-profile ID so restart can
+re-run deterministic candidate selection; legacy jobs without that ID continue using their saved
+provider/model options. Document fallback remains disabled.
+
+- Core `9926d0f9bf6394c6011c6cc886d142bfeb54e10f` adds schema 16 and the transactional migration
+  for `document_job_options.routing_profile_id`.
+- Linux stores that ID when a document starts through a saved profile. Resume and Retry now reload
+  the profile after worker restart, reconnect the selected candidate through the host secret broker,
+  emit a zero-fallback routing decision, and translate the remaining segments.
+- Regression `document_job_resume_reconnects_saved_routing_profile_after_restart` interrupts a
+  routed job, restarts the worker, and verifies complete reconstruction and no fallback.
+
+Local Core storage/workspace validation and Linux 129-test validation passed; two existing Linux
+environment-dependent tests remain ignored. Core CI/Native SDK `29694632345`/`29694632350` and
+Linux push Native/Flatpak/Foundation `29695192479`/`29695192489`/`29695192477`, plus PR
+Native/Flatpak/Foundation `29695193793`/`29695193826`/`29695193809`, all passed for the published
+commits.
+
+Status: Runtime storage ENOSPC rollback, forced Wayland/X11 GTK gates, baseline GTK accessibility semantics including accessible document progress, live AT-SPI tree export checks, a headless GTK keyboard traversal fixture for tested controls, runtime catalog-backed workspace/status/theme localization, the GIO Secret Service adapter, generic completion desktop notifications, bounded native text-file import with source-editor drag-and-drop, recoverable TXT/Markdown/CSV/JSON/HTML/SRT/WebVTT/DOCX/PPTX/XLSX/EPUB/PDF document-job translation with sequential segment persistence, bounded DOCX/PPTX/XLSX/EPUB package reconstruction and resource retention, bounded optional image-only PDF OCR with page-marked text output, page-aware text-PDF reconstruction with structured HTML fallback, subtitle timestamp validation, CSV quoting and selected-column reconstruction, JSON structure/path selection and escaping preservation, HTML tag-stack validation, script/style protection, and text-node reconstruction, the corrected Secret Service session wire shape, isolated real-daemon Secret Service CRUD plus persistent restart/locked lifecycle fixtures, secure persistent-credential onboarding, fail-closed Secret Service prompted-flow handling, deterministic and third-party Ollama OpenAI `/v1/` and native `/api` discovery/streaming evidence, a GTK provider preset selector for OpenAI-compatible and native Ollama profiles, bounded Linux ordinary-text dispatch through saved Core routing profiles, a remotely built pinned Flatpak bundle with bounded sandbox startup, private notification-service transport validation, headless real notification-daemon delivery, physical desktop-shell notification rendering, a real XDG document-portal lease lifecycle fixture, a real interactive XDG document-portal FileChooser backend fixture, application-level GTK FileDialog callbacks, and an actual GTK source-editor drag/drop gesture fixture are implemented; source-referenced Linux gettext keys are statically checked against the canonical catalog; end-user prompt acceptance, human visual/translated-copy review, human Orca listening, other clients, and release artifacts remain open
 
 Global goal SHA-256: `11f9a65927aac7e57e2af119e9d21cc98e8d5a08b8a112a19ee1c47903e36198`
+
+## 2026-07-19 — Linux ordinary-text routing execution checkpoint
+
+Assumption: selecting a saved routing profile applies only to ordinary text requests in this
+Linux slice; document jobs and the existing explicit single-provider fallback remain separate
+boundaries until their routing semantics are specified and tested.
+
+- The worker now builds a non-secret `RoutingContext`, asks Core `routing_planner_v1` to select a
+  candidate, resolves that candidate through the saved provider profile and host secret broker,
+  and executes the request with the selected provider/model. A typed decision event records only
+  stable identifiers and candidate counts.
+- The GTK routing-profile dialog adds an explicit **Use** action. The selected profile is applied
+  to the next ordinary text translation; the diagnostics panel records the safe decision summary.
+- l10n `fade545ec14793893de2603c62e0994689d9c4df` contains 352 messages, including the routing
+  selection and decision labels. Local l10n checks, Linux routing/model regressions, formatting,
+  GUI check, strict Clippy, localization sync/audit, Flatpak metadata, and diff checks passed.
+- Remote Linux push Native/Foundation/Flatpak runs `29692199045`/`29692199022`/`29692199030`
+  passed; duplicate PR-triggered Native/Foundation/Flatpak runs
+  `29692200873`/`29692200865`/`29692200912` also passed. l10n Foundation/Localization runs
+  `29691938103`/`29691938112` passed.
+
+This advances actual Linux ordinary-text routing execution without claiming a complete automatic or
+ordered fallback chain, document-job routing, other clients, visual/Orca review, release artifacts,
+or a stable release.
+
+## 2026-07-19 — Linux text retry action checkpoint
+
+Assumption: a failed or cancelled ordinary text request must be explicitly retryable without
+creating a document job or changing the confirmed provider/model selection.
+
+- Linux adds an accessible, catalog-backed **Retry translation** button. It delegates to the same
+  real `Translate` command path and is sensitive only for failed/cancelled ordinary text requests;
+  document-job retry remains a separate persisted queue action.
+- `AppState::can_retry_translation` and a request-preservation model test cover the state boundary;
+  the GTK acceptance flow verifies disabled-while-complete, enabled-after-failure, re-dispatch, and
+  completion after retry.
+- l10n `50688449ab16a8007f0edebabed2f8d6f0d3a90a` contains 336 catalog messages, including the two
+  new Linux-only text-retry messages. Local l10n lint/tests/generation checks passed.
+- Local Linux `cargo test --features demo-provider --offline` passed 121 tests with 2 ignored;
+  GUI check, strict Clippy, formatting, l10n synchronization, 217-key audit, Flatpak metadata,
+  and diff checks passed. The GUI all-target test binary could not link on this host because its
+  system GTK libraries do not export the GTK 4 symbols required by the installed gtk-rs version;
+  remote CI remains the authoritative GTK gate.
+
+This advances Linux Text Workspace retry evidence without claiming retry classification parity,
+automatic/ordered routing UI, other clients, visual/Orca review, release artifacts, or a stable
+release.
+
+## 2026-07-19 — Linux visible-string gettext coverage checkpoint
+
+Assumption: compound summaries visible to users must localize their complete template rather than
+concatenating an English prefix with data. Technical identifiers, filenames, model IDs, and
+translation content remain data and are not translated.
+
+- Linux now routes history and translation-memory metadata through
+  `status.translation_entry_metadata`, document queue identifiers through
+  `status.document_job_id`, and active-provider persistence mode through
+  `provider.active_with_mode`. Missing provider/model values use the existing catalog-backed
+  `status.unavailable` label.
+- l10n revision `bd06a76bcd498748b520143c61964a92727d1b51` contains 339 messages and regenerated
+  all 59 deterministic native resources plus both pseudo-locales. Non-English values remain
+  explicit machine-generated drafts.
+- Local `make check` in l10n, Linux formatting, 121 demo-provider tests with 2 ignored, GUI
+  all-target check, strict Clippy, l10n synchronization, 219-key audit, Flatpak metadata, and
+  diff checks passed. The host GTK all-target test-link limitation remains unchanged.
+
+This closes the current Linux source-level compound-summary localization gap without claiming
+human translated-copy review, Orca speech, automatic/ordered routing controls, other clients,
+release artifacts, or a stable release.
+
+## 2026-07-19 — Linux routing profile persistence checkpoint
+
+Assumption: the first Linux routing slice should persist only validated planner metadata; provider
+endpoints, credentials, and translation content remain outside the saved record.
+
+- Linux now exposes a catalog-backed **Routing profiles** action. The worker saves, lists, and
+  deletes Core `routing_planner_v1` profiles through the existing storage boundary and rejects
+  those mutations while a translation is active.
+- The dialog can create a bounded `linux-default` automatic, local-preferred profile from saved
+  provider/model selections. It displays mode and candidate counts and provides an explicit delete
+  action; no endpoint or secret is serialized into the routing profile.
+- l10n `5f98f8bf760bb552c5d9e6cc7ace575e427bae10` contains 350 messages, including the 11
+  Linux routing-profile labels and mode strings. Local l10n checks, Linux tests (122 passed, 2
+  ignored), GUI check, strict Clippy, localization sync/audit, Flatpak metadata, and diff checks
+  passed.
+
+This establishes routing-profile persistence and editing only. Actual translation dispatch through
+automatic or ordered routing, human copy review, other clients, release artifacts, and a stable
+release remain open.
+
+## 2026-07-19 — Core routing planner compatibility checkpoint
+
+Assumption: Linux must reject a Core that does not expose the shared routing contract before
+provider work starts; this pin records the contract while GTK routing controls remain a later
+client slice.
+
+- Core `d1c03ba84362c0c672c57045a59fc8092db470be` adds strict routing-profile constraint validation
+  on top of schema 15 persistence and
+  advertises `routing_planner_v1`.
+- Linux startup now requires the feature alongside the existing exact alpha.2, ABI 1, protocol 1,
+  and provider-catalog checks.
+- Native and Flatpak source pins were updated to the same Core revision; full local and remote
+  validation remains pending.
+
+## 2026-07-19 — Linux image-only PDF OCR toolchain revalidation
+
+Assumption: the opt-in OCR boundary is only claimable when the current Linux checkout can drive
+the real `pdftoppm` and `tesseract` processes against a generated image-only PDF fixture.
+
+- `bash tools/run-ocr-test.sh` passed locally on the current Linux head. The fixture was generated
+  with ImageMagick, rendered with Poppler, and recognized with the installed English Tesseract
+  language pack; the page text assertion completed successfully.
+- The test keeps the OCR path opt-in and bounded. Ordinary Linux tests continue to cover malformed
+  input and unavailable-tool fail-closed behavior without invoking external processes.
+
+This revalidates Linux's optional image-only PDF OCR evidence without claiming pixel-identical PDF
+reconstruction, non-English OCR quality, visual review, other clients, release artifacts, or a
+stable release.
+
+## 2026-07-19 — Linux cancelled document-job retry checkpoint
+
+Assumption: retrying an interrupted document job must reuse its persisted provider/model options,
+retain all still-pending segments, and never silently restart or overwrite completed work.
+
+- The worker regression `cancelled_document_job_can_be_retried_without_losing_pending_segments`
+  starts a bounded TXT job, cancels after a streamed partial event, verifies the cancelled snapshot
+  still has two pending segments, then retries through the saved options and reconstructs both
+  translated lines.
+- The regression rejects worker action errors and failed segment events, so a false successful
+  state cannot hide a retry failure.
+
+This strengthens Linux Scenario 12 recovery evidence without claiming concurrent document execution,
+physical interruption recovery, other clients, release artifacts, or a stable release.
+
+## 2026-07-19 — Linux macro/signature package boundary checkpoint
+
+Assumption: unsupported OOXML macro and digital-signature parts must be rejected before XML
+inspection or worker persistence; preserving them silently would overstate the supported format.
+
+- Core `14cee83a650610b3a9a79a460c7c6f54ae9d21d4` rejects `vbaProject.bin` and `_xmlsignatures/`
+  package parts with `DocumentError::UnsupportedFormat` for DOCX, PPTX, and XLSX inspection and
+  reconstruction.
+- Core focused unit test passed locally. Linux's native wrapper now maps the same boundary to
+  `TextImportError::UnsupportedFormat`; its focused regression passed locally with the sibling Core
+  checkout at the exact pin.
+- Local `cargo test --features demo-provider --offline` passed 119 tests with 2 ignored; GUI check,
+  strict Clippy, formatting, l10n synchronization, 215-key audit, Flatpak metadata validation, and
+  diff checks also passed. Core CI `29685742893` and Native SDK `29685742897` passed all jobs.
+- Linux push Native `29686029877` (job `88190303661`), Foundation `29686029880` (job `88190303628`),
+  and Flatpak `29686029899` (job `88190303740`) passed. PR Native `29686027664` (job `88190298389`),
+  Foundation `29686027668` (job `88190298119`), and Flatpak `29686027665` (job `88190298083`) passed.
+
+This advances Linux Scenario 15 and the Milestone 6 unsupported-format boundary without claiming
+macro execution, digital-signature preservation, visual review, other clients, artifacts, or stable
+release evidence.
+
+## 2026-07-19 — GTK AT-SPI fixture cleanup checkpoint
+
+Assumption: a successful AT-SPI assertion must also terminate its private GTK/D-Bus/Xvfb processes
+within a bounded interval; a runner cancellation after the assertion is not valid gate evidence.
+
+- Push Native run `29684324260` printed `GTK AT-SPI fixture passed` at `11:01:38Z`, but its cleanup
+  remained active until the 30-minute job cancellation at `11:29:49Z`; the run is recorded as
+  cancelled, not passed.
+- `tools/run-gtk-atspi-test.sh` now bounds termination and reaping of the application, window manager,
+  and AT-SPI launcher, escalating to `SIGKILL` after five seconds per process so later Wayland/build
+  gates cannot be starved by a successful-but-leaking fixture.
+- Local `bash -n tools/run-gtk-atspi-test.sh` and `git diff --check` passed. The full six remote gates
+  must be rerun for this cleanup fix and the Linux PPTX worker checkpoint.
+
+This records a validation failure and its bounded cleanup correction without claiming remote success.
+
+## 2026-07-19 — Linux PPTX worker end-to-end checkpoint
+
+Assumption: Linux Milestone 6 evidence must exercise persisted worker translation for PPTX, not only
+the native import wrapper and shared Core reconstruction fixture; the package remains bounded and
+contains no user paths or credentials.
+
+- Linux adds `document_job_translation_reconstructs_pptx_and_preserves_notes_and_resources`, which
+  persists a PPTX job, translates slide and speaker-note segments through the fake provider, rebuilds
+  the completed package, and verifies the binary image part remains unchanged.
+- Local `cargo test --features demo-provider --offline` passed 118 tests with 2 ignored; the focused
+  worker fixture passed independently. Formatting, GUI check, strict Clippy, 215-key audit, l10n
+  sync, Flatpak metadata validation, and diff checks passed.
+- The six remote Native/Foundation/Flatpak push and PR gates are required for this published checkpoint.
+
+This completes Linux worker evidence for bounded PPTX reconstruction without claiming macros/signatures,
+visual review, other clients, packaging artifacts, or a stable release.
+
+## 2026-07-19 — Linux PPTX import/reconstruction checkpoint
+
+Assumption: the Linux document slice should exercise every currently supported OOXML family through
+the native wrapper before claiming Milestone 6 coverage; the PPTX fixture is bounded and in memory.
+
+- Linux adds `imports_pptx_and_preserves_notes_and_resources`, translating slide and speaker-note
+  text while preserving the binary image part and reconstructing a valid PPTX package through Core.
+- Local `cargo test --features demo-provider --offline` passed 117 tests with 2 ignored; the focused
+  PPTX fixture passed independently. Formatting, GUI check, strict Clippy, 215-key audit, l10n sync,
+  Flatpak metadata validation, and diff checks passed.
+- The six remote Native/Foundation/Flatpak push and PR gates are required for this published checkpoint.
+
+This advances Linux Milestone 6 OOXML evidence without claiming macro/signature behavior, visual review,
+other clients, packaging artifacts, or a stable release.
+
+## 2026-07-19 — Linux compression-ratio import boundary checkpoint
+
+Assumption: mandatory Scenario 15 evidence must prove that the Linux native import wrapper maps the
+reviewed Core compression-ratio rejection to its bounded user-facing error before worker persistence.
+
+- Linux adds `rejects_docx_archive_with_suspicious_compression_ratio`, an in-memory DOCX fixture with
+  a 512 KiB repetitive deflated resource. The wrapper returns `TextImportError::TooLarge`; no output
+  path is opened and the source fixture remains in memory.
+- Local `cargo test --features demo-provider --offline` passed 116 tests with 2 ignored; the focused
+  fixture passed independently. Formatting, GUI check, strict Clippy, 215-key audit, l10n sync,
+  Flatpak metadata validation, and diff checks passed.
+- The six remote Native/Foundation/Flatpak push and PR gates are required for the published checkpoint.
+
+This extends Scenario 15 integration evidence without claiming macro/signature behavior, visual review,
+other clients, packaging artifacts, or a stable release.
+
+## 2026-07-19 — Core OOXML compression-ratio pin checkpoint
+
+Assumption: Linux should consume the reviewed Core archive guard through the same immutable
+functional pin used by Native CI and Flatpak metadata; no Linux-local duplicate parser is added.
+
+- Linux now pins Core `63fc0ca62e2b1d9bd168a60e6c9051ac338f6486`, whose shared DOCX/PPTX/XLSX
+  archive boundary rejects entries at least 1 KiB whose uncompressed size exceeds 200 times the
+  compressed size, in addition to the existing size, count, path, duplicate, encrypted, and
+  symlink checks.
+- The reviewed Linux functional pin and documentation are recorded at `be0bad02a16c046e49dfddc3152b98bf7f1d1bab`; Flatpak metadata consumes that immutable source.
+- Core local workspace tests, strict Clippy, formatting, and locked build passed at this revision;
+  Core CI run `29682666941` and Native SDK run `29682666929` completed successfully.
+- Linux local validation passed: the worker OOXML tests are included in the 115-pass, 2-ignored
+  demo-provider suite; formatting, GUI all-target check, strict Clippy, 215-key localization audit,
+  l10n synchronization, Flatpak metadata validation, and diff checks also passed. Push Native
+  `29682975678`, Foundation `29682975679`, and Flatpak `29682975675`, plus PR Native
+  `29682976712`, Foundation `29682976695`, and Flatpak `29682976678`, all passed.
+
+This checkpoint strengthens mandatory Scenario 15 archive safety without claiming macro/signature,
+visual review, other clients, packaging artifacts, or a stable release.
+
+## 2026-07-19 — Linux worker OOXML end-to-end checkpoint
+
+Assumption: Linux document acceptance must exercise the persisted worker command path, not only
+the native import wrapper or shared Core reconstruction tests; the fixtures use bounded in-memory
+DOCX/XLSX packages and contain no user paths or credentials.
+
+- Linux `9ed0557a87b5c042d38e05cad5abf4a2afe487f9` adds worker regressions that create persisted
+  DOCX and XLSX jobs, translate their pending segments through the fake provider, reconstruct the
+  completed packages, and verify translated text while preserving binary resources, formulas, and
+  numeric cells.
+- Local `cargo test --features demo-provider --offline` passed 115 tests with 2 ignored; the two
+  new regressions passed independently before the full suite. `cargo fmt --all -- --check`,
+  `cargo check --features gui --all-targets --offline`, strict all-feature Clippy, the 215-key
+  localization audit, l10n synchronization, and `git diff --check` also passed.
+
+This strengthens Linux evidence for mandatory Scenarios 10 and 11 without claiming macro/signature
+coverage, visual review, other clients, release artifacts, or a stable release.
+
+## 2026-07-19 — Linux built-in Ollama profile-name localization checkpoint
+
+Assumption: built-in provider display names are user-visible Linux form values, so both the
+OpenAI-compatible and native Ollama defaults must resolve through the canonical catalog while
+user-edited names remain untouched.
+
+- Linux now routes new-profile initialization and untouched preset switching through localized
+  default-name helpers for both built-in providers. The source audit covers 215 literal keys.
+- l10n `85b9d45569ce840c17dc0acc7d7366d6810be48e` contains 334 catalog messages and bundle SHA-256
+  `028d25b3637fbc19d41d497a860b414353615b9576db6f852a9f236bcbe770ce`.
+
+The updated Linux revision still requires its full remote gates. Machine-generated translations,
+visual/RTL review, Orca speech review, and stable-release qualification remain open.
+
+## 2026-07-19 — Linux GTK fixture localization checkpoint
+
+Assumption: the automated GTK drag-and-drop fixture button is still user-visible UI and must
+resolve through the canonical catalog, even though it is only enabled for interaction-test runs.
+
+- Linux now resolves the drag-fixture button through `fixture.drag_file`; the source-level audit
+  covers 214 literal Linux localization keys.
+- l10n `3aa86232974f9a9ece8d3a45e6760dee294fca81` contains 333 catalog messages and bundle SHA-256
+  `61a054d99935b256e79d5be7feb4d929fc8cf61af663a02b8fd10475745d70bd`.
+
+The updated Linux revision still requires its full local and remote gates. Machine-generated
+translations, visual/RTL review, Orca speech review, and stable-release qualification remain open.
+
+## 2026-07-19 — Linux corrupt-database fail-closed checkpoint
+
+Assumption: a corrupted local SQLite file must not be repaired or overwritten implicitly; the
+client should report persistence failure, preserve the bytes for recovery, and keep session-only
+translation available.
+
+- Added a worker regression with a private, malformed SQLite file. Startup emits typed
+  `Persistence` storage-unavailable evidence, the demo provider remains available, a session-only
+  translation completes, and saved-profile deletion remains rejected.
+- The test verifies the malformed database bytes are unchanged after shutdown.
+
+Validated locally:
+
+- `cargo fmt --all -- --check` — passed.
+- `cargo check --features gui --all-targets --offline` — passed.
+- `cargo clippy --all-targets --all-features --offline -- -D warnings` — passed.
+- `cargo test --features demo-provider --offline` — passed: 108 tests, 2 ignored, 0 failed.
+- `python3 tools/check-localization-keys.py` — passed: 213 Linux source keys.
+- `bash tools/sync-l10n.sh --check` and `git diff --check` — passed.
+
+Physical database corruption recovery, desktop accessibility review, other clients, and stable
+release evidence remain open.
+
+## 2026-07-19 — Linux output-safety alias checkpoint
+
+Assumption: rejecting only byte-for-byte equal destination URIs is insufficient for Scenario 18,
+because a save target may be a symbolic link or hard link to the imported source file.
+
+- Linux now compares GIO file identity, canonical native paths, and Unix device/inode metadata
+  before both text and binary export writes. Source aliases are rejected before asynchronous
+  replacement begins, preserving the source on failure and cancellation paths.
+- Added a regression covering the exact source path, a distinct target, and Unix symbolic/hard-link
+  aliases. No source contents are written by the guard.
+
+Validated locally:
+
+- `cargo fmt --all` — passed.
+- `cargo check --features gui --all-targets --offline` — passed.
+- `cargo clippy --all-targets --all-features --offline -- -D warnings` — passed.
+- `cargo test --features demo-provider --offline` — passed: 107 tests, 2 ignored, 0 failed.
+- `python3 tools/check-localization-keys.py` — passed: 213 Linux source keys.
+- `bash tools/sync-l10n.sh --check` and `git diff --check` — passed.
+
+The GTK binary test cannot link on this host because installed GTK/libadwaita symbols are older
+than the gtk-rs headers; Native and Flatpak CI remain required for the GUI regression. Physical
+desktop review, Orca speech, other clients, and stable-release evidence remain open.
+
+## 2026-07-19 — Linux plural UI wiring checkpoint
+
+Assumption: pluralized catalog support must be exercised by a visible GTK surface, not only by
+catalog unit tests; persisted document jobs represent one selected source file per job.
+
+- The document-jobs dialog now announces its localized file count through the runtime plural API,
+  while retaining the empty-list state and per-job metadata.
+- Connected-provider model placeholders now resolve through the canonical catalog instead of
+  inserting an untranslated literal during model discovery.
+
+Validated locally:
+
+- `cargo fmt --all -- --check` — passed.
+- `cargo check --features gui --all-targets --offline` — passed.
+
+The full Linux test suite and remote gates are required for this checkpoint; actual visual/Orca
+review, physical offline conditions, other clients, and stable-release evidence remain open.
+
+## 2026-07-19 — Linux offline-provider preservation checkpoint
+
+Assumption: offline behavior must fail within a bounded user-visible interval while preserving the
+last confirmed provider, model, and request path; the test uses a just-released loopback port so it
+does not depend on external network availability or a live service.
+
+- Added a worker regression that connects a confirmed fake provider, attempts a session-only
+  connection to the released loopback port, requires a `Network` rejection in under five seconds,
+  and then completes a translation through the previously confirmed provider.
+- This extends Linux evidence for mandatory Scenario 17 (offline behavior) without claiming a
+  physical network outage or third-party provider interoperability.
+
+Validated locally:
+
+- `cargo fmt --all -- --check` — passed.
+- `cargo test --features demo-provider offline_provider_failure_is_prompt_and_keeps_confirmed_session --offline` — passed.
+
+The full Linux test suite, native/Flatpak CI, actual offline network conditions, Orca speech,
+visual review, other clients, and stable-release evidence remain open.
+
+## 2026-07-19 — Linux gettext plural runtime checkpoint
+
+Assumption: the pinned gettext catalogs are the runtime source of truth for plural selection, so
+the GTK client must preserve every generated translation slot and apply the locale-specific rule
+before replacing `{count}` or other non-sensitive placeholders.
+
+- The MO loader now retains all NUL-separated plural translations instead of discarding every slot
+  after the first. `text_plural` selects the correct slot for English, French, Russian, Arabic,
+  Hindi, Brazilian Portuguese, and the one-form Chinese/Japanese/Korean catalogs, with safe
+  fallback behavior for incomplete translations.
+- Regression coverage exercises English singular/plural, Simplified Chinese one-form behavior,
+  Russian three-form selection, and Arabic dual-form selection using the pinned Linux catalogs.
+
+Validated locally:
+
+- `cargo fmt --all -- --check` — passed.
+- `cargo check --features gui --all-targets --offline` — passed.
+- `cargo clippy --all-targets --all-features --offline -- -D warnings` — passed.
+- `cargo test --features demo-provider --offline` — passed: 106 tests, 2 ignored, 0 failed.
+- `python3 tools/check-localization-keys.py` — passed: 213 Linux source keys.
+- `bash tools/sync-l10n.sh --check` and `git diff --check` — passed.
+
+The catalog translations remain machine-generated or source-reviewed according to their existing
+metadata; visual locale/RTL review, Orca speech, other clients, and release artifacts remain open.
+
+## 2026-07-19 — Native Ollama `/api` GTK preset checkpoint
+
+Assumption: the verified native Ollama worker path is ready for explicit Linux user selection, while
+the independently installed daemon remains an external interoperability gate.
+
+The GTK provider form now exposes localized OpenAI-compatible and native Ollama presets. Selecting
+the native preset uses the stable `ollama`/`ollama_chat` profile pair, changes only untouched default
+name and endpoint fields, and shows the native `/api` tooltip. Saved profiles restore their preset;
+connecting through the form therefore exercises native `/api/tags` discovery and `/api/chat` NDJSON
+streaming without a credential. The regression also checks Simplified Chinese labels and accessible
+label-to-control relations. The native test remains fixture-backed and does not claim a third-party
+daemon, GPU, Orca, visual review, or stable release.
+
+Validated locally:
+
+- `cargo check --features gui --all-targets --offline` and `cargo check --features gui --tests --offline` — passed.
+- `cargo test --features demo-provider --offline` — passed: 105 tests, 2 ignored, 0 failed.
+- `bash tools/sync-l10n.sh --check` — passed at l10n revision `d3d838198027e2104583296eb3e0f6fadc283e4e` (332 messages; bundle SHA-256 `0650b68a49daf27b56c95ae149cd5c29621d890ba4c7554c7c79d5690e38a05b`).
+
+The local GTK binary test remains unavailable on this host because installed GTK/libadwaita symbols
+are older than the gtk-rs headers; the CI native and Flatpak gates are required evidence.
+
+## 2026-07-19 — Native Ollama `/api` worker checkpoint
+
+Assumption: Linux-first local-model support needs the native Ollama `/api` contract in addition to
+the already covered OpenAI-compatible `/v1/` surface; a running third-party daemon remains an
+external runtime gate.
+
+The worker creates an explicit `ollama_chat` profile for the catalog's loopback-only `ollama`
+preset. It discovers `llama3.2:latest` through `/api/tags`, requires deliberate model selection,
+and streams `你好，Ollama！` through `/api/chat` NDJSON without a secret. Core owns endpoint policy,
+bounded response parsing, cancellation, protected-span restoration, and completion validation;
+Linux supplies the profile and exercises the real worker path against the deterministic fixture.
+
+Validated locally:
+
+- `cargo test --features demo-provider --lib --offline` — passed: 105 tests, 2 ignored, 0 failed.
+- Core workspace format, check, Clippy, and all-feature offline tests — passed at the matching Core
+  worktree revision.
+
+The fixture proves the native wire contract and does not claim a third-party daemon, GPU, Orca,
+visual review, or stable release.
+
+## 2026-07-19 — Ollama-compatible local endpoint checkpoint
+
+Assumption: Ollama's OpenAI-compatible `/v1/` surface is the bounded Linux-first local-model
+contract for this checkpoint. The native Ollama `/api` protocol and a running third-party daemon
+remain outside the automated gate.
+
+The Linux worker now exercises a deterministic fixture that returns `llama3.2:latest` from
+`/v1/models`, requires deliberate model selection, and streams `你好，Ollama！` from
+`/v1/chat/completions` without a credential. The test uses the existing `local-loopback` preset
+and keeps Android, Windows, and macOS deferred.
+
+The Core pin is `0d0d475d22129e8211333ee8f664a7669948ce3a`. Push validation passed in Native Linux
+run `29673591852` (job `88156804870`) and Flatpak Linux run `29673591888` (job `88156804894`); the
+pull-request gates also passed in Native Linux run `29673593375` (job `88156808424`) and Flatpak
+Linux run `29673593421` (job `88156808624`).
+
+The final evidence-only revision `091676d7f1f053e4a005acddbc162116c39b5407` repeated the same
+checks successfully: push Native Linux `29673745733` (job `88157199361`), push Flatpak Linux
+`29673745743` (job `88157199354`), pull-request Native Linux `29673747672` (job `88157204034`),
+and pull-request Flatpak Linux `29673747662` (job `88157203962`).
 
 Assumption: canonical generated PO/MO resources are synchronized and format-validated. The GTK host
 now parses all twelve pinned official Linux MO catalogs at runtime, exposes BCP 47 locale choices,
 switches the root direction for Arabic, and preserves the source editor buffer during a locale
 switch; status summaries, partial-output markers, text-file import controls, provider-profile
 controls, source/target language options, and stable worker/runtime/storage error sentences now use
-the same catalogs; complete UI coverage, plural handling, and visual locale/RTL review remain open.
+the same catalogs; source-referenced key coverage is enforced by a static audit, while plural
+handling and visual locale/RTL review remain open.
 
 Assumption: the existing first-party `linguamesh-storage` crate and the already-reviewed GTK/GIO
 dependency closure are the approved persistence contract for this Linux slice. The Secret Service
@@ -41,7 +4076,7 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
 
 - Rust 1.93.0 Cargo package at `0.1.0-alpha.2`, with locked Core alpha.2 path dependencies and
   optional `demo-provider`/`gui` features. Native CI pins Core functional revision
-  `7275c5ec195946ea20a2d65e5f42790b2d631ff2`.
+  `0d0d475d22129e8211333ee8f664a7669948ce3a`.
 - Startup rejects any Core other than semantic version `0.1.0-alpha.2`, ABI 1, protocol 1, provider
   catalog `0.1.0`, with the required cancellation, compatibility, typed Rust host-secret broker,
   model-discovery, protected-span, streaming-text, and text-translation features.
@@ -148,8 +4183,8 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
 - The Linux host now uses existing GIO D-Bus bindings for Secret Service `OpenSession`, item search,
   create/update, and `GetSecret` resolution. Persistent profiles retain only a SecretRef; the
   one-shot credential is passed through the existing typed broker and is never written to SQLite.
-- Fourteen canonical official/pseudo PO/MO catalog pairs containing 222 messages pinned to l10n revision
-  `8fd778a5869c8b8c91610c22241883fff2e41c99`. Sync rejects a different revision, dirty generated
+- Fourteen canonical official/pseudo PO/MO catalog pairs containing 327 messages pinned to l10n revision
+  `f00b00fda307660000b0e4068c5ca1072d266df1`. Sync rejects a different revision, dirty generated
   source artifacts, stale copies, and unexpected catalog counts. The GTK locale selector exposes
   the twelve official packs, runtime action, workspace-widget, active-provider, status summary,
   partial-output, text-file import/export, provider-profile, source/target language, onboarding stage/detail,
@@ -161,7 +4196,7 @@ glossary libraries, tokenizer-derived model budgets, and provider-specific synta
 - Foundation and native workflow sources use immutable Node 24-compatible action commits and
   disable persisted checkout credentials. Native CI pins reviewed Core revision
   `7275c5ec195946ea20a2d65e5f42790b2d631ff2` and localization revision
-  `d64d4085fb3c1cc69c9f7965bd97ffca54ca1995`. The revised native gate retains serialized all-target,
+  `f00b00fda307660000b0e4068c5ca1072d266df1`. The revised native gate retains serialized all-target,
   all-feature X11/Xvfb tests, runs the exact ignored storage-fault test in a private user/mount
   namespace when available, then runs the existing GTK binary test under forced Wayland and
   headless Weston before building the application. On restricted Ubuntu hosts, only the private
@@ -560,21 +4595,22 @@ in the GitHub Actions evidence above, but those native checks remain unavailable
 - End-user Secret Service prompt acceptance and unlock UX. The GIO adapter, fail-closed prompted
   store/delete boundary, remembered-credential path, and secure persistent-credential onboarding
   are implemented, while session-only fallback remains available when the keyring is unavailable.
-- Central release-manifest integration for this exact Linux/Core revision; broader product
-  compatibility beyond the alpha.2 startup gate remains unclaimed.
-- Interoperability evidence for third-party local servers, including Ollama; automated endpoint
-  coverage currently uses only LinguaMesh fake providers on loopback.
+- Broader product compatibility beyond the alpha.2 startup gate remains unclaimed. The central
+  release manifest now pins this Linux runtime/l10n checkpoint, but the train remains unreleased.
+- Other third-party local-server variants beyond the verified Ollama daemon; the deterministic
+  Ollama-compatible OpenAI `/v1/` loopback contract and native `/api` daemon path are covered.
 - Complete canonical UI gettext coverage, plural/placeholder handling, and visual locale/RTL verification.
-- Runtime database faults beyond the verified private-tmpfs `ENOSPC` transaction boundary,
-  including read-only media, corruption, power loss, and broader SQLite VFS failures.
+- Runtime database faults beyond the verified private-tmpfs `ENOSPC`, read-only-directory, and
+  corrupt-database boundaries, including power loss and broader SQLite VFS failures.
 - XDG portals beyond the implemented user-data path, document-portal lease lifecycle, and direct
   FileChooser backend fixture; application-level GTK file-dialog and drag-and-drop gestures,
   physical desktop-shell notification rendering, AT-SPI/Orca, provider-form Tab-chain and broader physical-keyboard coverage,
   physical-compositor/GPU Wayland coverage, broader X11/desktop coverage, Flatpak portal/notification
   delivery, and release artifacts.
-- Directory-descriptor or `openat2` hardening against a concurrent same-UID path replacement during
-  Linux host preflight; static components are checked before mutation and Core remains the final
-  no-follow open gate.
+- Broader same-UID filesystem race variants beyond the verified parent-directory and final-database
+  component replacements; the tested Linux preflight uses directory descriptors and `openat2`, while
+  Core remains the final `O_NOFOLLOW` open gate. Power loss and alternate SQLite VFS behavior also
+  remain outside the claim.
 
 ## 2026-07-18 — History inspection, export, and per-entry deletion
 
@@ -1139,3 +5175,144 @@ source PDF or claims pixel-identical reconstruction.
   and Flatpak Linux run `29668533922` (job `88143262421`) passed. Native exercised the new OCR
   fixture after installing ImageMagick, Poppler, and Tesseract; Flatpak continued to pass its
   sandbox smoke without enabling OCR by default.
+
+## 2026-07-19 — Linux canonical localization-key audit checkpoint
+
+Assumption: every literal key passed to the Linux UI localization helpers must be present in the
+canonical l10n catalog; dynamic keys remain intentionally outside this static check and are covered
+by the existing runtime localization tests.
+
+- Added `tools/check-localization-keys.py`, a dependency-free source audit for literal keys in
+  `src/main.rs` and `src/model.rs`. It reads the sibling canonical catalog and reports missing keys
+  with a non-zero exit status.
+- Added the audit to Native localization validation and the Foundation required-file manifest; the
+  documented command uses `python3 -B` so validation does not leave bytecode artifacts.
+- Local `python3 -B tools/check-localization-keys.py`, l10n sync check, shell syntax, and diff checks
+  passed. The audit covered 187 unique Linux source keys against the pinned 306-message catalog.
+
+The audit makes source-to-catalog coverage reproducible but does not replace translated-copy,
+plural, visual locale/RTL, or Orca speech review. Native, Foundation, and Flatpak CI gates remain
+required for the pushed revision.
+
+## 2026-07-19 — Linux accessible document-progress checkpoint
+
+Assumption: persisted document-job progress is user-visible state and must be exposed through a
+native GTK progress-bar role, not only a textual status label. Completed and total counts remain
+bounded by the Core document-job contract.
+
+- Added a GTK `ProgressBar` beside the document status. It exposes localized completed/total text,
+  a clamped fraction, and the `ProgressBar` accessibility role; it is hidden when no document job
+  is selected and no longer duplicates the partial-output label.
+- Extended the GTK regression test to assert the role, hidden initial state, 2/4 fraction and
+  localized text, then reset to hidden state. Existing AT-SPI and keyboard fixtures remain
+  unchanged and still cover live semantic export and focus traversal.
+- Local `cargo fmt --all --check`, all-target/all-feature `cargo check`, strict Clippy, locked
+  no-default tests (64 passed, 1 ignored), and demo-provider tests (102 passed, 2 ignored) passed.
+  The native GTK binary test remains CI-linked on this host because installed GTK symbols cannot
+  link the test binary; CI is required to execute the new widget assertions.
+- The first pushed revision `ba12919` failed Native run `29669906878` only because the test asserted
+  the fallback English wording instead of the canonical catalog's `2 of 4 segments translated`;
+  the follow-up assertion now derives the expected text through the same catalog helper.
+- Follow-up revision `c5d0308` passed Native run `29669977294` (job `88147085571`), Foundation
+  run `29669977297`, and Flatpak run `29669977295` (job `88147085574`). The pull-request reruns
+  `29669978352`, `29669978350`, and `29669978371` also passed, including the GTK progress-role,
+  bounded-fraction, localized-text, and hidden-reset assertions.
+
+Orca speech, manual high-contrast/RTL/reduced-motion review, end-user Secret Service prompt
+approval, other clients, and release artifacts remain open.
+
+## 2026-07-19 — Linux localized diagnostics checkpoint
+
+Assumption: the non-sensitive diagnostics panel is user-visible UI and its compatibility summary
+must follow runtime locale changes without exposing source text, endpoints, or secret references.
+
+- Routed the diagnostics summary through the canonical `diagnostics.summary` catalog template,
+  including the Core ABI and protocol versions, while retaining the existing redacted state fields.
+- Added official-locale coverage for the summary and a regression that verifies Simplified Chinese
+  rendering and source-content exclusion.
+- Local formatting, locked all-target checks, strict Clippy, no-default tests (65 passed, 1 ignored),
+  demo-provider tests (103 passed, 2 ignored), localization-key audit (188 keys), l10n sync, shell
+  syntax, and diff checks passed. The native GTK binary test remains CI-linked because this host's
+  installed GTK symbols cannot link it.
+- Linux revision `cf9c2d8` passed Native push run `29670504285` (job `88148480525`), Foundation
+  push run `29670505177` (job `88148482823`), and Flatpak push run `29670505111`
+  (job `88148482618`). PR reruns Native `29670505097`, Foundation `29670504255`, and Flatpak
+  `29670504265` also passed.
+
+Complete visible-string gettext coverage, translated-copy/plural review, Orca speech, manual
+high-contrast/RTL/reduced-motion review, end-user Secret Service prompt approval, other clients,
+and release artifacts remain open.
+
+## 2026-07-19 — Linux diagnostics-label localization checkpoint
+
+Assumption: the non-sensitive diagnostics panel is Linux-visible UI, so fixed field labels,
+boolean values, onboarding/status/theme/locale values, and profile-storage states must resolve
+through the canonical catalog while provider identifiers, paths, endpoints, and output content
+remain excluded.
+
+- Linux routes all fixed diagnostics labels and state values through the catalog, including the
+  20 new Linux-only diagnostics keys. The l10n bundle now has 326 messages, checksum
+  `054d6749397cbbf652e099784f2c7d0e3650779a3c17c98e68d25560d286b2d3`, and is pinned at
+  `32bef261f5f0deb9f6a0426231e365d0bae72b62`; non-English values remain explicitly unreviewed
+  drafts.
+- Local `cargo fmt --all --check`, locked all-target checks, strict Clippy, no-default tests,
+  demo-provider tests, the 208-key localization audit, l10n sync, shell syntax, and diff checks
+  passed. The native GTK binary test remains CI-linked because this host's installed GTK symbols
+  cannot link it.
+- l10n Foundation run `29671276786` and Localization run `29671276797` passed for the pinned
+  catalog revision. Linux revision `355481d937b3722e509dbd05cc1575c4e71be143` passed push Native
+  `29671444706` (job `88151076586`), Foundation `29671444731` (job `88151076725`), and Flatpak
+  `29671444733` (job `88151076695`); PR reruns Native `29671445475` (job `88151078773`),
+  Foundation `29671445499` (job `88151078854`), and Flatpak `29671445495` (job `88151078857`)
+  also passed.
+
+Complete visible-string gettext coverage beyond the diagnostics slice, translated-copy/plural
+review, Orca speech, manual high-contrast/RTL/reduced-motion review, end-user Secret Service prompt
+approval, other clients, and release artifacts remain open.
+
+## 2026-07-19 — Linux document-pause error localization checkpoint
+
+Assumption: a document-pause command rejected by the bounded worker queue is user-visible UI and
+must use the same catalog-backed error rendering as other worker failures.
+
+- Queue-send failures from the GTK Pause action now enter the reducer's client-error path instead
+  of writing raw English directly into the error label. The existing
+  `error.worker.command_queue_unavailable` catalog mapping therefore applies consistently.
+- Local `cargo fmt --all --check`, locked all-target checks, strict Clippy, no-default tests (65
+  passed, 1 ignored), and demo-provider tests (103 passed, 2 ignored) passed. The native GTK binary
+  test remains CI-linked because this host's installed GTK symbols cannot link it.
+
+Linux revision `1d96c9825b83cdc1cd6a2783b61fdd678b89e510` passed push Native `29672046465`
+(job `88152770602`), Foundation `29672046491` (job `88152770643`), and Flatpak `29672046488`
+(job `88152770610`). PR reruns Native `29672047299` (job `88152772830`), Foundation
+`29672047295` (job `88152772869`), and Flatpak `29672047296` (job `88152772851`) also passed.
+
+Complete visible-string gettext coverage beyond this error path, translated-copy/plural review,
+Orca speech, manual high-contrast/RTL/reduced-motion review, end-user Secret Service prompt
+approval, other clients, and release artifacts remain open.
+
+## 2026-07-19 — Linux Secret Service prompt approval checkpoint
+
+Assumption: Secret Service `CreateItem` and `Delete` prompt paths represent an explicit user
+security decision. The client must wait for `Completed`, accept only an approved prompt, map a
+dismissal to localized storage guidance, and fail closed on prompt-call or timeout failures.
+
+- Implemented `org.freedesktop.Secret.Prompt.Prompt` plus `Completed` signal handling with a
+  bounded five-minute wait. Approved prompts now complete store/delete operations; dismissed
+  prompts return the catalog-backed `error.storage.prompt_dismissed` message.
+- Extended the isolated D-Bus fixture to cover accepted and dismissed store/delete flows. The
+  prompted-flow script passed all four ignored integration tests locally.
+- Pinned l10n revision `f00b00fda307660000b0e4068c5ca1072d266df1`, containing 327 messages and
+  bundle checksum `53821e2397e6697b7551693c6f5787cc1f88e24d96b3077ac590645a848f1977`.
+- Local `cargo fmt --all --check`, locked all-target checks, strict Clippy, no-default tests
+  (65 passed, 1 ignored), demo-provider tests (103 passed, 2 ignored), 208-key localization
+  audit, l10n sync, prompt fixture, shell syntax, and diff checks passed.
+
+The first CI attempt stopped at the expected localization checkout because the workflow still
+referenced the previous l10n revision. After updating that pin, push Native `29672741665`
+(job `88154536172`), Foundation `29672741666` (job `88154536162`), and Flatpak `29672741675`
+(job `88154536212`) passed. Pull-request reruns Native `29672743058` (job `88154539551`),
+Foundation `29672742959` (job `88154539322`), and Flatpak `29672742990` (job `88154539432`)
+also passed, including both prompted-flow cases. Manual Secret Service approval UX, broader
+storage-fault coverage, translated-copy review, Orca speech, other clients, and release
+artifacts remain open.

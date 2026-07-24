@@ -6,6 +6,8 @@ focus_log="$workspace/focus.log"
 focus_start="$workspace/focus-start"
 focus_coordinates="$workspace/focus-coordinates"
 app_log="$workspace/app.log"
+keyboard_locale="${LINGUAMESH_KEYBOARD_FOCUS_LOCALE:-}"
+expect_rtl="${LINGUAMESH_KEYBOARD_FOCUS_EXPECT_RTL:-}"
 cleanup() {
   if [[ -n "${app_pid:-}" ]]; then
     kill "$app_pid" >/dev/null 2>&1 || true
@@ -20,6 +22,8 @@ cargo build --all-features --locked --bin linguamesh-linux
 LINGUAMESH_KEYBOARD_FOCUS_LOG="$focus_log" \
 LINGUAMESH_KEYBOARD_FOCUS_START="$focus_start" \
 LINGUAMESH_KEYBOARD_FOCUS_COORDINATES="$focus_coordinates" \
+LINGUAMESH_KEYBOARD_FOCUS_LOCALE="$keyboard_locale" \
+LINGUAMESH_KEYBOARD_FOCUS_EXPECT_RTL="$expect_rtl" \
 XDG_DATA_HOME="$workspace/data" \
 XDG_CONFIG_HOME="$workspace/config" \
 XDG_CACHE_HOME="$workspace/cache" \
@@ -29,6 +33,9 @@ XDG_CACHE_HOME="$workspace/cache" \
     set -euo pipefail
     export XDG_CURRENT_DESKTOP=GNOME
     export GDK_BACKEND=x11
+    if [[ -n "$LINGUAMESH_KEYBOARD_FOCUS_LOCALE" ]]; then
+      export LINGUAMESH_TEST_LOCALE="$LINGUAMESH_KEYBOARD_FOCUS_LOCALE"
+    fi
     mkdir -p "$XDG_DATA_HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME"
     xfwm4 --compositor=off >/tmp/linguamesh-xfwm4.log 2>&1 &
     wm_pid=$!
@@ -59,6 +66,12 @@ XDG_CACHE_HOME="$workspace/cache" \
     if ! grep -Fxq "__ready__" "$LINGUAMESH_KEYBOARD_FOCUS_LOG"; then
       cat "$LINGUAMESH_KEYBOARD_FOCUS_LOG.app" >&2
       printf "%s\n" "GTK keyboard fixture did not reach the enabled provider form." >&2
+      exit 1
+    fi
+    if [[ "$LINGUAMESH_KEYBOARD_FOCUS_EXPECT_RTL" == "1" ]] \
+      && ! grep -Fxq "__rtl__" "$LINGUAMESH_KEYBOARD_FOCUS_LOG"; then
+      cat "$LINGUAMESH_KEYBOARD_FOCUS_LOG" >&2
+      printf "%s\n" "GTK keyboard fixture did not confirm RTL workspace direction." >&2
       exit 1
     fi
     for _ in {1..50}; do
@@ -114,6 +127,7 @@ XDG_CACHE_HOME="$workspace/cache" \
       provider_name
       provider_endpoint
       provider_credential
+      provider_preset
       remember_profile
       connect
       source_editor
@@ -128,6 +142,6 @@ XDG_CACHE_HOME="$workspace/cache" \
         exit 1
       fi
     done
-    printf "%s\n" "GTK keyboard focus fixture passed: Tab traversal reached the tested onboarding and workspace controls."
+    printf "%s\n" "GTK keyboard focus fixture passed: the provider mnemonic and Tab traversal reached the tested onboarding and workspace controls."
     cat "$LINGUAMESH_KEYBOARD_FOCUS_LOG"
   '

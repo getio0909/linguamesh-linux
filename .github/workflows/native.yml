@@ -15,7 +15,8 @@ jobs:
     timeout-minutes: 30
     # 固定已审查的 LinguaMesh Core 提交。
     env:
-      CORE_REVISION: 81be0b8be9d7115b98eae3f134b4fd0f25411bbb
+      CORE_REVISION: 9e69d01cbae1ca0421923e059aa3252c4ecbe1be
+      L10N_REVISION: 7fd210692bb269ef52f7453bfeb2b0f0759b1d4c
     steps:
       - name: Check out Linux client
         # 固定 actions/checkout v7.0.0。
@@ -43,7 +44,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           repository: ${{ github.repository_owner }}/linguamesh-l10n
-          ref: 3f3c1a1154b66d25f2936a02b8a08d2a8fc8a878
+          ref: ${{ env.L10N_REVISION }}
           path: linguamesh-l10n
           persist-credentials: false
       - name: Install native development headers
@@ -59,6 +60,7 @@ jobs:
             gnome-keyring \
             imagemagick \
             mount \
+            orca \
             poppler-utils \
             pkg-config \
             python3 \
@@ -73,6 +75,7 @@ jobs:
             xdg-desktop-portal-gtk \
             xauth \
             python3-pyatspi \
+            speech-dispatcher-espeak-ng \
             xvfb
       - name: Install pinned Rust toolchain
         # 固定 dtolnay/rust-toolchain 当前提交。
@@ -84,10 +87,16 @@ jobs:
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
         with:
           workspaces: linguamesh-linux -> target
+      - name: Run pinned Core Linux SDK package smoke
+        working-directory: linguamesh-core
+        run: bash tools/verify-linux-sdk-package.sh
       - name: Validate canonical localization resources
         working-directory: linguamesh-linux
         run: |
           bash tools/sync-l10n.sh --check
+          python3 -B tools/check-localization-keys.py
+          python3 -B tools/check-localization-placeholders.py
+          python3 -B tools/check-visible-localization.py
           for file in l10n/linux/*/LC_MESSAGES/linguamesh.po; do
             msgfmt --check --check-format -o /dev/null "$file"
           done
@@ -100,6 +109,13 @@ jobs:
       - name: Run strict Clippy
         working-directory: linguamesh-linux
         run: cargo clippy --all-targets --all-features --locked -- -D warnings
+      - name: Run dependency advisory and license checks
+        # 固定 cargo-deny-action v2.1.1。
+        uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25
+        with:
+          command: check
+          manifest-path: linguamesh-linux/Cargo.toml
+          arguments: --all-features
       - name: Run all tests
         working-directory: linguamesh-linux
         env:
@@ -109,9 +125,156 @@ jobs:
           --server-args="-screen 0 1280x800x24"
           cargo test --all-targets --all-features --locked
           -- --test-threads=1
+      - name: Run fallback approval GTK lifecycle fixture
+        working-directory: linguamesh-linux
+        run: >-
+          dbus-run-session -- xvfb-run --auto-servernum
+          --server-args="-screen 0 1280x800x24"
+          env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
+          tests::gtk_fallback_approval_dialog_requires_an_explicit_one_shot_action
+          -- --exact --ignored --test-threads=1
+      - name: Run About dialog GTK lifecycle fixture
+        working-directory: linguamesh-linux
+        run: >-
+          dbus-run-session -- xvfb-run --auto-servernum
+          --server-args="-screen 0 1280x800x24"
+          env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
+          tests::gtk_about_dialog_shows_version_and_core_compatibility
+          -- --exact --ignored --test-threads=1
+      - name: Run Secret Service session-only recovery GTK fixture
+        working-directory: linguamesh-linux
+        run: >-
+          dbus-run-session -- xvfb-run --auto-servernum
+          --server-args="-screen 0 1280x800x24"
+          env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
+          tests::gtk_secret_storage_fallback_dialog_requires_explicit_session_only_action
+          -- --exact --ignored --test-threads=1
+      - name: Run authentication failure GTK lifecycle fixture
+        working-directory: linguamesh-linux
+        run: >-
+          dbus-run-session -- xvfb-run --auto-servernum
+          --server-args="-screen 0 1280x800x24"
+          env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
+          tests::gtk_authentication_failure_shows_localized_redacted_error
+          -- --exact --ignored --test-threads=1
+      - name: Run offline connection GTK lifecycle fixture
+        working-directory: linguamesh-linux
+        run: >-
+          dbus-run-session -- xvfb-run --auto-servernum
+          --server-args="-screen 0 1280x800x24"
+          env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
+          tests::gtk_offline_connection_failure_preserves_confirmed_session
+          -- --exact --ignored --test-threads=1
+      - name: Run provider connection-test GTK lifecycle fixture
+        working-directory: linguamesh-linux
+        run: >-
+          dbus-run-session -- xvfb-run --auto-servernum
+          --server-args="-screen 0 1280x800x24"
+          env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
+          tests::gtk_connection_test_reports_models_and_redacts_credential
+          -- --exact --ignored --test-threads=1
+      - name: Run provider health GTK lifecycle fixture
+        working-directory: linguamesh-linux
+        run: >-
+          dbus-run-session -- xvfb-run --auto-servernum
+          --server-args="-screen 0 1280x800x24"
+          env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
+          tests::gtk_provider_health_label_tracks_selected_saved_profile_state
+          -- --exact --ignored --test-threads=1
+      - name: Run GTK provider-switch lifecycle fixture
+        working-directory: linguamesh-linux
+        run: >-
+          dbus-run-session -- xvfb-run --auto-servernum
+          --server-args="-screen 0 1280x800x24"
+          env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
+          tests::gtk_one_click_provider_switch_uses_new_session_and_isolates_credentials
+          -- --exact --ignored --test-threads=1
+      - name: Run GTK protocol-preset lifecycle fixture
+        working-directory: linguamesh-linux
+        run: >-
+          dbus-run-session -- xvfb-run --auto-servernum
+          --server-args="-screen 0 1280x800x24"
+          env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
+          tests::gtk_provider_protocol_presets_use_native_transports
+          -- --exact --ignored --test-threads=1
+      - name: Run GTK cancellation lifecycle fixture
+        working-directory: linguamesh-linux
+        run: >-
+          dbus-run-session -- xvfb-run --auto-servernum
+          --server-args="-screen 0 1280x800x24"
+          env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
+          tests::gtk_cancel_translation_preserves_partial_output
+          -- --exact --ignored --test-threads=1
+      - name: Run GTK glossary and protected-span lifecycle fixture
+        working-directory: linguamesh-linux
+        run: >-
+          dbus-run-session -- xvfb-run --auto-servernum
+          --server-args="-screen 0 1280x800x24"
+          env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
+          tests::gtk_glossary_and_protected_terms_preserve_translation
+          -- --exact --ignored --test-threads=1
+      - name: Run GTK Incognito privacy lifecycle fixture
+        working-directory: linguamesh-linux
+        run: >-
+          dbus-run-session -- xvfb-run --auto-servernum
+          --server-args="-screen 0 1280x800x24"
+          env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
+          tests::gtk_incognito_translation_bypasses_memory_and_persistence
+          -- --exact --ignored --test-threads=1
+      - name: Run GTK interrupted document-job restart fixture
+        working-directory: linguamesh-linux
+        run: >-
+          dbus-run-session -- xvfb-run --auto-servernum
+          --server-args="-screen 0 1280x800x24"
+          env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
+          tests::gtk_interrupted_document_job_restores_and_resumes
+          -- --exact --ignored --test-threads=1
+      - name: Run GTK multi-document queue selection fixture
+        working-directory: linguamesh-linux
+        run: >-
+          dbus-run-session -- xvfb-run --auto-servernum
+          --server-args="-screen 0 1280x800x24"
+          env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
+          tests::gtk_document_jobs_dialog_selects_between_multiple_jobs
+          -- --exact --ignored --test-threads=1
+      - name: Run GTK atomic output writer fixture
+        working-directory: linguamesh-linux
+        run: >-
+          dbus-run-session -- xvfb-run --auto-servernum
+          --server-args="-screen 0 1280x800x24"
+          env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
+          tests::gtk_atomic_output_writer_never_replaces_existing_file
+          -- --exact --ignored --test-threads=1
+      - name: Run GTK interrupted export writer fixture
+        working-directory: linguamesh-linux
+        run: >-
+          dbus-run-session -- xvfb-run --auto-servernum
+          --server-args="-screen 0 1280x800x24"
+          env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
+          tests::gtk_atomic_output_writer_survives_process_interruption
+          -- --exact --ignored --test-threads=1
+      - name: Run GTK malicious archive import fixture
+        working-directory: linguamesh-linux
+        run: >-
+          dbus-run-session -- xvfb-run --auto-servernum
+          --server-args="-screen 0 1280x800x24"
+          env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
+          tests::gtk_malicious_archive_import_fails_closed_before_document_job
+          -- --exact --ignored --test-threads=1
+      - name: Run routing candidate GTK lifecycle fixture
+        working-directory: linguamesh-linux
+        run: >-
+          dbus-run-session -- xvfb-run --auto-servernum
+          --server-args="-screen 0 1280x800x24"
+          env GDK_BACKEND=x11 cargo test --all-targets --all-features --locked
+          tests::gtk_routing_profile_candidate_controls_have_accessible_lifecycle
+          -- --exact --ignored --test-threads=1
       - name: Run runtime storage write-fault test
         working-directory: linguamesh-linux
         run: bash tools/run-storage-fault-test.sh
+      - name: Run client-certificate HTTPS fixtures
+        working-directory: linguamesh-linux
+        run: bash tools/run-client-certificate-interop-test.sh
       - name: Run Secret Service integration fixture
         working-directory: linguamesh-linux
         run: bash tools/run-secret-service-test.sh
@@ -139,9 +302,47 @@ jobs:
       - name: Run GTK keyboard focus fixture
         working-directory: linguamesh-linux
         run: bash tools/run-gtk-keyboard-focus-test.sh
+      - name: Run GTK keyboard focus fixture in Arabic RTL
+        working-directory: linguamesh-linux
+        env:
+          LINGUAMESH_KEYBOARD_FOCUS_LOCALE: ar
+          LINGUAMESH_KEYBOARD_FOCUS_EXPECT_RTL: "1"
+        run: bash tools/run-gtk-keyboard-focus-test.sh
       - name: Run GTK AT-SPI fixture
         working-directory: linguamesh-linux
         run: bash tools/run-gtk-atspi-test.sh
+      - name: Run Simplified Chinese GTK AT-SPI fixture
+        working-directory: linguamesh-linux
+        env:
+          LINGUAMESH_TEST_LOCALE: zh-CN
+        run: bash tools/run-gtk-atspi-test.sh
+      - name: Run Arabic GTK AT-SPI fixture
+        working-directory: linguamesh-linux
+        env:
+          LINGUAMESH_TEST_LOCALE: ar
+        run: bash tools/run-gtk-atspi-test.sh
+      - name: Run accented pseudo-locale GTK AT-SPI fixture
+        working-directory: linguamesh-linux
+        env:
+          LINGUAMESH_TEST_LOCALE: en-XA
+        run: bash tools/run-gtk-atspi-test.sh
+      - name: Run RTL pseudo-locale GTK AT-SPI fixture
+        working-directory: linguamesh-linux
+        env:
+          LINGUAMESH_TEST_LOCALE: ar-XB
+        run: bash tools/run-gtk-atspi-test.sh
+      - name: Run GTK accessibility preference fixture
+        working-directory: linguamesh-linux
+        run: bash tools/run-gtk-accessibility-preferences-test.sh
+      - name: Run Orca AT-SPI fixture
+        working-directory: linguamesh-linux
+        run: bash tools/run-orca-atspi-test.sh
+      - name: Run Arabic Orca AT-SPI fixture
+        working-directory: linguamesh-linux
+        env:
+          LINGUAMESH_TEST_LOCALE: ar
+          LINGUAMESH_ORCA_REQUIRE_SPEECH: "0"
+        run: bash tools/run-orca-atspi-test.sh
       - name: Run optional OCR fixture
         working-directory: linguamesh-linux
         run: bash tools/run-ocr-test.sh
@@ -151,3 +352,41 @@ jobs:
       - name: Build native application
         working-directory: linguamesh-linux
         run: cargo build --all-targets --all-features --locked
+      - name: Build release-mode native application
+        working-directory: linguamesh-linux
+        run: cargo build --release --bin linguamesh-linux --features gui --locked
+      - name: Run Linux performance baseline
+        working-directory: linguamesh-linux
+        run: bash tools/run-performance-baseline.sh native-evidence
+      - name: Create native checksum and SBOM evidence
+        working-directory: linguamesh-linux
+        run: >-
+          mkdir -p native-evidence
+          && cp target/release/linguamesh-linux native-evidence/linguamesh-linux
+          &&
+          python3 tools/create-native-evidence.py
+          --binary native-evidence/linguamesh-linux
+          --cargo-lock Cargo.lock
+          --output-dir native-evidence
+          --linux-revision "$(git rev-parse HEAD)"
+          --core-revision "$CORE_REVISION"
+          --localization-revision "$L10N_REVISION"
+          && git archive --format=tar.gz
+          --prefix="linguamesh-linux-${GITHUB_SHA}/" "$GITHUB_SHA"
+          > native-evidence/linguamesh-linux-source.tar.gz
+          && (cd native-evidence && sha256sum linguamesh-linux-source.tar.gz >> SHA256SUMS)
+          && printf 'Linux native CI evidence\nLinux revision: %s\nCore revision: %s\nLocalization revision: %s\nPerformance baseline: LINUX-PERFORMANCE-BASELINE.tsv\nArtifact status: unsigned release-mode prerelease evidence\n'
+          "$GITHUB_SHA" "$CORE_REVISION" "$L10N_REVISION"
+          > native-evidence/BUILD-INFO.txt
+      - name: Verify native checksum and SBOM evidence
+        working-directory: linguamesh-linux
+        run: >-
+          cd native-evidence
+          && sha256sum --check SHA256SUMS
+          && python3 -c "import json; json.load(open('SBOM.spdx.json', encoding='utf-8'))"
+      - name: Upload native checksum and SBOM evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: linguamesh-linux-native-evidence-${{ github.sha }}
+          path: linguamesh-linux/native-evidence/
+          if-no-files-found: error

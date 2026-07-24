@@ -15,6 +15,7 @@ SESSION_PATH = "/org/freedesktop/secrets/session/prompt_fixture"
 ITEM_PATH = "/org/freedesktop/secrets/item/prompt_fixture"
 PROMPT_PATH = "/org/freedesktop/secrets/prompt/fixture"
 OPERATION = os.environ.get("LINGUAMESH_SECRET_SERVICE_PROMPT_OPERATION", "store")
+PROMPT_DISMISSED = os.environ.get("LINGUAMESH_SECRET_SERVICE_PROMPT_DISMISSED") == "1"
 
 
 class SecretService(dbus.service.Object):
@@ -85,6 +86,26 @@ class SecretItem(dbus.service.Object):
         return dbus.ObjectPath(PROMPT_PATH)
 
 
+class SecretPrompt(dbus.service.Object):
+    def __init__(self, bus):
+        super().__init__(bus, PROMPT_PATH)
+
+    @dbus.service.method(
+        "org.freedesktop.Secret.Prompt",
+        in_signature="s",
+        out_signature="",
+    )
+    def Prompt(self, _window_id):
+        self.Completed(
+            dbus.Boolean(PROMPT_DISMISSED),
+            dbus.String("", variant_level=1),
+        )
+
+    @dbus.service.signal("org.freedesktop.Secret.Prompt", signature="bv")
+    def Completed(self, _dismissed, _result):
+        return None
+
+
 loop = GLib.MainLoop()
 
 
@@ -98,6 +119,7 @@ bus.request_name(SERVICE_NAME)
 service = SecretService(bus)
 collection = SecretCollection(bus)
 item = SecretItem(bus)
+prompt = SecretPrompt(bus)
 signal.signal(signal.SIGTERM, stop)
 signal.signal(signal.SIGINT, stop)
 loop.run()
