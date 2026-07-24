@@ -1,5 +1,29 @@
 # Implementation Status
 
+## 2026-07-24 — Linux persisted document-job metadata deletion
+
+Assumption: deleting a saved document job removes only its persisted snapshot and segment metadata;
+the source/output buffers already shown in the editor remain untouched, and an active job must never
+be deleted through this control.
+
+- Linux implementation commit `99a446b0306ffa79dc67fa4d55460a3c60f0c237` adds a worker delete
+  command/event backed by Core storage, rejects deletion while document work is active, and clears
+  only the selected job association after a successful event.
+- The GTK Document jobs dialog now exposes a localized destructive button with an explicit GTK
+  confirmation. The serialized `gtk_document_jobs_dialog_selects_between_multiple_jobs` fixture
+  checks one focusable delete action per saved row, and the worker regression
+  `document_job_list_and_delete_saved_job_for_queue_selection` verifies that one snapshot and its
+  segments disappear while another saved job remains.
+- Local Linux validation passed localization synchronization and all three audits, Flatpak metadata,
+  Rust 1.93.0 formatting, locked all-target check, strict Clippy, demo-provider library tests
+  (`166 passed; 7 ignored`), no-default tests (`85 passed; 1 ignored`), demo-provider build, and
+  cargo-deny. The host lacks `gtk4.pc` and `graphene-gobject-1.0`, so the GTK build remains CI-backed.
+- Code/pin head `94f1cda185babbb228299e543b21cbed40797613` passed push Native/Flatpak/Foundation
+  runs `30076646874`/`30076646866`/`30076646852` and PR Native/Flatpak/Foundation runs
+  `30076649572`/`30076649617`/`30076649625`; the Native jobs were `89428748112` and `89428757429`.
+- Release remains `unreleased`; cross-client parity, live-provider qualification, physical/manual
+  review, signing, rollback, and stable-release evidence remain open.
+
 ## 2026-07-24 — Explicit source-language prompt hint pin
 
 Assumption: Core `77c6bf426ace65c6bd960120b253e10e59a70a13` preserves the Linux ABI and provider
