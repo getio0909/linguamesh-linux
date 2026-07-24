@@ -21,8 +21,13 @@ unchanged, while the newer immutable checkout records the valid-FFI-command fuzz
   duplicate-version and unmatched-license warnings.
 - The native all-feature Clippy command was also attempted and remains blocked locally because the
   host lacks `gtk4.pc` and `graphene-gobject-1.0`; this is not treated as a successful GUI result.
-  Core runtime-source diff and clean-check plus `git diff --check` passed. Remote Linux gates remain
-  required after the push; release remains `unreleased`.
+  Core runtime-source diff and clean-check plus `git diff --check` passed. Linux push Native,
+  Flatpak, and Foundation runs `30063061068`/`30063060960`/`30063060951` (jobs
+  `89388411327`/`89388410926`/`89388410959`) all passed. The matching Draft PR Native, Flatpak,
+  and Foundation runs `30063062941`/`30063062911`/`30063062925` (jobs
+  `89388417235`/`89388417360`/`89388417268`) also passed, including the pinned Core SDK smoke,
+  GTK/portal/Wayland/AT-SPI/Orca fixtures, Flatpak sandbox smoke, checksums, SBOM, and performance
+  evidence. Release remains `unreleased`.
 
 ## 2026-07-23 — Linux mTLS client-authentication rejection
 
