@@ -369,7 +369,7 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 The current synchronized checkout must be Core revision
-`1c7440917379896a8c05d3f99a89eac4fcf073a3`, an ABI 1 handle-lifetime-hardening descendant of runtime baseline
+`fed6c138d398a69866512090ced3c4e062631c0d`, an ABI 1 handle-lifetime-hardening descendant of runtime baseline
 `8623b2c8829e4d9cf7299c74440dcfabb4e320db`. The baseline carries bounded document lease
 consumption smoke, POSIX-descriptor document consumption, and the AddressSanitizer gate, plus the
 protocol decoder fuzz gate and bounded FileLease lifecycle,
@@ -382,17 +382,18 @@ descendant is acceptable
 for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 1c7440917379896a8c05d3f99a89eac4fcf073a3^{commit}
+git -C ../linguamesh-core cat-file -e fed6c138d398a69866512090ced3c4e062631c0d^{commit}
 git -C ../linguamesh-core diff --quiet \
-  1c7440917379896a8c05d3f99a89eac4fcf073a3..HEAD -- \
+  fed6c138d398a69866512090ced3c4e062631c0d..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
 
-The same Core revision also includes a bounded SQLite WAL replay regression: a committed
-provider profile remains recoverable when a reader holds a snapshot while the writer disconnects,
-and the next `Storage::open` replays the WAL sidecar. This covers the tested writer-disconnect
-sequence only; power loss and other SQLite VFS failures remain outside the claim.
+The same Core revision also includes bounded SQLite WAL replay regressions: a committed provider
+profile remains recoverable when a reader holds a snapshot while the writer disconnects, and a
+second Linux-only child-process fixture aborts after commit while using the bundled `unix-excl` VFS.
+The next open replays the WAL sidecar in both tested paths. These cover the tested disconnect and
+process-crash sequences only; power loss and other SQLite VFS failures remain outside the claim.
 
 The same Core pin also negotiates `bounded_text_document_v1`, `routing_planner_v1`,
 `translation_quality_modes_v1`, and `translation_presets_v1`: Linux imports only bounded UTF-8 TXT,
@@ -724,7 +725,7 @@ python3 tools/create-native-evidence.py \
   --cargo-lock Cargo.lock \
   --output-dir native-evidence \
   --linux-revision "$(git rev-parse HEAD)" \
-  --core-revision "1c7440917379896a8c05d3f99a89eac4fcf073a3" \
+  --core-revision "fed6c138d398a69866512090ced3c4e062631c0d" \
   --localization-revision "c2526bfb3f6ff57895bdc3eeed743e26c8783613"
 (cd native-evidence && sha256sum -c SHA256SUMS)
 ```
@@ -858,7 +859,7 @@ contrast, motion, and text-scaling behavior; manual visual review remains requir
 releases.
 
 The GitHub Actions native workflow pins Core revision
-`1c7440917379896a8c05d3f99a89eac4fcf073a3` and localization revision
+`fed6c138d398a69866512090ced3c4e062631c0d` and localization revision
 `c2526bfb3f6ff57895bdc3eeed743e26c8783613`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local

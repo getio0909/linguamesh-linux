@@ -2,15 +2,18 @@
 
 ## 2026-07-24 — Linux bundled alternate SQLite VFS pin
 
-Assumption: Core `1c7440917379896a8c05d3f99a89eac4fcf073a3` preserves the ABI 1 and Linux
+Assumption: Core `fed6c138d398a69866512090ced3c4e062631c0d` preserves the ABI 1 and Linux
 application contracts while adding a Linux-only `unix-excl` storage regression; custom VFS and
 physical power-loss behavior remain separate evidence gates.
 
 - Linux Native, Flatpak, documentation, and release checks now consume Core
-  `1c7440917379896a8c05d3f99a89eac4fcf073a3`.
-- The Core storage test opens the bundled `unix-excl` VFS with `SQLITE_OPEN_NOFOLLOW`, verifies
-  schema/WAL/profile reopen behavior, and rejects a symbolic-link alias. Core local full tests
-  passed `56 passed; 0 failed`; Core CI, Fuzz/ASAN, and Native SDK gates are running for this pin.
+  `fed6c138d398a69866512090ced3c4e062631c0d`.
+- The Core storage tests open the bundled `unix-excl` VFS with `SQLITE_OPEN_NOFOLLOW`, verify
+  schema/WAL/profile reopen and process-crash replay behavior, and reject a symbolic-link alias.
+  Core local full tests passed `57 passed; 0 failed`; Core CI, Fuzz/ASAN, and Native SDK gates are
+  passed for this pin; the Linux local no-default-feature suite passed 85 tests with one external
+  OCR fixture ignored, and the demo-provider suite passed 166 tests with seven environment-gated
+  fixtures ignored.
 - This is bundled alternate-VFS evidence only; physical power-loss, custom/third-party VFS,
   cross-client, signing, rollback, and stable-release evidence remain open.
 
