@@ -12,6 +12,9 @@ user-selected output directories and unrelated temporary files remain outside th
   removes two owned fixtures while preserving an unrelated file.
 - Linux implementation commit `1547485795e75c8b1a0fcffb16ef1b72f0374496` contains the bounded
   action and generated catalog resources; the Flatpak source pin is updated to this exact commit.
+- A first hosted Native attempt exposed a stale `L10N_REVISION` workflow pin rather than a runtime
+  failure; commit `826c1e83dc4853773619813dbf100b51f7ca429a` corrects it to the published l10n
+  revision before the next hosted validation.
 - Added five Linux catalog messages in l10n commit
   `7fd210692bb269ef52f7453bfeb2b0f0759b1d4c`; the 511-message generated bundle passed l10n
   schema/lint/tests/generation/build/foundation validation. Linux sync and all three localization
