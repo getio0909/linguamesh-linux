@@ -1,5 +1,19 @@
 # Implementation Status
 
+## 2026-07-24 — Linux contributor pin alignment
+
+Assumption: contributor instructions must name the same immutable Core revision consumed by the
+Native workflow, Flatpak source manifest, and central release manifest; this documentation-only
+correction does not change the Linux runtime or compatibility contract.
+
+- Updated `AGENTS.md` from the superseded `77c6bf` reference to Core
+  `9e69d01cbae1ca0421923e059aa3252c4ecbe1be`.
+- Local `git diff --check`, localization synchronization/audits, Flatpak metadata validation,
+  Rust formatting, strict demo-provider Clippy, no-default and demo-provider test suites,
+  `cargo-deny`, and the private-mount storage-fault regression passed.
+- Release remains `unreleased`; this correction does not add artifact, signing, rollback, or
+  stable-release evidence.
+
 ## 2026-07-24 — Linux registered custom VFS compatibility probe
 
 Assumption: Linux may consume a host-registered SQLite VFS only when it preserves the Core
