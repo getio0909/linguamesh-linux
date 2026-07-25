@@ -6473,6 +6473,71 @@ mod tests {
         writer.finish().expect("pptx archive").into_inner()
     }
 
+    fn epub_worker_fixture() -> Vec<u8> {
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        let options = SimpleFileOptions::default();
+        writer.start_file("mimetype", options).expect("mimetype");
+        writer
+            .write_all(b"application/epub+zip")
+            .expect("mimetype bytes");
+        writer
+            .start_file("META-INF/container.xml", options)
+            .expect("container");
+        writer
+            .write_all(br#"<?xml version="1.0"?><container xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>"#)
+            .expect("container bytes");
+        writer
+            .start_file("OEBPS/content.opf", options)
+            .expect("opf");
+        writer
+            .write_all(br#"<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" xmlns:dc="http://purl.org/dc/elements/1.1/" version="3.0"><metadata><dc:language>en</dc:language><dc:title>Book</dc:title></metadata><manifest><item id="chapter" href="chapter.xhtml" media-type="application/xhtml+xml"/><item id="cover" href="cover.jpg" media-type="image/jpeg"/></manifest><spine><itemref idref="chapter"/></spine></package>"#)
+            .expect("opf bytes");
+        writer
+            .start_file("OEBPS/chapter.xhtml", options)
+            .expect("chapter");
+        writer
+            .write_all(br#"<?xml version="1.0"?><html xmlns="http://www.w3.org/1999/xhtml"><head><title>Title</title><style>.keep{color:red}</style></head><body><h1>Hello</h1><p>Body <em>text</em>.</p></body></html>"#)
+            .expect("chapter bytes");
+        writer
+            .start_file("OEBPS/cover.jpg", options)
+            .expect("cover");
+        writer.write_all(&[20, 21, 22]).expect("cover bytes");
+        writer.finish().expect("epub archive").into_inner()
+    }
+
+    fn pdf_worker_fixture() -> Vec<u8> {
+        br"%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 400] /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 44 >>
+stream
+BT /F1 12 Tf 72 320 Td (Hello) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 400] /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 45 >>
+stream
+BT /F1 12 Tf 72 320 Td (Second) Tj ET
+endstream
+endobj
+trailer
+<< /Root 1 0 R >>
+%%EOF
+"
+        .to_vec()
+    }
+
     static TEST_DATABASE_COUNTER: AtomicUsize = AtomicUsize::new(0);
     const LINUX_ENOSPC: i32 = 28;
 
@@ -8811,6 +8876,197 @@ mod tests {
             .read_to_end(&mut image)
             .expect("image bytes");
         assert_eq!(image, [5, 6, 7]);
+        shutdown(&worker);
+    }
+
+    #[allow(clippy::too_many_lines)]
+    #[test]
+    fn document_job_export_rebuilds_epub_with_target_locale_and_resources() {
+        let database = TestDatabase::new();
+        let (worker, _, endpoint) = started_worker_with_database(database.path());
+        connect(
+            &worker,
+            profile("document-epub-provider", &endpoint, None, None),
+            None,
+            PersistenceIntent::SessionOnly,
+        )
+        .expect("connection");
+        select(&worker, "document-epub-provider", "fake-translator");
+        worker
+            .try_send(WorkerCommand::CreateDocumentJob {
+                job_id: "document-epub-1".to_owned(),
+                job: DocumentJob::from_utf8("sample.epub", &epub_worker_fixture())
+                    .expect("epub job"),
+            })
+            .expect("create document job");
+        assert!(matches!(
+            worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("created event"),
+            WorkerEvent::DocumentJobUpdated(snapshot)
+                if snapshot.state == DocumentJobState::Pending
+        ));
+        worker
+            .try_send(WorkerCommand::TranslateDocumentJob {
+                job_id: "document-epub-1".to_owned(),
+                source_locale: Some("en".to_owned()),
+                target_locale: "zh-CN".to_owned(),
+                glossary: None,
+                quality_mode: TranslationQualityMode::Balanced,
+                translation_preset: TranslationPreset::general(),
+                privacy_mode: TranslationPrivacyMode::Standard,
+            })
+            .expect("translate document job");
+        loop {
+            match worker
+                .events
+                .recv_timeout(Duration::from_secs(10))
+                .expect("document translation event")
+            {
+                WorkerEvent::DocumentJobUpdated(snapshot)
+                    if snapshot.state == DocumentJobState::Completed =>
+                {
+                    break;
+                }
+                WorkerEvent::DocumentJobSegment { event, .. } => {
+                    assert!(!matches!(event, TranslationEvent::Failed { .. }));
+                }
+                _ => {}
+            }
+        }
+        worker
+            .try_send(WorkerCommand::ExportDocumentJob {
+                job_id: "document-epub-1".to_owned(),
+            })
+            .expect("export epub job");
+        let (source_name, target_locale, contents) = loop {
+            match worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("epub export event")
+            {
+                WorkerEvent::DocumentJobExported {
+                    source_name,
+                    target_locale,
+                    contents,
+                } => break (source_name, target_locale, contents),
+                WorkerEvent::DocumentJobActionRejected(error) => {
+                    panic!("epub export rejected: {error}")
+                }
+                _ => {}
+            }
+        };
+        assert_eq!(source_name, "sample.epub");
+        assert_eq!(target_locale, "zh-CN");
+        let mut archive = ZipArchive::new(Cursor::new(contents)).expect("rebuilt epub archive");
+        let mut chapter = String::new();
+        archive
+            .by_name("OEBPS/chapter.xhtml")
+            .expect("chapter entry")
+            .read_to_string(&mut chapter)
+            .expect("chapter xml");
+        assert!(chapter.contains("你好，LinguaMesh！"));
+        assert!(chapter.contains("<style>.keep{color:red}</style>"));
+        let mut opf = String::new();
+        archive
+            .by_name("OEBPS/content.opf")
+            .expect("opf entry")
+            .read_to_string(&mut opf)
+            .expect("opf xml");
+        assert!(opf.contains("<dc:language>zh-CN</dc:language>"));
+        let mut cover = Vec::new();
+        archive
+            .by_name("OEBPS/cover.jpg")
+            .expect("cover entry")
+            .read_to_end(&mut cover)
+            .expect("cover bytes");
+        assert_eq!(cover, [20, 21, 22]);
+        shutdown(&worker);
+    }
+
+    #[test]
+    fn document_job_export_uses_html_fallback_for_non_ascii_pdf_translation() {
+        let database = TestDatabase::new();
+        let (worker, _, endpoint) = started_worker_with_database(database.path());
+        connect(
+            &worker,
+            profile("document-pdf-provider", &endpoint, None, None),
+            None,
+            PersistenceIntent::SessionOnly,
+        )
+        .expect("connection");
+        select(&worker, "document-pdf-provider", "fake-translator");
+        worker
+            .try_send(WorkerCommand::CreateDocumentJob {
+                job_id: "document-pdf-1".to_owned(),
+                job: DocumentJob::from_utf8("sample.pdf", &pdf_worker_fixture()).expect("pdf job"),
+            })
+            .expect("create document job");
+        assert!(matches!(
+            worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("created event"),
+            WorkerEvent::DocumentJobUpdated(snapshot)
+                if snapshot.state == DocumentJobState::Pending
+        ));
+        worker
+            .try_send(WorkerCommand::TranslateDocumentJob {
+                job_id: "document-pdf-1".to_owned(),
+                source_locale: Some("en".to_owned()),
+                target_locale: "zh-CN".to_owned(),
+                glossary: None,
+                quality_mode: TranslationQualityMode::Balanced,
+                translation_preset: TranslationPreset::general(),
+                privacy_mode: TranslationPrivacyMode::Standard,
+            })
+            .expect("translate document job");
+        loop {
+            match worker
+                .events
+                .recv_timeout(Duration::from_secs(10))
+                .expect("document translation event")
+            {
+                WorkerEvent::DocumentJobUpdated(snapshot)
+                    if snapshot.state == DocumentJobState::Completed =>
+                {
+                    break;
+                }
+                WorkerEvent::DocumentJobSegment { event, .. } => {
+                    assert!(!matches!(event, TranslationEvent::Failed { .. }));
+                }
+                _ => {}
+            }
+        }
+        worker
+            .try_send(WorkerCommand::ExportDocumentJob {
+                job_id: "document-pdf-1".to_owned(),
+            })
+            .expect("export pdf job");
+        let (source_name, target_locale, contents) = loop {
+            match worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("pdf export event")
+            {
+                WorkerEvent::DocumentJobExported {
+                    source_name,
+                    target_locale,
+                    contents,
+                } => break (source_name, target_locale, contents),
+                WorkerEvent::DocumentJobActionRejected(error) => {
+                    panic!("pdf export rejected: {error}")
+                }
+                _ => {}
+            }
+        };
+        assert_eq!(source_name, "sample.html");
+        assert_eq!(target_locale, "zh-CN");
+        let html = String::from_utf8(contents).expect("pdf alternative html");
+        assert!(html.contains("data-page=\"1\""));
+        assert!(html.contains("data-page=\"2\""));
+        assert!(html.contains("你好，LinguaMesh！"));
         shutdown(&worker);
     }
 
