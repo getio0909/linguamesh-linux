@@ -11,9 +11,10 @@ Core pin must pass the complete Linux Hosted matrix before it is treated as acti
   verifies the committed baseline survives while the transient row is absent.
 - Core local focused SIGKILL and full storage/workspace validation passed; Core CI
   `30158027273`, Native SDK `30158027285`, and fuzz/sanitizer `30158027277` all passed.
-- Linux Native, Flatpak, and Foundation checks for the synchronized pin are pending; release remains
-  `unreleased`, and physical/manual, broader VFS/power-loss, cross-client, signing, rollback,
-  promotion, and stable-release gates remain open.
+- Linux Native, Flatpak, and Foundation Push/PR checks for the synchronized pin all passed:
+  Native `30158298597`/`30158299422`, Flatpak `30158298602`/`30158299415`, and Foundation
+  `30158298586`/`30158299423`. Release remains `unreleased`, and physical/manual, broader
+  VFS/power-loss, cross-client, signing, rollback, promotion, and stable-release gates remain open.
 
 ## 2026-07-25 — Linux glossary import architecture documentation correction
 
