@@ -1,5 +1,28 @@
 # Implementation Status
 
+## 2026-07-25 — OOXML worker export command checkpoint
+
+Assumption: exercising the persisted `ExportDocumentJob` command for each supported OOXML
+format strengthens Linux prerelease evidence only; it does not replace visual document review,
+other clients, signing, rollback authorization, or stable-release approval.
+
+- Runtime/test head `e6963e7c461080abb0911812ad43431ffa98906a` routes the DOCX, XLSX, and PPTX
+  worker regressions through the real persisted export command, asserting the emitted source
+  filename and target locale before checking translated XML, formulas or numbers, notes, styles,
+  and binary resources. The shared test helper also fails explicitly on rejected export events.
+- Packaging head `e474911459b53c7b7603973626383535a128b73c` updates the Flatpak Linux source pin
+  to the tested runtime head. Local document-job tests passed `12 passed; 0 failed`; the complete
+  demo-provider suite passed `170 passed; 0 failed; 7 ignored`, the no-default suite passed
+  `85 passed; 0 failed; 1 ignored`, and formatting, strict all-target/all-feature Clippy,
+  Flatpak metadata validation, and `git diff --check` passed.
+- Hosted push Native/Flatpak/Foundation runs `30137972038`/`30137972079`/`30137972076` and PR
+  Native/Flatpak/Foundation runs `30137974068`/`30137974066`/`30137974063` all passed. The first
+  e6963e7 Flatpak push/PR runs `30137901467`/`30137899936` rejected the stale `8893d3c` source
+  pin; the packaging correction is the reason for the replacement e474911 runs.
+- Release remains `unreleased`; visual/manual review, physical power-loss, arbitrary VFS,
+  other-client parity, signing, rollback authorization, distributable promotion, and stable
+  release evidence remain open.
+
 ## 2026-07-25 — EPUB and PDF worker export checkpoint
 
 Assumption: this Linux-first document-export checkpoint strengthens deterministic prerelease
