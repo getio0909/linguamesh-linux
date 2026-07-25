@@ -1,5 +1,24 @@
 # Implementation Status
 
+## 2026-07-25 — Linux current-head runtime fixture recheck
+
+Assumption: these deterministic fixtures validate the current Linux/Core pins only; they do not
+replace physical/manual review, arbitrary-VFS or power-loss testing, cross-client evidence, or
+release authorization.
+
+- `bash tools/run-storage-fault-test.sh` passed
+  `runtime_storage_write_failures_degrade_to_session_mode_without_false_commits`
+  (`1 passed; 0 failed; 176 filtered out`), confirming write-fault degradation without a false
+  commit.
+- `bash tools/run-ocr-test.sh` passed the external OCR fixture (`1 passed; 0 failed; 85 filtered
+  out`).
+- `bash tools/run-secret-service-prompt-test.sh` passed all four store/delete approval and
+  dismissal tests (`1 passed; 0 failed; 187 filtered out` each), including fail-closed rejection
+  paths.
+- These checks ran against Linux `94a1d5c0aa6a1e166174b9321905a3c7f50b00b4`, Core
+  `18d45140e5466251e28c8a50feeab2d5f34aa3b6`, and l10n
+  `43f5a6f069f6d0e6d075517b0c017784fe505b0d`. Release remains `unreleased`.
+
 ## 2026-07-25 — Linux write-fault pin Hosted artifacts
 
 Assumption: the downloaded Push artifacts are unsigned prerelease evidence; checksums, SBOMs, and
