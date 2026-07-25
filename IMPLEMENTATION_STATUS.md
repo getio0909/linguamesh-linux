@@ -1,12 +1,32 @@
 # Implementation Status
 
+## 2026-07-25 — Linux keyless prerelease signing rehearsal
+
+Assumption: this workflow proves only the identity and integrity of a manually selected Linux
+prerelease candidate; it does not authorize a stable release, distribution, rollback, or merge.
+
+- The manually dispatched workflow run `30174793719` validated Native source run `30173605763`
+  and Flatpak source run `30173605764` for Linux revision
+  `f1a0dec94b90339278af6ccb6f291746887b1d1e`. Source artifact checksums, BUILD-INFO, and both
+  SPDX-2.3/234-package sidecars passed before signing.
+- Cosign `v3.1.2` signed the Native binary and Flatpak bundle with GitHub OIDC; both
+  `cosign verify-blob` checks passed with the exact workflow identity and issuer
+  `https://token.actions.githubusercontent.com`.
+- Signed prerelease evidence artifact `8623902697`
+  (`linguamesh-linux-signed-prerelease-f1a0dec94b90339278af6ccb6f291746887b1d1e`) contains both
+  Sigstore bundles and `SIGNING-INFO.txt`. No tag, GitHub Release, manifest promotion, or
+  distribution action was performed. The earlier install-only failure `30174459820` is retained
+  as evidence of the corrected unavailable `v3.10.0` pin; it did not reach signing.
+- Release remains `unreleased`; physical/manual, arbitrary-VFS/power-loss, cross-client,
+  rollback, promotion, authorization, and stable-release gates remain open.
+
 ## 2026-07-25 — Linux current-head portable regression recheck
 
 Assumption: this local recheck proves the portable Linux worker and document boundary at the
 reviewed current head; it does not replace the Hosted GTK/Flatpak jobs, physical/manual review,
 arbitrary third-party VFS or power-loss evidence, or stable-release authorization.
 
-- Linux head `72f9b2bb895eaa6fdba970e01b9935524a23f583` consumed Core
+- Linux head `f1a0dec94b90339278af6ccb6f291746887b1d1e` consumed Core
   `cb061d24a3e0c4059a65d099d30bc643e9e079ea` and l10n
   `43f5a6f069f6d0e6d075517b0c017784fe505b0d` without workspace changes.
 - `cargo check --all-targets --features demo-provider --locked --offline`, strict demo-provider
@@ -17,14 +37,15 @@ arbitrary third-party VFS or power-loss evidence, or stable-release authorizatio
 - The ignored fixtures require external OCR, private storage-fault, client-certificate, and
   third-party Ollama environments; they remain separately covered by the documented runners and
   Hosted gates. Release remains `unreleased`.
-- Push Native/Flatpak/Foundation `30173340428`/`30173340423`/`30173340426` and PR
-  Native/Flatpak/Foundation `30173341863`/`30173341865`/`30173341882` all passed.
+- Push Native/Flatpak/Foundation `30173605763`/`30173605764`/`30173605776` and PR
+  Native/Flatpak/Foundation `30173608420`/`30173608395`/`30173608391` all passed.
 - Native evidence artifact `8623576696` passed checksum verification for the binary
   `a582b73cdb6a3547d60c0117f5cb7e476295b2ab7e98917608a4e995356cc963` and source archive
   `be879500c5f8836de567ced087f0725c043d13b13de9df12d60c8f3e4e5b1e7c`. Flatpak evidence/bundle
   artifacts `8623565690`/`8623565572` passed verification; the bundle digest is
   `6ae201f0b1cf4eb5c25ce4ad84bde9733828854e5b07115e442d6cc55e465ba1`. Both SPDX-2.3 sidecars
-  contain 234 packages, and all artifacts remain unsigned prerelease evidence.
+  contain 234 packages; these source artifacts remain unsigned, while the signed prerelease
+  evidence is recorded above.
 
 ## 2026-07-25 — Linux Core read-failure pin and final Hosted artifact synchronization
 
