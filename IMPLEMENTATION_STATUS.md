@@ -5,18 +5,20 @@
 Assumption: this workflow proves only the identity and integrity of a manually selected Linux
 prerelease candidate; it does not authorize a stable release, distribution, rollback, or merge.
 
-- The manually dispatched workflow run `30174793719` validated Native source run `30173605763`
+- The latest manually dispatched workflow run `30175729715` validated Native source run `30173605763`
   and Flatpak source run `30173605764` for Linux revision
   `f1a0dec94b90339278af6ccb6f291746887b1d1e`. Source artifact checksums, BUILD-INFO, and both
   SPDX-2.3/234-package sidecars passed before signing.
 - Cosign `v3.1.2` signed the Native binary and Flatpak bundle with GitHub OIDC; both
   `cosign verify-blob` checks passed with the exact workflow identity and issuer
   `https://token.actions.githubusercontent.com`.
-- Signed prerelease evidence artifact `8623902697`
+- Signed prerelease evidence artifact `8624150430`
   (`linguamesh-linux-signed-prerelease-f1a0dec94b90339278af6ccb6f291746887b1d1e`) contains both
-  Sigstore bundles and `SIGNING-INFO.txt`. No tag, GitHub Release, manifest promotion, or
-  distribution action was performed. The earlier install-only failure `30174459820` is retained
-  as evidence of the corrected unavailable `v3.10.0` pin; it did not reach signing.
+  Sigstore bundles and `SIGNING-INFO.txt`. The workflow now uses Node 24-compatible pinned
+  artifact actions and emitted no Node 20 deprecation annotation; its dependency emitted only a
+  non-failing Buffer deprecation warning. No tag, GitHub Release, manifest promotion, or
+  distribution action was performed. The earlier install-only failure `30174459820` and prior
+  successful run `30174793719` remain recorded as historical evidence.
 - Release remains `unreleased`; physical/manual, arbitrary-VFS/power-loss, cross-client,
   rollback, promotion, authorization, and stable-release gates remain open.
 
