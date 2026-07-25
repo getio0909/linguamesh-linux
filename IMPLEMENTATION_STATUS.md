@@ -1,5 +1,21 @@
 # Implementation Status
 
+## 2026-07-25 — Linux third-party Ollama interoperability recheck
+
+Assumption: a pinned host-network Ollama daemon with a small local model is deterministic Linux
+local-model evidence; it does not claim GPU execution, live-provider quota, enterprise account
+qualification, or stable-release readiness.
+
+- Reused the cached `ollama/ollama:0.11.10` image and existing model volume, started a temporary
+  host-network daemon, and verified the real `/api/tags` endpoint before running the test.
+- With model `smollm:135m`, `worker::tests::running_third_party_ollama_provider_translates_without_secret`
+  passed exactly once (`1 passed; 0 failed; 0 ignored`) through native `/api/tags` discovery and
+  `/api/chat` streaming without a credential. The temporary container was stopped and removed;
+  the existing model volume was preserved.
+- This strengthens Linux Scenario 4 only. Physical/manual review, broader VFS/power-loss,
+  cross-client, live quota/enterprise, signing, rollback, promotion, and stable-release gates
+  remain open; release status stays `unreleased`.
+
 ## 2026-07-25 — Linux Native artifact provenance checkpoint
 
 Assumption: the retained Native CI bundle is prerelease evidence only; it does not authorize
