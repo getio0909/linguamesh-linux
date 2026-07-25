@@ -3,8 +3,8 @@
 ## 2026-07-25 — XLSX sheet and range selection checkpoint
 
 Assumption: this Linux-first selection slice strengthens Scenario 11 deterministically; it does
-not claim a GTK range-picker, visual workbook review, physical/VFS behavior, other-client parity,
-signing, rollback authorization, or stable-release approval.
+not claim visual workbook review, physical/VFS behavior, other-client parity, signing, rollback
+authorization, or stable-release approval.
 
 - Core `e0b682fa183cfdebfabc0ef04d531c58031d8e85` adds `XlsxSelection` and bounded A1 range
   filtering. The worker fixture selects `Sheet1!A1:A1`; only the selected shared string is
@@ -21,14 +21,14 @@ signing, rollback authorization, or stable-release approval.
 - Local Core validation passed formatting, strict all-target/all-feature Clippy, workspace tests
   (`28` document tests including selection; `61` storage tests; all workspace targets), and locked
   workspace build. Linux focused worker validation passed (`1 passed; 0 failed`).
-- Native CI now pins the Core revision above. Flatpak packaging must be repinned before hosted
-  build evidence is considered final.
-- Packaging head `c1eb731cdea69f476f5ad0af7a5d7a00c7e4d48a` pins Flatpak to Core `e0b682f` and
-  runtime `9b72031`. Code-head Flatpak push/PR runs `30143780999`/`30143782126` correctly
-  rejected the stale `e39169e` source pin. Replacement push Native/Flatpak/Foundation
-  `30143791468`/`30143791457`/`30143791459` and PR `30143792958`/`30143792953`/`30143792950`
-  passed; the first Flatpak push smoke hit a transient Flathub connection error and the rerun
-  passed.
+- Native CI pins the Core revision above. Runtime head
+  `459c11c1f4c3bb341f33a44697798bce72af0c57` and packaging head
+  `c12a03552b1ae14672589794a0386d84247e25d7` are pushed and clean. Final hosted push/PR
+  evidence passed: Native `30145000926`/`30145002712`, Flatpak `30145000917`/`30145002717`,
+  and Foundation `30145000920`/`30145002705`. Native CI executed
+  `gtk_xlsx_import_applies_sheet_and_range_before_job_creation` in the hosted GTK suite.
+  Earlier code-head Flatpak runs `30144976968`/`30144979057` correctly rejected the stale
+  packaging pin before the replacement packaging commit.
 - Release remains `unreleased`; visual/manual review, physical/VFS evidence,
   other-client parity, signing, rollback, distributable promotion, and stable-release evidence
   remain open.
