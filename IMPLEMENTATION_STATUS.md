@@ -1,5 +1,24 @@
 # Implementation Status
 
+## 2026-07-25 — Latest Linux Native prerelease artifact verification
+
+Assumption: the latest successful Native push artifact is reproducible prerelease evidence for
+the exact Linux, Core, and localization revisions, but it is not a signed or stable release.
+
+- Downloaded Native artifact `8617350357` from push run `30149944852` for Linux
+  `f589776df78ee92d57d280e97c35d683bc3d36d0`, Core
+  `e0b682fa183cfdebfabc0ef04d531c58031d8e85`, and l10n
+  `2fc24ebb942d5497910974f3d2fc49c5f72f9ad0`.
+- `sha256sum -c SHA256SUMS` passed for the native binary
+  (`4cc71eb35ecd26d198f099e550eed7e39e115fdb4c8bead0ddd876ad1947a3ba`) and source archive
+  (`930538b7e8a0e907bfd81bc25042ce0cadf16459cd64d2ee703d94998a0df8a5`). The SPDX-2.3 SBOM
+  parsed with 234 packages; the bundle also contains the machine-specific performance baseline
+  and rollback record.
+- `BUILD-INFO.txt` and `ROLLBACK.md` classify the bundle as unsigned release-mode prerelease
+  evidence with no stable revision, signing key, or release authorization. Release status remains
+  `unreleased`; physical/manual, broader VFS and power-loss, cross-client, signing, rollback,
+  distributable-promotion, and stable-release gates remain open.
+
 ## 2026-07-25 — Active Linux Core, localization, and Flatpak pin reconciliation
 
 Assumption: active contributor and release documents must name the same immutable Core,
