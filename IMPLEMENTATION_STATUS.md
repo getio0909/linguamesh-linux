@@ -1,5 +1,25 @@
 # Implementation Status
 
+## 2026-07-25 — Linux performance and local environment-gated audit
+
+Assumption: this host-side audit adds reproducible machine-specific performance evidence and
+records unavailable desktop services honestly; it does not replace hosted display, physical,
+human, cross-client, signing, rollback, or stable-release evidence.
+
+- On Linux head `8bc0132eed2fb99a6b46857aab4b0895bc5c6346`,
+  `bash tools/run-performance-baseline.sh` passed with Core `9e69d01cbae1ca0421923e059aa3252c4ecbe1be`
+  and l10n `2fc24ebb942d5497910974f3d2fc49c5f72f9ad0`: DOCX reconstruction `1.853s`, XLSX
+  reconstruction `0.389s`, and routing dispatch `0.397s`. This is a machine-specific baseline,
+  not a cross-machine performance claim.
+- The fresh no-default and demo-provider library suites passed `85 passed; 0 failed; 1 ignored`
+  and `170 passed; 0 failed; 7 ignored`; formatting, strict Clippy, Flatpak metadata, and l10n
+  synchronization also passed.
+- Local document-portal execution is unavailable because `fusermount3` cannot mount
+  `/run/user/1000/doc` (`Permission denied`); notification and Wayland fixtures stop at missing
+  `xvfb-run` and `weston`; the keyboard-focus fixture remains link-limited by missing host GTK
+  symbols. Hosted Native CI remains authoritative for these display-backed boundaries.
+- Release remains `unreleased`; no source or dependency pin changed.
+
 ## 2026-07-25 — XLSX sheet and range selection checkpoint
 
 Assumption: this Linux-first selection slice strengthens Scenario 11 deterministically; it does
