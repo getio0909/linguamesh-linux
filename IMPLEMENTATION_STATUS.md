@@ -14,9 +14,10 @@ Linux prerelease input.
   no-default tests (`85 passed; 0 failed; 1 ignored`), demo-provider tests (`170 passed; 0 failed;
   7 ignored`), demo-provider build, l10n synchronization, Flatpak metadata validation, and
   `git diff --check`.
-- Hosted Native, Flatpak, and Foundation Push/PR checks are required before this pin is treated as
-  reproducible. Physical/manual, prompted unlock, broader VFS/power-loss, cross-client, signing,
-  rollback, promotion, and stable-release gates remain open.
+- Hosted Push Native/Flatpak/Foundation runs `30156131717`/`30156131693`/`30156131722` and PR
+  Native/Flatpak/Foundation runs `30156133014`/`30156132982`/`30156133017` all passed for this
+  exact Linux head and Core pin. Physical/manual, prompted unlock, broader VFS/power-loss,
+  cross-client, signing, rollback, promotion, and stable-release gates remain open.
 
 ## 2026-07-25 — Linux current-head environment-gated fixture recheck
 
