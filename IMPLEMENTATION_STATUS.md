@@ -19,6 +19,19 @@ the exact Linux, Core, and localization revisions, but it is not a signed or sta
   `unreleased`; physical/manual, broader VFS and power-loss, cross-client, signing, rollback,
   distributable-promotion, and stable-release gates remain open.
 
+## 2026-07-25 — Linux Secret Service prompt-flow revalidation
+
+Assumption: deterministic Secret Service prompt protocol coverage strengthens secure onboarding
+evidence, but does not substitute for an end-user visual approval or unlock review.
+
+- `bash tools/run-secret-service-prompt-test.sh` passed all four isolated D-Bus fixture cases:
+  approved and dismissed prompts for both Secret Service store and delete operations.
+- `bash tools/run-secret-service-test.sh` passed the persistent store/restart and secure-onboarding
+  worker cases before stopping at the unavailable local `xvfb-run` command for the GTK fixture.
+- No developer keyring, credentials, or user data were accessed. Interactive prompt/unlock UX,
+  human review, cross-client parity, signing, rollback, promotion, and stable-release gates remain
+  open; release status remains `unreleased`.
+
 ## 2026-07-25 — Active Linux Core, localization, and Flatpak pin reconciliation
 
 Assumption: active contributor and release documents must name the same immutable Core,
