@@ -1,5 +1,18 @@
 # Implementation Status
 
+## 2026-07-25 — Linux contribution governance templates
+
+Assumption: these repository-governance files satisfy the open-source contribution entry-point
+requirement without changing Linux runtime behavior, dependencies, source pins, or release status.
+
+- Commit `00e6077f15ee63098b97a4d96b6151af7b6fdc90` adds Linux `CODEOWNERS`, bug and feature Issue
+  forms, a blank-Issue policy, and a pull-request template covering compatibility, security, evidence,
+  source preservation, and release gates.
+- Push Native/Flatpak/Foundation runs `30178597288`/`30178597274`/`30178597290` and PR
+  Native/Flatpak/Foundation runs `30178599330`/`30178599336`/`30178599329` passed.
+- Release remains `unreleased`; no runtime, ABI, dependency, source-pin, tag, or promotion change
+  occurred.
+
 ## 2026-07-25 — Latest Linux signing-record documentation checkpoint
 
 Assumption: this checkpoint records the signed latest Linux evidence and its documentation commit;
