@@ -9944,26 +9944,51 @@ trailer
         incompatible.abi_major += 1;
         let error = validate_core_contract(&incompatible).expect_err("ABI rejection");
         assert_eq!(error.kind, ErrorKind::ProtocolIncompatible);
+        assert!(
+            error
+                .message
+                .contains("The shared Core contract is incompatible:")
+        );
 
         incompatible = actual.clone();
         incompatible.core_version = "0.2.0".to_owned();
         let error = validate_core_contract(&incompatible).expect_err("Core version rejection");
         assert_eq!(error.kind, ErrorKind::ProtocolIncompatible);
+        assert!(
+            error
+                .message
+                .contains("The shared Core contract is incompatible:")
+        );
 
         incompatible = actual.clone();
         incompatible.protocol_version += 1;
         let error = validate_core_contract(&incompatible).expect_err("protocol rejection");
         assert_eq!(error.kind, ErrorKind::ProtocolIncompatible);
+        assert!(
+            error
+                .message
+                .contains("The shared Core contract is incompatible:")
+        );
 
         incompatible = actual.clone();
         incompatible.provider_catalog_version = "0.2.0".to_owned();
         let error = validate_core_contract(&incompatible).expect_err("catalog rejection");
         assert_eq!(error.kind, ErrorKind::ProtocolIncompatible);
+        assert!(
+            error
+                .message
+                .contains("The shared Core contract is incompatible:")
+        );
 
         incompatible = actual;
         incompatible.enabled_features.remove(0);
         let error = validate_core_contract(&incompatible).expect_err("feature rejection");
         assert_eq!(error.kind, ErrorKind::ProtocolIncompatible);
+        assert!(
+            error
+                .message
+                .contains("The shared Core contract is incompatible:")
+        );
     }
 
     #[test]

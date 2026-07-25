@@ -1,5 +1,14 @@
 # Testing and Validation
 
+## Scenario 16 — Core incompatibility diagnostics
+
+The worker regression `reviewed_core_contract_is_required_exactly` mutates each reviewed Core
+compatibility dimension independently: semantic version, ABI major, protocol version,
+provider-catalog version, and required features. Every mismatch must return the typed
+`ProtocolIncompatible` error and the user-facing English prefix `The shared Core contract is
+incompatible:`. The test proves Linux fails closed with an actionable diagnostic rather than
+continuing against an unreviewed Core; cross-client conformance remains a separate release gate.
+
 The 2026-07-25 Linux status-head recheck used runtime input `0a893463dbd270318b391aec19c630ec0331defe`.
 The no-default suite passed `85 passed; 0 failed; 1 ignored`, and the demo-provider suite passed
 `170 passed; 0 failed; 7 ignored`. The private ENOSPC storage runner, OCR fixture, and Secret

@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-25 — Linux Scenario 16 incompatibility diagnostics
+
+Assumption: this checkpoint strengthens the Linux client boundary only; it does not claim
+cross-client conformance or stable-release readiness.
+
+- The existing `reviewed_core_contract_is_required_exactly` regression now asserts both typed
+  `ProtocolIncompatible` rejection and the clear English diagnostic prefix for Core semantic
+  version, ABI major, protocol version, provider-catalog version, and required-feature mismatches.
+- `cargo fmt --all --check` and `cargo check --features gui --all-targets --locked` passed. The
+  no-default suite passed `85 passed; 0 failed; 1 ignored`.
+- The focused GUI binary test was attempted but remains host-blocked at link time by missing
+  GTK/GDK/Graphene runtime symbols; the corresponding Native CI fixture remains authoritative.
+- Cross-client parity, broader VFS/power-loss, physical/manual review, signing, rollback,
+  promotion, and stable-release gates remain open; release stays `unreleased`.
+
 ## 2026-07-25 — Linux controlled runner recheck
 
 Assumption: this documentation-only checkpoint records deterministic Linux validation against the
