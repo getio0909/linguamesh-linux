@@ -1,5 +1,22 @@
 # Implementation Status
 
+## 2026-07-25 — Secret Service prompted-flow runner readiness hardening
+
+Assumption: this runner change hardens deterministic CI setup only; it does not claim interactive
+desktop approval, physical/manual review, or stable-release readiness.
+
+- The prompt fixture now requests `org.freedesktop.secrets` with replacement/no-queue flags,
+  publishes a private `com.linguamesh.SecretServicePromptFixture.Ping` method, and writes a
+  readiness marker after owning the bus name. The shell runner waits for that marker and private
+  ping instead of triggering the system Secret Service through `ReadAlias`.
+- `bash tools/run-secret-service-prompt-test.sh` passed three consecutive full runs locally,
+  covering accepted and dismissed store/delete flows (four tests per run; each `1 passed; 0
+  failed; 187 filtered out`).
+- This prevents the observed Hosted Push Native startup race where the test briefly reached an
+  activated system Secret Service and returned `SecureStorageUnavailable`; the release remains
+  `unreleased` pending Hosted validation and the existing physical/manual, arbitrary-VFS/power-loss,
+  cross-client, signing, rollback, promotion, and stable-release gates.
+
 ## 2026-07-25 — Linux current-head runtime fixture recheck
 
 Assumption: these deterministic fixtures validate the current Linux/Core pins only; they do not

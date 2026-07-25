@@ -3,6 +3,7 @@ import os
 import signal
 
 import dbus
+import dbus.bus
 import dbus.mainloop.glib
 import dbus.service
 from gi.repository import GLib
@@ -14,8 +15,10 @@ COLLECTION_PATH = "/org/freedesktop/secrets/collection/login"
 SESSION_PATH = "/org/freedesktop/secrets/session/prompt_fixture"
 ITEM_PATH = "/org/freedesktop/secrets/item/prompt_fixture"
 PROMPT_PATH = "/org/freedesktop/secrets/prompt/fixture"
+FIXTURE_INTERFACE = "com.linguamesh.SecretServicePromptFixture"
 OPERATION = os.environ.get("LINGUAMESH_SECRET_SERVICE_PROMPT_OPERATION", "store")
 PROMPT_DISMISSED = os.environ.get("LINGUAMESH_SECRET_SERVICE_PROMPT_DISMISSED") == "1"
+READY_FILE = os.environ.get("LINGUAMESH_SECRET_SERVICE_PROMPT_READY_FILE")
 
 
 class SecretService(dbus.service.Object):
@@ -50,6 +53,10 @@ class SecretService(dbus.service.Object):
     )
     def ReadAlias(self, _alias):
         return dbus.ObjectPath(COLLECTION_PATH)
+
+    @dbus.service.method(FIXTURE_INTERFACE, in_signature="", out_signature="s")
+    def Ping(self):
+        return "ready"
 
     @dbus.service.method(
         "org.freedesktop.Secret.Service",
@@ -115,11 +122,22 @@ def stop(_signal, _frame):
 
 dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 bus = dbus.SessionBus()
-bus.request_name(SERVICE_NAME)
+request_result = bus.request_name(
+    SERVICE_NAME,
+    dbus.bus.NAME_FLAG_REPLACE_EXISTING | dbus.bus.NAME_FLAG_DO_NOT_QUEUE,
+)
+if request_result not in (
+    dbus.bus.REQUEST_NAME_REPLY_PRIMARY_OWNER,
+    dbus.bus.REQUEST_NAME_REPLY_ALREADY_OWNER,
+):
+    raise RuntimeError("Secret Service prompt fixture could not own its bus name.")
 service = SecretService(bus)
 collection = SecretCollection(bus)
 item = SecretItem(bus)
 prompt = SecretPrompt(bus)
+if READY_FILE:
+    with open(READY_FILE, "w", encoding="ascii") as ready_file:
+        ready_file.write("ready\n")
 signal.signal(signal.SIGTERM, stop)
 signal.signal(signal.SIGINT, stop)
 loop.run()
