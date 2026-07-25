@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-25 — Latest Linux signing-record documentation checkpoint
+
+Assumption: this checkpoint records the signed latest Linux evidence and its documentation commit;
+it does not change application behavior or release qualification.
+
+- Documentation commit `95cb178be0bf4b8e7b097232729c736c5e241f32` records signing workflow
+  `30177603778` and signed evidence artifact `8624649325` for revision
+  `27d46e81676bc2d211b7cd01e386681cc0cf51b8`.
+- The documentation-only Push Native/Flatpak/Foundation runs
+  `30177637789`/`30177637797`/`30177637781` all passed. Native evidence artifact `8624711461`
+  and Flatpak evidence/bundle artifacts `8624703752`/`8624703536` passed their hosted checksum,
+  SBOM, and sandbox checks.
+- Release remains `unreleased`; physical/manual, arbitrary-VFS/power-loss, cross-client, rollback,
+  promotion, authorization, and stable-release gates remain open.
+
 ## 2026-07-25 — Latest Linux prerelease evidence signing
 
 Assumption: signing the latest verified Native and Flatpak push artifacts records prerelease
