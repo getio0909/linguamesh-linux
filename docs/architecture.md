@@ -169,7 +169,8 @@ by Core schema 33 as bounded `glossaries` and `glossary_terms` rows; the Linux w
 validated save/list/delete commands, while credentials and endpoints remain outside the schema. The
 GTK text workspace exposes a modal **Glossary libraries** selector and **Save glossary library**
 action: loading a record copies its validated terms into the request editor, and deletion uses the
-stable Core-owned ID. TBX import and cross-client library parity remain outside this Linux slice.
+stable Core-owned ID. The import action accepts bounded CSV and TBX files through Core's restricted
+parsers; cross-client glossary-library parity remains outside this Linux slice.
 
 The GTK routing-profile dialog maps a stable dropdown order to Core's `Manual`, `Ordered`, and
 `Automatic` modes. A separate **Allow approved fallback** checkbox records explicit consent and is
