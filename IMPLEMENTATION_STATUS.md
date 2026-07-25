@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-25 — Linux glossary import architecture documentation correction
+
+Assumption: the bounded CSV/TBX glossary import behavior was already implemented and covered by
+Core/domain tests; this checkpoint corrects the architecture description without changing runtime
+behavior or the Core pin.
+
+- Linux architecture now states that the GTK import action accepts bounded CSV and TBX files via
+  Core's restricted parsers, while cross-client glossary-library parity remains outside this slice.
+- The preceding Linux head `8602ec7d6b8600ce3ba3fc7dbd8251c354cb6c9` passed Hosted Push
+  Native/Flatpak/Foundation `30157006083`/`30157006094`/`30157006079` and PR
+  Native/Flatpak/Foundation `30157007144`/`30157007130`/`30157007133`. This status-only commit
+  does not alter the runtime or release posture; release remains `unreleased`.
+- Physical/manual review, prompted unlock UX, broader VFS/power-loss, cross-client conformance,
+  signing, rollback, promotion, and stable-release authorization remain open.
+
 ## 2026-07-25 — Linux pin sync to Core crash-rollback evidence
 
 Assumption: the Core change is test/documentation-only for the Linux runtime, but the exact pin
