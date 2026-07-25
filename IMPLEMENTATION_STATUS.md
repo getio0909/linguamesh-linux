@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-25 — Linux all-feature host-link boundary recheck
+
+Assumption: the host-side all-feature test command is useful evidence only when its GTK runtime
+symbols are available; Hosted Linux Native CI remains authoritative for the GTK/Flatpak matrix.
+
+- `cargo +1.93.0 clippy --all-targets --all-features --locked --offline -- -D warnings` passed.
+- `cargo +1.93.0 test --all-targets --all-features --locked --offline` compiled the current
+  workspace but stopped while linking the GTK test binary because the host lacks the required
+  GTK 4, GDK 4, and Graphene symbols (for example `gdk_clipboard_read_text_async`,
+  `gtk_accessible_get_type`, and `graphene_rect_get_x`). This is an environment boundary, not a
+  test assertion failure; no local all-feature test pass is claimed.
+- No runtime, ABI, dependency, source-pin, manifest, tag, or promotion change occurred. Release
+  remains `unreleased`; Hosted UI evidence and physical/manual, arbitrary-VFS/power-loss,
+  cross-client, rollback, promotion, authorization, and stable-release gates remain open.
+
 ## 2026-07-25 — Linux current checkout regression recheck
 
 Assumption: this host-side recheck validates the checked-out Linux worker and document boundary;
