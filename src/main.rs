@@ -2,7 +2,8 @@ use adw::prelude::*;
 use gtk::glib;
 use linguamesh_document::{
     DEFAULT_SUBTITLE_MAX_LINE_CHARS, DEFAULT_SUBTITLE_MAX_READING_SPEED, DocumentFormat,
-    DocumentJobState, DocumentSegmentKind, DocumentWarning, DocumentWarningKind,
+    DocumentJob, DocumentJobState, DocumentSegmentKind, DocumentWarning, DocumentWarningKind,
+    XlsxSelection,
 };
 use linguamesh_domain::{
     ErrorKind, FileLease, Glossary, GlossaryEntry, MAX_GLOSSARY_CSV_BYTES, MAX_GLOSSARY_TBX_BYTES,
@@ -6448,6 +6449,244 @@ fn begin_document_binary_export(
     );
 }
 
+// 将已检查的文档任务提交给核心 worker，并在提交前撤销文件 lease。
+#[allow(clippy::too_many_arguments)]
+fn queue_loaded_document(
+    job: DocumentJob,
+    source_name: String,
+    source_uri: String,
+    contents: Vec<u8>,
+    source_lease: &FileLease,
+    bindings: &UiBindings,
+    state: &Rc<RefCell<AppState>>,
+    worker: &Rc<CoreWorker>,
+) {
+    source_lease.revoke();
+    let warnings = job.warnings().unwrap_or_default();
+    if std::env::var_os("LINGUAMESH_TEST_FILE_DIALOG").is_some() {
+        println!("GTK file chooser application fixture completed the asynchronous GIO read.");
+    }
+    let job_id = OperationId::new().as_str().to_owned();
+    let image_only_pdf = matches!(job.format, DocumentFormat::Pdf)
+        && job.pending_count() == 0
+        && warnings
+            .iter()
+            .any(|warning| warning.kind == DocumentWarningKind::PdfImageOnlyPage);
+    *bindings.source_uri.borrow_mut() = Some(source_uri);
+    if image_only_pdf && bindings.ocr_enabled.is_active() {
+        bindings.ocr_pending.set(true);
+        if let Err(error) = worker.try_send(WorkerCommand::OcrDocumentJob {
+            job_id,
+            source_name,
+            contents,
+        }) {
+            bindings.ocr_pending.set(false);
+            state.borrow_mut().record_client_error(error.to_string());
+        }
+        refresh_ui(bindings, &state.borrow());
+        return;
+    }
+    let text = job.source_text();
+    if let Err(error) = worker.try_send(WorkerCommand::CreateDocumentJob {
+        job_id: job_id.clone(),
+        job,
+    }) {
+        state.borrow_mut().record_client_error(error.to_string());
+        refresh_ui(bindings, &state.borrow());
+        return;
+    }
+    bindings.document_job_guard.set(true);
+    bindings.source.set_text(&text);
+    bindings.document_job_guard.set(false);
+    *bindings.document_job_id.borrow_mut() = Some(job_id);
+    *bindings.document_warnings.borrow_mut() = warnings;
+    bindings.error.set_label("");
+    bindings.error.set_visible(false);
+    refresh_ui(bindings, &state.borrow());
+}
+
+// 展示 XLSX 工作表和 A1 范围选择器，取消时撤销仍在使用的文件 lease。
+#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
+fn show_xlsx_selection_dialog(
+    bindings: &UiBindings,
+    state: &Rc<RefCell<AppState>>,
+    worker: &Rc<CoreWorker>,
+    job: DocumentJob,
+    source_name: String,
+    source_uri: String,
+    contents: Vec<u8>,
+    source_lease: FileLease,
+) {
+    let locale = state.borrow().locale();
+    let dialog = gtk::Window::builder()
+        .application(&bindings.application)
+        .transient_for(&bindings.window)
+        .modal(true)
+        .title(localization::text(
+            locale,
+            "dialog.xlsx_selection",
+            "Select spreadsheet range",
+        ))
+        .default_width(560)
+        .default_height(300)
+        .build();
+    let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    root.set_margin_top(16);
+    root.set_margin_bottom(16);
+    root.set_margin_start(16);
+    root.set_margin_end(16);
+    let detail = gtk::Label::new(Some(&localization::text(
+        locale,
+        "dialog.xlsx_selection_detail",
+        "Choose a worksheet and A1 range to translate. Formulas, numbers, dates, and unselected cells remain unchanged.",
+    )));
+    detail.set_xalign(0.0);
+    detail.set_wrap(true);
+    detail.set_focusable(true);
+    root.append(&detail);
+
+    let sheet_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let sheet_label =
+        gtk::Label::with_mnemonic(&localized_mnemonic(locale, "label.xlsx_sheet", "Worksheet"));
+    let sheet_entry = gtk::Entry::new();
+    sheet_entry.set_text("Sheet1");
+    sheet_entry.set_hexpand(true);
+    sheet_entry.set_max_length(128);
+    sheet_entry.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.xlsx_sheet",
+        "Worksheet display name, for example Sheet1.",
+    )));
+    sheet_entry.set_focusable(true);
+    sheet_label.set_mnemonic_widget(Some(&sheet_entry));
+    sheet_row.append(&sheet_label);
+    sheet_row.append(&sheet_entry);
+    root.append(&sheet_row);
+
+    let range_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let range_label = gtk::Label::with_mnemonic(&localized_mnemonic(
+        locale,
+        "label.xlsx_range",
+        "Cell range",
+    ));
+    let range_entry = gtk::Entry::new();
+    range_entry.set_text("A1:XFD1048576");
+    range_entry.set_hexpand(true);
+    range_entry.set_max_length(64);
+    range_entry.set_tooltip_text(Some(&localization::text(
+        locale,
+        "tooltip.xlsx_range",
+        "A1 range, for example A1:B20. The default covers the full worksheet.",
+    )));
+    range_entry.set_focusable(true);
+    range_label.set_mnemonic_widget(Some(&range_entry));
+    range_row.append(&range_label);
+    range_row.append(&range_entry);
+    root.append(&range_row);
+
+    let selection_error = gtk::Label::new(None);
+    selection_error.set_xalign(0.0);
+    selection_error.set_wrap(true);
+    selection_error.set_visible(false);
+    selection_error.set_focusable(true);
+    selection_error.add_css_class("error");
+    selection_error.set_accessible_role(gtk::AccessibleRole::Alert);
+    root.append(&selection_error);
+
+    let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let apply = gtk::Button::with_mnemonic(&localized_mnemonic(
+        locale,
+        "action.apply_xlsx_selection",
+        "Apply selection",
+    ));
+    apply.add_css_class("suggested-action");
+    apply.set_focusable(true);
+    let cancel = gtk::Button::with_mnemonic(&localized_mnemonic(locale, "action.cancel", "Cancel"));
+    cancel.set_focusable(true);
+    actions.append(&apply);
+    actions.append(&cancel);
+    root.append(&actions);
+    dialog.set_child(Some(&root));
+
+    let job_cell = Rc::new(RefCell::new(Some(job)));
+    let contents_cell = Rc::new(RefCell::new(Some(contents)));
+    let lease_cell = Rc::new(RefCell::new(Some(source_lease)));
+
+    let close_lease = Rc::clone(&lease_cell);
+    dialog.connect_close_request(move |_| {
+        if let Some(lease) = close_lease.borrow_mut().take() {
+            lease.revoke();
+        }
+        glib::Propagation::Proceed
+    });
+
+    let cancel_dialog = dialog.clone();
+    let cancel_lease = Rc::clone(&lease_cell);
+    cancel.connect_clicked(move |_| {
+        if let Some(lease) = cancel_lease.borrow_mut().take() {
+            lease.revoke();
+        }
+        cancel_dialog.close();
+    });
+
+    let apply_dialog = dialog.clone();
+    let apply_state = Rc::clone(state);
+    let apply_worker = Rc::clone(worker);
+    let apply_bindings = bindings.clone();
+    let apply_job = Rc::clone(&job_cell);
+    let apply_contents = Rc::clone(&contents_cell);
+    let apply_lease = Rc::clone(&lease_cell);
+    let apply_sheet_entry = sheet_entry.clone();
+    let apply_range_entry = range_entry.clone();
+    apply.connect_clicked(move |_| {
+        let sheet_name = apply_sheet_entry.text().trim().to_owned();
+        let cell_range = apply_range_entry.text().trim().to_owned();
+        let Some(mut job) = apply_job.borrow_mut().take() else {
+            return;
+        };
+        let Some(lease) = apply_lease.borrow_mut().take() else {
+            return;
+        };
+        let Some(contents) = apply_contents.borrow_mut().take() else {
+            lease.revoke();
+            return;
+        };
+        let selection = XlsxSelection::new(sheet_name, cell_range);
+        let result = selection.and_then(|selection| {
+            lease
+                .ensure_active()
+                .map_err(|_| linguamesh_document::DocumentError::InvalidXlsxSelection)?;
+            job.select_xlsx_range(&selection.sheet_name, &selection.cell_range)
+        });
+        if result.is_ok() {
+            queue_loaded_document(
+                job,
+                source_name.clone(),
+                source_uri.clone(),
+                contents,
+                &lease,
+                &apply_bindings,
+                &apply_state,
+                &apply_worker,
+            );
+            apply_dialog.close();
+        } else {
+            *apply_job.borrow_mut() = Some(job);
+            *apply_contents.borrow_mut() = Some(contents);
+            *apply_lease.borrow_mut() = Some(lease);
+            selection_error.set_label(&localization::text(
+                apply_state.borrow().locale(),
+                "error.xlsx_selection",
+                "The worksheet or cell range is invalid.",
+            ));
+            selection_error.set_visible(true);
+            selection_error.grab_focus();
+        }
+    });
+    dialog.present();
+    sheet_entry.grab_focus();
+}
+
 // 通过 GIO 的分块异步读取限制内存占用，并在主线程完成 UTF-8 解码。
 #[allow(clippy::single_match_else, clippy::too_many_lines)]
 fn load_source_file(
@@ -6533,74 +6772,56 @@ fn load_source_file(
                         &source_name,
                         contents.as_ref(),
                     ) {
-                    Ok(job) => {
-                        source_lease.revoke();
-                        let warnings = job.warnings().unwrap_or_default();
-                        if std::env::var_os("LINGUAMESH_TEST_FILE_DIALOG").is_some() {
-                            println!("GTK file chooser application fixture completed the asynchronous GIO read.");
-                        }
-                        let job_id = OperationId::new().as_str().to_owned();
-                        let image_only_pdf = matches!(job.format, DocumentFormat::Pdf)
-                            && job.pending_count() == 0
-                            && warnings.iter().any(|warning| {
-                                warning.kind == DocumentWarningKind::PdfImageOnlyPage
-                            });
-                        *load_bindings.source_uri.borrow_mut() = Some(source_uri.clone());
-                        if image_only_pdf && load_bindings.ocr_enabled.is_active() {
-                            load_bindings.ocr_pending.set(true);
-                            if let Err(error) = load_worker.try_send(WorkerCommand::OcrDocumentJob {
-                                job_id,
-                                source_name: source_name.clone(),
-                                contents: contents.as_ref().to_vec(),
-                            }) {
-                                load_bindings.ocr_pending.set(false);
-                                load_state.borrow_mut().record_client_error(error.to_string());
+                        Ok(job) => {
+                            if job.format == DocumentFormat::Xlsx {
+                                show_xlsx_selection_dialog(
+                                    &load_bindings,
+                                    &load_state,
+                                    &load_worker,
+                                    job,
+                                    source_name.clone(),
+                                    source_uri.clone(),
+                                    contents.as_ref().to_vec(),
+                                    source_lease,
+                                );
+                                return;
                             }
-                            refresh_ui(&load_bindings, &load_state.borrow());
-                            return;
+                            queue_loaded_document(
+                                job,
+                                source_name.clone(),
+                                source_uri.clone(),
+                                contents.as_ref().to_vec(),
+                                &source_lease,
+                                &load_bindings,
+                                &load_state,
+                                &load_worker,
+                            );
                         }
-                        let text = job.source_text();
-                        if let Err(error) = load_worker.try_send(WorkerCommand::CreateDocumentJob {
-                            job_id: job_id.clone(),
-                            job,
-                        }) {
-                            load_state.borrow_mut().record_client_error(error.to_string());
-                            refresh_ui(&load_bindings, &load_state.borrow());
-                            return;
+                        Err(error) => {
+                            load_import_failed.set(true);
+                            let locale = load_state.borrow().locale();
+                            let (key, fallback) = match error {
+                                file_import::TextImportError::TooLarge => (
+                                    "error.file_too_large",
+                                    "The selected text file exceeds the 4 MiB limit.",
+                                ),
+                                file_import::TextImportError::InvalidUtf8 => (
+                                    "error.file.invalid_utf8",
+                                    "The selected file is not valid UTF-8 text.",
+                                ),
+                                file_import::TextImportError::UnsupportedFormat => (
+                                    "error.file_open",
+                                    "The selected document format is not supported.",
+                                ),
+                                file_import::TextImportError::InvalidStructure
+                                | file_import::TextImportError::LeaseExpired => (
+                                    "error.file_open",
+                                    "The selected document structure is invalid.",
+                                ),
+                            };
+                            let message = localization::text(locale, key, fallback);
+                            show_file_import_error(&load_bindings, &message);
                         }
-                        load_bindings.document_job_guard.set(true);
-                        load_bindings.source.set_text(&text);
-                        load_bindings.document_job_guard.set(false);
-                        *load_bindings.document_job_id.borrow_mut() = Some(job_id);
-                        *load_bindings.document_warnings.borrow_mut() = warnings;
-                        load_bindings.error.set_label("");
-                        load_bindings.error.set_visible(false);
-                    }
-                    Err(error) => {
-                        load_import_failed.set(true);
-                        let locale = load_state.borrow().locale();
-                        let (key, fallback) = match error {
-                            file_import::TextImportError::TooLarge => (
-                                "error.file_too_large",
-                                "The selected text file exceeds the 4 MiB limit.",
-                            ),
-                            file_import::TextImportError::InvalidUtf8 => (
-                                "error.file.invalid_utf8",
-                                "The selected file is not valid UTF-8 text.",
-                            ),
-                            file_import::TextImportError::UnsupportedFormat => (
-                                "error.file_open",
-                                "The selected document format is not supported.",
-                            ),
-                            file_import::TextImportError::InvalidStructure
-                            | file_import::TextImportError::LeaseExpired => (
-                                "error.file_open",
-                                "The selected document structure is invalid.",
-                            ),
-                        };
-                        let message = localization::text(locale, key, fallback);
-                        show_file_import_error(&load_bindings, &message);
-                    }
                     }
                 }
                 Err(_) => {
@@ -12847,6 +13068,49 @@ mod tests {
             .into_inner()
     }
 
+    // 构造包含两个共享字符串单元格的最小 XLSX，供 GTK 范围选择器复用真实导入路径。
+    fn xlsx_selection_fixture() -> Vec<u8> {
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        let options = SimpleFileOptions::default();
+        writer
+            .start_file("[Content_Types].xml", options)
+            .expect("content types");
+        writer.write_all(b"<Types/>").expect("content types bytes");
+        writer
+            .start_file("xl/workbook.xml", options)
+            .expect("workbook");
+        writer
+            .write_all(
+                br#"<workbook xmlns="urn:x" xmlns:r="urn:r"><sheets><sheet name="Sheet1" sheetId="1" r:id="rId1"/></sheets></workbook>"#,
+            )
+            .expect("workbook bytes");
+        writer
+            .start_file("xl/_rels/workbook.xml.rels", options)
+            .expect("workbook relationships");
+        writer
+            .write_all(
+                br#"<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>"#,
+            )
+            .expect("workbook relationship bytes");
+        writer
+            .start_file("xl/sharedStrings.xml", options)
+            .expect("shared strings");
+        writer
+            .write_all(
+                br#"<sst xmlns="urn:x"><si><t>Selected</t></si><si><t>Unselected</t></si></sst>"#,
+            )
+            .expect("shared strings bytes");
+        writer
+            .start_file("xl/worksheets/sheet1.xml", options)
+            .expect("worksheet");
+        writer
+            .write_all(
+                br#"<worksheet xmlns="urn:x"><sheetData><row><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c></row></sheetData></worksheet>"#,
+            )
+            .expect("worksheet bytes");
+        writer.finish().expect("XLSX archive").into_inner()
+    }
+
     fn read_http_request(stream: &mut std::net::TcpStream) -> Vec<u8> {
         let mut request = Vec::new();
         let mut chunk = [0_u8; 4096];
@@ -13727,6 +13991,102 @@ mod tests {
             assert!(!fixture_directory.join(forbidden_name).exists());
             bindings.error.set_visible(false);
         }
+
+        let _ = worker.try_send(WorkerCommand::Shutdown);
+        window.close();
+        drop(bindings);
+        drop(theme);
+        drop(locale);
+        drop(state);
+        drop(worker);
+        let _ = fs::remove_dir_all(fixture_directory);
+    }
+
+    #[allow(clippy::too_many_lines)]
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn gtk_xlsx_import_applies_sheet_and_range_before_job_creation() {
+        adw::init().expect("initialize GTK and libadwaita");
+        let application = adw::Application::builder()
+            .application_id("dev.linguamesh.LinguaMesh.GtkXlsxSelectionTest")
+            .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+            .build();
+        application
+            .register(None::<&gtk::gio::Cancellable>)
+            .expect("register GTK XLSX selection application");
+
+        let fixture_directory = std::env::temp_dir().join(format!(
+            "linguamesh-linux-gtk-xlsx-selection-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&fixture_directory);
+        fs::create_dir_all(&fixture_directory).expect("create XLSX selection directory");
+        fs::set_permissions(&fixture_directory, fs::Permissions::from_mode(0o700))
+            .expect("restrict XLSX selection directory");
+        let fixture_path = fixture_directory.join("selection.xlsx");
+        fs::write(&fixture_path, xlsx_selection_fixture()).expect("write XLSX selection fixture");
+
+        let context = glib::MainContext::default();
+        let state = Rc::new(RefCell::new(AppState::default()));
+        let worker = Rc::new(CoreWorker::spawn());
+        let (window, bindings, theme, locale) = create_window(&application);
+        connect_selection_handlers(&bindings, &theme, &locale, &state, &worker);
+        connect_action_handlers(&bindings, &state, &worker);
+        start_event_pump(&bindings, &state, &worker);
+        window.present();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            state.borrow().worker_ready()
+        });
+
+        let file = gtk::gio::File::for_path(&fixture_path);
+        load_source_file(&file, &bindings, &state, &worker);
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            application
+                .windows()
+                .iter()
+                .any(|candidate| candidate.title().as_deref() == Some("Select spreadsheet range"))
+        });
+        let dialog = application
+            .windows()
+            .into_iter()
+            .find(|candidate| candidate.title().as_deref() == Some("Select spreadsheet range"))
+            .expect("XLSX selection dialog");
+        let widgets = descendant_widgets(dialog.upcast_ref::<gtk::Widget>());
+        let entries = widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Entry>())
+            .cloned()
+            .collect::<Vec<_>>();
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].text(), "Sheet1");
+        assert_eq!(entries[1].text(), "A1:XFD1048576");
+        entries[0].set_text("Missing");
+        let apply = widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .find(|button| button.label().as_deref() == Some("Apply selection"))
+            .expect("apply XLSX selection button");
+        apply.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(1), || {
+            widgets.iter().any(|widget| {
+                widget
+                    .downcast_ref::<gtk::Label>()
+                    .is_some_and(|label| label.label() == "The worksheet or cell range is invalid.")
+            })
+        });
+        assert!(bindings.document_job_id.borrow().is_none());
+        entries[0].set_text("Sheet1");
+        entries[1].set_text("A1:A1");
+        apply.emit_clicked();
+        spin_main_context_until(&context, Duration::from_secs(5), || {
+            bindings.document_job_id.borrow().is_some()
+        });
+        assert!(
+            application
+                .windows()
+                .iter()
+                .all(|candidate| candidate.title().as_deref() != Some("Select spreadsheet range"))
+        );
 
         let _ = worker.try_send(WorkerCommand::Shutdown);
         window.close();

@@ -3091,3 +3091,51 @@ msgstr "仅删除系统临时目录中的 LinguaMesh OCR 文件和遗留导出�
 msgctxt "status.temporary_files_cleared"
 msgid "Cleared {count} LinguaMesh temporary items."
 msgstr "已清理 {count} 个 LinguaMesh 临时项。"
+
+#. Dialog title shown before importing an XLSX document.
+#, fuzzy
+msgctxt "dialog.xlsx_selection"
+msgid "Select spreadsheet range"
+msgstr "选择电子表格范围"
+
+#. Explains which XLSX cells remain unchanged during a selected-range import.
+#, fuzzy
+msgctxt "dialog.xlsx_selection_detail"
+msgid "Choose a worksheet and A1 range to translate. Formulas, numbers, dates, and unselected cells remain unchanged."
+msgstr "选择要翻译的工作表和 A1 范围。公式、数字、日期和未选中的单元格保持不变。"
+
+#. Confirms the selected XLSX worksheet and A1 range.
+#, fuzzy
+msgctxt "action.apply_xlsx_selection"
+msgid "Apply selection"
+msgstr "应用选择"
+
+#. Labels the worksheet display-name field in the XLSX selection dialog.
+#, fuzzy
+msgctxt "label.xlsx_sheet"
+msgid "Worksheet"
+msgstr "工作表"
+
+#. Labels the A1 cell-range field in the XLSX selection dialog.
+#, fuzzy
+msgctxt "label.xlsx_range"
+msgid "Cell range"
+msgstr "单元格范围"
+
+#. Explains the worksheet display-name syntax accepted by the XLSX selector.
+#, fuzzy
+msgctxt "tooltip.xlsx_sheet"
+msgid "Worksheet display name, for example Sheet1."
+msgstr "工作表显示名称，例如 Sheet1。"
+
+#. Explains the A1 range syntax and safe full-sheet default used by the XLSX selector.
+#, fuzzy
+msgctxt "tooltip.xlsx_range"
+msgid "A1 range, for example A1:B20. The default covers the full worksheet."
+msgstr "A1 范围，例如 A1:B20。默认覆盖整个工作表。"
+
+#. Reports an invalid worksheet or cell range without exposing document content.
+#, fuzzy
+msgctxt "error.xlsx_selection"
+msgid "The worksheet or cell range is invalid."
+msgstr "工作表或单元格范围无效。"

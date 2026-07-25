@@ -3,9 +3,14 @@
 The XLSX worker export regression now includes a date-formatted serial and a formula with cached
 string output. Assertions confirm `numFmtId=14`, the date serial, formula text, cached value, and
 ordinary numeric values remain unchanged while selected shared text is translated. This is
-structural safety evidence. The worker now selects `Sheet1!A1:A1` through the Core XLSX selection
-API; unselected shared strings and shared-string collisions remain unchanged. GTK range selection
-and visual workbook review remain open.
+structural safety evidence. The worker and GTK import flow select a worksheet and A1 range through
+the Core XLSX selection API; unselected shared strings and shared-string collisions remain
+unchanged. Visual workbook review remains open.
+The ignored serialized GTK regression `gtk_xlsx_import_applies_sheet_and_range_before_job_creation`
+drives the native dialog through an invalid worksheet rejection and a valid `Sheet1!A1:A1`
+selection before creating the persisted job. The local host can type-check this fixture but cannot
+link the display-backed test because its installed GTK runtime is missing required symbols; Native
+CI remains authoritative for the GTK execution boundary.
 
 The persisted OOXML worker export regressions also cover multi-cell and merged tables. DOCX
 fixtures assert `gridSpan` and vertical-merge (`vMerge`) metadata, while PPTX fixtures assert
@@ -276,7 +281,7 @@ counted as evidence. GPU execution, live quota behavior, and enterprise account 
 unverified.
 
 The Linux checkout consumes the canonical gettext bundle from immutable l10n revision
-`7fd210692bb269ef52f7453bfeb2b0f0759b1d4c`. The bundle contains 511 messages, and
+`2fc24ebb942d5497910974f3d2fc49c5f72f9ad0`. The bundle contains 519 messages, and
 `bash tools/sync-l10n.sh --check` verifies every PO/MO catalog and the generated manifest before
 the native build. History/memory row metadata, document-job IDs, active-provider mode summaries,
 unavailable provider/model labels, and routing-profile actions/mode labels are asserted through
@@ -793,7 +798,7 @@ python3 tools/create-native-evidence.py \
   --output-dir native-evidence \
   --linux-revision "$(git rev-parse HEAD)" \
   --core-revision "9e69d01cbae1ca0421923e059aa3252c4ecbe1be" \
-  --localization-revision "7fd210692bb269ef52f7453bfeb2b0f0759b1d4c"
+  --localization-revision "2fc24ebb942d5497910974f3d2fc49c5f72f9ad0"
 (cd native-evidence && sha256sum -c SHA256SUMS)
 ```
 
@@ -936,7 +941,7 @@ releases.
 
 The GitHub Actions native workflow pins Core revision
 `9e69d01cbae1ca0421923e059aa3252c4ecbe1be` and localization revision
-`7fd210692bb269ef52f7453bfeb2b0f0759b1d4c`, installs the headers plus D-Bus, Xvfb, test-only
+`2fc24ebb942d5497910974f3d2fc49c5f72f9ad0`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
 namespace test through the unprivileged path.

@@ -3101,3 +3101,51 @@ msgstr "⁧⟦Only LinguaMesh OCR and abandoned export items in the system tempo
 msgctxt "status.temporary_files_cleared"
 msgid "Cleared {count} LinguaMesh temporary items."
 msgstr "⁧⟦Cleared {count} LinguaMesh temporary items.⟧⁩"
+
+#. Dialog title shown before importing an XLSX document.
+#, fuzzy
+msgctxt "dialog.xlsx_selection"
+msgid "Select spreadsheet range"
+msgstr "⁧⟦Select spreadsheet range⟧⁩"
+
+#. Explains which XLSX cells remain unchanged during a selected-range import.
+#, fuzzy
+msgctxt "dialog.xlsx_selection_detail"
+msgid "Choose a worksheet and A1 range to translate. Formulas, numbers, dates, and unselected cells remain unchanged."
+msgstr "⁧⟦Choose a worksheet and A1 range to translate. Formulas, numbers, dates, and unselected cells remain unchanged.⟧⁩"
+
+#. Confirms the selected XLSX worksheet and A1 range.
+#, fuzzy
+msgctxt "action.apply_xlsx_selection"
+msgid "Apply selection"
+msgstr "⁧⟦Apply selection⟧⁩"
+
+#. Labels the worksheet display-name field in the XLSX selection dialog.
+#, fuzzy
+msgctxt "label.xlsx_sheet"
+msgid "Worksheet"
+msgstr "⁧⟦Worksheet⟧⁩"
+
+#. Labels the A1 cell-range field in the XLSX selection dialog.
+#, fuzzy
+msgctxt "label.xlsx_range"
+msgid "Cell range"
+msgstr "⁧⟦Cell range⟧⁩"
+
+#. Explains the worksheet display-name syntax accepted by the XLSX selector.
+#, fuzzy
+msgctxt "tooltip.xlsx_sheet"
+msgid "Worksheet display name, for example Sheet1."
+msgstr "⁧⟦Worksheet display name, for example Sheet1.⟧⁩"
+
+#. Explains the A1 range syntax and safe full-sheet default used by the XLSX selector.
+#, fuzzy
+msgctxt "tooltip.xlsx_range"
+msgid "A1 range, for example A1:B20. The default covers the full worksheet."
+msgstr "⁧⟦A1 range, for example A1:B20. The default covers the full worksheet.⟧⁩"
+
+#. Reports an invalid worksheet or cell range without exposing document content.
+#, fuzzy
+msgctxt "error.xlsx_selection"
+msgid "The worksheet or cell range is invalid."
+msgstr "⁧⟦The worksheet or cell range is invalid.⟧⁩"

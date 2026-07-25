@@ -10,6 +10,14 @@ signing, rollback authorization, or stable-release approval.
   filtering. The worker fixture selects `Sheet1!A1:A1`; only the selected shared string is
   translated, while the unselected shared string, formula/cache, number, date serial, and style
   remain unchanged. Shared-string collisions across selected and unselected cells remain stable.
+- The GTK import flow now presents a native worksheet/range dialog before creating an XLSX job.
+  The default `Sheet1`/`A1:XFD1048576` selection preserves the prior full-sheet behavior, while
+  invalid selections fail closed and cancelled dialogs revoke the source lease. Linux-only
+  selection copy is supplied by l10n `2fc24ebb942d5497910974f3d2fc49c5f72f9ad0` (519 messages).
+- The ignored GTK regression `gtk_xlsx_import_applies_sheet_and_range_before_job_creation` covers
+  invalid-sheet rejection and valid `Sheet1!A1:A1` confirmation. Local `cargo check --features gui`
+  and strict Clippy pass; the GUI test binary type-checks but local linking remains blocked by the
+  host's incomplete GTK runtime symbols, so hosted Native CI is required for execution evidence.
 - Local Core validation passed formatting, strict all-target/all-feature Clippy, workspace tests
   (`28` document tests including selection; `61` storage tests; all workspace targets), and locked
   workspace build. Linux focused worker validation passed (`1 passed; 0 failed`).
@@ -21,7 +29,7 @@ signing, rollback authorization, or stable-release approval.
   `30143791468`/`30143791457`/`30143791459` and PR `30143792958`/`30143792953`/`30143792950`
   passed; the first Flatpak push smoke hit a transient Flathub connection error and the rerun
   passed.
-- Release remains `unreleased`; GTK range-picker, visual/manual review, physical/VFS evidence,
+- Release remains `unreleased`; visual/manual review, physical/VFS evidence,
   other-client parity, signing, rollback, distributable promotion, and stable-release evidence
   remain open.
 

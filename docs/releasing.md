@@ -85,7 +85,7 @@ future release gate below.
 The current Linux gate consumes Core `9e69d01cbae1ca0421923e059aa3252c4ecbe1be`, which includes
 the Linux-only non-locking `unix-none` VFS fail-closed regression and ABI 1 opaque engine-handle
 lifetime hardening, and l10n
-`7fd210692bb269ef52f7453bfeb2b0f0759b1d4c` (511 catalog messages). The current reviewed Flatpak
+`2fc24ebb942d5497910974f3d2fc49c5f72f9ad0` (519 catalog messages). The current reviewed Flatpak
 source pin is Linux `41a452b4453697d41d1799ad654d331fb05482ff`, the exact reviewed source head for
 the runtime AT-SPI status/error fixture, the final pre-publish sidecar stability recheck, and the
 post-publish database-path replacement boundary. Local exports now synchronize the temporary file and parent directory before the atomic
