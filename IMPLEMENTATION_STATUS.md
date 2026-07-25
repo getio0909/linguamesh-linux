@@ -1,5 +1,18 @@
 # Implementation Status
 
+## 2026-07-25 — Linux/Core pin guidance alignment
+
+Assumption: Linux contributor guidance must name the exact Core revision consumed by Native CI and
+Flatpak so local instructions cannot silently drift from the reproducible build inputs.
+
+- Updated `AGENTS.md` to Core `e0b682fa183cfdebfabc0ef04d531c58031d8e85` and described its bounded
+  XLSX sheet/range-selection contract. This is documentation-only; runtime behavior and release
+  status remain unchanged.
+- Central `tools/check_workspace.py` now checks this guide together with the workflow, Flatpak,
+  architecture, testing, and releasing pins. Linux validation remains subject to hosted CI after
+  this documentation checkpoint; physical/manual, cross-client, signing, rollback, promotion,
+  and stable-release evidence remain open.
+
 ## 2026-07-25 — Linux/Core pin reconciliation and artifact verification
 
 Assumption: the hosted Native `BUILD-INFO.txt`, Native workflow, and Flatpak source manifest are
