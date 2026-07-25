@@ -88,8 +88,8 @@ The current Linux gate consumes Core `cb061d24a3e0c4059a65d099d30bc643e9e079ea`,
 the Linux-only non-locking `unix-none` VFS fail-closed regression and ABI 1 opaque engine-handle
 lifetime hardening, and l10n
 `43f5a6f069f6d0e6d075517b0c017784fe505b0d` (520 catalog messages). The current reviewed Flatpak
-source pin is Linux `a6b43335060e2a8fb64f37272cf7d8e062139e55`, the exact reviewed source head for
-the XLSX worksheet/range picker and the preceding runtime, accessibility, and storage fixtures.
+source pin is Linux `076936608273e20075fb7fc77e595f7d1e4d10e8`, the exact reviewed source head for
+the Core read-failure pin synchronization and the preceding runtime, accessibility, and storage fixtures.
 Local exports now synchronize the temporary file and parent directory before the atomic
 move, then synchronize the parent again after finalization; a serialized child-process
 interruption fixture also verifies that the final destination is absent while the synced temporary
