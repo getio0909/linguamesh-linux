@@ -1,5 +1,21 @@
 # Implementation Status
 
+## 2026-07-25 — Linux current-head regression recheck
+
+Assumption: this deterministic recheck confirms the latest Linux status head only; it does not
+replace hosted GTK, physical/manual, arbitrary-VFS/power-loss, cross-client, or release evidence.
+
+- Linux status head `155304186cff32d9cf1b233a20c46d961d94cece` passed the toolkit-independent
+  no-default suite (`85 passed; 0 failed; 1 ignored`) and the shared-core demo-provider suite
+  (`170 passed; 0 failed; 7 ignored`) with locked offline dependencies.
+- `cargo fmt --all --check`, strict offline Clippy, l10n synchronization, 474-key/605-placeholder/
+  visible-localization audits, and Flatpak metadata validation passed. The metadata validator
+  emitted only its existing category-extension hint and completed successfully.
+- The existing third-party Ollama and hosted Native/Flatpak/Foundation evidence remains recorded
+  in the following checkpoint; no source behavior changed in this recheck.
+- Physical/manual, broader VFS/power-loss, cross-client, signing, rollback, promotion, and
+  stable-release gates remain open; release status stays `unreleased`.
+
 ## 2026-07-25 — Linux third-party Ollama interoperability recheck
 
 Assumption: a pinned host-network Ollama daemon with a small local model is deterministic Linux
