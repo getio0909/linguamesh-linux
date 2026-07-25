@@ -10,8 +10,10 @@ Flatpak so local instructions cannot silently drift from the reproducible build 
   status remain unchanged.
 - Central `tools/check_workspace.py` now checks this guide together with the workflow, Flatpak,
   architecture, testing, and releasing pins. Linux validation remains subject to hosted CI after
-  this documentation checkpoint; physical/manual, cross-client, signing, rollback, promotion,
-  and stable-release evidence remain open.
+  this documentation checkpoint. Push/PR Native, Flatpak, and Foundation runs
+  `30148264888`/`30148264897`/`30148264909` and `30148266560`/`30148266550`/`30148266600` all
+  passed. Physical/manual, cross-client, signing, rollback, promotion, and stable-release
+  evidence remain open.
 
 ## 2026-07-25 — Linux/Core pin reconciliation and artifact verification
 
