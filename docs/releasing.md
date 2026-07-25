@@ -59,7 +59,7 @@ while persistent
 secret references use the Linux GIO Secret Service adapter and fail closed when the desktop keyring
 is unavailable or requires an interactive prompt. The native workflow
 pins reviewed Core functional revision
-`072d6b92df875153a60a9d1256ab814891fe775b`, whose Core delta adds bounded document lease
+`e0b682fa183cfdebfabc0ef04d531c58031d8e85`, whose Core delta adds bounded document lease
 smoke and AddressSanitizer gate in addition to the protocol decoder fuzz gate and bounded FileLease lifecycle
 and engine-scoped ABI lease controls plus Unix POSIX-descriptor document consumption; Android and
 Windows handle transfer remain open. Its storage delta adds

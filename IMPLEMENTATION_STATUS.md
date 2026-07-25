@@ -1,5 +1,18 @@
 # Implementation Status
 
+## 2026-07-25 — Linux release-document Core pin alignment
+
+Assumption: every active release-guide statement that identifies the reviewed Core revision must
+match Native CI, Flatpak, and the central release manifest; historical evidence may retain its own
+immutable revisions in dated records.
+
+- Updated the active Native workflow paragraph in `docs/releasing.md` from stale Core
+  `072d6b92df875153a60a9d1256ab814891fe775b` to the current synchronized Core
+  `e0b682fa183cfdebfabc0ef04d531c58031d8e85`.
+- Local Linux `git diff --check` and Flatpak metadata/source validation passed. The central
+  workspace guard now checks both active Core references in `docs/releasing.md`; hosted validation
+  remains required for this documentation checkpoint. Runtime and release status are unchanged.
+
 ## 2026-07-25 — Linux/Core pin guidance alignment
 
 Assumption: Linux contributor guidance must name the exact Core revision consumed by Native CI and
