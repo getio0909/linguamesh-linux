@@ -1,5 +1,26 @@
 # Implementation Status
 
+## 2026-07-25 — Linux write-fault pin Hosted artifacts
+
+Assumption: the downloaded Push artifacts are unsigned prerelease evidence; checksums, SBOMs, and
+build pins do not authorize distribution or stable-release promotion.
+
+- Linux head `0cae19a254ba59a2735bc50530643f999f08741f` passed Push Native/Flatpak/Foundation
+  `30168078859`/`30168078860`/`30168078856` and PR Native/Flatpak/Foundation
+  `30168080013`/`30168080010`/`30168080015`.
+- Native evidence artifact `8622196797` passed `SHA256SUMS`; the Flatpak evidence/bundle artifacts
+  `8622186996`/`8622186846` passed checksum verification. Both SPDX sidecars parse as SPDX-2.3
+  with 234 packages.
+- Native `BUILD-INFO.txt` pins Linux `0cae19a254ba59a2735bc50530643f999f08741f`, Core
+  `18d45140e5466251e28c8a50feeab2d5f34aa3b6`, and l10n
+  `43f5a6f069f6d0e6d075517b0c017784fe505b0d`. The machine-specific baseline is DOCX `1.691` s,
+  XLSX `0.358` s, and routing `0.356` s.
+- Local Linux no-default/demo-provider suites, formatting, strict Clippy, demo-provider build,
+  localization audits, and Flatpak metadata validation passed. The host all-features GUI link
+  remains unverified because GTK symbols are missing locally; Hosted GUI/Flatpak jobs passed.
+- Physical/manual, arbitrary-VFS/power-loss, cross-client, signing, rollback, promotion, and
+  stable-release gates remain open; release status stays `unreleased`.
+
 ## 2026-07-25 — Linux Core registered-VFS write-failure pin synchronization
 
 Assumption: Core `18d45140e5466251e28c8a50feeab2d5f34aa3b6` is the reviewed Linux-first revision
