@@ -1,5 +1,23 @@
 # Implementation Status
 
+## 2026-07-25 — Linux current-head portable regression recheck
+
+Assumption: this local recheck proves the portable Linux worker and document boundary at the
+reviewed current head; it does not replace the Hosted GTK/Flatpak jobs, physical/manual review,
+arbitrary third-party VFS or power-loss evidence, or stable-release authorization.
+
+- Linux head `72f9b2bb895eaa6fdba970e01b9935524a23f583` consumed Core
+  `cb061d24a3e0c4059a65d099d30bc643e9e079ea` and l10n
+  `43f5a6f069f6d0e6d075517b0c017784fe505b0d` without workspace changes.
+- `cargo check --all-targets --features demo-provider --locked --offline`, strict demo-provider
+  Clippy, and `cargo build --features demo-provider --locked --offline` passed.
+- `cargo test --no-default-features --locked --offline` passed `85` tests with `1` intentional
+  OCR fixture ignored; `cargo test --features demo-provider --locked --offline` passed `170` tests
+  with `7` environment-gated fixtures ignored. No test failed.
+- The ignored fixtures require external OCR, private storage-fault, client-certificate, and
+  third-party Ollama environments; they remain separately covered by the documented runners and
+  Hosted gates. Release remains `unreleased`.
+
 ## 2026-07-25 — Linux Core read-failure pin and final Hosted artifact synchronization
 
 Assumption: Core `cb061d24a3e0c4059a65d099d30bc643e9e079ea` adds bounded registered-VFS `xRead`
