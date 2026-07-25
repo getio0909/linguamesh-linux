@@ -15,6 +15,10 @@ Core pin must pass the complete Linux Hosted matrix before it is treated as acti
   Native `30158298597`/`30158299422`, Flatpak `30158298602`/`30158299415`, and Foundation
   `30158298586`/`30158299423`. Release remains `unreleased`, and physical/manual, broader
   VFS/power-loss, cross-client, signing, rollback, promotion, and stable-release gates remain open.
+- The documentation-only status head `9de92047314dce5e2d539f4e9fe6784f4ad813e5` was then
+  manually dispatched through Native `30159027205`, Flatpak `30159028194`, and Foundation
+  `30159029094`; all three completed successfully. The Node.js 20 deprecation annotation in Native
+  is informational and not a failed check.
 
 ## 2026-07-25 — Linux glossary import architecture documentation correction
 
