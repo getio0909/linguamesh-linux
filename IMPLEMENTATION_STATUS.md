@@ -1,5 +1,19 @@
 # Implementation Status
 
+## 2026-07-25 — Latest Linux prerelease evidence signing
+
+Assumption: signing the latest verified Native and Flatpak push artifacts records prerelease
+identity and integrity only; it does not authorize distribution, merge, rollback, or stable release.
+
+- Workflow `30177603778` validated Native run `30176730196` and Flatpak run `30176730216` at Linux
+  revision `27d46e81676bc2d211b7cd01e386681cc0cf51b8`.
+- Cosign `v3.1.2` signed and verified both blobs with GitHub OIDC. Signed evidence artifact
+  `8624649325` (`linguamesh-linux-signed-prerelease-27d46e81676bc2d211b7cd01e386681cc0cf51b8`)
+  contains both Sigstore bundles and `SIGNING-INFO.txt`.
+- The workflow performed no tag, GitHub Release, manifest promotion, or distribution action.
+  Release remains `unreleased`; physical/manual, arbitrary-VFS/power-loss, cross-client, rollback,
+  promotion, authorization, and stable-release gates remain open.
+
 ## 2026-07-25 — Linux artifact-upload runtime update
 
 Assumption: updating the explicit Native and Flatpak artifact upload actions changes CI runtime

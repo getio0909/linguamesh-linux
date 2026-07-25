@@ -2,6 +2,12 @@
 
 ## Keyless prerelease signing rehearsal
 
+The latest verified Linux push artifacts were signed by workflow `30177603778` at revision
+`27d46e81676bc2d211b7cd01e386681cc0cf51b8`. It validated Native run `30176730196` and Flatpak run
+`30176730216`, and uploaded signed evidence artifact `8624649325`. This is keyless prerelease
+identity/integrity evidence only; it is not a GitHub Release, tag, distribution authorization, or
+stable-release approval.
+
 The manually dispatched `Sign Linux prerelease evidence` workflow signs already successful Native
 and Flatpak Push artifacts with GitHub OIDC through Sigstore. It requires the exact successful run
 IDs, one matching 40-character Linux revision, and the literal confirmation
