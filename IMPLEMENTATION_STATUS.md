@@ -6,7 +6,7 @@ Assumption: this host-side audit adds reproducible machine-specific performance 
 records unavailable desktop services honestly; it does not replace hosted display, physical,
 human, cross-client, signing, rollback, or stable-release evidence.
 
-- On Linux head `8bc0132eed2fb99a6b46857aab4b0895bc5c6346`,
+- On Linux head `6c951ae58e34e279f435226f848a091bca574dd6`,
   `bash tools/run-performance-baseline.sh` passed with Core `9e69d01cbae1ca0421923e059aa3252c4ecbe1be`
   and l10n `2fc24ebb942d5497910974f3d2fc49c5f72f9ad0`: DOCX reconstruction `1.853s`, XLSX
   reconstruction `0.389s`, and routing dispatch `0.397s`. This is a machine-specific baseline,
@@ -18,6 +18,9 @@ human, cross-client, signing, rollback, or stable-release evidence.
   `/run/user/1000/doc` (`Permission denied`); notification and Wayland fixtures stop at missing
   `xvfb-run` and `weston`; the keyboard-focus fixture remains link-limited by missing host GTK
   symbols. Hosted Native CI remains authoritative for these display-backed boundaries.
+- Current-head hosted push/PR Native, Flatpak, and Foundation runs
+  `30145879932`/`30145879980`/`30145879959` and `30145881364`/`30145881374`/`30145881377`
+  all passed, including the hosted performance and display-backed fixtures.
 - Release remains `unreleased`; no source or dependency pin changed.
 
 ## 2026-07-25 — XLSX sheet and range selection checkpoint
