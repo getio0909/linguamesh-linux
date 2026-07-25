@@ -1,5 +1,25 @@
 # Implementation Status
 
+## 2026-07-25 — Active Linux Core, localization, and Flatpak pin reconciliation
+
+Assumption: active contributor and release documents must name the same immutable Core,
+localization, and Linux source revisions consumed by Native and Flatpak validation; dated
+historical evidence may retain the revision used at that time.
+
+- Corrected `README.md` to the Native/Flatpak Core revision
+  `e0b682fa183cfdebfabc0ef04d531c58031d8e85` and corrected `docs/releasing.md` to the current
+  Flatpak Linux source pin `459c11c1f4c3bb341f33a44697798bce72af0c57`.
+- Local validation passed `bash tools/sync-l10n.sh --check`, the 474-key, 604-placeholder, and
+  visible-localization audits, `bash tools/validate-flatpak-metadata.sh`, `cargo fmt --all -- --check`,
+  GUI all-target check, strict Clippy, no-default tests (`85 passed; 1 ignored`), and
+  demo-provider tests (`170 passed; 7 ignored`).
+- The central workspace guard now checks the active README Core reference, Native l10n revision,
+  and Flatpak source pin in addition to the existing Core pin/documentation checks. Hosted gates
+  are required before this documentation checkpoint is considered published evidence.
+- Runtime behavior and release status are unchanged; physical/manual review, broader VFS and
+  power-loss behavior, cross-client parity, signing, rollback, distributable promotion, and stable
+  release remain open.
+
 ## 2026-07-25 — Linux release-document Core pin alignment
 
 Assumption: every active release-guide statement that identifies the reviewed Core revision must

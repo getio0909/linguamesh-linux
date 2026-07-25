@@ -86,9 +86,9 @@ The current Linux gate consumes Core `e0b682fa183cfdebfabc0ef04d531c58031d8e85`,
 the Linux-only non-locking `unix-none` VFS fail-closed regression and ABI 1 opaque engine-handle
 lifetime hardening, and l10n
 `2fc24ebb942d5497910974f3d2fc49c5f72f9ad0` (519 catalog messages). The current reviewed Flatpak
-source pin is Linux `41a452b4453697d41d1799ad654d331fb05482ff`, the exact reviewed source head for
-the runtime AT-SPI status/error fixture, the final pre-publish sidecar stability recheck, and the
-post-publish database-path replacement boundary. Local exports now synchronize the temporary file and parent directory before the atomic
+source pin is Linux `459c11c1f4c3bb341f33a44697798bce72af0c57`, the exact reviewed source head for
+the XLSX worksheet/range picker and the preceding runtime, accessibility, and storage fixtures.
+Local exports now synchronize the temporary file and parent directory before the atomic
 move, then synchronize the parent again after finalization; a serialized child-process
 interruption fixture also verifies that the final destination is absent while the synced temporary
 bytes remain inspectable after SIGKILL. This is bounded process/crash-durability evidence, not
