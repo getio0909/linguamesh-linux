@@ -20,6 +20,9 @@ approval.
   `30141562746`/`30141562725`/`30141562740` all passed. The first replacement Flatpak push
   attempt hit a transient Flathub network error; rerun `30141561122` passed with smoke job
   `89636226094`.
+- Documentation/status head `c71e476870835f4e1605c6b101e1d9df3b801f29` passed final hosted
+  push Native/Flatpak/Foundation `30141874655`/`30141874642`/`30141874626` and PR
+  `30141875754`/`30141875761`/`30141875781`.
 - Release remains `unreleased`; visual/merged-cell review, physical/VFS evidence, other-client
   parity, signing, rollback, distributable promotion, and stable-release evidence remain open.
 
