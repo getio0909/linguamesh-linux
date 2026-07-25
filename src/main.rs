@@ -16182,12 +16182,22 @@ mod tests {
         let previous_theme = settings.gtk_theme_name().map(|value| value.to_string());
         let previous_animations = settings.is_gtk_enable_animations();
         let previous_font = settings.gtk_font_name().map(|value| value.to_string());
+        let accessibility_settings = gtk::gio::Settings::new("org.gnome.desktop.a11y.interface");
+        let previous_high_contrast = accessibility_settings.boolean("high-contrast");
         settings.set_gtk_theme_name(Some("HighContrast"));
         settings.set_gtk_enable_animations(false);
         settings.set_gtk_font_name(Some("Sans 24"));
+        accessibility_settings
+            .set_boolean("high-contrast", true)
+            .expect("set process-local high-contrast preference");
 
         let display = gtk::prelude::RootExt::display(&window);
         let manager = adw::StyleManager::for_display(&display);
+        let context = glib::MainContext::default();
+        spin_main_context_until(&context, Duration::from_secs(2), || {
+            manager.is_high_contrast()
+                && !adw::is_animations_enabled(window.upcast_ref::<gtk::Widget>())
+        });
         assert!(
             manager.is_high_contrast(),
             "libadwaita did not detect the desktop high-contrast theme"
@@ -16210,6 +16220,9 @@ mod tests {
         settings.set_gtk_theme_name(previous_theme.as_deref());
         settings.set_gtk_enable_animations(previous_animations);
         settings.set_gtk_font_name(previous_font.as_deref());
+        accessibility_settings
+            .set_boolean("high-contrast", previous_high_contrast)
+            .expect("restore process-local high-contrast preference");
         window.close();
         drop(bindings);
         drop(theme);

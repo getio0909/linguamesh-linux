@@ -17,9 +17,11 @@ XDG_CACHE_HOME="$workspace/cache" \
     set -euo pipefail
     export GDK_BACKEND=x11
     export GTK_A11Y=none
+    export GSETTINGS_BACKEND=memory
+    export ADW_DISABLE_PORTAL=1
     mkdir -p "$XDG_DATA_HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME"
     cargo test --all-features --locked \
-      gtk_accessibility_preferences_follow_desktop_settings \
+      tests::gtk_accessibility_preferences_follow_desktop_settings \
       -- --ignored --exact --nocapture
   '
 

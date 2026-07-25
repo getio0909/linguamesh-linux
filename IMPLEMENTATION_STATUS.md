@@ -1,5 +1,29 @@
 # Implementation Status
 
+## 2026-07-25 — Linux desktop/accessibility fixture revalidation
+
+Assumption: isolated user-local runtime extraction is sufficient for host-side Linux evidence when
+the required desktop packages are unavailable, but it does not replace the pinned hosted CI image
+or physical desktop review.
+
+- Corrected `tools/run-gtk-accessibility-preferences-test.sh` to use the module-qualified test
+  name; the previous filter selected zero tests. The fixture now uses memory-backed GSettings and
+  disables the portal backend only inside its private session, then sets and restores the
+  high-contrast preference without touching developer settings. The real test passed one test,
+  including reduced motion and `Sans 24` text scaling.
+- Local isolated evidence passed the real GTK keyboard-focus fixture, source-editor drag/drop,
+  headless Wayland suite (`33 passed; 22 ignored`), Orca AT-SPI with speech-generation evidence,
+  notification transport, real dunst desktop-shell delivery, interactive FileChooser portal, and
+  the application-level GTK FileDialog callback.
+- The live GTK AT-SPI semantic inspector reached the production tree but the host GTK bridge
+  exported action names as `ROLE_LABEL` rather than the expected button roles; hosted CI remains
+  authoritative for the pinned role assertions. The document-portal lease fixture remains blocked
+  locally by `fusermount3` permission denial on `/run/user/1000/doc`.
+- Temporary Debian package extraction, pkg-config shims, and target/build directories were kept
+  outside the repository and used no credentials or user data. Physical visual review, end-user
+  Orca listening, broader portal/VFS behavior, cross-client parity, signing, rollback, promotion,
+  and stable-release gates remain open; release status remains `unreleased`.
+
 ## 2026-07-25 — Linux Secret Service local GTK fixture revalidation
 
 Assumption: a real X11/GTK fixture with isolated temporary runtime metadata is stronger local
