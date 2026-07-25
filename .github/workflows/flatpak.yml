@@ -43,7 +43,8 @@ jobs:
           sha256sum --check flatpak-evidence/SHA256SUMS
           && python3 -c "import json; json.load(open('flatpak-evidence/SBOM.spdx.json', encoding='utf-8'))"
       - name: Upload checksum and SBOM evidence
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        # 固定 actions/upload-artifact v7.0.1，使用 Node 24 运行时。
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: linguamesh-linux-flatpak-evidence-${{ github.sha }}
           path: flatpak-evidence/
