@@ -1,5 +1,24 @@
 # Implementation Status
 
+## 2026-07-25 — Linux Native artifact provenance checkpoint
+
+Assumption: the retained Native CI bundle is prerelease evidence only; it does not authorize
+signing, distribution, rollback execution, or stable-release promotion.
+
+- Push Native run `30162655198` produced artifact `8620718472` for Linux
+  `246d6bd1d2ad958b1ba04499a078fb9e7758a32b`, Core
+  `1a13b2b7a97876ff55963a5d34b360f607d66a0f`, and l10n
+  `43f5a6f069f6d0e6d075517b0c017784fe505b0d`.
+- Downloaded `SHA256SUMS` verification passed for the binary
+  `828084902a42888522a63177f1fa500de2cee654b25506e3a3fa3943621415a4` and source archive
+  `64470d15ca975af4f1c4baddadcc5abe2a74d78887e430ffd31fbb7ba5fd0a6e`. The parsed SPDX-2.3
+  SBOM contains 234 packages; BUILD-INFO and ROLLBACK.md identify the exact pins and unsigned
+  prerelease status.
+- The CI performance baseline records machine-specific DOCX/XLSX/routing elapsed times of
+  `1.687`/`0.353`/`0.343` seconds. These values are trend evidence for the hosted image, not a
+  portable performance claim. Physical/manual, broader VFS/power-loss, cross-client, signing,
+  rollback authorization, promotion, and stable-release gates remain open.
+
 ## 2026-07-25 — Linux dynamic visible-string localization
 
 Assumption: the glossary-library row is Linux-only UI metadata; adding its canonical plural
