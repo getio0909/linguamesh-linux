@@ -15,6 +15,12 @@ signing, rollback authorization, or stable-release approval.
   workspace build. Linux focused worker validation passed (`1 passed; 0 failed`).
 - Native CI now pins the Core revision above. Flatpak packaging must be repinned before hosted
   build evidence is considered final.
+- Packaging head `c1eb731cdea69f476f5ad0af7a5d7a00c7e4d48a` pins Flatpak to Core `e0b682f` and
+  runtime `9b72031`. Code-head Flatpak push/PR runs `30143780999`/`30143782126` correctly
+  rejected the stale `e39169e` source pin. Replacement push Native/Flatpak/Foundation
+  `30143791468`/`30143791457`/`30143791459` and PR `30143792958`/`30143792953`/`30143792950`
+  passed; the first Flatpak push smoke hit a transient Flathub connection error and the rerun
+  passed.
 - Release remains `unreleased`; GTK range-picker, visual/manual review, physical/VFS evidence,
   other-client parity, signing, rollback, distributable promotion, and stable-release evidence
   remain open.
