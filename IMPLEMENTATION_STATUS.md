@@ -1,5 +1,28 @@
 # Implementation Status
 
+## 2026-07-25 — OOXML merged-table export checkpoint
+
+Assumption: these multi-cell and merged-cell regressions strengthen deterministic Linux prerelease
+evidence only; they do not replace visual layout, merged-cell editing, screen-reader navigation,
+physical desktop conditions, other clients, signing, rollback authorization, or stable-release
+approval.
+
+- Runtime/test head `cfcb3e7f89fea172e70e0e45a6f758848d5e76dd` extends the real persisted
+  `ExportDocumentJob` fixtures with DOCX multi-cell tables plus `gridSpan`/`vMerge`, and PPTX
+  multi-cell tables plus `gridSpan`/`rowSpan`/`vMerge`. Tests assert translated cell text and
+  merge metadata survive reconstruction.
+- Local validation passed focused document-job tests (`3 passed; 0 failed`), demo-provider
+  (`170 passed; 0 failed; 7 ignored`), no-default (`85 passed; 0 failed; 1 ignored`), formatting,
+  strict all-target/all-feature Clippy, Flatpak metadata, and diff checks.
+- Packaging head `4271d35f869639b436f8df75da7586d32c40b2d7` pins Flatpak to the runtime head.
+  Code-head stale-pin push/PR runs `30141500893`/`30141502263` failed at source-pin validation;
+  replacement push Native/Flatpak/Foundation `30141561109`/`30141561122`/`30141561107` and PR
+  `30141562746`/`30141562725`/`30141562740` all passed. The first replacement Flatpak push
+  attempt hit a transient Flathub network error; rerun `30141561122` passed with smoke job
+  `89636226094`.
+- Release remains `unreleased`; visual/merged-cell review, physical/VFS evidence, other-client
+  parity, signing, rollback, distributable promotion, and stable-release evidence remain open.
+
 ## 2026-07-25 — OOXML table export checkpoint
 
 Assumption: these table-structure regressions strengthen deterministic Linux prerelease evidence

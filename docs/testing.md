@@ -1,5 +1,11 @@
 # Testing and Validation
 
+The persisted OOXML worker export regressions also cover multi-cell and merged tables. DOCX
+fixtures assert `gridSpan` and vertical-merge (`vMerge`) metadata, while PPTX fixtures assert
+`gridSpan`, `rowSpan`, and vertical-merge metadata alongside translated text. These are structural
+reconstruction checks; visual merged-cell layout, editing behavior, and screen-reader navigation
+still require manual review.
+
 The persisted OOXML worker export regressions also cover DOCX and PPTX tables. Each fixture
 contains a table cell whose translated text is asserted inside the preserved table structure;
 these checks cover structural reconstruction only. Merged-cell layout, visual rendering, and
