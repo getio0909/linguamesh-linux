@@ -5,16 +5,16 @@
 Assumption: the downloaded Push artifacts are unsigned prerelease evidence; their checksums,
 SBOMs, and build pins do not authorize distribution or stable-release promotion.
 
-- Native Push run `30165937853` produced evidence artifact `8621617883`. `SHA256SUMS` verification
+- Native Push run `30166510812` produced evidence artifact `8621777198`. `SHA256SUMS` verification
   passed for the binary (`ca51f72492fbad562061d2db8263c94195955b27923413a278a82f63a36f6d6a`) and
-  source archive (`53cb32bf65d8f3bc37539aec468b1458e1581d0f3fac9c94de2831596027a5e9`).
-- Flatpak Push run `30165937838` produced evidence artifact `8621607409` and bundle artifact
-  `8621607228`; the bundle checksum `26f53e9ff748ef3e2293775bc831f4d3d4ee4780a2417a02a4072b81e4349fdf`
+  source archive (`4fa2387dc25afb7ca1d59f58159a41562ff04c90a56c18cb42e5cad2c9d56aa8`).
+- Flatpak Push run `30166510785` produced evidence artifact `8621769265` and bundle artifact
+  `8621769133`; the bundle checksum `d421e8a210c47c2a7bdae3397168e2d0b0fdf6ce1ef4a1183779a27586ddc3c6`
   passed verification. Both SPDX documents parse as SPDX-2.3 with 234 packages.
-- Native `BUILD-INFO.txt` records Linux `e3d79adcbd1ee679d1066a1ec5de184a0aadd870`, Core
+- Native `BUILD-INFO.txt` records Linux `60c29c35f8f5b4b5f74667c5704dd01f08a0171b`, Core
   `5e289dfecfe8fd586814e133ed904028d4bef0ce`, and l10n
   `43f5a6f069f6d0e6d075517b0c017784fe505b0d`; the machine-specific DOCX/XLSX/routing baseline is
-  `1.692`/`0.349`/`0.345` seconds. Release remains `unreleased`.
+  `1.692`/`0.358`/`0.351` seconds. Release remains `unreleased`.
 - Signing, physical/manual, arbitrary-VFS/power-loss, cross-client, rollback, promotion, and
   stable-release gates remain open.
 
