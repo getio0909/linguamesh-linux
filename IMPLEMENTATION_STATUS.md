@@ -10,8 +10,10 @@ immutable revisions in dated records.
   `072d6b92df875153a60a9d1256ab814891fe775b` to the current synchronized Core
   `e0b682fa183cfdebfabc0ef04d531c58031d8e85`.
 - Local Linux `git diff --check` and Flatpak metadata/source validation passed. The central
-  workspace guard now checks both active Core references in `docs/releasing.md`; hosted validation
-  remains required for this documentation checkpoint. Runtime and release status are unchanged.
+  workspace guard now checks both active Core references in `docs/releasing.md`. Hosted Push
+  Native/Flatpak/Foundation runs `30148949409`/`30148949412`/`30148949418` and PR
+  Native/Flatpak/Foundation runs `30148950638`/`30148950636`/`30148950657` all passed. Runtime
+  and release status are unchanged.
 
 ## 2026-07-25 — Linux/Core pin guidance alignment
 
