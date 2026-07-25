@@ -1,5 +1,21 @@
 # Releasing
 
+## Keyless prerelease signing rehearsal
+
+The manually dispatched `Sign Linux prerelease evidence` workflow signs already successful Native
+and Flatpak Push artifacts with GitHub OIDC through Sigstore. It requires the exact successful run
+IDs, one matching 40-character Linux revision, and the literal confirmation
+`SIGN_LINUX_PRERELEASE`; the `linux-release-signing` environment can require an independent
+maintainer approval. The workflow validates repository, event, conclusion, head SHA, artifact
+checksums, `BUILD-INFO.txt`, and SPDX-2.3/234-package sidecars before signing. It verifies both
+Sigstore bundles against the workflow certificate identity and
+`https://token.actions.githubusercontent.com`, then uploads signatures as prerelease evidence.
+
+This workflow never creates a tag or GitHub Release, changes the central manifest, or promotes an
+artifact to stable. A keyless signature proves the recorded GitHub workflow identity for this
+candidate; it does not replace the required release authorization, manual review, rollback record,
+cross-client compatibility, or stable-release gates.
+
 ## Current state
 
 An unreleased native application target and a pinned Flatpak packaging scaffold now exist. The

@@ -1,0 +1,215 @@
+name: Sign Linux prerelease evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      native_run_id:
+        description: Successful Native Linux push workflow run ID
+        required: true
+        type: string
+      flatpak_run_id:
+        description: Successful Flatpak Linux push workflow run ID
+        required: true
+        type: string
+      revision:
+        description: Exact Linux commit used by both source workflow runs
+        required: true
+        type: string
+      confirmation:
+        description: Type SIGN_LINUX_PRERELEASE to authorize this prerelease signing rehearsal
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+
+jobs:
+  sign:
+    name: Sign and verify Linux prerelease evidence
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: linux-release-signing
+    steps:
+      - name: Validate dispatch inputs
+        shell: bash
+        env:
+          NATIVE_RUN_ID: ${{ inputs.native_run_id }}
+          FLATPAK_RUN_ID: ${{ inputs.flatpak_run_id }}
+          REVISION: ${{ inputs.revision }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          test "$CONFIRMATION" = 'SIGN_LINUX_PRERELEASE' || {
+            printf '%s\n' 'Signing confirmation did not match the required value.' >&2
+            exit 1
+          }
+          [[ "$NATIVE_RUN_ID" =~ ^[0-9]+$ ]] || {
+            printf '%s\n' 'Native workflow run ID must contain only digits.' >&2
+            exit 1
+          }
+          [[ "$FLATPAK_RUN_ID" =~ ^[0-9]+$ ]] || {
+            printf '%s\n' 'Flatpak workflow run ID must contain only digits.' >&2
+            exit 1
+          }
+          [[ "$REVISION" =~ ^[0-9a-f]{40}$ ]] || {
+            printf '%s\n' 'Linux revision must be a lowercase 40-character commit SHA.' >&2
+            exit 1
+          }
+
+      - name: Validate source workflow runs
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NATIVE_RUN_ID: ${{ inputs.native_run_id }}
+          FLATPAK_RUN_ID: ${{ inputs.flatpak_run_id }}
+          REVISION: ${{ inputs.revision }}
+        run: |
+          set -euo pipefail
+          validate_run() {
+            local run_id="$1"
+            local expected_name="$2"
+            local run_json
+            run_json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}")"
+            test "$(jq -r '.repository.full_name' <<<"$run_json")" = "$GITHUB_REPOSITORY"
+            test "$(jq -r '.event' <<<"$run_json")" = 'push'
+            test "$(jq -r '.status' <<<"$run_json")" = 'completed'
+            test "$(jq -r '.conclusion' <<<"$run_json")" = 'success'
+            test "$(jq -r '.head_sha' <<<"$run_json")" = "$REVISION"
+            test "$(jq -r '.name' <<<"$run_json")" = "$expected_name"
+          }
+          validate_run "$NATIVE_RUN_ID" 'Native Linux'
+          validate_run "$FLATPAK_RUN_ID" 'Flatpak Linux'
+
+      - name: Download Native evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.native_run_id }}
+          pattern: linguamesh-linux-native-evidence-*
+          path: incoming/native
+          merge-multiple: true
+
+      - name: Download Flatpak evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.flatpak_run_id }}
+          pattern: linguamesh-linux-flatpak-evidence-*
+          path: incoming/flatpak-evidence
+          merge-multiple: true
+
+      - name: Download Flatpak bundle
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.flatpak_run_id }}
+          pattern: linguamesh-linux-x86_64-*.flatpak
+          path: incoming/flatpak-bundle
+          merge-multiple: true
+
+      - name: Verify downloaded evidence and source pin
+        shell: bash
+        env:
+          REVISION: ${{ inputs.revision }}
+        run: |
+          set -euo pipefail
+          native_dir=incoming/native
+          flatpak_dir=incoming/flatpak-evidence
+          bundle="$(find incoming/flatpak-bundle -type f -name '*.flatpak' -print -quit)"
+          test -n "$bundle" || {
+            printf '%s\n' 'Flatpak bundle was not downloaded.' >&2
+            exit 1
+          }
+          (cd "$native_dir" && sha256sum --check SHA256SUMS)
+          native_revision="$(awk -F': ' '$1 == "Linux revision" {print $2}' "$native_dir/BUILD-INFO.txt")"
+          test "$native_revision" = "$REVISION" || {
+            printf '%s\n' 'Native BUILD-INFO revision does not match the requested revision.' >&2
+            exit 1
+          }
+          expected_bundle="$(awk '$2 == "linguamesh-linux-x86_64.flatpak" {print $1}' "$flatpak_dir/SHA256SUMS")"
+          actual_bundle="$(sha256sum "$bundle" | awk '{print $1}')"
+          test "$expected_bundle" = "$actual_bundle" || {
+            printf '%s\n' 'Flatpak bundle checksum does not match its evidence sidecar.' >&2
+            exit 1
+          }
+          python3 - "$native_dir/SBOM.spdx.json" "$flatpak_dir/SBOM.spdx.json" <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          for raw_path in sys.argv[1:]:
+              payload = json.loads(pathlib.Path(raw_path).read_text(encoding="utf-8"))
+              if payload.get("spdxVersion") != "SPDX-2.3":
+                  raise SystemExit(f"Unexpected SPDX version in {raw_path}")
+              if len(payload.get("packages", [])) != 234:
+                  raise SystemExit(f"Unexpected SPDX package count in {raw_path}")
+          PY
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22
+        with:
+          cosign-release: v3.10.0
+
+      - name: Sign Native and Flatpak blobs with GitHub OIDC
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p signed-evidence
+          bundle="$(find incoming/flatpak-bundle -type f -name '*.flatpak' -print -quit)"
+          cosign sign-blob --yes \
+            --bundle signed-evidence/linguamesh-linux.sigstore.json \
+            incoming/native/linguamesh-linux
+          cosign sign-blob --yes \
+            --bundle signed-evidence/linguamesh-linux-x86_64.flatpak.sigstore.json \
+            "$bundle"
+
+      - name: Verify keyless signatures
+        shell: bash
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          identity="^https://github.com/${GITHUB_REPOSITORY}/.github/workflows/sign-release-evidence.yml@refs/heads/${GITHUB_REF_NAME}$"
+          issuer='https://token.actions.githubusercontent.com'
+          cosign verify-blob incoming/native/linguamesh-linux \
+            --bundle signed-evidence/linguamesh-linux.sigstore.json \
+            --certificate-identity-regexp "$identity" \
+            --certificate-oidc-issuer "$issuer"
+          bundle="$(find incoming/flatpak-bundle -type f -name '*.flatpak' -print -quit)"
+          cosign verify-blob "$bundle" \
+            --bundle signed-evidence/linguamesh-linux-x86_64.flatpak.sigstore.json \
+            --certificate-identity-regexp "$identity" \
+            --certificate-oidc-issuer "$issuer"
+
+      - name: Write signing provenance
+        shell: bash
+        env:
+          REVISION: ${{ inputs.revision }}
+          NATIVE_RUN_ID: ${{ inputs.native_run_id }}
+          FLATPAK_RUN_ID: ${{ inputs.flatpak_run_id }}
+        run: |
+          set -euo pipefail
+          cosign version
+          printf '%s\n' \
+            'Artifact status: keyless signed Linux prerelease evidence; not a stable release' \
+            "Linux revision: $REVISION" \
+            "Native source workflow run: $NATIVE_RUN_ID" \
+            "Flatpak source workflow run: $FLATPAK_RUN_ID" \
+            'OIDC issuer: https://token.actions.githubusercontent.com' \
+            'Signature verification: cosign verify-blob passed with this workflow identity' \
+            'No GitHub Release, tag, manifest promotion, or distribution action was performed.' \
+            > signed-evidence/SIGNING-INFO.txt
+
+      - name: Upload signed prerelease evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: linguamesh-linux-signed-prerelease-${{ inputs.revision }}
+          path: signed-evidence/
+          if-no-files-found: error
