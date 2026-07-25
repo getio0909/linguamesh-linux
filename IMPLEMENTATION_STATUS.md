@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-25 — Linux pin sync to Core SIGKILL rollback evidence
+
+Assumption: the parent-controlled SIGKILL fixture strengthens Linux process-interruption evidence
+without claiming physical power-loss recovery or arbitrary third-party VFS compatibility; the new
+Core pin must pass the complete Linux Hosted matrix before it is treated as active.
+
+- Core `1a13b2b7a97876ff55963a5d34b360f607d66a0f` adds `linux_default_vfs_rolls_back_uncommitted_transaction_after_sigkill`, which
+  waits for a readiness marker after opening an uncommitted transaction, hard-kills the child, and
+  verifies the committed baseline survives while the transient row is absent.
+- Core local focused SIGKILL and full storage/workspace validation passed; Core CI
+  `30158027273`, Native SDK `30158027285`, and fuzz/sanitizer `30158027277` all passed.
+- Linux Native, Flatpak, and Foundation checks for the synchronized pin are pending; release remains
+  `unreleased`, and physical/manual, broader VFS/power-loss, cross-client, signing, rollback,
+  promotion, and stable-release gates remain open.
+
 ## 2026-07-25 — Linux glossary import architecture documentation correction
 
 Assumption: the bounded CSV/TBX glossary import behavior was already implemented and covered by
