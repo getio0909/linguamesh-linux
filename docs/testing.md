@@ -1,5 +1,12 @@
 # Testing and Validation
 
+The persisted OOXML worker export regressions also cover package relationships and non-text
+resources: DOCX hyperlink text and external relationship targets, XLSX worksheet-to-chart
+relationships, and PPTX slide hyperlink relationships plus timing/animation XML. These assertions
+run through the same `ExportDocumentJob` path as the translated text and confirm that reconstruction
+does not rewrite relationship targets or animation metadata. They are structural prerelease checks;
+visual layout, hyperlink activation, and animation playback still require manual review.
+
 The Linux worker tests cover both local-model wire contracts: the `local-loopback` preset uses
 OpenAI-compatible `/v1/` discovery and SSE, while the `ollama` preset uses native `/api/tags`
 discovery and `/api/chat` NDJSON streaming. The native fixture asserts deliberate model selection,

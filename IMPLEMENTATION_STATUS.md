@@ -1,5 +1,29 @@
 # Implementation Status
 
+## 2026-07-25 — OOXML relationship, hyperlink, and animation export checkpoint
+
+Assumption: these worker-level package-preservation regressions strengthen deterministic Linux
+prerelease evidence only; they do not replace visual document review, physical desktop conditions,
+other clients, signing, rollback authorization, or stable-release approval.
+
+- Runtime/test head `463d6cec94a2eaf7a24d41ee996761535bc4be16` extends the real persisted
+  `ExportDocumentJob` fixtures: DOCX translates hyperlink text while preserving its external
+  relationship, XLSX preserves worksheet-to-chart relationships, and PPTX preserves slide
+  hyperlinks and timing/animation XML. The existing DOCX/PPTX/XLSX resource, formula, note, and
+  binary assertions remain active.
+- Local focused tests passed `12 passed; 0 failed`; the demo-provider suite passed
+  `170 passed; 0 failed; 7 ignored`; no-default passed `85 passed; 0 failed; 1 ignored`;
+  formatting, strict all-target/all-feature Clippy, Flatpak metadata, and diff checks passed.
+  The offline-provider regression was made deterministic by using the separate loopback address
+  `127.0.0.2` instead of a randomly released `127.0.0.1` port.
+- Packaging/status head `5c8e56e9ac32fc895473781594b60ac3ef2e97e0` pins Flatpak to the runtime
+  head. Code-head Flatpak push/PR runs `30139845466`/`30139846803` correctly rejected the stale
+  `5b299571` pin; final push Native/Flatpak/Foundation `30139924567`/`30139924570`/`30139924568`
+  and PR Native/Flatpak/Foundation `30139925835`/`30139925838`/`30139925843` all passed.
+- Release remains `unreleased`; visual/manual review, physical power-loss, arbitrary VFS,
+  other-client parity, signing, rollback authorization, distributable promotion, and stable
+  release evidence remain open.
+
 ## 2026-07-25 — OOXML package-resource worker export checkpoint
 
 Assumption: these package-resource regressions strengthen Linux prerelease evidence only; they do
