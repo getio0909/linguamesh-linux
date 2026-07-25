@@ -1,5 +1,24 @@
 # Implementation Status
 
+## 2026-07-25 — Linux local all-features validation with temporary development runtime
+
+Assumption: extracting Debian development packages and starting an isolated Xvfb server is a
+reproducible host-side validation method when system installation is unavailable; it changes no
+system packages, user settings, credentials, or repository files.
+
+- Extracted Debian trixie `libgtk-4-dev` 4.18.6, `libadwaita-1-dev` 1.7.6,
+  `libgraphene-1.0-dev` 1.10.8, `libappstream-dev` 1.0.5, and their runtime metadata into a
+  temporary directory, then ran Xvfb `:100` with `GDK_BACKEND=x11`.
+- `cargo test --all-targets --all-features --locked --offline` passed the complete local target
+  set: library tests `172 passed; 0 failed; 16 ignored` and GTK binary tests
+  `33 passed; 0 failed; 22 ignored`. The only GTK critical was the expected unavailable AT-SPI
+  session bus; no test failed.
+- The ignored tests remain explicitly environment-gated (Secret Service, portals, OCR, HTTPS
+  fixtures, third-party Ollama, storage-fault mount, and dedicated GTK fixtures). This local
+  result strengthens Linux prerelease evidence but does not replace hosted Flatpak/Native gates,
+  physical/manual review, cross-client conformance, signing, rollback, or stable-release
+  authorization; release status remains `unreleased`.
+
 ## 2026-07-25 — Linux local validation environment audit
 
 Assumption: local command output is evidence only for the exact host boundary it exercises; hosted
