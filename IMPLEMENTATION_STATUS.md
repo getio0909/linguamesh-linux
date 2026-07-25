@@ -5,13 +5,13 @@
 Assumption: the retained Native CI bundle is prerelease evidence only; it does not authorize
 signing, distribution, rollback execution, or stable-release promotion.
 
-- Push Native run `30162655198` produced artifact `8620718472` for Linux
-  `246d6bd1d2ad958b1ba04499a078fb9e7758a32b`, Core
+- Push Native run `30163478497` produced artifact `8620934217` for Linux
+  `a15344dbd4b3994773cd51e56e3ee02a24d39628`, Core
   `1a13b2b7a97876ff55963a5d34b360f607d66a0f`, and l10n
   `43f5a6f069f6d0e6d075517b0c017784fe505b0d`.
 - Downloaded `SHA256SUMS` verification passed for the binary
   `828084902a42888522a63177f1fa500de2cee654b25506e3a3fa3943621415a4` and source archive
-  `64470d15ca975af4f1c4baddadcc5abe2a74d78887e430ffd31fbb7ba5fd0a6e`. The parsed SPDX-2.3
+  `8d797e2ffb117a3cb40d3827e316a934b68743ec1b41ae34879301563ab64c78`. The parsed SPDX-2.3
   SBOM contains 234 packages; BUILD-INFO and ROLLBACK.md identify the exact pins and unsigned
   prerelease status.
 - The CI performance baseline records machine-specific DOCX/XLSX/routing elapsed times of
@@ -24,12 +24,12 @@ signing, distribution, rollback execution, or stable-release promotion.
 Assumption: the Flatpak bundle is unsigned prerelease evidence; its source pin is intentionally
 the tested packaging ancestor rather than the documentation-only Linux status head.
 
-- Flatpak Push run `30163101004` produced evidence artifact `8620827376` and bundle artifact
-  `8620827164` for Linux source pin `a6b43335060e2a8fb64f37272cf7d8e062139e55`, Core
+- Flatpak Push run `30163478529` produced evidence artifact `8620928540` and bundle artifact
+  `8620928298` for Linux source pin `a6b43335060e2a8fb64f37272cf7d8e062139e55`, Core
   `1a13b2b7a97876ff55963a5d34b360f607d66a0f`, and l10n
   `43f5a6f069f6d0e6d075517b0c017784fe505b0d`.
 - After placing the independently downloaded bundle beside the evidence sidecar, SHA256SUMS
-  verification passed for `d46ca57729f571a00f4838155df7ff5441568d574ba0b6b322c327834ac5bb94`;
+  verification passed for `644ce088e9f19aaabea39e20b7f857b7ac695b423c0cae0e38e9ee8a4d382a23`;
   the parsed SPDX-2.3 SBOM contains 234 packages and ROLLBACK.md preserves the Flatpak pin.
 - The bundle remains unsigned prerelease evidence; physical/manual, broader VFS/power-loss,
   cross-client, signing, rollback, promotion, and stable-release gates remain open.
