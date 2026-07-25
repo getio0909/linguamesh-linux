@@ -1,5 +1,27 @@
 # Implementation Status
 
+## 2026-07-25 — OOXML table export checkpoint
+
+Assumption: these table-structure regressions strengthen deterministic Linux prerelease evidence
+only; they do not replace visual document review, physical desktop conditions, other clients,
+signing, rollback authorization, or stable-release approval.
+
+- Runtime/test head `0510b40ce57bc18015306589e28cd562c486b060` adds DOCX and PPTX table fixtures to the real persisted
+  `ExportDocumentJob` path. Tests verify that table structure survives reconstruction and that
+  the translated `Table cell` text is written inside the original table cell XML.
+- Local validation passed the focused document-job set (`3 passed; 0 failed`), demo-provider
+  library suite (`170 passed; 0 failed; 7 ignored`), no-default suite (`85 passed; 0 failed;
+  1 ignored`), formatting, strict all-target/all-feature Clippy, Flatpak metadata, and diff
+  checks. The release remains `unreleased`.
+- Packaging head `fb1b7fcfba16bf1b6e39bf470d0b4aa4d32533b9` updates the Flatpak source pin to the
+  runtime head. The first code-head Flatpak push/PR runs `30140590620`/`30140591911` rejected
+  the stale `463d6ce` pin and are retained as expected correction evidence; the replacement
+  push Native/Flatpak/Foundation `30140655812`/`30140655800`/`30140655771` and PR
+  Native/Flatpak/Foundation `30140656937`/`30140656933`/`30140656934` all passed.
+- Visual table layout, merged-cell behavior, and screen-reader/table-navigation review remain
+  manual or unverified gates, along with physical desktop, other-client parity, signing,
+  rollback authorization, distributable promotion, and stable-release evidence.
+
 ## 2026-07-25 — OOXML relationship, hyperlink, and animation export checkpoint
 
 Assumption: these worker-level package-preservation regressions strengthen deterministic Linux

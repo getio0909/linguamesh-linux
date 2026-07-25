@@ -1,5 +1,10 @@
 # Testing and Validation
 
+The persisted OOXML worker export regressions also cover DOCX and PPTX tables. Each fixture
+contains a table cell whose translated text is asserted inside the preserved table structure;
+these checks cover structural reconstruction only. Merged-cell layout, visual rendering, and
+screen-reader table navigation still require manual review.
+
 The persisted OOXML worker export regressions also cover package relationships and non-text
 resources: DOCX hyperlink text and external relationship targets, XLSX worksheet-to-chart
 relationships, and PPTX slide hyperlink relationships plus timing/animation XML. These assertions
