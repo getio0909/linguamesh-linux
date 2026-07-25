@@ -15,7 +15,7 @@ release authorization.
 - `bash tools/run-secret-service-prompt-test.sh` passed all four store/delete approval and
   dismissal tests (`1 passed; 0 failed; 187 filtered out` each), including fail-closed rejection
   paths.
-- These checks ran against Linux `94a1d5c0aa6a1e166174b9321905a3c7f50b00b4`, Core
+- These checks ran against Linux `065ac6e642d8ebe622f31046649f2b066ec40484`, Core
   `18d45140e5466251e28c8a50feeab2d5f34aa3b6`, and l10n
   `43f5a6f069f6d0e6d075517b0c017784fe505b0d`. Release remains `unreleased`.
 
