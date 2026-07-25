@@ -1,25 +1,25 @@
 # Implementation Status
 
-## 2026-07-25 — Linux Core read-failure pin and Hosted artifact synchronization
+## 2026-07-25 — Linux Core read-failure pin and final Hosted artifact synchronization
 
 Assumption: Core `cb061d24a3e0c4059a65d099d30bc643e9e079ea` adds bounded registered-VFS `xRead`
 failure evidence alongside `xWrite` and `xSync`; it does not qualify arbitrary third-party VFS
 behavior or physical power-loss recovery.
 
 - Core CI, Fuzz/Sanitizers, and Native SDK `30170856924`/`30170856899`/`30170856923` all passed.
-- Linux status head `0c809ca1598a0f47c7dd0ec13d0d63fc9dbb0b29` synchronizes the Native workflow to
+- Linux status head `b7abef95489dac7821bf54a3ca0761dae5189319` synchronizes the Native workflow to
   Core `cb061d24a3e0c4059a65d099d30bc643e9e079ea` and the Flatpak vendored Linux source to
   `076936608273e20075fb7fc77e595f7d1e4d10e8`.
 - Local Linux no-default/demo-provider suites passed `85/0/1` and `170/0/7`; formatting, strict
   Clippy, demo-provider build, localization synchronization/key/placeholder/visible audits, and
   Flatpak metadata validation passed.
-- Push Native/Flatpak/Foundation `30171435758`/`30171435754`/`30171435756` and PR
-  Native/Flatpak/Foundation `30171437294`/`30171437297`/`30171437320` all passed.
-- Native artifact `8623077949` passed SHA256 for binary
+- Push Native/Flatpak/Foundation `30171847747`/`30171847757`/`30171847756` and PR
+  Native/Flatpak/Foundation `30171849151`/`30171849120`/`30171849116` all passed.
+- Native artifact `8623182783` passed SHA256 for binary
   `a582b73cdb6a3547d60c0117f5cb7e476295b2ab7e98917608a4e995356cc963` and source archive
-  `4aaadebbe206a5e5c2a7f689f581c62bdec80741eea926a2a31258da2a92bd1b`. Flatpak evidence/bundle
-  `8623063090`/`8623062947` passed with bundle SHA256
-  `1900add63725af1c24afb04d4227cf4ffa40a7a77aecafa050b75db74adf6e`. Both SPDX sidecars parse
+  `a5368933ffec1637e68c3f8a3c8a4a38ed1f26390c9e29777ef0237e7d9156b0`. Flatpak evidence/bundle
+  `8623172096`/`8623171937` passed with bundle SHA256
+  `1436ec4442f00c9566067ff599d40abf8b96b8630cc43e578ac3a80bc3c2f002`. Both SPDX sidecars parse
   as SPDX-2.3 with 234 packages; artifacts are unsigned prerelease evidence.
 - Release remains `unreleased`; physical/manual, arbitrary-VFS/power-loss, cross-client, signing,
   rollback, promotion, and stable-release gates remain open.
