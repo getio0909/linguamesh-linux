@@ -6395,6 +6395,18 @@ mod tests {
             )
             .expect("document bytes");
         writer
+            .start_file("word/header1.xml", options)
+            .expect("header");
+        writer
+            .write_all(br#"<w:hdr xmlns:w="urn:w"><w:p><w:r><w:t>Header</w:t></w:r></w:p></w:hdr>"#)
+            .expect("header bytes");
+        writer
+            .start_file("word/footer1.xml", options)
+            .expect("footer");
+        writer
+            .write_all(br#"<w:ftr xmlns:w="urn:w"><w:p><w:r><w:t>Footer</w:t></w:r></w:p></w:ftr>"#)
+            .expect("footer bytes");
+        writer
             .start_file("word/media/image.bin", options)
             .expect("image");
         writer.write_all(&[1, 2, 3, 4]).expect("image bytes");
@@ -6434,6 +6446,18 @@ mod tests {
             .start_file("xl/media/image.bin", options)
             .expect("image");
         writer.write_all(&[8, 9, 10]).expect("image bytes");
+        writer.start_file("xl/styles.xml", options).expect("styles");
+        writer
+            .write_all(br#"<styleSheet xmlns="urn:x"><numFmts count="1"/></styleSheet>"#)
+            .expect("styles bytes");
+        writer
+            .start_file("xl/charts/chart1.xml", options)
+            .expect("chart");
+        writer
+            .write_all(
+                br#"<chartSpace xmlns="urn:chart"><chart><title>Revenue</title></chart></chartSpace>"#,
+            )
+            .expect("chart bytes");
         writer.finish().expect("xlsx archive").into_inner()
     }
 
@@ -6450,6 +6474,18 @@ mod tests {
         writer
             .write_all(br#"<p:presentation xmlns:p="urn:ppt"><p:sldMasterIdLst/></p:presentation>"#)
             .expect("presentation bytes");
+        writer
+            .start_file("ppt/theme/theme1.xml", options)
+            .expect("theme");
+        writer
+            .write_all(br#"<a:theme xmlns:a="urn:dml"><a:name>LinguaMesh</a:name></a:theme>"#)
+            .expect("theme bytes");
+        writer
+            .start_file("ppt/slideLayouts/slideLayout1.xml", options)
+            .expect("slide layout");
+        writer
+            .write_all(br#"<p:sldLayout xmlns:p="urn:ppt"><p:cSld name="layout"/></p:sldLayout>"#)
+            .expect("slide layout bytes");
         writer
             .start_file("ppt/slides/slide1.xml", options)
             .expect("slide");
@@ -8733,6 +8769,20 @@ trailer
             .read_to_string(&mut document)
             .expect("document xml");
         assert!(document.contains("你好，LinguaMesh！"));
+        let mut header = String::new();
+        archive
+            .by_name("word/header1.xml")
+            .expect("header entry")
+            .read_to_string(&mut header)
+            .expect("header xml");
+        assert!(header.contains("你好，LinguaMesh！"));
+        let mut footer = String::new();
+        archive
+            .by_name("word/footer1.xml")
+            .expect("footer entry")
+            .read_to_string(&mut footer)
+            .expect("footer xml");
+        assert!(footer.contains("你好，LinguaMesh！"));
         let mut image = Vec::new();
         archive
             .by_name("word/media/image.bin")
@@ -8824,6 +8874,20 @@ trailer
             .read_to_end(&mut image)
             .expect("image bytes");
         assert_eq!(image, [8, 9, 10]);
+        let mut styles = String::new();
+        archive
+            .by_name("xl/styles.xml")
+            .expect("styles entry")
+            .read_to_string(&mut styles)
+            .expect("styles xml");
+        assert!(styles.contains("numFmts"));
+        let mut chart = String::new();
+        archive
+            .by_name("xl/charts/chart1.xml")
+            .expect("chart entry")
+            .read_to_string(&mut chart)
+            .expect("chart xml");
+        assert!(chart.contains("Revenue"));
         shutdown(&worker);
     }
 
@@ -8907,6 +8971,20 @@ trailer
             .read_to_end(&mut image)
             .expect("image bytes");
         assert_eq!(image, [5, 6, 7]);
+        let mut theme = String::new();
+        archive
+            .by_name("ppt/theme/theme1.xml")
+            .expect("theme entry")
+            .read_to_string(&mut theme)
+            .expect("theme xml");
+        assert!(theme.contains("LinguaMesh"));
+        let mut layout = String::new();
+        archive
+            .by_name("ppt/slideLayouts/slideLayout1.xml")
+            .expect("slide layout entry")
+            .read_to_string(&mut layout)
+            .expect("slide layout xml");
+        assert!(layout.contains("layout"));
         shutdown(&worker);
     }
 
