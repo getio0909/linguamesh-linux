@@ -1,5 +1,22 @@
 # Implementation Status
 
+## 2026-07-25 — Linux current-head environment-gated fixture recheck
+
+Assumption: these isolated fixtures are reproducible Linux prerelease evidence and do not replace
+human desktop review, live-provider qualification, or stable-release authorization.
+
+- `bash tools/run-ocr-test.sh` passed one generated image-only PDF fixture; the bounded OCR path
+  recovered the expected page-marked text with the installed `pdftoppm` and `tesseract` tools.
+- `bash tools/run-storage-fault-test.sh` passed one private-mount ENOSPC regression and verified
+  session-only degradation without a false persistence commit.
+- `bash tools/run-client-certificate-interop-test.sh` passed all four HTTPS cases: trusted client
+  authentication, untrusted-server rejection, hostname-mismatch rejection, and untrusted-client
+  CA rejection. Temporary keys, certificates, servers, and fixture directories were removed.
+- `bash tools/run-secret-service-prompt-test.sh` passed all four isolated store/delete acceptance
+  and dismissal cases. No developer keyring, credentials, or user data were accessed.
+- Display-backed portal leases, prompted unlock UX, physical/manual review, broader VFS/power-loss,
+  cross-client parity, signing, rollback, promotion, and stable-release gates remain open.
+
 ## 2026-07-25 — Linux local all-features validation with temporary development runtime
 
 Assumption: extracting Debian development packages and starting an isolated Xvfb server is a
