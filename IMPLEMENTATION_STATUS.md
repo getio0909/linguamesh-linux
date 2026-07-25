@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-25 — Linux current checkout regression recheck
+
+Assumption: this host-side recheck validates the checked-out Linux worker and document boundary;
+it does not substitute for Hosted GTK/Flatpak execution, physical/manual review, arbitrary-VFS or
+power-loss recovery, cross-client conformance, or release authorization.
+
+- Rust `1.93.0` formatting and strict `demo-provider` Clippy passed.
+- Locked offline tests passed: no-default `85 passed; 0 failed; 1 ignored` and
+  `demo-provider` `170 passed; 0 failed; 7 ignored`.
+- Localization key, placeholder, and visible-string audits passed (`474` keys, `605` calls),
+  Flatpak metadata and vendored source validation passed, and `git diff --check` passed.
+- No runtime, ABI, dependency, source-pin, manifest, tag, or promotion change occurred. Release
+  remains `unreleased`; the explicitly unavailable manual/physical and broader recovery gates stay
+  open.
+
 ## 2026-07-25 — Linux contribution governance templates
 
 Assumption: these repository-governance files satisfy the open-source contribution entry-point
