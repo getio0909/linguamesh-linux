@@ -1,5 +1,25 @@
 # Implementation Status
 
+## 2026-07-25 — Secret Service readiness hardening Hosted validation
+
+Assumption: these unsigned artifacts are prerelease evidence only; successful CI and checksum/SBOM
+verification do not authorize signing, distribution, rollback, promotion, or stable release.
+
+- Linux head `cd31f5f0430c48a76fc7a0ea50391491a89db696` passed Push Native/Flatpak/Foundation
+  `30169987746`/`30169987765`/`30169987750` and PR Native/Flatpak/Foundation
+  `30169989193`/`30169989206`/`30169989195`. The hardened prompted-flow runner passed in the
+  complete Native jobs.
+- Native evidence artifact `8622701595` passed SHA256 verification for binary
+  `fd60f03fb1ba26f5a38b255f8ecdd265ccf958f6cbb8ec9a000fff829c021057` and source archive
+  `07c0f33021a1121de916bacb58924dc957eb80959fe265c12af0fddf1df96fb1`. Flatpak evidence/bundle
+  `8622690410`/`8622690207` passed with bundle SHA256
+  `5514676858db57fe64070d139df8d5e2d4c317390ef3557c05866c449528b17d`.
+- Both SPDX sidecars parse as SPDX-2.3 with 234 packages; BUILD-INFO pins Core
+  `18d45140e5466251e28c8a50feeab2d5f34aa3b6` and l10n
+  `43f5a6f069f6d0e6d075517b0c017784fe505b0d`. Release remains `unreleased`; physical/manual,
+  arbitrary-VFS/power-loss, cross-client, signing, rollback, promotion, and stable-release gates
+  remain open.
+
 ## 2026-07-25 — Secret Service prompted-flow runner readiness hardening
 
 Assumption: this runner change hardens deterministic CI setup only; it does not claim interactive
