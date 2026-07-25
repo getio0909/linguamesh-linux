@@ -1,5 +1,25 @@
 # Implementation Status
 
+## 2026-07-25 — Linux Secret Service local GTK fixture revalidation
+
+Assumption: a real X11/GTK fixture with isolated temporary runtime metadata is stronger local
+evidence than a library-only check, but it does not replace physical desktop or human visual
+review.
+
+- Fixed `tools/run-secret-service-test.sh` to pass the module-qualified test name
+  `tests::gtk_remembered_credential_uses_secret_service_and_clears_the_form` with `--exact`; the
+  previous unqualified filter selected zero binary tests and could produce a false green result.
+- Using a temporary user-local extraction of Debian `xvfb` plus temporary pkg-config and library
+  symlinks (no system package installation), the runner passed persistent store/restart,
+  onboarding without credential re-entry, the actual GTK Remember/clear-form test, locked-item
+  fail-closed behavior, daemon-restart recovery, and round-trip cleanup.
+- The isolated session emitted expected host portal/FUSE and notification-display warnings; those
+  portal and desktop-shell paths are not claimed by this fixture. No developer keyring,
+  credentials, or user data were accessed.
+- This checkpoint remains Linux prerelease evidence. End-user prompt approval and unlock UX,
+  physical/manual review, cross-client parity, signing, rollback, promotion, and stable-release
+  gates remain open; release status remains `unreleased`.
+
 ## 2026-07-25 — Latest Linux Native prerelease artifact verification
 
 Assumption: the latest successful Native push artifact is reproducible prerelease evidence for
