@@ -19,6 +19,21 @@ signing, distribution, rollback execution, or stable-release promotion.
   portable performance claim. Physical/manual, broader VFS/power-loss, cross-client, signing,
   rollback authorization, promotion, and stable-release gates remain open.
 
+## 2026-07-25 — Linux Flatpak artifact provenance checkpoint
+
+Assumption: the Flatpak bundle is unsigned prerelease evidence; its source pin is intentionally
+the tested packaging ancestor rather than the documentation-only Linux status head.
+
+- Flatpak Push run `30163101004` produced evidence artifact `8620827376` and bundle artifact
+  `8620827164` for Linux source pin `a6b43335060e2a8fb64f37272cf7d8e062139e55`, Core
+  `1a13b2b7a97876ff55963a5d34b360f607d66a0f`, and l10n
+  `43f5a6f069f6d0e6d075517b0c017784fe505b0d`.
+- After placing the independently downloaded bundle beside the evidence sidecar, SHA256SUMS
+  verification passed for `d46ca57729f571a00f4838155df7ff5441568d574ba0b6b322c327834ac5bb94`;
+  the parsed SPDX-2.3 SBOM contains 234 packages and ROLLBACK.md preserves the Flatpak pin.
+- The bundle remains unsigned prerelease evidence; physical/manual, broader VFS/power-loss,
+  cross-client, signing, rollback, promotion, and stable-release gates remain open.
+
 ## 2026-07-25 — Linux dynamic visible-string localization
 
 Assumption: the glossary-library row is Linux-only UI metadata; adding its canonical plural
