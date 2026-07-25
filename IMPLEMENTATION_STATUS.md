@@ -1,5 +1,26 @@
 # Implementation Status
 
+## 2026-07-25 — XLSX date and cached-formula safety checkpoint
+
+Assumption: this deterministic Linux spreadsheet evidence strengthens Scenario 11 only; it does
+not replace full workbook/sheet/range selection, visual review, physical conditions, other clients,
+signing, rollback authorization, or stable-release approval.
+
+- Runtime/test head `e39169e1fe668bc386a1f52918fe6ba02cab8ff7` extends the persisted XLSX
+  `ExportDocumentJob` fixture with a date-formatted serial (`numFmtId=14`, `45292`) and a formula
+  with cached string output. Reconstruction asserts the formula, cached value, date serial, and
+  existing numbers remain unchanged while selected shared text is translated.
+- Local validation passed the focused XLSX test (`1 passed; 0 failed`), demo-provider
+  (`170 passed; 0 failed; 7 ignored`), no-default (`85 passed; 0 failed; 1 ignored`), formatting,
+  strict all-target/all-feature Clippy, Flatpak metadata, and diff checks.
+- Packaging head `1e6ceb48e33bccaaf4d2fa5c70d998e1be46ac9e` pins Flatpak to the runtime head.
+  Code-head stale-pin push/PR runs `30142494717`/`30142495888` failed at source-pin validation;
+  replacement push Native/Flatpak/Foundation `30142563832`/`30142563835`/`30142563834` and PR
+  `30142565174`/`30142565161`/`30142565170` all passed.
+- Release remains `unreleased`; workbook sheet/range selection, full visual review, physical/VFS
+  evidence, other-client parity, signing, rollback, distributable promotion, and stable-release
+  evidence remain open.
+
 ## 2026-07-25 — OOXML merged-table export checkpoint
 
 Assumption: these multi-cell and merged-cell regressions strengthen deterministic Linux prerelease
