@@ -16,7 +16,7 @@ jobs:
     # 固定已审查的 LinguaMesh Core 提交。
     env:
       CORE_REVISION: 1a13b2b7a97876ff55963a5d34b360f607d66a0f
-      L10N_REVISION: 2fc24ebb942d5497910974f3d2fc49c5f72f9ad0
+      L10N_REVISION: 43f5a6f069f6d0e6d075517b0c017784fe505b0d
     steps:
       - name: Check out Linux client
         # 固定 actions/checkout v7.0.0。
