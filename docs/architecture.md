@@ -31,8 +31,8 @@ discovery never removes a manually configured model.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `18d45140e5466251e28c8a50feeab2d5f34aa3b6`; it adds Linux registered-VFS
-write-failure and synchronization-failure rejection evidence on top of uncommitted transaction crash rollback, including
+functional revision is `cb061d24a3e0c4059a65d099d30bc643e9e079ea`; it adds Linux registered-VFS
+read-, write-, and synchronization-failure rejection evidence on top of uncommitted transaction crash rollback, including
 parent-controlled SIGKILL coverage, and the bounded XLSX
 sheet/range-selection contract while retaining the Linux-only non-locking `unix-none` VFS
 fail-closed regression and

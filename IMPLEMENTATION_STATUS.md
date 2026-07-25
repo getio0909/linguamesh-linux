@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-25 — Linux Core registered-VFS read-failure pin synchronization
+
+Assumption: Core `cb061d24a3e0c4059a65d099d30bc643e9e079ea` adds bounded registered-VFS `xRead`
+failure evidence alongside `xWrite` and `xSync`; it does not qualify arbitrary third-party VFS
+behavior or physical power-loss recovery.
+
+- Core CI, Fuzz/Sanitizers, and Native SDK `30170856924`/`30170856899`/`30170856923` all passed.
+- Updated Linux Native documentation, Core checkout validation, Flatpak source pin, and release
+  guidance to Core `cb061d24a3e0c4059a65d099d30bc643e9e079ea`.
+- Local Linux no-default/demo-provider suites passed `85/0/1` and `170/0/7`; formatting, strict
+  Clippy, demo-provider build, localization synchronization/key/placeholder/visible audits, and
+  Flatpak metadata validation passed. Release remains `unreleased` pending Hosted Linux checks.
+- Physical/manual, arbitrary-VFS/power-loss, cross-client, signing, rollback, promotion, and
+  stable-release gates remain open.
+
 ## 2026-07-25 — Secret Service readiness hardening Hosted validation
 
 Assumption: these unsigned artifacts are prerelease evidence only; successful CI and checksum/SBOM
