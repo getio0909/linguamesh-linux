@@ -1,24 +1,23 @@
 # Implementation Status
 
-## 2026-07-25 — Linux current-head reproducibility audit
+## 2026-07-25 — Linux/Core pin reconciliation and artifact verification
 
-Assumption: this fresh host audit records deterministic Linux evidence only; the timings are
-machine-specific, hosted display checks remain authoritative, and no new deterministic Linux
-feature gap was identified in the reviewed source and test surface.
+Assumption: the hosted Native `BUILD-INFO.txt`, Native workflow, and Flatpak source manifest are
+authoritative for the current Linux prerelease inputs; active status and release docs must match
+those immutable revisions.
 
-- Linux head `6e0e5d77fdd11c8fe15eeb8e7bb4a0bb7ad9d60b` passed `cargo fmt --all -- --check`, GUI
-  all-target `cargo check`, strict GUI Clippy, the locked no-default suite (`85 passed; 0 failed;
-  1 ignored`), and the locked demo-provider suite (`170 passed; 0 failed; 7 ignored`). Core and
-  localization pins remain `9e69d01cbae1ca0421923e059aa3252c4ecbe1be` and
-  `2fc24ebb942d5497910974f3d2fc49c5f72f9ad0`.
-- Localization synchronization, the 474-key audit, 604-placeholder audit, and visible-localization
-  audit passed. `bash tools/validate-flatpak-metadata.sh` passed with one non-fatal AppStream
-  category hint; `git diff --check` passed.
-- The machine-specific performance probe measured DOCX `1.796s`, XLSX `0.393s`, and routing
-  `0.402s`; it does not establish a cross-machine budget. No source, dependency, or compatibility
-  pin changed. Physical/manual review, broader VFS and power-loss behavior, other-client parity,
-  signing, rollback authorization, distributable promotion, and stable-release acceptance remain
-  open.
+- Linux head `3cc840ded03dc7c52dc1dd1694eb2726c4ad1784` consumes Core
+  `e0b682fa183cfdebfabc0ef04d531c58031d8e85` and l10n
+  `2fc24ebb942d5497910974f3d2fc49c5f72f9ad0`. The Core pin adds the reviewed XLSX sheet/range
+  selection contract and is an ancestor of Core's later test-only head.
+- Hosted Native artifact `8616483429` from run `30147245150` was downloaded and verified with
+  `SHA256SUMS`: binary `4cc71eb35ecd26d198f099e550eed7e39e115fdb4c8bead0ddd876ad1947a3ba`,
+  source archive `272a86f6465eac4b39cd7e5e30f27aca5e8e455bfa97e4edcb977c0878194d7b`, and an
+  SPDX-2.3 SBOM containing 234 packages. It is unsigned release-mode prerelease evidence.
+- Fresh local GUI/check/Clippy/test, localization, Flatpak metadata, and diff checks remain
+  green; the machine-specific DOCX/XLSX/routing measurements are `1.796s`/`0.393s`/`0.402s`.
+  Physical/manual review, broader VFS and power-loss, other-client parity, signing, rollback,
+  distributable promotion, and stable-release acceptance remain open.
 
 ## 2026-07-25 — Linux performance and local environment-gated audit
 
