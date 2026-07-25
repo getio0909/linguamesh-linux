@@ -17,6 +17,14 @@ arbitrary third-party VFS or power-loss evidence, or stable-release authorizatio
 - The ignored fixtures require external OCR, private storage-fault, client-certificate, and
   third-party Ollama environments; they remain separately covered by the documented runners and
   Hosted gates. Release remains `unreleased`.
+- Push Native/Flatpak/Foundation `30173340428`/`30173340423`/`30173340426` and PR
+  Native/Flatpak/Foundation `30173341863`/`30173341865`/`30173341882` all passed.
+- Native evidence artifact `8623576696` passed checksum verification for the binary
+  `a582b73cdb6a3547d60c0117f5cb7e476295b2ab7e98917608a4e995356cc963` and source archive
+  `be879500c5f8836de567ced087f0725c043d13b13de9df12d60c8f3e4e5b1e7c`. Flatpak evidence/bundle
+  artifacts `8623565690`/`8623565572` passed verification; the bundle digest is
+  `6ae201f0b1cf4eb5c25ce4ad84bde9733828854e5b07115e442d6cc55e465ba1`. Both SPDX-2.3 sidecars
+  contain 234 packages, and all artifacts remain unsigned prerelease evidence.
 
 ## 2026-07-25 — Linux Core read-failure pin and final Hosted artifact synchronization
 
