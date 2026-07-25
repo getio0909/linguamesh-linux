@@ -6391,9 +6391,17 @@ mod tests {
             .expect("document");
         writer
             .write_all(
-                br#"<w:document xmlns:w="urn:w"><w:body><w:p><w:r><w:t>Hello</w:t></w:r></w:p></w:body></w:document>"#,
+                br#"<w:document xmlns:w="urn:w" xmlns:r="urn:r"><w:body><w:p><w:r><w:t>Hello</w:t></w:r></w:p><w:p><w:hyperlink r:id="rIdHyperlink"><w:r><w:t>Link text</w:t></w:r></w:hyperlink></w:p></w:body></w:document>"#,
             )
             .expect("document bytes");
+        writer
+            .start_file("word/_rels/document.xml.rels", options)
+            .expect("document relationships");
+        writer
+            .write_all(
+                br#"<Relationships xmlns="urn:rel"><Relationship Id="rIdHyperlink" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="https://example.test/docs" TargetMode="External"/></Relationships>"#,
+            )
+            .expect("document relationship bytes");
         writer
             .start_file("word/header1.xml", options)
             .expect("header");
@@ -6458,6 +6466,14 @@ mod tests {
                 br#"<chartSpace xmlns="urn:chart"><chart><title>Revenue</title></chart></chartSpace>"#,
             )
             .expect("chart bytes");
+        writer
+            .start_file("xl/worksheets/_rels/sheet1.xml.rels", options)
+            .expect("worksheet relationships");
+        writer
+            .write_all(
+                br#"<Relationships xmlns="urn:rel"><Relationship Id="rIdChart" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chart1.xml"/></Relationships>"#,
+            )
+            .expect("worksheet relationship bytes");
         writer.finish().expect("xlsx archive").into_inner()
     }
 
@@ -6491,9 +6507,17 @@ mod tests {
             .expect("slide");
         writer
             .write_all(
-                br#"<p:sld xmlns:p="urn:ppt" xmlns:a="urn:dml"><p:cSld><p:spTree><a:p><a:r><a:t>Slide title</a:t></a:r></a:p></p:spTree></p:cSld></p:sld>"#,
+                br#"<p:sld xmlns:p="urn:ppt" xmlns:a="urn:dml" xmlns:r="urn:r"><p:cSld><p:spTree><a:p><a:r><a:t>Slide title</a:t></a:r><a:hlinkClick r:id="rIdHyperlink"/></a:p></p:spTree></p:cSld><p:timing><p:tnLst><p:par/></p:tnLst></p:timing></p:sld>"#,
             )
             .expect("slide bytes");
+        writer
+            .start_file("ppt/slides/_rels/slide1.xml.rels", options)
+            .expect("slide relationships");
+        writer
+            .write_all(
+                br#"<Relationships xmlns="urn:rel"><Relationship Id="rIdHyperlink" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="https://example.test/slides" TargetMode="External"/></Relationships>"#,
+            )
+            .expect("slide relationship bytes");
         writer
             .start_file("ppt/notesSlides/notesSlide1.xml", options)
             .expect("notes");
@@ -8769,6 +8793,14 @@ trailer
             .read_to_string(&mut document)
             .expect("document xml");
         assert!(document.contains("你好，LinguaMesh！"));
+        assert!(document.contains("r:id=\"rIdHyperlink\""));
+        let mut document_relationships = String::new();
+        archive
+            .by_name("word/_rels/document.xml.rels")
+            .expect("document relationships entry")
+            .read_to_string(&mut document_relationships)
+            .expect("document relationships xml");
+        assert!(document_relationships.contains("https://example.test/docs"));
         let mut header = String::new();
         archive
             .by_name("word/header1.xml")
@@ -8793,6 +8825,7 @@ trailer
         shutdown(&worker);
     }
 
+    #[allow(clippy::too_many_lines)]
     #[test]
     fn document_job_translation_reconstructs_xlsx_and_preserves_formulas_and_numbers() {
         let database = TestDatabase::new();
@@ -8888,9 +8921,17 @@ trailer
             .read_to_string(&mut chart)
             .expect("chart xml");
         assert!(chart.contains("Revenue"));
+        let mut worksheet_relationships = String::new();
+        archive
+            .by_name("xl/worksheets/_rels/sheet1.xml.rels")
+            .expect("worksheet relationships entry")
+            .read_to_string(&mut worksheet_relationships)
+            .expect("worksheet relationships xml");
+        assert!(worksheet_relationships.contains("../charts/chart1.xml"));
         shutdown(&worker);
     }
 
+    #[allow(clippy::too_many_lines)]
     #[test]
     fn document_job_translation_reconstructs_pptx_and_preserves_notes_and_resources() {
         let database = TestDatabase::new();
@@ -8957,6 +8998,15 @@ trailer
             .read_to_string(&mut slide)
             .expect("slide xml");
         assert!(slide.contains("你好，LinguaMesh！"));
+        assert!(slide.contains("r:id=\"rIdHyperlink\""));
+        assert!(slide.contains("<p:timing>"));
+        let mut slide_relationships = String::new();
+        archive
+            .by_name("ppt/slides/_rels/slide1.xml.rels")
+            .expect("slide relationships entry")
+            .read_to_string(&mut slide_relationships)
+            .expect("slide relationships xml");
+        assert!(slide_relationships.contains("https://example.test/slides"));
         let mut notes = String::new();
         archive
             .by_name("ppt/notesSlides/notesSlide1.xml")
@@ -12485,7 +12535,7 @@ trailer
         select(&worker, "offline-working-provider", "fake-translator");
 
         // 使用刚释放的回环端口模拟离线连接，避免依赖外部网络状态。
-        let listener = TcpListener::bind(("127.0.0.1", 0)).expect("offline fixture listener");
+        let listener = TcpListener::bind(("127.0.0.2", 0)).expect("offline fixture listener");
         let unavailable_endpoint = format!(
             "http://{}/v1/",
             listener.local_addr().expect("offline fixture address")
