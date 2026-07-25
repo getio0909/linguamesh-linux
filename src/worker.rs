@@ -6341,7 +6341,7 @@ mod tests {
         validate_core_contract, validate_database_path, validate_database_sidecars,
     };
     use crate::model::{ProviderProfile, ProviderProfileId};
-    use linguamesh_document::{DocumentFormat, DocumentJob, DocumentJobState};
+    use linguamesh_document::{DocumentFormat, DocumentJob, DocumentJobState, XlsxSelection};
     use linguamesh_domain::{
         ErrorKind, Glossary, GlossaryEntry, RetryPolicy, RoutingCandidate, RoutingConstraints,
         RoutingMode, RoutingPreference, RoutingProfile, SecretRef, SecretRefNamespace, SecretValue,
@@ -6433,21 +6433,31 @@ mod tests {
             .expect("workbook");
         writer
             .write_all(
-                br#"<workbook xmlns="urn:x"><sheets><sheet name="Sheet1"/></sheets></workbook>"#,
+                br#"<workbook xmlns="urn:x" xmlns:r="urn:r"><sheets><sheet name="Sheet1" sheetId="1" r:id="rId1"/></sheets></workbook>"#,
             )
             .expect("workbook bytes");
+        writer
+            .start_file("xl/_rels/workbook.xml.rels", options)
+            .expect("workbook relationships");
+        writer
+            .write_all(
+                br#"<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>"#,
+            )
+            .expect("workbook relationship bytes");
         writer
             .start_file("xl/sharedStrings.xml", options)
             .expect("shared strings");
         writer
-            .write_all(br#"<sst xmlns="urn:x"><si><t>Hello</t></si></sst>"#)
+            .write_all(
+                br#"<sst xmlns="urn:x"><si><t>Hello</t></si><si><t>Unselected</t></si></sst>"#,
+            )
             .expect("shared strings bytes");
         writer
             .start_file("xl/worksheets/sheet1.xml", options)
             .expect("worksheet");
         writer
             .write_all(
-                br#"<worksheet xmlns="urn:x"><sheetData><row><c t="s"><v>0</v></c><c><f>SUM(A1:A1)</f><v>3</v></c><c t="str"><f>CONCAT(A1,"!")</f><v>Cached formula text</v></c><c s="1"><v>45292</v></c><c><v>42</v></c></row></sheetData></worksheet>"#,
+                br#"<worksheet xmlns="urn:x"><sheetData><row><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c><c r="C1"><f>SUM(A1:A1)</f><v>3</v></c><c r="D1" t="str"><f>CONCAT(A1,"!")</f><v>Cached formula text</v></c><c r="E1" s="1"><v>45292</v></c><c r="F1"><v>42</v></c></row></sheetData></worksheet>"#,
             )
             .expect("worksheet bytes");
         writer
@@ -8847,8 +8857,12 @@ trailer
         worker
             .try_send(WorkerCommand::CreateDocumentJob {
                 job_id: "document-xlsx-1".to_owned(),
-                job: DocumentJob::from_utf8("sample.xlsx", &xlsx_worker_fixture())
-                    .expect("xlsx job"),
+                job: DocumentJob::from_xlsx_bytes_with_selection(
+                    "sample.xlsx",
+                    &xlsx_worker_fixture(),
+                    &XlsxSelection::new("Sheet1", "A1:A1").expect("xlsx selection"),
+                )
+                .expect("xlsx job"),
             })
             .expect("create document job");
         assert!(matches!(
@@ -8898,6 +8912,7 @@ trailer
             .read_to_string(&mut shared_strings)
             .expect("shared strings xml");
         assert!(shared_strings.contains("你好，LinguaMesh！"));
+        assert!(shared_strings.contains("Unselected"));
         let mut worksheet = String::new();
         archive
             .by_name("xl/worksheets/sheet1.xml")
@@ -8906,8 +8921,9 @@ trailer
             .expect("worksheet xml");
         assert!(worksheet.contains("<f>SUM(A1:A1)</f>"));
         assert!(worksheet.contains("<f>CONCAT(A1,\"!\")</f><v>Cached formula text</v>"));
-        assert!(worksheet.contains("<c s=\"1\"><v>45292</v></c>"));
+        assert!(worksheet.contains("r=\"E1\" s=\"1\"><v>45292</v>"));
         assert!(worksheet.contains("<v>42</v>"));
+        assert!(worksheet.contains("r=\"B1\" t=\"s\"><v>1</v>"));
         let mut image = Vec::new();
         archive
             .by_name("xl/media/image.bin")

@@ -1,5 +1,24 @@
 # Implementation Status
 
+## 2026-07-25 — XLSX sheet and range selection checkpoint
+
+Assumption: this Linux-first selection slice strengthens Scenario 11 deterministically; it does
+not claim a GTK range-picker, visual workbook review, physical/VFS behavior, other-client parity,
+signing, rollback authorization, or stable-release approval.
+
+- Core `e0b682fa183cfdebfabc0ef04d531c58031d8e85` adds `XlsxSelection` and bounded A1 range
+  filtering. The worker fixture selects `Sheet1!A1:A1`; only the selected shared string is
+  translated, while the unselected shared string, formula/cache, number, date serial, and style
+  remain unchanged. Shared-string collisions across selected and unselected cells remain stable.
+- Local Core validation passed formatting, strict all-target/all-feature Clippy, workspace tests
+  (`28` document tests including selection; `61` storage tests; all workspace targets), and locked
+  workspace build. Linux focused worker validation passed (`1 passed; 0 failed`).
+- Native CI now pins the Core revision above. Flatpak packaging must be repinned before hosted
+  build evidence is considered final.
+- Release remains `unreleased`; GTK range-picker, visual/manual review, physical/VFS evidence,
+  other-client parity, signing, rollback, distributable promotion, and stable-release evidence
+  remain open.
+
 ## 2026-07-25 — XLSX date and cached-formula safety checkpoint
 
 Assumption: this deterministic Linux spreadsheet evidence strengthens Scenario 11 only; it does

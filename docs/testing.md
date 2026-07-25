@@ -3,7 +3,9 @@
 The XLSX worker export regression now includes a date-formatted serial and a formula with cached
 string output. Assertions confirm `numFmtId=14`, the date serial, formula text, cached value, and
 ordinary numeric values remain unchanged while selected shared text is translated. This is
-structural safety evidence; sheet/range selection and visual workbook review remain open.
+structural safety evidence. The worker now selects `Sheet1!A1:A1` through the Core XLSX selection
+API; unselected shared strings and shared-string collisions remain unchanged. GTK range selection
+and visual workbook review remain open.
 
 The persisted OOXML worker export regressions also cover multi-cell and merged tables. DOCX
 fixtures assert `gridSpan` and vertical-merge (`vMerge`) metadata, while PPTX fixtures assert

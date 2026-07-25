@@ -140,7 +140,9 @@ fn map_document_error(error: DocumentError) -> TextImportError {
     match error {
         DocumentError::TooLarge | DocumentError::OutputTooLarge => TextImportError::TooLarge,
         DocumentError::InvalidUtf8 => TextImportError::InvalidUtf8,
-        DocumentError::InvalidStructure => TextImportError::InvalidStructure,
+        DocumentError::InvalidStructure | DocumentError::InvalidXlsxSelection => {
+            TextImportError::InvalidStructure
+        }
         DocumentError::UnsupportedFormat
         | DocumentError::UnknownSegment(_)
         | DocumentError::VerbatimSegment(_)
