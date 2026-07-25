@@ -1,5 +1,13 @@
 # Testing and Validation
 
+The 2026-07-25 Linux status-head recheck used runtime input `0a893463dbd270318b391aec19c630ec0331defe`.
+The no-default suite passed `85 passed; 0 failed; 1 ignored`, and the demo-provider suite passed
+`170 passed; 0 failed; 7 ignored`. The private ENOSPC storage runner, OCR fixture, and Secret
+Service prompted-flow runner each passed their exact acceptance test(s). Formatting, locked checks,
+strict Clippy, demo-provider build, documentation-mode checks, localization synchronization, key
+coverage, and Flatpak metadata validation also passed. This is Linux prerelease evidence only;
+display-backed Secret Service UI remains CI-authoritative on hosts without `xvfb-run`.
+
 The XLSX worker export regression now includes a date-formatted serial and a formula with cached
 string output. Assertions confirm `numFmtId=14`, the date serial, formula text, cached value, and
 ordinary numeric values remain unchanged while selected shared text is translated. This is
@@ -559,7 +567,7 @@ Ready identity, pending-model confirmation that cannot claim Ready, worker-unava
 storage-unavailable fallback, runtime persistence degradation that retains the confirmed session,
 and diagnostics that omit content, endpoints, IDs, model IDs, and secret references.
 
-The current `demo-provider` run reports `166 passed; 7 ignored` (the ignored cases require an
+The current `demo-provider` run reports `170 passed; 7 ignored` (the ignored cases require an
 external OCR fixture, four client-certificate HTTPS fixtures, a third-party Ollama daemon, or a
 private storage-fault mount). The dedicated
 `tools/run-ocr-test.sh` and `tools/run-storage-fault-test.sh` runners each pass one exact test on a

@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-25 — Linux controlled runner recheck
+
+Assumption: this documentation-only checkpoint records deterministic Linux validation against the
+reviewed runtime input; it does not claim physical power-loss recovery, arbitrary third-party VFS
+behavior, or display-backed Secret Service UI on this host.
+
+- Runtime input `0a893463dbd270318b391aec19c630ec0331defe` passed the no-default suite with
+  `85 passed; 0 failed; 1 ignored` and the demo-provider suite with `170 passed; 0 failed;
+  7 ignored`.
+- `bash tools/run-storage-fault-test.sh`, `bash tools/run-ocr-test.sh`, and
+  `bash tools/run-secret-service-prompt-test.sh` passed. The supplemental Secret Service display
+  runner remains host-blocked by missing `xvfb-run`; its Native CI fixture remains authoritative.
+- Formatting, locked target checks, strict Clippy, demo-provider build, `DOCS_RS=1` all-features
+  check, localization synchronization/key coverage, and Flatpak metadata validation passed.
+
 ## 2026-07-25 — Linux pin sync to Core SIGKILL rollback evidence
 
 Assumption: the parent-controlled SIGKILL fixture strengthens Linux process-interruption evidence
