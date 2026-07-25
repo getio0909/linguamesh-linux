@@ -14,9 +14,10 @@ Linux prerelease input.
   no-default tests (`85 passed; 0 failed; 1 ignored`), demo-provider tests (`170 passed; 0 failed;
   7 ignored`), demo-provider build, l10n synchronization, Flatpak metadata validation, and
   `git diff --check`.
-- Hosted Push Native/Flatpak/Foundation runs `30156131717`/`30156131693`/`30156131722` and PR
-  Native/Flatpak/Foundation runs `30156133014`/`30156132982`/`30156133017` all passed for this
-  exact Linux head and Core pin. Physical/manual, prompted unlock, broader VFS/power-loss,
+- Hosted Push Flatpak/Native/Foundation runs `30156351956`/`30156351961`/`30156351971` and PR
+  Flatpak/Native/Foundation runs `30156353645`/`30156353673`/`30156353660` all passed for the
+  status-sync parent `50926c7bc390ab83a6cada174a341227d7c64af0` and Core pin above. This commit
+  changes status documentation only; physical/manual, prompted unlock, broader VFS/power-loss,
   cross-client, signing, rollback, promotion, and stable-release gates remain open.
 
 ## 2026-07-25 — Linux current-head environment-gated fixture recheck
