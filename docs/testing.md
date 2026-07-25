@@ -439,15 +439,16 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 The current synchronized checkout must be Core revision
-`1a13b2b7a97876ff55963a5d34b360f607d66a0f`, the reviewed Linux storage rollback, SIGKILL rollback, and XLSX
+`5e289dfecfe8fd586814e133ed904028d4bef0ce`, the reviewed Linux registered-VFS synchronization-failure
+rejection, storage rollback, SIGKILL rollback, and XLSX
 sheet/range-selection revision
 consumed by the Native workflow and Flatpak manifest. A clean documentation-only descendant is
 acceptable for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 1a13b2b7a97876ff55963a5d34b360f607d66a0f^{commit}
+git -C ../linguamesh-core cat-file -e 5e289dfecfe8fd586814e133ed904028d4bef0ce^{commit}
 git -C ../linguamesh-core diff --quiet \
-  1a13b2b7a97876ff55963a5d34b360f607d66a0f..HEAD -- \
+  5e289dfecfe8fd586814e133ed904028d4bef0ce..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -468,6 +469,9 @@ distinct test name to the validated `unix-excl` callbacks, runs schema migration
 profile persistence/reopen through that registration, and rechecks the symlink/no-follow boundary.
 This is deterministic registration/callback evidence only; arbitrary third-party VFS behavior and
 physical power-loss recovery remain unverified.
+The same pinned Core revision also injects an `xSync` failure through the registered VFS and
+requires a typed persistence error while preserving the committed baseline after reopen. This is
+bounded fault evidence, not arbitrary third-party VFS or physical power-loss qualification.
 
 The same Core revision also includes bounded SQLite WAL replay regressions: a committed provider
 profile remains recoverable when a reader holds a snapshot while the writer disconnects, and a
@@ -819,7 +823,7 @@ python3 tools/create-native-evidence.py \
   --cargo-lock Cargo.lock \
   --output-dir native-evidence \
   --linux-revision "$(git rev-parse HEAD)" \
-  --core-revision "1a13b2b7a97876ff55963a5d34b360f607d66a0f" \
+  --core-revision "5e289dfecfe8fd586814e133ed904028d4bef0ce" \
   --localization-revision "43f5a6f069f6d0e6d075517b0c017784fe505b0d"
 (cd native-evidence && sha256sum -c SHA256SUMS)
 ```
@@ -963,7 +967,7 @@ system-supported contrast, motion, and text-scaling behavior; manual visual revi
 for supported releases.
 
 The GitHub Actions native workflow pins Core revision
-`1a13b2b7a97876ff55963a5d34b360f607d66a0f` and localization revision
+`5e289dfecfe8fd586814e133ed904028d4bef0ce` and localization revision
 `43f5a6f069f6d0e6d075517b0c017784fe505b0d`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local

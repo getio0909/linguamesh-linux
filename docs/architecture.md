@@ -31,7 +31,8 @@ discovery never removes a manually configured model.
 With `demo-provider`, `src/worker.rs` creates bounded command and event channels on a dedicated
 Tokio runtime. It validates the Core contract before doing provider work, then creates Core's
 bounded typed host-secret channel and a `linguamesh_application::ProviderManager`. The reviewed Core
-functional revision is `1a13b2b7a97876ff55963a5d34b360f607d66a0f`; it adds Linux uncommitted transaction crash rollback, including
+functional revision is `5e289dfecfe8fd586814e133ed904028d4bef0ce`; it adds Linux registered-VFS
+synchronization-failure rejection evidence on top of uncommitted transaction crash rollback, including
 parent-controlled SIGKILL coverage, and the bounded XLSX
 sheet/range-selection contract while retaining the Linux-only non-locking `unix-none` VFS
 fail-closed regression and
@@ -87,6 +88,10 @@ The current Linux storage checkpoint also registers a distinct test VFS name ove
 symlink/no-follow rejection through that registration path. This validates host registration and
 callback wiring only; arbitrary third-party VFS implementations and physical power-loss behavior
 remain outside the evidence.
+The pinned Core also injects an `xSync` failure through that registered VFS and verifies a typed
+persistence error, baseline preservation, and absence of the transient row after reopen. This
+remains bounded registered-VFS evidence rather than arbitrary third-party or physical power-loss
+qualification.
 
 The pinned Core also protects common URLs, email addresses, Markdown code, and placeholders before
 prompt construction. The adapter restores those spans across split streamed deltas and rejects

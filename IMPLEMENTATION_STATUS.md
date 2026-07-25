@@ -1,5 +1,23 @@
 # Implementation Status
 
+## 2026-07-25 — Linux Core synchronization-failure pin update
+
+Assumption: the reviewed Core fixture is bounded Linux evidence for a registered VFS `xSync`
+failure; it does not qualify arbitrary third-party VFS behavior or physical power-loss recovery.
+
+- Updated Native CI, Flatpak metadata, and active Linux documentation to Core
+  `5e289dfecfe8fd586814e133ed904028d4bef0ce`.
+- The pinned Core test `registered_vfs_sync_failure_rejects_commit_without_false_success` returns
+  a typed persistence error, preserves the committed baseline, and keeps the transient row absent
+  after reopen.
+- Linux local validation passed `cargo fmt --all --check`, the no-default suite (`85 passed; 0
+  failed; 1 ignored`), the demo-provider suite (`170 passed; 0 failed; 7 ignored`), l10n/key/
+  placeholder/visible-string audits, Flatpak metadata validation, and `git diff --check`.
+- Core Hosted CI is running for this revision; Linux Native, Flatpak, and Foundation Push/PR checks
+  are required before this pin is treated as active. Release remains `unreleased`.
+- Arbitrary VFS, physical/manual, cross-client, signing, rollback, promotion, and stable-release
+  gates remain open.
+
 ## 2026-07-25 — Linux current-head regression recheck
 
 Assumption: this deterministic recheck confirms the latest Linux status head only; it does not

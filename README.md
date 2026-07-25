@@ -22,8 +22,9 @@ normalized failure category without exposing provider error text or credentials.
 
 The authoritative specification lives in the sibling `linguamesh-project` repository. Product
 work must remain compatible with LinguaMesh Core and the central release train. Native CI pins the
-reviewed Core revision `1a13b2b7a97876ff55963a5d34b360f607d66a0f`, which adds bounded Linux uncommitted-transaction crash
-rollback coverage including a parent-controlled SIGKILL fixture and bounded XLSX sheet/range
+reviewed Core revision `5e289dfecfe8fd586814e133ed904028d4bef0ce`, which adds bounded Linux
+registered-VFS synchronization-failure rejection evidence on top of uncommitted-transaction
+crash rollback coverage including a parent-controlled SIGKILL fixture and bounded XLSX sheet/range
 selection on top of the bundled `unix-none` fail-closed storage regression, existing
 `unix-excl`, and ABI 1
 engine-handle lifetime hardening while retaining typed provider rate-limit handling, persisted
