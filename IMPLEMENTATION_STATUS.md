@@ -11,6 +11,9 @@ symbols are available; Hosted Linux Native CI remains authoritative for the GTK/
   GTK 4, GDK 4, and Graphene symbols (for example `gdk_clipboard_read_text_async`,
   `gtk_accessible_get_type`, and `graphene_rect_get_x`). This is an environment boundary, not a
   test assertion failure; no local all-feature test pass is claimed.
+- Hosted Push Native/Flatpak/Foundation runs `30179732106`/`30179732099`/`30179732094` and PR
+  Native/Flatpak/Foundation runs `30179733759`/`30179733769`/`30179733761` all passed, including
+  the full GTK, portal, accessibility, document, performance, checksum, and SBOM jobs.
 - No runtime, ABI, dependency, source-pin, manifest, tag, or promotion change occurred. Release
   remains `unreleased`; Hosted UI evidence and physical/manual, arbitrary-VFS/power-loss,
   cross-client, rollback, promotion, authorization, and stable-release gates remain open.
