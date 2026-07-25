@@ -1,5 +1,27 @@
 # Implementation Status
 
+## 2026-07-25 — EPUB and PDF worker export checkpoint
+
+Assumption: this Linux-first document-export checkpoint strengthens deterministic prerelease
+evidence only; it does not replace visual PDF/EPUB review, physical desktop conditions, other
+clients, signing, rollback authorization, or stable-release approval.
+
+- Runtime/test head `8893d3cb35197b4ca72be79dc10a4254f689c893` adds worker-level end-to-end export
+  regressions for EPUB and PDF. EPUB export updates the target `dc:language`, preserves XHTML
+  styling and binary cover bytes, and returns the requested locale. PDF export with the fake
+  provider's non-ASCII output follows the existing safe HTML alternative path, preserving page
+  markers and translated text instead of emitting an invalid PDF encoding.
+- Local validation passed the focused EPUB/PDF tests (`2 passed`), demo-provider library suite
+  (`170 passed; 0 failed; 7 ignored`), no-default suite (`85 passed; 0 failed; 1 ignored`),
+  formatting, strict all-target/all-feature Clippy, and `git diff --check`.
+- Packaging head `bad44840eb6edba0e92ab1e50aaf83ff89d4f713` updates the Flatpak source pin to the
+  tested runtime head. The first push/PR Flatpak runs `30136954422`/`30136956474` correctly
+  rejected the stale `41a452b` pin; replacement push/PR Native, Flatpak, and Foundation runs
+  `30137086857`/`30137086859`/`30137086851` and `30137088147`/`30137088138`/`30137088128` passed.
+- Release remains `unreleased`; visual/manual review, physical power-loss, arbitrary VFS,
+  other-client parity, signing, rollback authorization, distributable promotion, and stable
+  release evidence remain open.
+
 ## 2026-07-25 — Current-head controlled storage, OCR, certificate, and Secret Service fixtures
 
 Assumption: these host-side fixtures strengthen Linux prerelease evidence only; they do not
