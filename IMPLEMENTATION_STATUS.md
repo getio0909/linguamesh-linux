@@ -13,8 +13,10 @@ failure; it does not qualify arbitrary third-party VFS behavior or physical powe
 - Linux local validation passed `cargo fmt --all --check`, the no-default suite (`85 passed; 0
   failed; 1 ignored`), the demo-provider suite (`170 passed; 0 failed; 7 ignored`), l10n/key/
   placeholder/visible-string audits, Flatpak metadata validation, and `git diff --check`.
-- Core Hosted CI is running for this revision; Linux Native, Flatpak, and Foundation Push/PR checks
-  are required before this pin is treated as active. Release remains `unreleased`.
+- Core CI, Fuzz/Sanitizers, and Native SDK `30165551575`/`30165551576`/`30165551581` all passed.
+- Linux Push Native/Flatpak/Foundation `30165690605`/`30165690604`/`30165690624` and PR
+  Native/Flatpak/Foundation `30165689093`/`30165689089`/`30165689114` all passed for this pin.
+  Release remains `unreleased`; the evidence is still bounded to the registered VFS fixture.
 - Arbitrary VFS, physical/manual, cross-client, signing, rollback, promotion, and stable-release
   gates remain open.
 
