@@ -17,6 +17,9 @@ signing, rollback authorization, or stable-release approval.
   Code-head stale-pin push/PR runs `30142494717`/`30142495888` failed at source-pin validation;
   replacement push Native/Flatpak/Foundation `30142563832`/`30142563835`/`30142563834` and PR
   `30142565174`/`30142565161`/`30142565170` all passed.
+- Documentation/status head `a466d43936ca92fa88f648bd8048910ce82f2d34` passed final hosted
+  push Native/Flatpak/Foundation `30142793997`/`30142793999`/`30142794006` and PR
+  `30142795175`/`30142795162`/`30142795170`.
 - Release remains `unreleased`; workbook sheet/range selection, full visual review, physical/VFS
   evidence, other-client parity, signing, rollback, distributable promotion, and stable-release
   evidence remain open.
