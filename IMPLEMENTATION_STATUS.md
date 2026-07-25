@@ -1,5 +1,24 @@
 # Implementation Status
 
+## 2026-07-25 — Current-head controlled storage, OCR, certificate, and Secret Service fixtures
+
+Assumption: these host-side fixtures strengthen Linux prerelease evidence only; they do not
+replace physical power-loss, arbitrary third-party VFS, human prompt/accessibility review, or
+stable-release authorization.
+
+- Linux status head `8bf88cd5e25bf512e1019f745c1583b0cebdeb82` passed the controlled runners:
+  `bash tools/run-storage-fault-test.sh` (`1 passed; 0 failed; 0 ignored`),
+  `bash tools/run-ocr-test.sh` (`1 passed; 0 failed; 0 ignored`),
+  `bash tools/run-client-certificate-interop-test.sh` (four of four cases passed), and
+  `bash tools/run-secret-service-prompt-test.sh` (four of four store/delete prompt cases passed).
+- The fixtures used no provider credentials and persisted no secret values. They cover runtime
+  storage-write degradation, bounded OCR extraction, trusted/untrusted certificate paths, and
+  Secret Service prompt acceptance/dismissal. Display-backed, physical, and arbitrary-filesystem
+  conditions remain separate gates.
+- Release remains `unreleased`; hosted Native/Flatpak/Foundation checks, physical power-loss,
+  arbitrary third-party VFS, human/physical review, other clients, signing, rollback
+  authorization, and stable-release evidence remain open.
+
 ## 2026-07-24 — Linux current-head reproducibility recheck
 
 Assumption: this host-side recheck strengthens prerelease reproducibility evidence only; it does
