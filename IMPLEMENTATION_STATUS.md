@@ -1,5 +1,21 @@
 # Implementation Status
 
+## 2026-07-25 — Linux local validation environment audit
+
+Assumption: local command output is evidence only for the exact host boundary it exercises; hosted
+CI remains authoritative for the complete GTK/libadwaita build when this workstation lacks matching
+runtime symbols.
+
+- `cargo test --all-targets --locked --offline` passed `85 passed; 0 failed; 1 ignored` for the
+  no-default Linux library/test surface, including document, localization, routing, persistence,
+  privacy, and cancellation regressions.
+- `cargo test --all-targets --all-features --locked --offline` was attempted and stopped during
+  local linking because the host GTK/GDK/Graphene libraries do not export symbols required by the
+  pinned Rust bindings (for example `gdk_display_get_type` and `gtk_text_view_new`). This is an
+  environment limitation, not a claimed source or test failure; the exact head's hosted Native,
+  Flatpak, and Foundation Push/PR checks all passed.
+- No credentials, user settings, or repository files were changed by the failed link attempt.
+
 ## 2026-07-25 — Linux accessibility and desktop fixture checkpoint
 
 Assumption: the corrected fixture and all six hosted checks are reproducible Linux prerelease
