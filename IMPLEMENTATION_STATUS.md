@@ -1,5 +1,21 @@
 # Implementation Status
 
+## 2026-07-25 — Linux accessibility and desktop fixture checkpoint
+
+Assumption: the corrected fixture and all six hosted checks are reproducible Linux prerelease
+evidence; they do not replace physical desktop, human, cross-client, signing, rollback, or stable
+release review.
+
+- Linux head `4ba49b164fbbd13c7171923096d7a70937e4e429` pins the Flatpak source to the tested
+  accessibility fixture ancestor `feb10eff2c293218c8afca9c9675fa7860cf6e1c`.
+- Hosted Push Native/Flatpak/Foundation `30153249073`/`30153249075`/`30153249076` and PR
+  Native/Flatpak/Foundation `30153248061`/`30153248060`/`30153248075` all passed.
+- The corrected GTK accessibility-preferences runner executed one real test using isolated
+  memory-backed GSettings and restored the high-contrast preference. Local keyboard focus,
+  drag/drop, Wayland, Orca speech generation, notifications/dunst, FileChooser, GTK FileDialog,
+  and formatting/Clippy/test-build checks passed. Host AT-SPI role naming and document-portal FUSE
+  remain environment boundaries; release status remains `unreleased`.
+
 ## 2026-07-25 — Linux desktop/accessibility fixture revalidation
 
 Assumption: isolated user-local runtime extraction is sufficient for host-side Linux evidence when
