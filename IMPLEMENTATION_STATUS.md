@@ -1,5 +1,21 @@
 # Implementation Status
 
+## 2026-07-25 — Linux runtime fault, OCR, and prompted-flow recheck
+
+Assumption: these deterministic Linux fixtures strengthen failure and integration evidence but do
+not replace physical/manual review, visual prompt approval, arbitrary VFS, or power-loss testing.
+
+- `bash tools/run-storage-fault-test.sh` passed the exact
+  `runtime_storage_write_failures_degrade_to_session_mode_without_false_commits` test
+  (`1 passed; 0 failed; 176 filtered out`), confirming write-fault degradation without a false
+  commit.
+- `bash tools/run-ocr-test.sh` passed the external OCR fixture (`1 passed; 0 failed; 85 filtered
+  out`).
+- `bash tools/run-secret-service-prompt-test.sh` passed all four store/delete approval and dismissal
+  tests (`1 passed; 0 failed; 187 filtered out` each), including fail-closed rejection paths.
+- These checks were run against Linux status head `f36b4ab1a54f0e30f81eba8b5cb321aa4a63a781` with
+  Core `5e289dfecfe8fd586814e133ed904028d4bef0ce`; release remains `unreleased`.
+
 ## 2026-07-25 — Linux final artifact provenance verification
 
 Assumption: the downloaded Push artifacts are unsigned prerelease evidence; their checksums,
