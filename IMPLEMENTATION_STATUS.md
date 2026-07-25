@@ -1,5 +1,21 @@
 # Implementation Status
 
+## 2026-07-25 — Linux artifact-upload runtime update
+
+Assumption: updating the explicit Native and Flatpak artifact upload actions changes CI runtime
+compatibility only; it does not change the Linux application, release status, or artifact trust
+boundary.
+
+- Commit `5672e5eed2583375fd39f72c64332c52fd91d691` pins both explicit
+  `actions/upload-artifact` steps to v7.0.1, the Node 24-compatible release.
+- Push Native/Flatpak/Foundation runs `30176477356`/`30176477384`/`30176477364` and PR
+  Native/Flatpak/Foundation runs `30176478707`/`30176478753`/`30176478713` all passed.
+- Native and Flatpak logs contain no Node 20 deprecation annotation. The only runtime warnings
+  were non-failing Node `punycode` deprecation messages from unrelated action dependencies.
+- No product source, dependency, release artifact, tag, or GitHub Release changed; release remains
+  `unreleased`, with physical/manual, arbitrary-VFS/power-loss, cross-client, rollback, promotion,
+  authorization, and stable-release gates open.
+
 ## 2026-07-25 — Linux keyless prerelease signing rehearsal
 
 Assumption: this workflow proves only the identity and integrity of a manually selected Linux
