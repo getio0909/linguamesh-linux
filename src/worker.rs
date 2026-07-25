@@ -6447,7 +6447,7 @@ mod tests {
             .expect("worksheet");
         writer
             .write_all(
-                br#"<worksheet xmlns="urn:x"><sheetData><row><c t="s"><v>0</v></c><c><f>SUM(A1:A1)</f><v>3</v></c><c><v>42</v></c></row></sheetData></worksheet>"#,
+                br#"<worksheet xmlns="urn:x"><sheetData><row><c t="s"><v>0</v></c><c><f>SUM(A1:A1)</f><v>3</v></c><c t="str"><f>CONCAT(A1,"!")</f><v>Cached formula text</v></c><c s="1"><v>45292</v></c><c><v>42</v></c></row></sheetData></worksheet>"#,
             )
             .expect("worksheet bytes");
         writer
@@ -6456,7 +6456,7 @@ mod tests {
         writer.write_all(&[8, 9, 10]).expect("image bytes");
         writer.start_file("xl/styles.xml", options).expect("styles");
         writer
-            .write_all(br#"<styleSheet xmlns="urn:x"><numFmts count="1"/></styleSheet>"#)
+            .write_all(br#"<styleSheet xmlns="urn:x"><numFmts count="1"><numFmt numFmtId="14" formatCode="mm-dd-yy"/></numFmts><cellXfs count="2"><xf numFmtId="0"/><xf numFmtId="14"/></cellXfs></styleSheet>"#)
             .expect("styles bytes");
         writer
             .start_file("xl/charts/chart1.xml", options)
@@ -8905,6 +8905,8 @@ trailer
             .read_to_string(&mut worksheet)
             .expect("worksheet xml");
         assert!(worksheet.contains("<f>SUM(A1:A1)</f>"));
+        assert!(worksheet.contains("<f>CONCAT(A1,\"!\")</f><v>Cached formula text</v>"));
+        assert!(worksheet.contains("<c s=\"1\"><v>45292</v></c>"));
         assert!(worksheet.contains("<v>42</v>"));
         let mut image = Vec::new();
         archive
@@ -8919,7 +8921,8 @@ trailer
             .expect("styles entry")
             .read_to_string(&mut styles)
             .expect("styles xml");
-        assert!(styles.contains("numFmts"));
+        assert!(styles.contains("numFmtId=\"14\""));
+        assert!(styles.contains("formatCode=\"mm-dd-yy\""));
         let mut chart = String::new();
         archive
             .by_name("xl/charts/chart1.xml")
