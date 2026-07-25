@@ -4030,11 +4030,18 @@ fn show_glossary_libraries_dialog(
             let row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
             row.set_margin_top(8);
             row.set_margin_bottom(8);
-            let details = gtk::Label::new(Some(&format!(
-                "{} — {} entries",
-                record.id,
-                record.glossary.entries().len()
-            )));
+            let entry_count = u64::try_from(record.glossary.entries().len()).unwrap_or(u64::MAX);
+            let entry_count_text = entry_count.to_string();
+            let details_text = localization::text_plural(
+                locale,
+                "status.glossary_library_row",
+                "{id} — {count} entry",
+                "{id} — {count} entries",
+                entry_count,
+            )
+            .replace("{id}", &record.id)
+            .replace("{count}", &entry_count_text);
+            let details = gtk::Label::new(Some(&details_text));
             details.set_xalign(0.0);
             details.set_hexpand(true);
             details.set_selectable(true);

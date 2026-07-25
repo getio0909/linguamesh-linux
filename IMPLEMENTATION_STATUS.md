@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-25 — Linux dynamic visible-string localization
+
+Assumption: the glossary-library row is Linux-only UI metadata; adding its canonical plural
+message improves gettext coverage without changing the persisted glossary contract or runtime
+provider behavior.
+
+- Replaced the hard-coded `entries` suffix in the glossary-library selector with the canonical
+  `status.glossary_library_row` plural message, preserving the non-secret library ID and count.
+- Canonical l10n revision `43f5a6f069f6d0e6d075517b0c017784fe505b0d` now contains 520 messages and
+  generated PO/MO resources for all official and pseudo locales. `make check` passed in the l10n
+  repository, including schema validation, 26 tests, deterministic generation, and Foundation.
+- The Linux l10n sync pin and active documentation now consume that immutable revision. This is a
+  Linux localization checkpoint only; translated-copy review, physical/manual review, cross-client
+  parity, signing, rollback, promotion, and stable-release gates remain open.
+
 ## 2026-07-25 — Linux Scenario 16 incompatibility diagnostics
 
 Assumption: this checkpoint strengthens the Linux client boundary only; it does not claim

@@ -86,7 +86,7 @@ future release gate below.
 The current Linux gate consumes Core `1a13b2b7a97876ff55963a5d34b360f607d66a0f`, which includes
 the Linux-only non-locking `unix-none` VFS fail-closed regression and ABI 1 opaque engine-handle
 lifetime hardening, and l10n
-`2fc24ebb942d5497910974f3d2fc49c5f72f9ad0` (519 catalog messages). The current reviewed Flatpak
+`43f5a6f069f6d0e6d075517b0c017784fe505b0d` (520 catalog messages). The current reviewed Flatpak
 source pin is Linux `e62726960f9961d78abaf4dcd65fadf526e1c027`, the exact reviewed source head for
 the XLSX worksheet/range picker and the preceding runtime, accessibility, and storage fixtures.
 Local exports now synchronize the temporary file and parent directory before the atomic

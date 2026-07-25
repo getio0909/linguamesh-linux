@@ -3020,6 +3020,13 @@ msgctxt "status.glossary_libraries_empty"
 msgid "No local glossary libraries are stored."
 msgstr "No local glossary libraries are stored."
 
+#. Summary row for a reusable glossary library.
+#, fuzzy, python-brace-format
+msgctxt "status.glossary_library_row"
+msgid "{id} — {count} entry"
+msgid_plural "{id} — {count} entries"
+msgstr[0] "{id} — {count} entries"
+
 #. Translation preset that prefers United States English regional conventions and Latin script.
 #, fuzzy
 msgctxt "translation.preset.english_us"

@@ -438,6 +438,26 @@ mod tests {
             ),
             "تم تحديد ملفين ({count})"
         );
+        assert_eq!(
+            text_plural(
+                UiLocale::English,
+                "status.glossary_library_row",
+                "{id} — {count} entry",
+                "{id} — {count} entries",
+                1,
+            ),
+            "{id} — {count} entry"
+        );
+        assert_eq!(
+            text_plural(
+                UiLocale::English,
+                "status.glossary_library_row",
+                "{id} — {count} entry",
+                "{id} — {count} entries",
+                2,
+            ),
+            "{id} — {count} entries"
+        );
     }
 
     #[test]

@@ -273,7 +273,7 @@ catalog `0.1.0`, and the reviewed feature subset. The native workflow checks out
 functional revision above; an arbitrary default branch is not compatibility evidence.
 
 Canonical PO/MO catalogs are synchronized from immutable l10n revision
-`2fc24ebb942d5497910974f3d2fc49c5f72f9ad0` and validated with `msgfmt`; the 519-message bundle
+`43f5a6f069f6d0e6d075517b0c017784fe505b0d` and validated with `msgfmt`; the 520-message bundle
 adds Linux routing-profile persistence/editor, profile-ID validation and duplicate protection, ordinary-text selection labels, routing preference/privacy/document constraints, provider/model allowlists and denylists, quality/request-size limits, translation quality-mode and translation-preset labels, and source/output character plus approximate-token metrics. The locale selector
 exposes all twelve official BCP 47 packs plus the generated `en-XA` accented and `ar-XB` RTL
  pseudo-locales. It switches runtime action, workspace-widget,

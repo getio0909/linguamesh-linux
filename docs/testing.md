@@ -301,7 +301,7 @@ counted as evidence. GPU execution, live quota behavior, and enterprise account 
 unverified.
 
 The Linux checkout consumes the canonical gettext bundle from immutable l10n revision
-`2fc24ebb942d5497910974f3d2fc49c5f72f9ad0`. The bundle contains 519 messages, and
+`43f5a6f069f6d0e6d075517b0c017784fe505b0d`. The bundle contains 520 messages, and
 `bash tools/sync-l10n.sh --check` verifies every PO/MO catalog and the generated manifest before
 the native build. History/memory row metadata, document-job IDs, active-provider mode summaries,
 unavailable provider/model labels, and routing-profile actions/mode labels are asserted through
@@ -820,7 +820,7 @@ python3 tools/create-native-evidence.py \
   --output-dir native-evidence \
   --linux-revision "$(git rev-parse HEAD)" \
   --core-revision "1a13b2b7a97876ff55963a5d34b360f607d66a0f" \
-  --localization-revision "2fc24ebb942d5497910974f3d2fc49c5f72f9ad0"
+  --localization-revision "43f5a6f069f6d0e6d075517b0c017784fe505b0d"
 (cd native-evidence && sha256sum -c SHA256SUMS)
 ```
 
@@ -964,7 +964,7 @@ for supported releases.
 
 The GitHub Actions native workflow pins Core revision
 `1a13b2b7a97876ff55963a5d34b360f607d66a0f` and localization revision
-`2fc24ebb942d5497910974f3d2fc49c5f72f9ad0`, installs the headers plus D-Bus, Xvfb, test-only
+`43f5a6f069f6d0e6d075517b0c017784fe505b0d`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
 namespace test through the unprivileged path.
