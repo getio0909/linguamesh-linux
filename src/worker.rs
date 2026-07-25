@@ -7150,6 +7150,31 @@ trailer
         select_event(worker, profile_id, model_id).expect("model selection");
     }
 
+    fn export_document_job(worker: &CoreWorker, job_id: &str) -> (String, String, Vec<u8>) {
+        worker
+            .try_send(WorkerCommand::ExportDocumentJob {
+                job_id: job_id.to_owned(),
+            })
+            .expect("export document job");
+        loop {
+            match worker
+                .events
+                .recv_timeout(Duration::from_secs(5))
+                .expect("document export event")
+            {
+                WorkerEvent::DocumentJobExported {
+                    source_name,
+                    target_locale,
+                    contents,
+                } => return (source_name, target_locale, contents),
+                WorkerEvent::DocumentJobActionRejected(error) => {
+                    panic!("document export rejected: {error}")
+                }
+                _ => {}
+            }
+        }
+    }
+
     fn set_history_policy(worker: &CoreWorker, enabled: bool) {
         worker
             .try_send(WorkerCommand::SetTranslationHistoryEnabled { enabled })
@@ -8680,7 +8705,7 @@ trailer
                 privacy_mode: TranslationPrivacyMode::Standard,
             })
             .expect("translate document job");
-        let completed = loop {
+        let _completed = loop {
             match worker
                 .events
                 .recv_timeout(Duration::from_secs(10))
@@ -8697,7 +8722,9 @@ trailer
                 _ => {}
             }
         };
-        let rebuilt = completed.job.reconstruct_bytes().expect("reconstruct docx");
+        let (source_name, target_locale, rebuilt) = export_document_job(&worker, "document-docx-1");
+        assert_eq!(source_name, "sample.docx");
+        assert_eq!(target_locale, "zh-CN");
         let mut archive = ZipArchive::new(Cursor::new(rebuilt)).expect("rebuilt docx archive");
         let mut document = String::new();
         archive
@@ -8754,7 +8781,7 @@ trailer
                 privacy_mode: TranslationPrivacyMode::Standard,
             })
             .expect("translate document job");
-        let completed = loop {
+        let _completed = loop {
             match worker
                 .events
                 .recv_timeout(Duration::from_secs(10))
@@ -8771,7 +8798,9 @@ trailer
                 _ => {}
             }
         };
-        let rebuilt = completed.job.reconstruct_bytes().expect("reconstruct xlsx");
+        let (source_name, target_locale, rebuilt) = export_document_job(&worker, "document-xlsx-1");
+        assert_eq!(source_name, "sample.xlsx");
+        assert_eq!(target_locale, "zh-CN");
         let mut archive = ZipArchive::new(Cursor::new(rebuilt)).expect("rebuilt xlsx archive");
         let mut shared_strings = String::new();
         archive
@@ -8836,7 +8865,7 @@ trailer
                 privacy_mode: TranslationPrivacyMode::Standard,
             })
             .expect("translate document job");
-        let completed = loop {
+        let _completed = loop {
             match worker
                 .events
                 .recv_timeout(Duration::from_secs(10))
@@ -8853,7 +8882,9 @@ trailer
                 _ => {}
             }
         };
-        let rebuilt = completed.job.reconstruct_bytes().expect("reconstruct pptx");
+        let (source_name, target_locale, rebuilt) = export_document_job(&worker, "document-pptx-1");
+        assert_eq!(source_name, "sample.pptx");
+        assert_eq!(target_locale, "zh-CN");
         let mut archive = ZipArchive::new(Cursor::new(rebuilt)).expect("rebuilt pptx archive");
         let mut slide = String::new();
         archive
