@@ -12,6 +12,10 @@ cross-client conformance or stable-release readiness.
   no-default suite passed `85 passed; 0 failed; 1 ignored`.
 - The focused GUI binary test was attempted but remains host-blocked at link time by missing
   GTK/GDK/Graphene runtime symbols; the corresponding Native CI fixture remains authoritative.
+- Final status/pin head `05cf00c08c5b69d95e70501f69688a579c709b3a` updates the Flatpak source pin and
+  release guide. Push Native/Flatpak/Foundation `30160879196`/`30160879216`/`30160879198` and PR
+  Native/Flatpak/Foundation `30160880269`/`30160880264`/`30160880256` all passed against this
+  exact head.
 - Cross-client parity, broader VFS/power-loss, physical/manual review, signing, rollback,
   promotion, and stable-release gates remain open; release stays `unreleased`.
 

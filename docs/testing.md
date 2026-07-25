@@ -8,6 +8,9 @@ provider-catalog version, and required features. Every mismatch must return the 
 `ProtocolIncompatible` error and the user-facing English prefix `The shared Core contract is
 incompatible:`. The test proves Linux fails closed with an actionable diagnostic rather than
 continuing against an unreviewed Core; cross-client conformance remains a separate release gate.
+The final Linux head `05cf00c08c5b69d95e70501f69688a579c709b3a` passed Push Native/Flatpak/Foundation
+`30160879196`/`30160879216`/`30160879198` and PR Native/Flatpak/Foundation
+`30160880269`/`30160880264`/`30160880256`.
 
 The 2026-07-25 Linux status-head recheck used runtime input `0a893463dbd270318b391aec19c630ec0331defe`.
 The no-default suite passed `85 passed; 0 failed; 1 ignored`, and the demo-provider suite passed
