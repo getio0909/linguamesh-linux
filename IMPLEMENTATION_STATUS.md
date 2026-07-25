@@ -14,8 +14,9 @@ historical evidence may retain the revision used at that time.
   GUI all-target check, strict Clippy, no-default tests (`85 passed; 1 ignored`), and
   demo-provider tests (`170 passed; 7 ignored`).
 - The central workspace guard now checks the active README Core reference, Native l10n revision,
-  and Flatpak source pin in addition to the existing Core pin/documentation checks. Hosted gates
-  are required before this documentation checkpoint is considered published evidence.
+  and Flatpak source pin in addition to the existing Core pin/documentation checks. Push Native,
+  Flatpak, and Foundation runs `30149731069`/`30149731072`/`30149731104` and PR runs
+  `30149732197`/`30149732191`/`30149732192` all completed successfully.
 - Runtime behavior and release status are unchanged; physical/manual review, broader VFS and
   power-loss behavior, cross-client parity, signing, rollback, distributable promotion, and stable
   release remain open.
