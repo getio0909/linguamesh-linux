@@ -1,5 +1,23 @@
 # Implementation Status
 
+## 2026-07-25 — Linux pin sync to Core crash-rollback evidence
+
+Assumption: the Core change is test/documentation-only for the Linux runtime, but the exact pin
+must still be validated by both Native and Flatpak workflows before it is treated as the active
+Linux prerelease input.
+
+- Synchronized Native CI, Flatpak, README, contributor, architecture, testing, and releasing
+  references to Core `545d5a0c791d280f2b4fe231b0922673687b7237`. This revision adds the Linux
+  uncommitted-transaction process-termination rollback fixture while preserving the existing
+  runtime contract.
+- Local validation passed `cargo +1.93.0 fmt --all -- --check`, demo-provider check/Clippy,
+  no-default tests (`85 passed; 0 failed; 1 ignored`), demo-provider tests (`170 passed; 0 failed;
+  7 ignored`), demo-provider build, l10n synchronization, Flatpak metadata validation, and
+  `git diff --check`.
+- Hosted Native, Flatpak, and Foundation Push/PR checks are required before this pin is treated as
+  reproducible. Physical/manual, prompted unlock, broader VFS/power-loss, cross-client, signing,
+  rollback, promotion, and stable-release gates remain open.
+
 ## 2026-07-25 — Linux current-head environment-gated fixture recheck
 
 Assumption: these isolated fixtures are reproducible Linux prerelease evidence and do not replace

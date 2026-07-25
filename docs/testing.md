@@ -419,14 +419,15 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 The current synchronized checkout must be Core revision
-`e0b682fa183cfdebfabc0ef04d531c58031d8e85`, the reviewed XLSX sheet/range-selection revision
+`545d5a0c791d280f2b4fe231b0922673687b7237`, the reviewed Linux storage rollback and XLSX
+sheet/range-selection revision
 consumed by the Native workflow and Flatpak manifest. A clean documentation-only descendant is
 acceptable for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e e0b682fa183cfdebfabc0ef04d531c58031d8e85^{commit}
+git -C ../linguamesh-core cat-file -e 545d5a0c791d280f2b4fe231b0922673687b7237^{commit}
 git -C ../linguamesh-core diff --quiet \
-  e0b682fa183cfdebfabc0ef04d531c58031d8e85..HEAD -- \
+  545d5a0c791d280f2b4fe231b0922673687b7237..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -798,7 +799,7 @@ python3 tools/create-native-evidence.py \
   --cargo-lock Cargo.lock \
   --output-dir native-evidence \
   --linux-revision "$(git rev-parse HEAD)" \
-  --core-revision "e0b682fa183cfdebfabc0ef04d531c58031d8e85" \
+  --core-revision "545d5a0c791d280f2b4fe231b0922673687b7237" \
   --localization-revision "2fc24ebb942d5497910974f3d2fc49c5f72f9ad0"
 (cd native-evidence && sha256sum -c SHA256SUMS)
 ```
@@ -942,7 +943,7 @@ system-supported contrast, motion, and text-scaling behavior; manual visual revi
 for supported releases.
 
 The GitHub Actions native workflow pins Core revision
-`e0b682fa183cfdebfabc0ef04d531c58031d8e85` and localization revision
+`545d5a0c791d280f2b4fe231b0922673687b7237` and localization revision
 `2fc24ebb942d5497910974f3d2fc49c5f72f9ad0`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
