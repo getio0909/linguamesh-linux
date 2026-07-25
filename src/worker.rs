@@ -6391,7 +6391,7 @@ mod tests {
             .expect("document");
         writer
             .write_all(
-                br#"<w:document xmlns:w="urn:w" xmlns:r="urn:r"><w:body><w:p><w:r><w:t>Hello</w:t></w:r></w:p><w:p><w:hyperlink r:id="rIdHyperlink"><w:r><w:t>Link text</w:t></w:r></w:hyperlink></w:p><w:tbl><w:tr><w:tc><w:p><w:r><w:t>Table cell</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:body></w:document>"#,
+                br#"<w:document xmlns:w="urn:w" xmlns:r="urn:r"><w:body><w:p><w:r><w:t>Hello</w:t></w:r></w:p><w:p><w:hyperlink r:id="rIdHyperlink"><w:r><w:t>Link text</w:t></w:r></w:hyperlink></w:p><w:tbl><w:tblGrid><w:gridCol w:w="2400"/><w:gridCol w:w="2400"/></w:tblGrid><w:tr><w:tc w:gridSpan="2"><w:p><w:r><w:t>Table cell</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:p><w:r><w:t>First cell</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Second cell</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:vMerge w:val="restart"/></w:tcPr><w:p><w:r><w:t>Vertical start</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Vertical peer</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:vMerge/></w:tcPr><w:p/></w:tc><w:tc><w:p><w:r><w:t>Vertical continuation</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:body></w:document>"#,
             )
             .expect("document bytes");
         writer
@@ -6507,7 +6507,7 @@ mod tests {
             .expect("slide");
         writer
             .write_all(
-                br#"<p:sld xmlns:p="urn:ppt" xmlns:a="urn:dml" xmlns:r="urn:r"><p:cSld><p:spTree><a:p><a:r><a:t>Slide title</a:t></a:r><a:hlinkClick r:id="rIdHyperlink"/></a:p><a:tbl><a:tr><a:tc><a:txBody><a:p><a:r><a:t>Table cell</a:t></a:r></a:p></a:txBody></a:tc></a:tr></a:tbl></p:spTree></p:cSld><p:timing><p:tnLst><p:par/></p:tnLst></p:timing></p:sld>"#,
+                br#"<p:sld xmlns:p="urn:ppt" xmlns:a="urn:dml" xmlns:r="urn:r"><p:cSld><p:spTree><a:p><a:r><a:t>Slide title</a:t></a:r><a:hlinkClick r:id="rIdHyperlink"/></a:p><a:tbl><a:tblGrid><a:gridCol w="2400"/><a:gridCol w="2400"/></a:tblGrid><a:tr><a:tc gridSpan="2"><a:txBody><a:p><a:r><a:t>Table cell</a:t></a:r></a:p></a:txBody></a:tc></a:tr><a:tr><a:tc rowSpan="2"><a:txBody><a:p><a:r><a:t>First cell</a:t></a:r></a:p></a:txBody></a:tc><a:tc><a:txBody><a:p><a:r><a:t>Second cell</a:t></a:r></a:p></a:txBody></a:tc></a:tr><a:tr><a:tc vMerge="1"><a:txBody><a:p><a:r><a:t>Vertical continuation</a:t></a:r></a:p></a:txBody></a:tc></a:tr></a:tbl></p:spTree></p:cSld><p:timing><p:tnLst><p:par/></p:tnLst></p:timing></p:sld>"#,
             )
             .expect("slide bytes");
         writer
@@ -8795,6 +8795,10 @@ trailer
         assert!(document.contains("你好，LinguaMesh！"));
         assert!(document.contains("r:id=\"rIdHyperlink\""));
         assert!(document.contains("<w:tbl>"));
+        assert!(document.contains("w:gridSpan=\"2\""));
+        assert!(document.contains("<w:vMerge w:val=\"restart\"/>"));
+        assert!(document.contains("<w:vMerge/>"));
+        assert!(document.contains("<w:t>你好，LinguaMesh！</w:t></w:r></w:p></w:tc><w:tc>"));
         assert!(document.contains("<w:t>你好，LinguaMesh！</w:t></w:r></w:p></w:tc>"));
         let mut document_relationships = String::new();
         archive
@@ -9002,6 +9006,12 @@ trailer
         assert!(slide.contains("你好，LinguaMesh！"));
         assert!(slide.contains("r:id=\"rIdHyperlink\""));
         assert!(slide.contains("<a:tbl>"));
+        assert!(slide.contains("gridSpan=\"2\""));
+        assert!(slide.contains("rowSpan=\"2\""));
+        assert!(slide.contains("vMerge=\"1\""));
+        assert!(
+            slide.contains("<a:t>你好，LinguaMesh！</a:t></a:r></a:p></a:txBody></a:tc><a:tc>")
+        );
         assert!(slide.contains("<a:t>你好，LinguaMesh！</a:t></a:r></a:p></a:txBody>"));
         assert!(slide.contains("<p:timing>"));
         let mut slide_relationships = String::new();
