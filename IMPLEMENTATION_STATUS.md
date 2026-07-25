@@ -1,5 +1,23 @@
 # Implementation Status
 
+## 2026-07-25 — Linux Core registered-VFS write-failure pin synchronization
+
+Assumption: Core `18d45140e5466251e28c8a50feeab2d5f34aa3b6` is the reviewed Linux-first revision
+for the bounded registered-VFS `xWrite` and `xSync` rejection fixtures; this does not qualify
+arbitrary third-party VFS behavior or physical power-loss recovery.
+
+- Updated the Native workflow, Flatpak source manifest, and active Linux documentation to Core
+  `18d45140e5466251e28c8a50feeab2d5f34aa3b6`, which records both fail-closed callback fixtures.
+- Core CI, Fuzz/Sanitizers, and Native SDK `30167925375`/`30167925383`/`30167925376` passed on
+  the pinned revision.
+- Local Linux validation passed formatting, strict Clippy, no-default tests (`85 passed; 0 failed;
+  1 ignored`), demo-provider tests (`170 passed; 0 failed; 7 ignored`), demo-provider build,
+  localization synchronization/key/placeholder/visible audits, and Flatpak metadata validation.
+- The host `cargo build --all-features --locked --offline` remains unverified because the local GTK
+  libraries expose missing `gtk_*`/`gdk_*` linker symbols; the hosted Native/Flatpak GUI jobs remain
+  authoritative. Release remains `unreleased`; physical/manual, arbitrary-VFS/power-loss,
+  cross-client, signing, rollback, promotion, and stable-release gates remain open.
+
 ## 2026-07-25 — Linux runtime fault, OCR, and prompted-flow recheck
 
 Assumption: these deterministic Linux fixtures strengthen failure and integration evidence but do
