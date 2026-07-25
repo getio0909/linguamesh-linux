@@ -1,5 +1,28 @@
 # Implementation Status
 
+## 2026-07-25 — OOXML package-resource worker export checkpoint
+
+Assumption: these package-resource regressions strengthen Linux prerelease evidence only; they do
+not replace visual document review, physical desktop conditions, other clients, signing, rollback
+authorization, or stable-release approval.
+
+- Runtime/test head `5b299571e8c6a02ecb4da4d8f96e763b4d42631f` extends the persisted
+  `ExportDocumentJob` regressions: DOCX now translates and preserves header/footer XML, PPTX
+  preserves theme and slide-layout parts, and XLSX preserves style and chart parts alongside the
+  existing translated text, formulas, numbers, notes, and binary resources.
+- Local validation passed the focused document-job set (`12 passed; 0 failed`), demo-provider
+  library suite (`170 passed; 0 failed; 7 ignored`), no-default suite (`85 passed; 0 failed;
+  1 ignored`), formatting, strict all-target/all-feature Clippy, and `git diff --check`.
+- Packaging head `36c255e3218946ce744bc26eb5da7b1bd8faa4a8` pins Flatpak to the tested runtime
+  head. Its push Native/Flatpak/Foundation gates `30138866850`/`30138866829`/`30138866840` and
+  PR Native/Flatpak/Foundation gates `30138868304`/`30138868303`/`30138868319` all passed.
+  The first 5b29957 Flatpak push/PR runs `30138765759`/`30138766925` rejected the stale `e6963e7`
+  pin; the replacement packaging commit is the reason for the final 36c255e gates. The first
+  Native PR attempt also hit a transient Secret Service prompted-flow race and passed on rerun.
+- Release remains `unreleased`; visual/manual review, physical power-loss, arbitrary VFS,
+  other-client parity, signing, rollback authorization, distributable promotion, and stable
+  release evidence remain open.
+
 ## 2026-07-25 — OOXML worker export command checkpoint
 
 Assumption: exercising the persisted `ExportDocumentJob` command for each supported OOXML
