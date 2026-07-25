@@ -18,6 +18,9 @@ signing, rollback authorization, or stable-release approval.
   the stale `463d6ce` pin and are retained as expected correction evidence; the replacement
   push Native/Flatpak/Foundation `30140655812`/`30140655800`/`30140655771` and PR
   Native/Flatpak/Foundation `30140656937`/`30140656933`/`30140656934` all passed.
+- Documentation/status head `940a9d2b3173be1d8199d666267d4a46c58d6919` passed final hosted
+  status-head push Native/Flatpak/Foundation `30140890288`/`30140890321`/`30140890284` and PR
+  `30140891174`/`30140891180`/`30140891173`.
 - Visual table layout, merged-cell behavior, and screen-reader/table-navigation review remain
   manual or unverified gates, along with physical desktop, other-client parity, signing,
   rollback authorization, distributable promotion, and stable-release evidence.
