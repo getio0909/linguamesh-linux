@@ -1,5 +1,21 @@
 # Implementation Status
 
+## 2026-07-26 — Linux storage, OCR, and prompted Secret Service recheck
+
+Assumption: these focused runners strengthen deterministic Linux fixture evidence only; they do
+not claim arbitrary third-party VFS behavior, physical power-loss recovery, or manual desktop
+approval.
+
+- `bash tools/run-storage-fault-test.sh` passed
+  `runtime_storage_write_failures_degrade_to_session_mode_without_false_commits` (`1 passed; 0
+  failed; 0 ignored`) in a private mount namespace.
+- `bash tools/run-ocr-test.sh` passed the generated image-only PDF fixture (`1 passed; 0 failed;
+  0 ignored`), and `bash tools/run-secret-service-prompt-test.sh` passed all four isolated
+  store/delete acceptance and dismissal cases (`1 passed; 0 failed; 187 filtered out` each).
+- No runtime, ABI, dependency, source-pin, manifest, tag, or promotion change occurred. Release
+  remains `unreleased`; physical/manual, arbitrary-VFS/power-loss, cross-client, rollback,
+  promotion, authorization, and stable-release gates remain open.
+
 ## 2026-07-26 — Linux all-feature Debian trixie validation
 
 Assumption: the isolated Debian trixie runner supplies the GTK/Graphene ABI and X11/DBus
