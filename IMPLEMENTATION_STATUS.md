@@ -1,5 +1,23 @@
 # Implementation Status
 
+## 2026-07-26 — Linux current-head all-feature container regression
+
+Assumption: this non-root, offline container run validates the checked-out Linux test suite and
+headless X11/DBus integration only; it does not replace Hosted formatting/Clippy, physical/manual,
+GPU, arbitrary-VFS/power-loss, cross-client, or release evidence.
+
+- In `linguamesh-linux-ci-audit:20260723b` as uid 1000 with Core mounted read-only, the command
+  `GDK_BACKEND=x11 dbus-run-session -- xvfb-run --auto-servernum --server-args="-screen 0
+  1280x800x24" cargo test --all-targets --all-features --locked --offline -- --test-threads=1`
+  passed the Linux library suite (`172 passed; 0 failed; 16 ignored`) and GTK binary suite
+  (`33 passed; 0 failed; 22 ignored`).
+- The image lacks the Rust `rustfmt` and `clippy` components, so no local format or Clippy result
+  is claimed from this container; Hosted checks remain authoritative for those gates. The optional
+  `dunst` helper emitted only its no-X11-output warning, and `ulimit -c 0` produced no core dump.
+- No runtime, ABI, dependency, source-pin, manifest, tag, or promotion change occurred. Release
+  remains `unreleased`; physical/manual, GPU, arbitrary-VFS/power-loss, cross-client, rollback,
+  promotion, authorization, and stable-release gates remain open.
+
 ## 2026-07-26 — Linux notification desktop-shell fixture recheck
 
 Assumption: this isolated container check validates the notification contract and visible window
