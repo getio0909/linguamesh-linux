@@ -1,5 +1,21 @@
 # Implementation Status
 
+## 2026-07-26 — Bounded GTK keyboard-focus fixture
+
+Assumption: the prior PR-only 30-minute hang was a Hosted child-process boundary because the same
+fixture passed on Push; bounded command and process timeouts make that boundary fail fast without
+weakening the focus assertions.
+
+- Commit `8857a00f51a669f8dc819105a79a45925ae0357a` bounds each `xdotool` call to 15 seconds and
+  the complete Xvfb/DBus fixture to 300 seconds, with English phase diagnostics. `bash -n` and
+  `git diff --check` passed before push.
+- Hosted Push Native/Flatpak/Foundation `30182447065`/`30182447089`/`30182447072` and PR
+  Native/Flatpak/Foundation `30182448283`/`30182448284`/`30182448293` all passed, including the
+  keyboard, RTL, AT-SPI, portal, document, checksum, and SBOM jobs.
+- No product runtime or release-manifest change occurred. Release remains `unreleased`; physical,
+  manual, arbitrary-VFS/power-loss, cross-client, rollback, promotion, authorization, and stable
+  release gates remain open.
+
 ## 2026-07-26 — Linux storage, OCR, and prompted Secret Service recheck
 
 Assumption: these focused runners strengthen deterministic Linux fixture evidence only; they do
