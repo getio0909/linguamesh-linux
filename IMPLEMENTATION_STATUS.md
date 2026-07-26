@@ -1,5 +1,22 @@
 # Implementation Status
 
+## 2026-07-26 — Current-head portable and focused fixture recheck
+
+Assumption: this recheck records reproducible evidence for the unchanged Linux status head; it
+does not replace Hosted GTK/Flatpak, physical/manual, arbitrary-VFS, power-loss, cross-client, or
+release-authorization gates.
+
+- At Linux head `f4275f3e62687c182e45edc6acb88d4f0423914d`, Rust `1.93.0` formatting, strict
+  `demo-provider` Clippy, no-default tests (`85 passed; 0 failed; 1 ignored`), and
+  `demo-provider` tests (`170 passed; 0 failed; 7 ignored`) passed locally.
+- Localization key, placeholder, and visible-string audits passed (`474` keys, `605` calls), and
+  Flatpak metadata/source validation plus `git diff --check` passed.
+- Focused storage write-fault, image-only PDF OCR, and four prompted Secret Service store/delete
+  fixtures passed; each focused runner reported `1 passed; 0 failed; 0 ignored`.
+- No runtime, ABI, dependency, source-pin, manifest, tag, or promotion change occurred. Release
+  remains `unreleased`; physical/manual, arbitrary-VFS/power-loss, cross-client, rollback,
+  promotion, authorization, and stable-release gates remain open.
+
 ## 2026-07-26 — GTK fixture cleanup-diagnostic correction and final Hosted recheck
 
 Assumption: Flatpak Push run `30182927062` exposed a second fixture boundary where the temporary
