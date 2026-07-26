@@ -1,5 +1,19 @@
 # Implementation Status
 
+## 2026-07-26 — Linux notification desktop-shell fixture recheck
+
+Assumption: this isolated container check validates the notification contract and visible window
+boundary only; it does not claim universal desktop-backend, physical, or manual review.
+
+- In `linguamesh-linux-ci-audit:20260723b` with `ulimit -c 0`,
+  `dbus-run-session -- bash tools/run-notification-daemon-test.sh` passed the generic notification
+  payload and visible desktop-shell assertion (`1 passed; 0 failed`). The optional `dunst` helper
+  emitted only its no-X11-output warning; no core dump was produced.
+- This recheck used the current documentation-only Core descendant of the reviewed functional pin
+  and made no runtime, ABI, dependency, source-pin, manifest, tag, or promotion change. Release
+  remains `unreleased`; physical/manual, GPU, arbitrary-VFS/power-loss, cross-client, rollback,
+  promotion, authorization, and stable-release gates remain open.
+
 ## 2026-07-26 — Linux performance baseline and host display boundary
 
 Assumption: the performance numbers below are machine-specific trend evidence only; local portal
