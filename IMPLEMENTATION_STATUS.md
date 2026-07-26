@@ -19,6 +19,25 @@ Hosted Linux gates.
   `unreleased`, with physical/manual, arbitrary-VFS/power-loss, cross-client, rollback,
   promotion, authorization, and stable-release gates open.
 
+## 2026-07-26 — Linux dependency-container portal and Wayland recheck
+
+Assumption: this isolated container supplements the host boundary with reproducible Linux
+dependencies; it does not claim a physical compositor, end-user desktop, or stable release.
+
+- Using the existing `linguamesh-linux-ci-audit:20260723b` image with GTK 4.18.6,
+  libadwaita 1.7.6, Xvfb, Weston, and a temporary FUSE capability, the file chooser portal
+  fixture passed its UTF-8 interactive selection and the Documents portal fixture passed add,
+  map, grant, revoke, and delete.
+- With the same image, Core source mounted read-only at the current documentation-only descendant
+  of the reviewed functional pin, `RUSTUP_TOOLCHAIN=1.93.1 CARGO_NET_OFFLINE=true dbus-run-session --
+  bash tools/run-wayland-test.sh` passed the serialized GTK binary suite (`33 passed; 0 failed;
+  22 ignored`) under headless Weston. Portal and notification warnings were environment setup
+  diagnostics; the test assertions passed.
+- The host-only missing `xvfb-run`, Weston, and FUSE permission boundary remains recorded above;
+  this container evidence does not replace manual visual/Orca, GPU-backed, physical, arbitrary-VFS,
+  power-loss, cross-client, rollback, promotion, authorization, or stable-release gates. Release
+  remains `unreleased`.
+
 ## 2026-07-26 — Portable dependency and client-certificate security recheck
 
 Assumption: this evidence-only recheck strengthens Linux dependency and TLS-client-identity
