@@ -27,10 +27,14 @@ LINGUAMESH_KEYBOARD_FOCUS_EXPECT_RTL="$expect_rtl" \
 XDG_DATA_HOME="$workspace/data" \
 XDG_CONFIG_HOME="$workspace/config" \
 XDG_CACHE_HOME="$workspace/cache" \
+  timeout --signal=TERM --kill-after=15s 300s \
   xvfb-run --auto-servernum \
   --server-args='-screen 0 1280x800x24' \
   dbus-run-session -- bash -c '
     set -euo pipefail
+    run_xdotool() {
+      timeout --signal=TERM --kill-after=5s 15s xdotool "$@"
+    }
     export XDG_CURRENT_DESKTOP=GNOME
     export GDK_BACKEND=x11
     if [[ -n "$LINGUAMESH_KEYBOARD_FOCUS_LOCALE" ]]; then
@@ -44,7 +48,7 @@ XDG_CACHE_HOME="$workspace/cache" \
     app_pid=$!
     app_window=""
     for _ in {1..120}; do
-      app_window=$(xdotool search --onlyvisible --name "^LinguaMesh$" | head -n 1 || true)
+      app_window=$(run_xdotool search --onlyvisible --name "^LinguaMesh$" | head -n 1 || true)
       if [[ -n "$app_window" ]]; then
         break
       fi
@@ -55,8 +59,8 @@ XDG_CACHE_HOME="$workspace/cache" \
       printf "%s\n" "GTK keyboard fixture could not find the application window." >&2
       exit 1
     fi
-    xdotool windowactivate --sync "$app_window" >/dev/null 2>&1 || true
-    xdotool windowfocus --sync "$app_window" >/dev/null 2>&1 || true
+    run_xdotool windowactivate --sync "$app_window" >/dev/null 2>&1 || true
+    run_xdotool windowfocus --sync "$app_window" >/dev/null 2>&1 || true
     for _ in {1..240}; do
       if grep -Fxq "__ready__" "$LINGUAMESH_KEYBOARD_FOCUS_LOG"; then
         break
@@ -80,33 +84,36 @@ XDG_CACHE_HOME="$workspace/cache" \
       fi
       sleep 0.1
     done
-    xdotool windowactivate --sync "$app_window" >/dev/null 2>&1 || true
-    xdotool windowfocus --sync "$app_window" >/dev/null 2>&1 || true
+    run_xdotool windowactivate --sync "$app_window" >/dev/null 2>&1 || true
+    run_xdotool windowfocus --sync "$app_window" >/dev/null 2>&1 || true
     read -r focus_x focus_y focus_width focus_height <"$LINGUAMESH_KEYBOARD_FOCUS_COORDINATES"
-    window_geometry=$(xdotool getwindowgeometry --shell "$app_window")
+    window_geometry=$(run_xdotool getwindowgeometry --shell "$app_window")
     window_x=$(printf "%s\n" "$window_geometry" | grep "^X=" | cut -d= -f2)
     window_y=$(printf "%s\n" "$window_geometry" | grep "^Y=" | cut -d= -f2)
     focus_abs_x=$((window_x + focus_x + focus_width / 2))
     focus_abs_y=$((window_y + focus_y + focus_height / 2))
     printf "GTK keyboard fixture clicking provider field at %s,%s.\n" "$focus_abs_x" "$focus_abs_y"
-    xdotool mousemove --sync "$focus_abs_x" "$focus_abs_y"
-    xdotool click 1
+    run_xdotool mousemove --sync "$focus_abs_x" "$focus_abs_y"
+    run_xdotool click 1
+    printf '%s\n' 'GTK keyboard fixture completed the provider-field click.'
     : >"$LINGUAMESH_KEYBOARD_FOCUS_START"
     sleep 0.1
-    xdotool key --clearmodifiers alt+p
+    run_xdotool key --clearmodifiers alt+p
+    printf '%s\n' 'GTK keyboard fixture completed the provider mnemonic.'
     sleep 0.1
     for _ in {1..8}; do
-      xdotool key --clearmodifiers Shift+Tab
+      run_xdotool key --clearmodifiers Shift+Tab
       sleep 0.04
     done
     for _ in {1..80}; do
-      xdotool key --clearmodifiers Tab
+      run_xdotool key --clearmodifiers Tab
       sleep 0.04
     done
     for _ in {1..24}; do
-      xdotool key --clearmodifiers ctrl+Tab
+      run_xdotool key --clearmodifiers ctrl+Tab
       sleep 0.04
     done
+    printf '%s\n' 'GTK keyboard fixture completed keyboard traversal.'
     for _ in {1..240}; do
       if [[ -s "$LINGUAMESH_KEYBOARD_FOCUS_LOG" ]]; then
         break
