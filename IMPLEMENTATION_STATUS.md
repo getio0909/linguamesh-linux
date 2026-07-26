@@ -1,5 +1,24 @@
 # Implementation Status
 
+## 2026-07-26 — Linux performance baseline and host display boundary
+
+Assumption: the performance numbers below are machine-specific trend evidence only; local portal
+and display failures describe this host's missing privileges or tools and do not weaken the
+Hosted Linux gates.
+
+- `bash tools/run-performance-baseline.sh` passed the exact DOCX reconstruction, XLSX
+  reconstruction, and saved-profile routing filters at Core `cb061d24a3e0c4059a65d099d30bc643e9e079ea`
+  and l10n `43f5a6f069f6d0e6d075517b0c017784fe505b0d`. Elapsed times were `1.878`, `0.406`, and
+  `0.423` seconds on Linux `6.12.95+deb13-amd64`, Rust `1.93.0`, Intel i5-8250U, and 11875 MiB.
+- `bash tools/run-document-portal-test.sh` reached the real Documents portal but stopped because
+  the host could not mount `/run/user/1000/doc` (`Permission denied`); no portal pass is claimed.
+  The file-chooser runner could not start because `xvfb-run` is absent, and the Wayland runner
+  could not start because Weston is absent.
+- No runtime, ABI, dependency, source-pin, manifest, tag, or promotion change occurred. Hosted
+  Linux remains authoritative for the unavailable display/portal matrix; release stays
+  `unreleased`, with physical/manual, arbitrary-VFS/power-loss, cross-client, rollback,
+  promotion, authorization, and stable-release gates open.
+
 ## 2026-07-26 — Portable dependency and client-certificate security recheck
 
 Assumption: this evidence-only recheck strengthens Linux dependency and TLS-client-identity
