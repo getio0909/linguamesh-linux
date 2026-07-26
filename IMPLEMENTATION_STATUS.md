@@ -11,6 +11,9 @@ storage fixtures meaningful, while it does not replace Hosted, physical, or manu
 - With `GDK_BACKEND=x11 dbus-run-session -- xvfb-run --auto-servernum --server-args="-screen
   0 1280x800x24"`, strict all-feature Clippy passed and the full locked offline suites passed:
   library `172 passed; 0 failed; 16 ignored` and GTK binary `33 passed; 0 failed; 22 ignored`.
+- Hosted Push Native/Flatpak/Foundation runs `30180866604`/`30180866600`/`30180866607` and PR
+  Native/Flatpak/Foundation runs `30180867595`/`30180867594`/`30180867585` all passed, including
+  GTK, portal, accessibility, document, performance, checksum, and SBOM jobs.
 - The test ran as uid 1000 with no source or repository writes; the temporary container was
   removed after validation. Release remains `unreleased`; Hosted UI, physical/manual,
   arbitrary-VFS/power-loss, cross-client, rollback, promotion, authorization, and stable-release
