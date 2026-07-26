@@ -9,11 +9,21 @@ app_log="$workspace/app.log"
 keyboard_locale="${LINGUAMESH_KEYBOARD_FOCUS_LOCALE:-}"
 expect_rtl="${LINGUAMESH_KEYBOARD_FOCUS_EXPECT_RTL:-}"
 cleanup() {
+  cleanup_status=$?
+  set +e
   if [[ -n "${app_pid:-}" ]]; then
     kill "$app_pid" >/dev/null 2>&1 || true
     wait "$app_pid" >/dev/null 2>&1 || true
   fi
-  rm -rf "$workspace"
+  for _ in {1..10}; do
+    rm -rf "$workspace" >/dev/null 2>&1 && [[ ! -e "$workspace" ]] && break
+    sleep 0.5
+  done
+  if [[ -e "$workspace" ]]; then
+    printf '%s\n' 'GTK keyboard fixture cleanup left temporary files.' >&2
+    [[ "$cleanup_status" -eq 0 ]] && cleanup_status=1
+  fi
+  exit "$cleanup_status"
 }
 trap cleanup EXIT
 
@@ -33,7 +43,12 @@ XDG_CACHE_HOME="$workspace/cache" \
   dbus-run-session -- bash -c '
     set -euo pipefail
     run_xdotool() {
-      timeout --signal=TERM --kill-after=5s 15s xdotool "$@"
+      if timeout --signal=TERM --kill-after=5s 15s xdotool "$@"; then
+        return 0
+      fi
+      status=$?
+      printf "GTK keyboard fixture xdotool command failed (%s): %s\\n" "$status" "$*" >&2
+      return "$status"
     }
     export XDG_CURRENT_DESKTOP=GNOME
     export GDK_BACKEND=x11
