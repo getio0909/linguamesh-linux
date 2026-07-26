@@ -1,5 +1,21 @@
 # Implementation Status
 
+## 2026-07-26 — Portable dependency and client-certificate security recheck
+
+Assumption: this evidence-only recheck strengthens Linux dependency and TLS-client-identity
+coverage; it does not qualify live provider accounts, physical/manual review, arbitrary VFS,
+power-loss recovery, cross-client parity, or stable release.
+
+- At unchanged head `f6bfea4214490574132d8da9795171c6040dcdeb`, `cargo deny check` passed advisory,
+  ban, license, and source policy checks. Four `license-not-encountered` entries are non-failing
+  warnings for currently unused allow-list entries.
+- `bash tools/run-client-certificate-interop-test.sh` passed all four fixtures: trusted client,
+  untrusted server, hostname mismatch, and untrusted client (`1 passed; 0 failed; 0 ignored`
+  each).
+- No runtime, ABI, dependency, source-pin, manifest, tag, or promotion change occurred. Release
+  remains `unreleased`; physical/manual, arbitrary-VFS/power-loss, cross-client, rollback,
+  promotion, authorization, and stable-release gates remain open.
+
 ## 2026-07-26 — Current-head portable and focused fixture recheck
 
 Assumption: this recheck records reproducible evidence for the unchanged Linux status head; it
