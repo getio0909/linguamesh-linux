@@ -1,5 +1,21 @@
 # Implementation Status
 
+## 2026-07-26 — Linux all-feature Debian trixie validation
+
+Assumption: the isolated Debian trixie runner supplies the GTK/Graphene ABI and X11/DBus
+services unavailable on the workstation; its non-root execution makes permission-sensitive
+storage fixtures meaningful, while it does not replace Hosted, physical, or manual gates.
+
+- In a temporary Debian trixie container (GTK 4.18.6, libadwaita 1.7.6, Graphene 1.10.8),
+  `cargo fmt --all -- --check` passed.
+- With `GDK_BACKEND=x11 dbus-run-session -- xvfb-run --auto-servernum --server-args="-screen
+  0 1280x800x24"`, strict all-feature Clippy passed and the full locked offline suites passed:
+  library `172 passed; 0 failed; 16 ignored` and GTK binary `33 passed; 0 failed; 22 ignored`.
+- The test ran as uid 1000 with no source or repository writes; the temporary container was
+  removed after validation. Release remains `unreleased`; Hosted UI, physical/manual,
+  arbitrary-VFS/power-loss, cross-client, rollback, promotion, authorization, and stable-release
+  gates remain open.
+
 ## 2026-07-25 — Linux all-feature host-link boundary recheck
 
 Assumption: the host-side all-feature test command is useful evidence only when its GTK runtime
