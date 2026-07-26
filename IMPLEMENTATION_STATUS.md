@@ -31,8 +31,9 @@ dependencies; it does not claim a physical compositor, end-user desktop, or stab
 - With the same image, Core source mounted read-only at the current documentation-only descendant
   of the reviewed functional pin, `RUSTUP_TOOLCHAIN=1.93.1 CARGO_NET_OFFLINE=true dbus-run-session --
   bash tools/run-wayland-test.sh` passed the serialized GTK binary suite (`33 passed; 0 failed;
-  22 ignored`) under headless Weston. Portal and notification warnings were environment setup
-  diagnostics; the test assertions passed.
+  22 ignored`) under headless Weston. The optional `dunst` notification helper emitted X11-output
+  warnings and generated temporary core dumps; those files were removed after the run. Portal and
+  notification helper warnings were environment setup diagnostics; the test assertions passed.
 - The host-only missing `xvfb-run`, Weston, and FUSE permission boundary remains recorded above;
   this container evidence does not replace manual visual/Orca, GPU-backed, physical, arbitrary-VFS,
   power-loss, cross-client, rollback, promotion, authorization, or stable-release gates. Release
