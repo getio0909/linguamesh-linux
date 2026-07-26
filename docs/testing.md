@@ -925,6 +925,9 @@ action. Native CI repeats this real-binary fixture with
 `LINGUAMESH_KEYBOARD_FOCUS_LOCALE=ar` and requires the production workspace to report RTL before
 asserting the same focus traversal. The application-window Capture-phase handler keeps the provider
 fields in an explicit Tab/Shift+Tab order while preserving modified shortcuts.
+The keyboard runner bounds each `xdotool` command to 15 seconds and the complete Xvfb/DBus process
+tree to 300 seconds, emitting English phase diagnostics so a Hosted child-process hang fails fast
+without weakening the focus assertions.
 `tools/run-gtk-atspi-test.sh` starts
 the AT-SPI bus, reads the live accessibility tree with `python3-pyatspi`, and verifies the named
 Open, Translate, Retry, fallback-consent, and Stop controls with their expected roles, plus two
