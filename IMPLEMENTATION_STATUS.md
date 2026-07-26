@@ -1,5 +1,21 @@
 # Implementation Status
 
+## 2026-07-26 — GTK fixture cleanup-diagnostic correction and final Hosted recheck
+
+Assumption: Flatpak Push run `30182927062` exposed a second fixture boundary where the temporary
+shader-cache cleanup masked the original xdotool exit; preserving the original status and retrying
+cleanup makes the failure auditable without relaxing the focus assertions.
+
+- Commit `9883085aa2b4eb76890f2e2cc1664f04ba08f7` preserves the xdotool failure status, reports the
+  failed command, and retries temporary-directory cleanup before returning. `bash -n` and
+  `git diff --check` passed.
+- Final Hosted Push Native/Flatpak/Foundation `30183165213`/`30183165205`/`30183165219` and PR
+  Native/Flatpak/Foundation `30183166004`/`30183166006`/`30183166021` all passed, including the
+  keyboard focus, RTL, AT-SPI, portal, document, checksum, and SBOM jobs.
+- No product runtime, ABI, dependency, source-pin, manifest, tag, or promotion change occurred.
+  Release remains `unreleased`; physical/manual, arbitrary-VFS/power-loss, cross-client, rollback,
+  promotion, authorization, and stable-release gates remain open.
+
 ## 2026-07-26 — Bounded GTK keyboard-focus fixture
 
 Assumption: the prior PR-only 30-minute hang was a Hosted child-process boundary because the same
