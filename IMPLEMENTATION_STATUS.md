@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-27 — Linux release-train portable recheck
+
+Assumption: this host-level recheck is deterministic Rust and worker evidence for the Linux
+release train; Hosted CI remains authoritative for GTK, Flatpak, display, GPU, and packaging
+execution, and no stable-release claim follows from these commands.
+
+- At source `3862259e7ae41ee8186dc0b0095a86c4fa04b4fe`, `cargo fmt --all --check` and strict
+  no-default/demo-provider Clippy passed.
+- `cargo test --all-targets --no-default-features --locked -- --test-threads=1` passed `85` tests
+  with `0` failures and `1` intentional ignore; the demo-provider suite passed `170` with `0`
+  failures and `7` intentional ignores.
+- `cargo build --features demo-provider --locked` passed. No source, ABI, dependency, manifest,
+  tag, or promotion change occurred; physical/manual, GTK/portal, GPU, cross-client, signing,
+  rollback authorization, and stable-release gates remain open.
+
 ## 2026-07-26 — Linux current-head all-feature container regression
 
 Assumption: this non-root, offline container run validates the checked-out Linux test suite and
