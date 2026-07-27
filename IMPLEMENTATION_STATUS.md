@@ -1,5 +1,22 @@
 # Implementation Status
 
+## 2026-07-27 — Containerized Secret Service GUI fixture recheck
+
+Assumption: the existing `linguamesh-linux-ci-audit:20260723b` container supplies the missing
+Xvfb/GTK/DBus runtime while the host-mounted Rust 1.93 toolchain and read-only Core checkout keep
+the test reproducible; this remains headless integration evidence, not physical desktop or manual
+review.
+
+- Ran `./tools/run-secret-service-test.sh` as uid 1000 with Xvfb, DBus, gnome-keyring, Core mounted
+  read-only at the reviewed sibling path, and `CARGO_TARGET_DIR` isolated under `/tmp`.
+- Persistent Secret Service store/restart, worker onboarding without credential re-entry, GTK
+  remembered-credential form clearing, locked-item fail-closed behavior, daemon-restart resolution,
+  and cleanup all passed (`1 passed; 0 failed` for each targeted test).
+- The notification helper emitted an X11-output warning and generated one temporary core file; the
+  file was moved out of the repository after the run. No source or product files were changed.
+- The host-only `xvfb-run` absence is no longer a blocker for this evidence path; physical/manual,
+  GPU, arbitrary-VFS/power-loss, cross-client, signing, rollback, and stable-release gates remain.
+
 ## 2026-07-27 — Linux release-train portable recheck
 
 Assumption: this host-level recheck is deterministic Rust and worker evidence for the Linux

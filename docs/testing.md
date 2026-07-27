@@ -703,9 +703,13 @@ approval and visual review remain manual.
 
 The current Linux status-head recheck also passed `bash tools/run-secret-service-prompt-test.sh`:
 all four store/delete acceptance and dismissal tests completed exactly once. The full
-`run-secret-service-test.sh` runner passed its persistent library restart and worker onboarding
-tests before stopping at the host's missing `xvfb-run`; its display-backed Remember/clear-form flow
-is not claimed locally and remains CI-authoritative.
+`run-secret-service-test.sh` runner now passes in the existing
+`linguamesh-linux-ci-audit:20260723b` container as uid 1000 with the host Rust 1.93 toolchain and
+read-only Core checkout mounted at the reviewed sibling path. The persistent library restart,
+worker onboarding without credential re-entry, GTK Remember/clear-form flow, locked-item fail-closed
+check, daemon-restart resolution, and cleanup each completed exactly once (`1 passed; 0 failed`).
+This is reproducible headless integration evidence; physical/manual, GPU, broader VFS/power-loss,
+cross-client, signing, rollback, and stable-release gates remain open.
 
 The localization unit suite parses every official Linux MO catalog, checks action entries are
 available, and verifies unique BCP 47 tags plus Arabic RTL metadata:
