@@ -41,7 +41,7 @@ dbus-run-session -- bash -c '
   GDK_BACKEND=x11 xvfb-run --auto-servernum \
     --server-args="-screen 0 1280x800x24" \
     cargo test --features gui --bin linguamesh-linux \
-    gtk_remembered_credential_uses_secret_service_and_clears_the_form \
+    tests::gtk_remembered_credential_uses_secret_service_and_clears_the_form \
     --locked -- --ignored --exact
   lock_objects="[objectpath $(printf "\\047")/org/freedesktop/secrets/collection/login$(printf "\\047")]"
   gdbus call --session \

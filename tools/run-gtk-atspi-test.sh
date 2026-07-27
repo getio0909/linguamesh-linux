@@ -15,7 +15,16 @@ cleanup() {
     kill "$a11y_pid" >/dev/null 2>&1 || true
     wait "$a11y_pid" >/dev/null 2>&1 || true
   fi
-  rm -rf -- "$workspace"
+  # 清理可能由异步桌面服务延迟创建的临时文件。
+  for _ in {1..20}; do
+    if [[ ! -e "$workspace" ]]; then
+      return
+    fi
+    find "$workspace" -depth -delete >/dev/null 2>&1 || true
+    [[ ! -e "$workspace" ]] && return
+    sleep 0.1
+  done
+  printf '%s\n' 'GTK AT-SPI fixture cleanup left temporary files.' >&2
 }
 trap cleanup EXIT
 
@@ -41,9 +50,25 @@ XDG_CACHE_HOME="$workspace/cache" \
     export GDK_BACKEND=x11
     export GTK_A11Y=atspi
     mkdir -p "$XDG_DATA_HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME"
+    terminate_inner_process() {
+      local pid="${1:-}"
+      if [[ -z "$pid" ]]; then
+        return
+      fi
+      kill "$pid" >/dev/null 2>&1 || true
+      for _ in {1..50}; do
+        if ! kill -0 "$pid" >/dev/null 2>&1; then
+          break
+        fi
+        sleep 0.1
+      done
+      kill -KILL "$pid" >/dev/null 2>&1 || true
+      wait "$pid" >/dev/null 2>&1 || true
+    }
     cleanup_inner() {
-      kill "${app_pid:-}" "${wm_pid:-}" "${a11y_pid:-}" >/dev/null 2>&1 || true
-      wait "${app_pid:-}" "${wm_pid:-}" "${a11y_pid:-}" >/dev/null 2>&1 || true
+      terminate_inner_process "${app_pid:-}"
+      terminate_inner_process "${wm_pid:-}"
+      terminate_inner_process "${a11y_pid:-}"
     }
     trap cleanup_inner EXIT
     /usr/libexec/at-spi-bus-launcher --launch-immediately --screen-reader=1 \
@@ -54,13 +79,15 @@ XDG_CACHE_HOME="$workspace/cache" \
     sleep 0.5
     target/debug/linguamesh-linux >/tmp/linguamesh-atspi-app.log 2>&1 &
     app_pid=$!
+    app_window=""
     for _ in {1..200}; do
-      if xdotool search --onlyvisible --name "^LinguaMesh$" >/dev/null 2>&1; then
+      app_window=$(xdotool search --onlyvisible --pid "$app_pid" 2>/dev/null | head -n 1 || true)
+      if [[ -n "$app_window" ]]; then
         break
       fi
       sleep 0.1
     done
-    if ! xdotool search --onlyvisible --name "^LinguaMesh$" >/dev/null 2>&1; then
+    if [[ -z "$app_window" ]]; then
       cat /tmp/linguamesh-atspi-app.log >&2 || true
       printf "%s\n" "GTK AT-SPI fixture could not find the application window." >&2
       exit 1

@@ -1,0 +1,36 @@
+name: Bug report
+description: Report reproducible incorrect Linux behavior
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: Do not include credentials, private documents, or unnecessary translation content. Report vulnerabilities through SECURITY.md instead.
+  - type: input
+    id: revision
+    attributes:
+      label: Version or revision
+      placeholder: Version, tag, or commit ID
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Actual behavior
+      description: Describe the safe, redacted result.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction and validation
+      description: List deterministic steps, desktop backend, and commands without sensitive data.
+    validations:
+      required: true

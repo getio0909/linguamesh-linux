@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 import time
 from collections.abc import Iterator
@@ -48,6 +49,23 @@ def role_token(node: object) -> str:
     return normalized if normalized.startswith("ROLE_") else f"ROLE_{normalized}"
 
 
+def accessible_values(node: object) -> tuple[str, str, str]:
+    """Return exported name, description, and text without dumping arbitrary content."""
+    try:
+        name = str(node.name)  # type: ignore[attr-defined]
+    except Exception:
+        name = ""
+    try:
+        description = str(node.description)  # type: ignore[attr-defined]
+    except Exception:
+        description = ""
+    try:
+        text = str(node.queryText().getText(0, -1))  # type: ignore[attr-defined]
+    except Exception:
+        text = ""
+    return name, description, text
+
+
 def find_nodes(deadline: float) -> list[object]:
     """等待应用注册到 AT-SPI，并返回当前可读节点。"""
     while time.monotonic() < deadline:
@@ -71,7 +89,56 @@ def main() -> int:
         print("AT-SPI fixture could not enumerate the accessibility desktop.", file=sys.stderr)
         return 1
 
-    expected = {"Stop translation": {"ROLE_PUSH_BUTTON"}}
+    locale = os.environ.get("LINGUAMESH_TEST_LOCALE", "en")
+    expected_by_locale = {
+        "en": {
+            "Open text file": {"ROLE_PUSH_BUTTON"},
+            "Allow approved fallback": {"ROLE_CHECK_BOX"},
+            "Translate": {"ROLE_PUSH_BUTTON"},
+            "Retry translation": {"ROLE_PUSH_BUTTON"},
+            "Stop translation": {"ROLE_PUSH_BUTTON"},
+        },
+        "zh-CN": {
+            "打开文本文件": {"ROLE_PUSH_BUTTON"},
+            "允许使用已批准的回退": {"ROLE_CHECK_BOX"},
+            "翻译": {"ROLE_PUSH_BUTTON"},
+            "Retry translation": {"ROLE_PUSH_BUTTON"},
+            "停止翻译": {"ROLE_PUSH_BUTTON"},
+        },
+        "ar": {
+            "فتح ملف نصي": {"ROLE_PUSH_BUTTON"},
+            "Allow approved fallback": {"ROLE_CHECK_BOX"},
+            "ترجمة": {"ROLE_PUSH_BUTTON"},
+            "Retry translation": {"ROLE_PUSH_BUTTON"},
+            "إيقاف الترجمة": {"ROLE_PUSH_BUTTON"},
+        },
+        "en-XA": {
+            "［Øþëñ ŧëẋŧ ƒïŀë~~~~］": {"ROLE_PUSH_BUTTON"},
+            "［Åŀŀøŵ åþþŕøṽëð ƒåŀŀƀåçķ~~~~~~~］": {"ROLE_CHECK_BOX"},
+            "［Ŧŕåñšŀåŧë~~~］": {"ROLE_PUSH_BUTTON"},
+            "［Ŕëŧŕÿ ŧŕåñšŀåŧïøñ~~~~~］": {"ROLE_PUSH_BUTTON"},
+            "［Šŧøþ ŧŕåñšŀåŧïøñ~~~~~］": {"ROLE_PUSH_BUTTON"},
+        },
+        "ar-XB": {
+            "⁧⟦Open text file⟧⁩": {"ROLE_PUSH_BUTTON"},
+            "⁧⟦Allow approved fallback⟧⁩": {"ROLE_CHECK_BOX"},
+            "⁧⟦Translate⟧⁩": {"ROLE_PUSH_BUTTON"},
+            "⁧⟦Retry translation⟧⁩": {"ROLE_PUSH_BUTTON"},
+            "⁧⟦Stop translation⟧⁩": {"ROLE_PUSH_BUTTON"},
+        },
+    }
+    expected = expected_by_locale.get(locale)
+    if expected is None:
+        print(f"AT-SPI fixture does not define expected names for locale: {locale}.", file=sys.stderr)
+        return 2
+    status_error_fixture = os.environ.get("LINGUAMESH_TEST_ATSPI_STATUS_ERROR") == "1"
+    status_error_prefixes = {
+        "en": ("Status: Failed", "Internal:"),
+        "zh-CN": ("状态：失败", "内部错误："),
+        "ar": ("الحالة: فشل", "خطأ داخلي:"),
+        "en-XA": ("［Šŧåŧüš~~］:", "［Ïñŧëŕñåŀ~~］:"),
+        "ar-XB": ("⁧⟦Status⟧⁩:", "⁧⟦Internal⟧⁩:"),
+    }
     by_name: dict[str, list[object]] = {}
     for node in nodes:
         try:
@@ -95,11 +162,36 @@ def main() -> int:
     if len(text_nodes) < 2:
         wrong_roles.append("text editors (two ROLE_TEXT/ROLE_EDITBAR nodes)")
 
+    status_error_nodes: list[tuple[str, object]] = []
+    if status_error_fixture:
+        status_prefix, error_prefix = status_error_prefixes[locale]
+        status_error_nodes = [
+            ("status", node)
+            for node in nodes
+            if role_token(node) == "ROLE_LABEL"
+            and any(value.startswith(status_prefix) for value in accessible_values(node))
+        ]
+        status_error_nodes.extend(
+            ("error", node)
+            for node in nodes
+            if role_token(node) == "ROLE_LABEL"
+            and any(value.startswith(error_prefix) for value in accessible_values(node))
+        )
+        if not any(kind == "status" for kind, _ in status_error_nodes):
+            wrong_roles.append(f"runtime status label ({status_prefix})")
+        if not any(kind == "error" for kind, _ in status_error_nodes):
+            wrong_roles.append(f"runtime error label ({error_prefix})")
+
     if missing or wrong_roles:
         print("AT-SPI fixture did not find the expected accessible controls.", file=sys.stderr)
         for node in nodes:
             summary = node_summary(node)
-            if role_token(node) in {"ROLE_TEXT", "ROLE_EDITBAR", "ROLE_PUSH_BUTTON", "ROLE_LABEL"}:
+            if role_token(node) in {
+                "ROLE_TEXT",
+                "ROLE_EDITBAR",
+                "ROLE_PUSH_BUTTON",
+                "ROLE_LABEL",
+            }:
                 print(summary, file=sys.stderr)
         if missing:
             print(f"Missing accessible names: {', '.join(missing)}", file=sys.stderr)
@@ -113,6 +205,8 @@ def main() -> int:
         print(f"AT-SPI control: {role}: {name}")
     for node in text_nodes:
         print(f"AT-SPI text editor: {node_summary(node)}")
+    for kind, node in status_error_nodes:
+        print(f"AT-SPI {kind} label: {role_token(node)} exported")
     return 0
 
 

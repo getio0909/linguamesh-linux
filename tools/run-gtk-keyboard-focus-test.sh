@@ -6,12 +6,24 @@ focus_log="$workspace/focus.log"
 focus_start="$workspace/focus-start"
 focus_coordinates="$workspace/focus-coordinates"
 app_log="$workspace/app.log"
+keyboard_locale="${LINGUAMESH_KEYBOARD_FOCUS_LOCALE:-}"
+expect_rtl="${LINGUAMESH_KEYBOARD_FOCUS_EXPECT_RTL:-}"
 cleanup() {
+  cleanup_status=$?
+  set +e
   if [[ -n "${app_pid:-}" ]]; then
     kill "$app_pid" >/dev/null 2>&1 || true
     wait "$app_pid" >/dev/null 2>&1 || true
   fi
-  rm -rf "$workspace"
+  for _ in {1..10}; do
+    rm -rf "$workspace" >/dev/null 2>&1 && [[ ! -e "$workspace" ]] && break
+    sleep 0.5
+  done
+  if [[ -e "$workspace" ]]; then
+    printf '%s\n' 'GTK keyboard fixture cleanup left temporary files.' >&2
+    [[ "$cleanup_status" -eq 0 ]] && cleanup_status=1
+  fi
+  exit "$cleanup_status"
 }
 trap cleanup EXIT
 
@@ -20,15 +32,29 @@ cargo build --all-features --locked --bin linguamesh-linux
 LINGUAMESH_KEYBOARD_FOCUS_LOG="$focus_log" \
 LINGUAMESH_KEYBOARD_FOCUS_START="$focus_start" \
 LINGUAMESH_KEYBOARD_FOCUS_COORDINATES="$focus_coordinates" \
+LINGUAMESH_KEYBOARD_FOCUS_LOCALE="$keyboard_locale" \
+LINGUAMESH_KEYBOARD_FOCUS_EXPECT_RTL="$expect_rtl" \
 XDG_DATA_HOME="$workspace/data" \
 XDG_CONFIG_HOME="$workspace/config" \
 XDG_CACHE_HOME="$workspace/cache" \
+  timeout --signal=TERM --kill-after=15s 300s \
   xvfb-run --auto-servernum \
   --server-args='-screen 0 1280x800x24' \
   dbus-run-session -- bash -c '
     set -euo pipefail
+    run_xdotool() {
+      if timeout --signal=TERM --kill-after=5s 15s xdotool "$@"; then
+        return 0
+      fi
+      status=$?
+      printf "GTK keyboard fixture xdotool command failed (%s): %s\\n" "$status" "$*" >&2
+      return "$status"
+    }
     export XDG_CURRENT_DESKTOP=GNOME
     export GDK_BACKEND=x11
+    if [[ -n "$LINGUAMESH_KEYBOARD_FOCUS_LOCALE" ]]; then
+      export LINGUAMESH_TEST_LOCALE="$LINGUAMESH_KEYBOARD_FOCUS_LOCALE"
+    fi
     mkdir -p "$XDG_DATA_HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME"
     xfwm4 --compositor=off >/tmp/linguamesh-xfwm4.log 2>&1 &
     wm_pid=$!
@@ -37,7 +63,7 @@ XDG_CACHE_HOME="$workspace/cache" \
     app_pid=$!
     app_window=""
     for _ in {1..120}; do
-      app_window=$(xdotool search --onlyvisible --name "^LinguaMesh$" | head -n 1 || true)
+      app_window=$(run_xdotool search --onlyvisible --name "^LinguaMesh$" | head -n 1 || true)
       if [[ -n "$app_window" ]]; then
         break
       fi
@@ -48,8 +74,8 @@ XDG_CACHE_HOME="$workspace/cache" \
       printf "%s\n" "GTK keyboard fixture could not find the application window." >&2
       exit 1
     fi
-    xdotool windowactivate --sync "$app_window" >/dev/null 2>&1 || true
-    xdotool windowfocus --sync "$app_window" >/dev/null 2>&1 || true
+    run_xdotool windowactivate --sync "$app_window" >/dev/null 2>&1 || true
+    run_xdotool windowfocus --sync "$app_window" >/dev/null 2>&1 || true
     for _ in {1..240}; do
       if grep -Fxq "__ready__" "$LINGUAMESH_KEYBOARD_FOCUS_LOG"; then
         break
@@ -61,39 +87,48 @@ XDG_CACHE_HOME="$workspace/cache" \
       printf "%s\n" "GTK keyboard fixture did not reach the enabled provider form." >&2
       exit 1
     fi
+    if [[ "$LINGUAMESH_KEYBOARD_FOCUS_EXPECT_RTL" == "1" ]] \
+      && ! grep -Fxq "__rtl__" "$LINGUAMESH_KEYBOARD_FOCUS_LOG"; then
+      cat "$LINGUAMESH_KEYBOARD_FOCUS_LOG" >&2
+      printf "%s\n" "GTK keyboard fixture did not confirm RTL workspace direction." >&2
+      exit 1
+    fi
     for _ in {1..50}; do
       if [[ -s "$LINGUAMESH_KEYBOARD_FOCUS_COORDINATES" ]]; then
         break
       fi
       sleep 0.1
     done
-    xdotool windowactivate --sync "$app_window" >/dev/null 2>&1 || true
-    xdotool windowfocus --sync "$app_window" >/dev/null 2>&1 || true
+    run_xdotool windowactivate --sync "$app_window" >/dev/null 2>&1 || true
+    run_xdotool windowfocus --sync "$app_window" >/dev/null 2>&1 || true
     read -r focus_x focus_y focus_width focus_height <"$LINGUAMESH_KEYBOARD_FOCUS_COORDINATES"
-    window_geometry=$(xdotool getwindowgeometry --shell "$app_window")
+    window_geometry=$(run_xdotool getwindowgeometry --shell "$app_window")
     window_x=$(printf "%s\n" "$window_geometry" | grep "^X=" | cut -d= -f2)
     window_y=$(printf "%s\n" "$window_geometry" | grep "^Y=" | cut -d= -f2)
     focus_abs_x=$((window_x + focus_x + focus_width / 2))
     focus_abs_y=$((window_y + focus_y + focus_height / 2))
     printf "GTK keyboard fixture clicking provider field at %s,%s.\n" "$focus_abs_x" "$focus_abs_y"
-    xdotool mousemove --sync "$focus_abs_x" "$focus_abs_y"
-    xdotool click 1
+    run_xdotool mousemove --sync "$focus_abs_x" "$focus_abs_y"
+    run_xdotool click 1
+    printf '%s\n' 'GTK keyboard fixture completed the provider-field click.'
     : >"$LINGUAMESH_KEYBOARD_FOCUS_START"
     sleep 0.1
-    xdotool key --clearmodifiers alt+p
+    run_xdotool key --clearmodifiers alt+p
+    printf '%s\n' 'GTK keyboard fixture completed the provider mnemonic.'
     sleep 0.1
     for _ in {1..8}; do
-      xdotool key --clearmodifiers Shift+Tab
+      run_xdotool key --clearmodifiers Shift+Tab
       sleep 0.04
     done
     for _ in {1..80}; do
-      xdotool key --clearmodifiers Tab
+      run_xdotool key --clearmodifiers Tab
       sleep 0.04
     done
     for _ in {1..24}; do
-      xdotool key --clearmodifiers ctrl+Tab
+      run_xdotool key --clearmodifiers ctrl+Tab
       sleep 0.04
     done
+    printf '%s\n' 'GTK keyboard fixture completed keyboard traversal.'
     for _ in {1..240}; do
       if [[ -s "$LINGUAMESH_KEYBOARD_FOCUS_LOG" ]]; then
         break
@@ -114,6 +149,9 @@ XDG_CACHE_HOME="$workspace/cache" \
       provider_name
       provider_endpoint
       provider_credential
+      provider_client_certificate_identity
+      provider_preset
+      test_connection
       remember_profile
       connect
       source_editor
@@ -128,6 +166,6 @@ XDG_CACHE_HOME="$workspace/cache" \
         exit 1
       fi
     done
-    printf "%s\n" "GTK keyboard focus fixture passed: Tab traversal reached the tested onboarding and workspace controls."
+    printf "%s\n" "GTK keyboard focus fixture passed: the provider mnemonic and Tab traversal reached the tested onboarding and workspace controls."
     cat "$LINGUAMESH_KEYBOARD_FOCUS_LOG"
   '
