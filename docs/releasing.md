@@ -110,7 +110,7 @@ The current Linux gate consumes Core `81f04be8bff338a1df6409ba564ddca3ad0bddf3`,
 the Linux-only non-locking `unix-none` VFS fail-closed regression and ABI 1 opaque engine-handle
 lifetime hardening, and l10n
 `43f5a6f069f6d0e6d075517b0c017784fe505b0d` (520 catalog messages). The current reviewed Flatpak
-source pin is Linux `6a608d611770c57c0ee6f650b84a4149edb078f4`, the exact reviewed source head for
+source pin is Linux `9e9cdb6362b357d5dec81148d41555d12640ca0c`, the exact reviewed source head for
 the Core read-failure pin synchronization and the preceding runtime, accessibility, and storage fixtures.
 Local exports now synchronize the temporary file and parent directory before the atomic
 move, then synchronize the parent again after finalization; a serialized child-process
