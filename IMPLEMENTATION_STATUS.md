@@ -6,7 +6,7 @@ Assumption: Linux must consume the Core sync-crash rollback regression through t
 pin; this is deterministic process-crash evidence and does not qualify physical power-loss or
 arbitrary third-party VFS behavior.
 
-- Core `20ee60ec6c6c6ef5a61fd3cd2934bd75ace1121d` adds
+- Core `81f04be8bff338a1df6409ba564ddca3ad0bddf3` adds
   `registered_vfs_sync_crash_rolls_back_without_false_success`, which aborts a child from the
   registered VFS `xSync` callback and verifies the committed baseline survives while the transient
   profile is absent after reopen.
@@ -23,7 +23,7 @@ Assumption: Linux must consume the Core truncate-failure regression through the 
 pin; this remains deterministic fault-injection evidence and does not qualify physical power-loss
 or arbitrary third-party VFS behavior.
 
-- Core `20ee60ec6c6c6ef5a61fd3cd2934bd75ace1121d` adds
+- Core `81f04be8bff338a1df6409ba564ddca3ad0bddf3` adds
   `registered_vfs_truncate_failure_rejects_open_without_mutating_database`. The fixture injects
   `SQLITE_IOERR_TRUNCATE` during WAL checkpoint/open, requires a typed persistence error, and
   verifies the saved provider profile remains intact after recovery.
