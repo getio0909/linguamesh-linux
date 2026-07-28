@@ -81,8 +81,8 @@ while persistent
 secret references use the Linux GIO Secret Service adapter and fail closed when the desktop keyring
 is unavailable or requires an interactive prompt. The native workflow
 pins reviewed Core functional revision
-`141b6a4f0aae769ba5f854060f1160103d56cfc0`, whose Core delta adds Linux registered-VFS
-read-, write-, synchronization-, and partial-write rejection evidence on top of uncommitted-transaction crash rollback, including
+`06813081669e36b6feec8a231cd9a53eaf643671`, whose Core delta adds Linux registered-VFS
+read-, write-, synchronization-, truncate-, and partial-write rejection evidence on top of uncommitted-transaction crash rollback, including
 parent-controlled SIGKILL coverage for both the default and bundled `unix-excl` VFS, and bounded document lease
 smoke and AddressSanitizer gate in addition to the protocol decoder fuzz gate and bounded FileLease lifecycle
 and engine-scoped ABI lease controls plus Unix POSIX-descriptor document consumption; Android and
@@ -106,7 +106,7 @@ gates, and the all-feature build. Earlier functional revision
 Wayland/headless Weston. Neither validation creates a distributable artifact or satisfies the
 future release gate below.
 
-The current Linux gate consumes Core `141b6a4f0aae769ba5f854060f1160103d56cfc0`, which includes
+The current Linux gate consumes Core `06813081669e36b6feec8a231cd9a53eaf643671`, which includes
 the Linux-only non-locking `unix-none` VFS fail-closed regression and ABI 1 opaque engine-handle
 lifetime hardening, and l10n
 `43f5a6f069f6d0e6d075517b0c017784fe505b0d` (520 catalog messages). The current reviewed Flatpak

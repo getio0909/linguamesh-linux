@@ -27,7 +27,7 @@ Use the pinned Rust toolchain and exact commands in `docs/testing.md`. Hosts wit
 libadwaita development headers can format, lint, and test the toolkit-independent state and the
 real shared-core worker with `--features demo-provider`. Run `--all-features` only when native
 headers are present. Native CI pins the approved Core revision
-`141b6a4f0aae769ba5f854060f1160103d56cfc0`; changing it requires a new compatibility review. This
+`06813081669e36b6feec8a231cd9a53eaf643671`; changing it requires a new compatibility review. This
 adds bounded Linux registered-VFS read-, write-, synchronization-, and partial-write rejection evidence on top of
 uncommitted-transaction crash rollback, including parent-controlled SIGKILL coverage, and the
 bounded XLSX sheet/range-selection contract on top of ABI 1
