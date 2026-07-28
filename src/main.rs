@@ -5885,7 +5885,21 @@ fn export_write_strategy(destination: &gtk::gio::File) -> ExportWriteStrategy {
 }
 
 // 将本地导出文件及其父目录同步到文件系统，缩小崩溃或断电后出现半成品的窗口。
+// 测试注入文件同步失败，覆盖不可持久化时的 fail-closed 行为。
+#[cfg(test)]
+static TEST_EXPORT_SYNC_FAIL_FILE: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+// 测试注入目录同步失败，覆盖目录项耐久性边界。
+#[cfg(test)]
+static TEST_EXPORT_SYNC_FAIL_DIRECTORY: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
 fn sync_local_export(path: &Path) -> bool {
+    // 测试注入文件同步失败，验证导出路径不会把不可持久化结果报告为成功。
+    #[cfg(test)]
+    if TEST_EXPORT_SYNC_FAIL_FILE.load(std::sync::atomic::Ordering::SeqCst) {
+        return false;
+    }
     let file_synced = fs::File::open(path)
         .and_then(|file| file.sync_all())
         .is_ok();
@@ -5895,6 +5909,11 @@ fn sync_local_export(path: &Path) -> bool {
 
 // 同步目录元数据，使临时文件写入和最终重命名的目录项具有明确的耐久性边界。
 fn sync_local_export_directory(path: &Path) -> bool {
+    // 测试注入目录同步失败，验证最终目录项未获得虚假的持久化成功状态。
+    #[cfg(test)]
+    if TEST_EXPORT_SYNC_FAIL_DIRECTORY.load(std::sync::atomic::Ordering::SeqCst) {
+        return false;
+    }
     fs::File::open(path)
         .and_then(|directory| directory.sync_all())
         .is_ok()
@@ -11176,8 +11195,9 @@ mod tests {
         OLLAMA_ADAPTER_TYPE, OLLAMA_PROVIDER_PRESET_ID, OPENAI_ADAPTER_TYPE, OnboardingStage,
         ProviderProfile, ProviderProfileId, RESPONSES_ADAPTER_TYPE, RESPONSES_PROVIDER_PRESET_ID,
         RoutingCandidate, RoutingConstraintTextValues, RoutingDecisionSummary, RoutingProfile,
-        RoutingProfileRecord, SecretRef, SecretRefNamespace, SecretValue, TranslationError,
-        UiLocale, WorkerCommand, WorkerEvent, about_details, apply_worker_event,
+        RoutingProfileRecord, SecretRef, SecretRefNamespace, SecretValue,
+        TEST_EXPORT_SYNC_FAIL_DIRECTORY, TEST_EXPORT_SYNC_FAIL_FILE, TranslationError, UiLocale,
+        WorkerCommand, WorkerEvent, about_details, apply_worker_event,
         clear_linguamesh_temporary_files, collision_safe_destination, collision_safe_output_path,
         connect_action_handlers, connect_selection_handlers, create_window,
         custom_provider_profile, destination_matches_source, document_format_label,
@@ -11224,6 +11244,7 @@ mod tests {
     use std::time::{Duration, Instant};
     use tokio::runtime::Builder;
     use tokio::sync::oneshot;
+
     use zip::write::{SimpleFileOptions, ZipWriter};
 
     fn descendant_widgets(root: &gtk::Widget) -> Vec<gtk::Widget> {
@@ -11275,6 +11296,32 @@ mod tests {
         assert!(sync_local_export(&output));
 
         fs::remove_dir_all(&root).expect("remove export sync test directory");
+    }
+
+    #[ignore = "run in dedicated serialized GTK fixture"]
+    #[test]
+    fn local_export_sync_barrier_failure_is_reported() {
+        let root = std::env::temp_dir().join(format!(
+            "linguamesh-linux-export-sync-failure-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).expect("create export sync failure directory");
+        let output = root.join("nested").join("translation.txt");
+        fs::create_dir_all(output.parent().expect("nested export failure directory"))
+            .expect("create nested export failure directory");
+        fs::write(&output, b"durability failure test output")
+            .expect("write export sync failure test file");
+
+        TEST_EXPORT_SYNC_FAIL_FILE.store(true, Ordering::SeqCst);
+        assert!(!sync_local_export(&output));
+        TEST_EXPORT_SYNC_FAIL_FILE.store(false, Ordering::SeqCst);
+
+        TEST_EXPORT_SYNC_FAIL_DIRECTORY.store(true, Ordering::SeqCst);
+        assert!(!sync_local_export(&output));
+        TEST_EXPORT_SYNC_FAIL_DIRECTORY.store(false, Ordering::SeqCst);
+
+        fs::remove_dir_all(&root).expect("remove export sync failure directory");
     }
 
     #[test]
