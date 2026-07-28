@@ -48,35 +48,47 @@ jobs:
           path: linguamesh-l10n
           persist-credentials: false
       - name: Install native development headers
+        env:
+          DEBIAN_FRONTEND: noninteractive
         run: |
-          sudo apt-get update
-          # Weston 与挂载工具仅用于隔离测试，不进入生产运行时。
-          sudo apt-get install --yes --no-install-recommends \
-            libadwaita-1-dev \
-            libgtk-4-dev \
-            dbus-daemon \
-            dunst \
-            gettext \
-            gnome-keyring \
-            imagemagick \
-            mount \
-            orca \
-            poppler-utils \
-            pkg-config \
-            python3 \
-            python3-dbus \
-            tesseract-ocr \
-            util-linux \
-            x11-utils \
-            xdotool \
-            xfwm4 \
-            weston \
-            xdg-desktop-portal \
-            xdg-desktop-portal-gtk \
-            xauth \
-            python3-pyatspi \
-            speech-dispatcher-espeak-ng \
+          set -euo pipefail
+          packages=(
+            libadwaita-1-dev
+            libgtk-4-dev
+            dbus-daemon
+            dunst
+            gettext
+            gnome-keyring
+            imagemagick
+            mount
+            orca
+            poppler-utils
+            pkg-config
+            python3
+            python3-dbus
+            tesseract-ocr
+            util-linux
+            x11-utils
+            xdotool
+            xfwm4
+            weston
+            xdg-desktop-portal
+            xdg-desktop-portal-gtk
+            xauth
+            python3-pyatspi
+            speech-dispatcher-espeak-ng
             xvfb
+          )
+          for attempt in 1 2 3; do
+            if timeout --signal=TERM 300s sudo -E apt-get update &&
+              timeout --signal=TERM 900s sudo -E apt-get install --yes --no-install-recommends "${packages[@]}"; then
+              exit 0
+            fi
+            printf 'Native dependency installation attempt %s failed; retrying.\n' "$attempt" >&2
+            sleep 5
+          done
+          printf '%s\n' 'Native dependency installation failed after three attempts.' >&2
+          exit 1
       - name: Install pinned Rust toolchain
         # 固定 dtolnay/rust-toolchain 当前提交。
         uses: dtolnay/rust-toolchain@d0befba8b9ddf874327619e84c39b094edd58b66
