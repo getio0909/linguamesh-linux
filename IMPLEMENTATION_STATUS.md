@@ -1,12 +1,28 @@
 # Implementation Status
 
+## 2026-07-28 — Core registered-VFS partial-write pin
+
+Assumption: Linux must consume the Core partial-write rollback regression through the exact
+release pin; this remains deterministic fault-injection evidence and does not qualify physical
+power-loss or arbitrary third-party VFS behavior.
+
+- Core `48a2d59d2f44e195bbe6f4be2d3a94aa3a378468` adds
+  `registered_vfs_partial_write_rejects_commit_without_false_success`. The fixture writes only
+  half of one requested SQLite buffer, returns `SQLITE_IOERR_WRITE`, and verifies the committed
+  baseline survives while the transient profile is absent after reopen.
+- The local Core storage suite passed `69 passed; 0 failed`; the Linux client pin is prepared for
+  the next hosted Native/Flatpak and release-pinned conformance run.
+- This strengthens Linux Scenario 12 and registered-VFS failure evidence only. Physical
+  power-loss, arbitrary third-party VFS, manual/GPU, signing, rollback, promotion, and stable
+  release gates remain open.
+
 ## 2026-07-28 — Core `unix-excl` SIGKILL rollback pin
 
 Assumption: the bundled Linux `unix-excl` VFS must retain the default VFS fail-closed rollback
 boundary; this evidence remains simulated process interruption rather than physical power-loss or
 arbitrary third-party VFS qualification.
 
-- Core `795773474bc89e023e72345b49a8f561138aa604` adds
+- Core `48a2d59d2f44e195bbe6f4be2d3a94aa3a378468` includes
   `unix_exclusive_vfs_rolls_back_uncommitted_transaction_after_sigkill`, using a parent-owned
   readiness marker and verifying the committed baseline remains active while the transient row is
   absent after reopening through `unix-excl`.
