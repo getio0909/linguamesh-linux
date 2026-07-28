@@ -6,7 +6,7 @@ Assumption: Linux must consume the Core partial-write rollback regression throug
 release pin; this remains deterministic fault-injection evidence and does not qualify physical
 power-loss or arbitrary third-party VFS behavior.
 
-- Core `48a2d59d2f44e195bbe6f4be2d3a94aa3a378468` adds
+- Core `48a2d59e19611400499954384250f522e0fa6561` adds
   `registered_vfs_partial_write_rejects_commit_without_false_success`. The fixture writes only
   half of one requested SQLite buffer, returns `SQLITE_IOERR_WRITE`, and verifies the committed
   baseline survives while the transient profile is absent after reopen.
@@ -22,7 +22,7 @@ Assumption: the bundled Linux `unix-excl` VFS must retain the default VFS fail-c
 boundary; this evidence remains simulated process interruption rather than physical power-loss or
 arbitrary third-party VFS qualification.
 
-- Core `48a2d59d2f44e195bbe6f4be2d3a94aa3a378468` includes
+- Core `48a2d59e19611400499954384250f522e0fa6561` includes
   `unix_exclusive_vfs_rolls_back_uncommitted_transaction_after_sigkill`, using a parent-owned
   readiness marker and verifying the committed baseline remains active while the transient row is
   absent after reopening through `unix-excl`.
