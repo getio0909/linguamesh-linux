@@ -439,16 +439,16 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 The current synchronized checkout must be Core revision
-`06813081669e36b6feec8a231cd9a53eaf643671`, the reviewed Linux registered-VFS lock-, read-, write-, synchronization-, truncate-, and partial-write-failure
+`20ee60ec6c6c6ef5a61fd3cd2934bd75ace1121d`, the reviewed Linux registered-VFS lock-, read-, write-, synchronization-, truncate-, partial-write-failure, and sync-crash
 rejection, storage rollback, SIGKILL rollback, and XLSX
 sheet/range-selection revision
 consumed by the Native workflow and Flatpak manifest. A clean documentation-only descendant is
 acceptable for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e 06813081669e36b6feec8a231cd9a53eaf643671^{commit}
+git -C ../linguamesh-core cat-file -e 20ee60ec6c6c6ef5a61fd3cd2934bd75ace1121d^{commit}
 git -C ../linguamesh-core diff --quiet \
-  06813081669e36b6feec8a231cd9a53eaf643671..HEAD -- \
+  20ee60ec6c6c6ef5a61fd3cd2934bd75ace1121d..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -472,6 +472,10 @@ physical power-loss recovery remain unverified.
 The same pinned Core revision also injects an `xSync` failure through the registered VFS and
 requires a typed persistence error while preserving the committed baseline after reopen. This is
 bounded fault evidence, not arbitrary third-party VFS or physical power-loss qualification.
+Its sync-crash companion aborts an isolated child from that callback during a profile commit and
+verifies the committed baseline survives while the interrupted profile is absent after reopen.
+This remains simulated process-crash evidence, not physical power-loss or arbitrary third-party VFS
+qualification.
 The same revision also injects an `xWrite` failure and requires the same fail-closed transaction
 assertions, separating write-callback rejection from synchronization failure.
 The same revision also verifies that an uncommitted transaction rolls back after a parent-controlled
@@ -829,7 +833,7 @@ python3 tools/create-native-evidence.py \
   --cargo-lock Cargo.lock \
   --output-dir native-evidence \
   --linux-revision "$(git rev-parse HEAD)" \
-  --core-revision "06813081669e36b6feec8a231cd9a53eaf643671" \
+  --core-revision "20ee60ec6c6c6ef5a61fd3cd2934bd75ace1121d" \
   --localization-revision "43f5a6f069f6d0e6d075517b0c017784fe505b0d"
 (cd native-evidence && sha256sum -c SHA256SUMS)
 ```
@@ -976,7 +980,7 @@ system-supported contrast, motion, and text-scaling behavior; manual visual revi
 for supported releases.
 
 The GitHub Actions native workflow pins Core revision
-`06813081669e36b6feec8a231cd9a53eaf643671` and localization revision
+`20ee60ec6c6c6ef5a61fd3cd2934bd75ace1121d` and localization revision
 `43f5a6f069f6d0e6d075517b0c017784fe505b0d`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local

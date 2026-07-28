@@ -1,17 +1,34 @@
 # Implementation Status
 
+## 2026-07-28 — Core registered-VFS sync-crash pin
+
+Assumption: Linux must consume the Core sync-crash rollback regression through the exact release
+pin; this is deterministic process-crash evidence and does not qualify physical power-loss or
+arbitrary third-party VFS behavior.
+
+- Core `20ee60ec6c6c6ef5a61fd3cd2934bd75ace1121d` adds
+  `registered_vfs_sync_crash_rolls_back_without_false_success`, which aborts a child from the
+  registered VFS `xSync` callback and verifies the committed baseline survives while the transient
+  profile is absent after reopen.
+- The focused Core fixture passed (`1 passed; 0 failed`), and the serialized storage suite passed
+  (`72 passed; 0 failed`); formatting passed. Hosted Core CI, Native SDK, and fuzz/sanitizer runs
+  are required before release packaging.
+- This strengthens Linux Scenario 12 process-interruption evidence only. Physical power-loss,
+  arbitrary third-party VFS, manual/GPU, signing, rollback, promotion, and stable-release gates
+  remain open.
+
 ## 2026-07-28 — Core registered-VFS truncate-failure pin
 
 Assumption: Linux must consume the Core truncate-failure regression through the exact release
 pin; this remains deterministic fault-injection evidence and does not qualify physical power-loss
 or arbitrary third-party VFS behavior.
 
-- Core `06813081669e36b6feec8a231cd9a53eaf643671` adds
+- Core `20ee60ec6c6c6ef5a61fd3cd2934bd75ace1121d` adds
   `registered_vfs_truncate_failure_rejects_open_without_mutating_database`. The fixture injects
   `SQLITE_IOERR_TRUNCATE` during WAL checkpoint/open, requires a typed persistence error, and
   verifies the saved provider profile remains intact after recovery.
 - The focused Core fixture passed locally (`1 passed; 0 failed`), the serialized storage suite
-  passed (`71 passed; 0 failed`), and `cargo +1.93.0 fmt --all -- --check` passed. Hosted Core
+  passed (`72 passed; 0 failed`), and `cargo +1.93.0 fmt --all -- --check` passed. Hosted Core
   Native SDK, CI, and fuzz/sanitizer runs are required before release packaging.
 - This strengthens Linux Scenario 3 storage/open-failure evidence only. Physical power-loss,
   arbitrary third-party VFS, manual/GPU, signing, rollback, promotion, and stable-release gates
