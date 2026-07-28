@@ -1,5 +1,22 @@
 # Implementation Status
 
+## 2026-07-28 — Core `unix-excl` SIGKILL rollback pin
+
+Assumption: the bundled Linux `unix-excl` VFS must retain the default VFS fail-closed rollback
+boundary; this evidence remains simulated process interruption rather than physical power-loss or
+arbitrary third-party VFS qualification.
+
+- Core `795773474bc89e023e72345b49a8f561138aa604` adds
+  `unix_exclusive_vfs_rolls_back_uncommitted_transaction_after_sigkill`, using a parent-owned
+  readiness marker and verifying the committed baseline remains active while the transient row is
+  absent after reopening through `unix-excl`.
+- The focused fixture and serialized Core storage suite passed locally (`68 passed; 0 failed`).
+  Native/Flatpak CI and the central release-pinned conformance workflow are the authoritative
+  Hosted checks for this new pin.
+- This strengthens Linux Scenario 12 alternate-VFS evidence only. Physical/manual and GPU review,
+  physical power-loss, arbitrary third-party VFS, cross-client parity, signing, rollback
+  authorization, promotion, and stable-release gates remain open.
+
 ## 2026-07-26 — Linux current-head all-feature container regression
 
 Assumption: this non-root, offline container run validates the checked-out Linux test suite and

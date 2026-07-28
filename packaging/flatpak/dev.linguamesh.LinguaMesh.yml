@@ -54,7 +54,7 @@
         {
           "type": "git",
           "url": "https://github.com/getio0909/linguamesh-core.git",
-          "commit": "cb061d24a3e0c4059a65d099d30bc643e9e079ea",
+          "commit": "795773474bc89e023e72345b49a8f561138aa604",
           "dest": "linguamesh-core"
         },
         {

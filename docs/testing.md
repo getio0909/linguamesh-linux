@@ -439,16 +439,16 @@ broker, and completes the remaining segments while asserting a zero-fallback dec
 Rust 1.93.0 is pinned by `rust-toolchain.toml`. A sibling `../linguamesh-core` checkout is required
 because the client deliberately uses typed path dependencies instead of copying shared behavior.
 The current synchronized checkout must be Core revision
-`cb061d24a3e0c4059a65d099d30bc643e9e079ea`, the reviewed Linux registered-VFS read-, write-, and synchronization-failure
+`795773474bc89e023e72345b49a8f561138aa604`, the reviewed Linux registered-VFS read-, write-, and synchronization-failure
 rejection, storage rollback, SIGKILL rollback, and XLSX
 sheet/range-selection revision
 consumed by the Native workflow and Flatpak manifest. A clean documentation-only descendant is
 acceptable for local path builds when the compiled source tree is unchanged; validate it with:
 
 ```sh
-git -C ../linguamesh-core cat-file -e cb061d24a3e0c4059a65d099d30bc643e9e079ea^{commit}
+git -C ../linguamesh-core cat-file -e 795773474bc89e023e72345b49a8f561138aa604^{commit}
 git -C ../linguamesh-core diff --quiet \
-  cb061d24a3e0c4059a65d099d30bc643e9e079ea..HEAD -- \
+  795773474bc89e023e72345b49a8f561138aa604..HEAD -- \
   Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml crates assets migrations
 test -z "$(git -C ../linguamesh-core status --porcelain)"
 ```
@@ -474,6 +474,10 @@ requires a typed persistence error while preserving the committed baseline after
 bounded fault evidence, not arbitrary third-party VFS or physical power-loss qualification.
 The same revision also injects an `xWrite` failure and requires the same fail-closed transaction
 assertions, separating write-callback rejection from synchronization failure.
+The same revision also verifies that an uncommitted transaction rolls back after a parent-controlled
+SIGKILL when reopened through SQLite's bundled `unix-excl` VFS. This extends the interruption ledger
+to the reviewed alternate VFS without claiming physical power-loss or arbitrary third-party
+behavior.
 
 The same Core revision also includes bounded SQLite WAL replay regressions: a committed provider
 profile remains recoverable when a reader holds a snapshot while the writer disconnects, and a
@@ -825,7 +829,7 @@ python3 tools/create-native-evidence.py \
   --cargo-lock Cargo.lock \
   --output-dir native-evidence \
   --linux-revision "$(git rev-parse HEAD)" \
-  --core-revision "cb061d24a3e0c4059a65d099d30bc643e9e079ea" \
+  --core-revision "795773474bc89e023e72345b49a8f561138aa604" \
   --localization-revision "43f5a6f069f6d0e6d075517b0c017784fe505b0d"
 (cd native-evidence && sha256sum -c SHA256SUMS)
 ```
@@ -972,7 +976,7 @@ system-supported contrast, motion, and text-scaling behavior; manual visual revi
 for supported releases.
 
 The GitHub Actions native workflow pins Core revision
-`cb061d24a3e0c4059a65d099d30bc643e9e079ea` and localization revision
+`795773474bc89e023e72345b49a8f561138aa604` and localization revision
 `43f5a6f069f6d0e6d075517b0c017784fe505b0d`, installs the headers plus D-Bus, Xvfb, test-only
 mount-namespace tools, and Weston support, and runs the real storage write-fault gate and both
 display gates before the all-feature build. The storage write-fault change passes its exact local
