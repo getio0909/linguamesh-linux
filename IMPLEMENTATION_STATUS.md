@@ -1,12 +1,28 @@
 # Implementation Status
 
+## 2026-07-28 — Core registered-VFS lock-failure pin
+
+Assumption: Linux must consume the Core lock-failure regression through the exact release pin;
+this remains bounded open-failure evidence and does not qualify physical power-loss or arbitrary
+third-party VFS behavior.
+
+- Core `141b6a4f0aae769ba5f854060f1160103d56cfc0` adds
+  `registered_vfs_lock_failure_rejects_open_without_mutating_database`. The fixture injects
+  `SQLITE_IOERR_LOCK` during reopen, requires a typed persistence error, and verifies the saved
+  provider profile remains intact after the VFS recovers.
+- The focused Core fixture and serialized Core storage suite passed locally; the Linux pin is
+  prepared for the next hosted Native/Flatpak and release-pinned conformance run.
+- This strengthens Linux Scenario 3 storage/open-failure evidence only. Physical power-loss,
+  arbitrary third-party VFS, manual/GPU, signing, rollback, promotion, and stable-release gates
+  remain open.
+
 ## 2026-07-28 — Core registered-VFS partial-write pin
 
 Assumption: Linux must consume the Core partial-write rollback regression through the exact
 release pin; this remains deterministic fault-injection evidence and does not qualify physical
 power-loss or arbitrary third-party VFS behavior.
 
-- Core `48a2d59e19611400499954384250f522e0fa6561` adds
+- Core `141b6a4f0aae769ba5f854060f1160103d56cfc0` adds
   `registered_vfs_partial_write_rejects_commit_without_false_success`. The fixture writes only
   half of one requested SQLite buffer, returns `SQLITE_IOERR_WRITE`, and verifies the committed
   baseline survives while the transient profile is absent after reopen.
@@ -22,7 +38,7 @@ Assumption: the bundled Linux `unix-excl` VFS must retain the default VFS fail-c
 boundary; this evidence remains simulated process interruption rather than physical power-loss or
 arbitrary third-party VFS qualification.
 
-- Core `48a2d59e19611400499954384250f522e0fa6561` includes
+- Core `141b6a4f0aae769ba5f854060f1160103d56cfc0` includes
   `unix_exclusive_vfs_rolls_back_uncommitted_transaction_after_sigkill`, using a parent-owned
   readiness marker and verifying the committed baseline remains active while the transient row is
   absent after reopening through `unix-excl`.
