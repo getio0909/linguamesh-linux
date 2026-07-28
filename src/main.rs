@@ -14071,7 +14071,12 @@ mod tests {
         let apply = widgets
             .iter()
             .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
-            .find(|button| button.label().as_deref() == Some("Apply selection"))
+            .find(|button| {
+                button
+                    .label()
+                    .as_deref()
+                    .is_some_and(|label| label.trim_start_matches('_') == "Apply selection")
+            })
             .expect("apply XLSX selection button");
         apply.emit_clicked();
         spin_main_context_until(&context, Duration::from_secs(1), || {
