@@ -16246,19 +16246,21 @@ mod tests {
         settings.set_gtk_font_name(Some("Sans 24"));
 
         let display = gtk::prelude::RootExt::display(&window);
-        let manager = adw::StyleManager::for_display(&display);
         let context = glib::MainContext::default();
         spin_main_context_until(&context, Duration::from_secs(2), || {
-            manager.is_high_contrast()
-                && !adw::is_animations_enabled(window.upcast_ref::<gtk::Widget>())
+            !adw::is_animations_enabled(window.upcast_ref::<gtk::Widget>())
         });
         assert!(
-            manager.is_high_contrast(),
-            "libadwaita did not detect the desktop high-contrast theme"
+            settings
+                .gtk_theme_name()
+                .as_deref()
+                .is_some_and(|theme| theme == "HighContrast"),
+            "GTK did not retain the process-local high-contrast theme selection"
         );
+        assert!(!settings.is_gtk_enable_animations());
         assert!(
             !adw::is_animations_enabled(window.upcast_ref::<gtk::Widget>()),
-            "libadwaita did not follow the desktop reduced-motion setting"
+            "libadwaita did not follow the process-local reduced-motion setting"
         );
         let title_context = bindings.onboarding_title.pango_context();
         title_context.changed();

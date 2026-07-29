@@ -1,5 +1,23 @@
 # Implementation Status
 
+## 2026-07-29 — Headless GTK assertion correction for `.67`
+
+Assumption: the dedicated runner may not install a `HighContrast` theme, so the fixture must
+verify the process-local GTK selection without requiring libadwaita to classify an unavailable
+theme as high contrast.
+
+- Hosted Native Linux run `30425317258` reached the fixture after the dconf block was removed, then
+  failed because `StyleManager::is_high_contrast()` never became true for the uninstalled theme.
+- The fixture now asserts that GTK retained the requested `HighContrast` name and that process-local
+  reduced-motion and font settings reach the widget; the Flatpak metadata pin now follows the exact
+  Linux source commit `5e5930720f54f84d34f1a28550a4bd09c1817e2a`.
+- Local `cargo fmt --all --check` passed, and `cargo test --features demo-provider --locked` passed
+  (`170 passed; 0 failed; 7 ignored`). Hosted Native, Flatpak, and signing evidence must rerun.
+
+The first `.67` Flatpak run `30425317264` also correctly rejected the stale source pin; this commit
+updates it. Physical/manual, GPU, power-loss, arbitrary-VFS, rollback, promotion, and stable-release
+gates remain open.
+
 ## 2026-07-29 — Headless accessibility fixture no longer depends on dconf
 
 Assumption: the serialized accessibility fixture must validate GTK/libadwaita behavior without
