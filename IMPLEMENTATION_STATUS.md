@@ -1,5 +1,20 @@
 # Implementation Status
 
+## 2026-07-29 — Headless accessibility fixture no longer depends on dconf
+
+Assumption: the serialized accessibility fixture must validate GTK/libadwaita behavior without
+requiring a desktop settings service in the CI runner.
+
+- Removed the `gio::Settings` write to `org.gnome.desktop.a11y.interface` from
+  `gtk_accessibility_preferences_follow_desktop_settings`. The fixture now uses process-local GTK
+  theme, animation, and font settings, so it cannot block on an unavailable dconf backend.
+- `cargo fmt --all --check` passed locally.
+- `cargo test --features demo-provider --locked` passed locally (`170 passed; 0 failed; 7 ignored`).
+  Hosted GTK fixture and cross-client conformance runs remain required for release evidence.
+
+This addresses the `.66` Linux conformance timeout only. Manual/GPU, physical power-loss,
+signing, rollback, promotion, and stable-release gates remain open.
+
 ## 2026-07-28 — Core registered-VFS sync-crash pin
 
 Assumption: Linux must consume the Core sync-crash rollback regression through the exact release
