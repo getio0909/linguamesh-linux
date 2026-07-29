@@ -16245,7 +16245,6 @@ mod tests {
         settings.set_gtk_enable_animations(false);
         settings.set_gtk_font_name(Some("Sans 24"));
 
-        let display = gtk::prelude::RootExt::display(&window);
         let context = glib::MainContext::default();
         spin_main_context_until(&context, Duration::from_secs(2), || {
             !adw::is_animations_enabled(window.upcast_ref::<gtk::Widget>())
